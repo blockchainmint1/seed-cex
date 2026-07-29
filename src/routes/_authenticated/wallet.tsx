@@ -11,6 +11,7 @@ import {
 } from "@/lib/delegation.functions";
 import { CHAINS, EXPIRY_PRESETS, getChain, type ChainId } from "@/lib/chains";
 import { getAddressStats } from "@/lib/txc.functions";
+import { getEvmPortfolio } from "@/lib/evm.functions";
 import {
   decryptMnemonic,
   deriveAddresses,
@@ -602,3 +603,35 @@ function SharedAccessPanel({
 }
 
 
+
+/** Live balances for the same EVM address across Base, Ethereum, and BNB Chain. */
+function EvmBalancesPanel({ address }: { address: string }) {
+  const fetchPortfolio = useServerFn(getEvmPortfolio);
+  const portfolio = useQuery({
+    queryKey: ["evm-portfolio", address],
+    queryFn: () => fetchPortfolio({ data: { address } }),
+    refetchInterval: 120_000,
+  });
+
+  return (
+    <Panel title="EVM balances" kicker="Base · Ethereum · BNB Chain">
+      <p className="font-mono text-[11px] break-all text-muted-foreground">{address}</p>
+      {portfolio.isPending ? (
+        <p className="mt-4 font-mono text-xs text-muted-foreground">Reading chains…</p>
+      ) : (
+        <div className="mt-4 grid gap-x-8 gap-y-3 sm:grid-cols-3">
+          {(portfolio.data ?? []).map((b) => (
+            <div key={`${b.chain}-${b.symbol}`} className="font-mono">
+              <p className="text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
+                {b.chainName} · {b.symbol}
+              </p>
+              <p className="mt-1 text-sm tabular-nums text-foreground">
+                {b.online ? fmtAmount(b.balance, 6) : "unavailable"}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+    </Panel>
+  );
+}
