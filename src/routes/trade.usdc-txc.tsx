@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { getMarketStats, getOrderBook, getPriceSeries, getTape } from "@/lib/market.functions";
 import { TxcLegPanel } from "@/components/trade/TxcLegPanel";
+import { UsdcLegPanel } from "@/components/trade/UsdcLegPanel";
 import {
   advanceEscrow,
   cancelOrder,
@@ -263,7 +264,7 @@ function TradePage() {
           </p>
         </div>
         <span className="ml-auto rounded-sm border border-warn/50 bg-warn/10 px-3 py-1.5 font-mono text-[10px] tracking-[0.16em] text-warn uppercase">
-          TXC live · USDC simulated
+          live settlement · txc + usdc
         </span>
       </div>
 
