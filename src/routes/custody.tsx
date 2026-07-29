@@ -45,7 +45,7 @@ function fmt(ts: string | null) {
 }
 
 function Custody() {
-  const data = Route.useLoaderData();
+  const { custody: data, nodes } = Route.useLoaderData();
 
   const stats = [
     { label: "Keys held right now", value: String(data.keysHeld) },
@@ -53,6 +53,7 @@ function Custody() {
     { label: "Last sweep", value: fmt(data.lastSweep) },
     { label: "Wiped in last sweep", value: String(data.lastWiped) },
   ];
+
 
   return (
     <div className="mx-auto max-w-3xl px-5 py-16">
