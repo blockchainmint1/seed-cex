@@ -319,9 +319,10 @@ function Wallet() {
                   <dt className="text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
                     USDC (EVM) address
                   </dt>
-                  <dd className="mt-1 text-foreground">
-                    {truncateMiddle(wallet.data!.evm_address, 12, 10)}
+                  <dd className="mt-1 break-all text-foreground">
+                    {wallet.data!.evm_address}
                   </dd>
+
                 </div>
               ) : null}
               <div>
