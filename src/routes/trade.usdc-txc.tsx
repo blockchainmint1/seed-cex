@@ -32,7 +32,7 @@ export const Route = createFileRoute("/trade/usdc-txc")({
       },
     ],
   }),
-  component: TradePage;
+  component: TradePage,
 });
 
 function Sparkline({ points }: { points: number[] }) {
