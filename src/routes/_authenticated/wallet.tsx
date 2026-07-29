@@ -336,6 +336,12 @@ function Wallet() {
         </Panel>
       </div>
 
+      {hasWallet && wallet.data!.evm_address ? (
+        <div className="mt-6">
+          <EvmBalancesPanel address={wallet.data!.evm_address} />
+        </div>
+      ) : null}
+
       {hasWallet ? (
         <div className="mt-6">
           <SharedAccessPanel wallet={wallet.data!} />
