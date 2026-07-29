@@ -87,7 +87,7 @@ export function deriveAddresses(mnemonic: string): DerivedAddresses {
  * keeps the identical key (they own the seed), can sweep it at any moment, and
  * can revoke.
  */
-export const SHARED_TRADING_PATH = "m/44'/0'/9'/0/0";
+export const SHARED_TRADING_PATH = `m/44'/${TXC_COIN_TYPE}'/9'/0/0`;
 export const SHARED_EVM_PATH = "m/44'/60'/9'/0/0";
 
 export type SharedTradingKey = {
