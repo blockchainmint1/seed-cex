@@ -294,7 +294,9 @@ function Wallet() {
                 <dt className="text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
                   TXC address
                 </dt>
-                <dd className="mt-1 break-all text-foreground">{wallet.data!.txc_address}</dd>
+                <dd className="mt-1 break-all text-foreground">
+                  <ExplorerLink chain="txc" address={wallet.data!.txc_address} />
+                </dd>
               </div>
               <div className="flex gap-8">
                 <div>
