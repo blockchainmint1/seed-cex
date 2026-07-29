@@ -116,13 +116,18 @@ export function signEip1559(params: EvmTxParams): SignedTx {
   ];
 
   const unsigned = concat(Uint8Array.of(0x02), rlpEncode(fields));
-  const sig = secp256k1.sign(keccak_256(unsigned), priv, { prehash: false });
-  const r = toMinimalBytes(sig.r);
-  const s = toMinimalBytes(sig.s);
+  // "recovered" = 65 bytes: recovery id, then r, then s.
+  const sig = secp256k1.sign(keccak_256(unsigned), priv, {
+    prehash: false,
+    format: "recovered",
+  });
+  const recovery = BigInt(sig[0]);
+  const r = toMinimalBytes(BigInt(`0x${bytesToHex(sig.subarray(1, 33))}`));
+  const s = toMinimalBytes(BigInt(`0x${bytesToHex(sig.subarray(33, 65))}`));
 
   const signed = concat(
     Uint8Array.of(0x02),
-    rlpEncode([...(fields as RlpInput[]), toMinimalBytes(BigInt(sig.recovery)), r, s]),
+    rlpEncode([...(fields as RlpInput[]), toMinimalBytes(recovery), r, s]),
   );
 
   return {
