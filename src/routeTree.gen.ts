@@ -15,6 +15,7 @@ import { Route as ManifestoRouteImport } from './routes/manifesto'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as TradeUsdcTxcRouteImport } from './routes/trade.usdc-txc'
 import { Route as AuthenticatedWalletRouteImport } from './routes/_authenticated/wallet'
 
 const TermsRoute = TermsRouteImport.update({
@@ -46,6 +47,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TradeUsdcTxcRoute = TradeUsdcTxcRouteImport.update({
+  id: '/trade/usdc-txc',
+  path: '/trade/usdc-txc',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedWalletRoute = AuthenticatedWalletRouteImport.update({
   id: '/wallet',
   path: '/wallet',
@@ -59,6 +65,7 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
   '/wallet': typeof AuthenticatedWalletRoute
+  '/trade/usdc-txc': typeof TradeUsdcTxcRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -67,6 +74,7 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
   '/wallet': typeof AuthenticatedWalletRoute
+  '/trade/usdc-txc': typeof TradeUsdcTxcRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -77,12 +85,27 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
   '/_authenticated/wallet': typeof AuthenticatedWalletRoute
+  '/trade/usdc-txc': typeof TradeUsdcTxcRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/manifesto' | '/privacy' | '/terms' | '/wallet'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/manifesto'
+    | '/privacy'
+    | '/terms'
+    | '/wallet'
+    | '/trade/usdc-txc'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/manifesto' | '/privacy' | '/terms' | '/wallet'
+  to:
+    | '/'
+    | '/auth'
+    | '/manifesto'
+    | '/privacy'
+    | '/terms'
+    | '/wallet'
+    | '/trade/usdc-txc'
   id:
     | '__root__'
     | '/'
@@ -92,6 +115,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/terms'
     | '/_authenticated/wallet'
+    | '/trade/usdc-txc'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -101,6 +125,7 @@ export interface RootRouteChildren {
   ManifestoRoute: typeof ManifestoRoute
   PrivacyRoute: typeof PrivacyRoute
   TermsRoute: typeof TermsRoute
+  TradeUsdcTxcRoute: typeof TradeUsdcTxcRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -147,6 +172,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/trade/usdc-txc': {
+      id: '/trade/usdc-txc'
+      path: '/trade/usdc-txc'
+      fullPath: '/trade/usdc-txc'
+      preLoaderRoute: typeof TradeUsdcTxcRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/wallet': {
       id: '/_authenticated/wallet'
       path: '/wallet'
@@ -175,6 +207,7 @@ const rootRouteChildren: RootRouteChildren = {
   ManifestoRoute: ManifestoRoute,
   PrivacyRoute: PrivacyRoute,
   TermsRoute: TermsRoute,
+  TradeUsdcTxcRoute: TradeUsdcTxcRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
