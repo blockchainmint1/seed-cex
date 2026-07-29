@@ -629,7 +629,9 @@ function EvmBalancesPanel({ address }: { address: string }) {
 
   return (
     <Panel title="EVM balances" kicker="Base · Ethereum · BNB Chain">
-      <p className="font-mono text-[11px] break-all text-muted-foreground">{address}</p>
+      <p className="font-mono text-[11px] break-all text-muted-foreground">
+        <ExplorerLink chain="ethereum" address={address} />
+      </p>
       {portfolio.isPending ? (
         <p className="mt-4 font-mono text-xs text-muted-foreground">Reading chains…</p>
       ) : (
