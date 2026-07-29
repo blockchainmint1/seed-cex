@@ -84,16 +84,20 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "Seeds is a non-custodial exchange for USDC and TEXITcoin. Keys are encrypted in your browser and settled through peer-to-peer escrow.",
+          "Trade USDC and TEXITcoin without handing over your keys. Seeds encrypts your recovery phrase in the browser and settles trades through peer-to-peer escrow.",
       },
       { name: "author", content: "Seeds" },
       { property: "og:title", content: "Seeds — Non-Custodial USDC/TXC Exchange" },
       {
         property: "og:description",
-        content: "Encrypted-in-browser wallets and peer-to-peer USDC/TXC escrow settlement.",
+        content: "Trade USDC and TEXITcoin without handing over your keys. Seeds encrypts your recovery phrase in the browser and settles trades through peer-to-peer escrow.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Seeds — Non-Custodial USDC/TXC Exchange" },
+      { name: "twitter:description", content: "Trade USDC and TEXITcoin without handing over your keys. Seeds encrypts your recovery phrase in the browser and settles trades through peer-to-peer escrow." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/66e62653-95bf-4bdc-b85c-3a0a4f646064/id-preview-b5ba82c1--0ce4bcf5-5883-4de0-96d3-b161585d1bf4.lovable.app-1785315396428.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/66e62653-95bf-4bdc-b85c-3a0a4f646064/id-preview-b5ba82c1--0ce4bcf5-5883-4de0-96d3-b161585d1bf4.lovable.app-1785315396428.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },

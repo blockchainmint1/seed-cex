@@ -17,7 +17,7 @@ export const Route = createFileRoute("/")({
       {
         property: "og:description",
         content:
-          "Browser-encrypted wallets, a live USDC/TXC order book, and peer-to-peer escrow settlement.",
+          "Trade USDC and TEXITcoin without handing over your keys. Seeds encrypts your recovery phrase in the browser and settles trades through peer-to-peer escrow.",
       },
     ],
   }),
