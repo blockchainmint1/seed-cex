@@ -35,6 +35,17 @@ export const Route = createFileRoute("/custody")({
   component: Custody,
 });
 
+type NodeCard = {
+  chain: string;
+  label: string;
+  online: boolean;
+  synced: boolean;
+  blocks: number | null;
+  connections: number | null;
+  mempoolCount: number | null;
+  version: string | null;
+};
+
 
 function fmt(ts: string | null) {
   if (!ts) return "—";
