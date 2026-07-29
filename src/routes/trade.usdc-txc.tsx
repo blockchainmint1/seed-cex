@@ -11,6 +11,7 @@ import {
   placeOrder,
 } from "@/lib/trading.functions";
 import { getChainSnapshot } from "@/lib/txc.functions";
+import { getReferencePrices } from "@/lib/cmc.functions";
 import { useSession } from "@/hooks/use-session";
 import { fmtAgo, fmtAmount, fmtPrice, fmtTime, truncateMiddle } from "@/lib/format";
 
@@ -104,6 +105,17 @@ function TradePage() {
     queryFn: () => getChainSnapshot(),
     refetchInterval: 60_000,
   });
+  const ref = useQuery({
+    queryKey: ["cmc-reference"],
+    queryFn: () => getReferencePrices(),
+    refetchInterval: 60_000,
+  });
+  const refQuote = ref.data?.quotes.find((q) => q.symbol === "TXC");
+  // How far the local book's last print sits from the global reference.
+  const basisPct =
+    ref.data?.txcUsd != null && ref.data.txcUsd > 0 && stats.data?.last != null
+      ? ((stats.data.last - ref.data.txcUsd) / ref.data.txcUsd) * 100
+      : null;
 
   const fetchMyOrders = useServerFn(getMyOrders);
   const fetchMyTrades = useServerFn(getMyTrades);
@@ -225,6 +237,20 @@ function TradePage() {
           </p>
           <p className="font-mono text-lg text-foreground tabular-nums">
             {stats.data ? fmtAmount(stats.data.volume24h) : "—"} TXC
+          </p>
+        </div>
+        <div>
+          <p className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
+            CMC ref
+          </p>
+          <p className="font-mono text-lg text-foreground tabular-nums">
+            {ref.data?.txcUsd != null ? fmtPrice(ref.data.txcUsd) : "—"}
+          </p>
+          <p className="font-mono text-[10px] text-muted-foreground">
+            {refQuote?.change24h != null
+              ? `${refQuote.change24h >= 0 ? "+" : ""}${refQuote.change24h.toFixed(2)}% 24h`
+              : "offline"}
+            {basisPct != null ? ` · book ${basisPct >= 0 ? "+" : ""}${basisPct.toFixed(1)}%` : ""}
           </p>
         </div>
         <div>
