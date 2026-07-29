@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { getCustodySnapshot } from "@/lib/custody.functions";
+import { getNodeStatus } from "@/lib/rpc.functions";
 
 export const Route = createFileRoute("/custody")({
   head: () => ({
@@ -19,9 +20,21 @@ export const Route = createFileRoute("/custody")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  loader: () => getCustodySnapshot(),
+  loader: async () => ({
+    custody: await getCustodySnapshot(),
+    nodes: await getNodeStatus(),
+  }),
+  errorComponent: ({ error }) => (
+    <div role="alert" className="mx-auto max-w-3xl px-5 py-16 font-mono text-sm text-destructive">
+      {error.message}
+    </div>
+  ),
+  notFoundComponent: () => (
+    <div className="mx-auto max-w-3xl px-5 py-16 text-muted-foreground">Not found.</div>
+  ),
   component: Custody,
 });
+
 
 function fmt(ts: string | null) {
   if (!ts) return "—";
