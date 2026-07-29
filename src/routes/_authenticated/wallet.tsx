@@ -323,8 +323,16 @@ function Wallet() {
                     USDC (EVM) address
                   </dt>
                   <dd className="mt-1 break-all text-foreground">
-                    {wallet.data!.evm_address}
+                    <ExplorerLink chain="ethereum" address={wallet.data!.evm_address} />
                   </dd>
+                  <p className="mt-1 flex gap-3 text-[10px] tracking-[0.14em] text-muted-foreground uppercase">
+                    {(["base", "ethereum", "bsc"] as const).map((c) => (
+                      <ExplorerLink key={c} chain={c} address={wallet.data!.evm_address!}>
+                        {getChain(c).name}
+                      </ExplorerLink>
+                    ))}
+                  </p>
+
 
                 </div>
               ) : null}
