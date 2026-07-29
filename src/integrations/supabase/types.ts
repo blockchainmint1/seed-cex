@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      custody_attestations: {
+        Row: {
+          id: string
+          keys_held: number
+          keys_wiped: number
+          taken_at: string
+        }
+        Insert: {
+          id?: string
+          keys_held?: number
+          keys_wiped?: number
+          taken_at?: string
+        }
+        Update: {
+          id?: string
+          keys_held?: number
+          keys_wiped?: number
+          taken_at?: string
+        }
+        Relationships: []
+      }
       escrows: {
         Row: {
           confirmations: number
@@ -338,6 +359,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      custody_snapshot: {
+        Args: never
+        Returns: {
+          keys_held: number
+          last_sweep: string
+          last_wiped: number
+          next_expiry: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -349,6 +379,7 @@ export type Database = {
         Args: { _trade_id: string; _user_id: string }
         Returns: boolean
       }
+      purge_expired_delegations: { Args: never; Returns: number }
     }
     Enums: {
       app_role: "user" | "arbitrator" | "admin"

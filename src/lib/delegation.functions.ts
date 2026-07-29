@@ -17,6 +17,8 @@ export const getSharedAccess = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<DelegationStatus> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // Expired keys are wiped, not merely hidden — sweep before reading.
+    await supabaseAdmin.rpc("purge_expired_delegations");
     const { data, error } = await supabaseAdmin
       .from("wallet_delegations")
       .select("trading_txc_address, trading_path, max_amount, expires_at, revoked_at")

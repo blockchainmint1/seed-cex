@@ -4,6 +4,7 @@ const links = [
   { label: "Terms", to: "/terms" },
   { label: "Privacy", to: "/privacy" },
   { label: "Manifesto", to: "/manifesto" },
+  { label: "Custody Ledger", to: "/custody" },
 ] as const;
 
 export function SiteFooter() {
