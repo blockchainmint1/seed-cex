@@ -229,6 +229,20 @@ function TradePage() {
         </div>
         <div>
           <p className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
+            CMC ref
+          </p>
+          <p className="font-mono text-lg text-foreground tabular-nums">
+            {ref.data?.txcUsd != null ? fmtPrice(ref.data.txcUsd) : "—"}
+          </p>
+          <p className="font-mono text-[10px] text-muted-foreground">
+            {refQuote?.change24h != null
+              ? `${refQuote.change24h >= 0 ? "+" : ""}${refQuote.change24h.toFixed(2)}% 24h`
+              : "offline"}
+            {basisPct != null ? ` · book ${basisPct >= 0 ? "+" : ""}${basisPct.toFixed(1)}%` : ""}
+          </p>
+        </div>
+        <div>
+          <p className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
             Chain
           </p>
           <p className="font-mono text-lg text-foreground tabular-nums">
