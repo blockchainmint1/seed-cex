@@ -104,6 +104,17 @@ function TradePage() {
     queryFn: () => getChainSnapshot(),
     refetchInterval: 60_000,
   });
+  const ref = useQuery({
+    queryKey: ["cmc-reference"],
+    queryFn: () => getReferencePrices(),
+    refetchInterval: 60_000,
+  });
+  const refQuote = ref.data?.quotes.find((q) => q.symbol === "TXC");
+  // How far the local book's last print sits from the global reference.
+  const basisPct =
+    ref.data?.txcUsd != null && ref.data.txcUsd > 0 && stats.data?.last != null
+      ? ((stats.data.last - ref.data.txcUsd) / ref.data.txcUsd) * 100
+      : null;
 
   const fetchMyOrders = useServerFn(getMyOrders);
   const fetchMyTrades = useServerFn(getMyTrades);
