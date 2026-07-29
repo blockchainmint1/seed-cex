@@ -328,6 +328,12 @@ function Wallet() {
         </Panel>
       </div>
 
+      {hasWallet ? (
+        <div className="mt-6">
+          <SharedAccessPanel wallet={wallet.data!} />
+        </div>
+      ) : null}
+
       <div className="mt-8">
         <Link
           to="/trade/usdc-txc"
@@ -339,3 +345,153 @@ function Wallet() {
     </div>
   );
 }
+
+function SharedAccessPanel({
+  wallet,
+}: {
+  wallet: { vault_ciphertext: string; kdf_salt: string; kdf_iterations: number };
+}) {
+  const queryClient = useQueryClient();
+  const fetchStatus = useServerFn(getSharedAccess);
+  const grant = useServerFn(grantSharedAccess);
+  const revoke = useServerFn(revokeSharedAccess);
+
+  const status = useQuery({ queryKey: ["shared-access"], queryFn: () => fetchStatus() });
+
+  const [pw, setPw] = useState("");
+  const [cap, setCap] = useState("500");
+  const [days, setDays] = useState("30");
+  const [err, setErr] = useState<string | null>(null);
+
+  const enable = useMutation({
+    mutationFn: async () => {
+      const mnemonic = await decryptMnemonic(
+        {
+          ciphertext: wallet.vault_ciphertext,
+          salt: wallet.kdf_salt,
+          iterations: wallet.kdf_iterations,
+        },
+        pw,
+      );
+      const shared = deriveSharedTradingKey(mnemonic);
+      return grant({
+        data: {
+          privateKeyHex: shared.privateKeyHex,
+          tradingAddress: shared.txcAddress,
+          tradingPath: shared.path,
+          maxAmount: Number(cap),
+          days: Number(days),
+        },
+      });
+    },
+    onSuccess: () => {
+      setPw("");
+      setErr(null);
+      queryClient.invalidateQueries({ queryKey: ["shared-access"] });
+    },
+    onError: (e) => setErr(e instanceof Error ? e.message : "Could not enable shared access"),
+  });
+
+  const disable = useMutation({
+    mutationFn: () => revoke(),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["shared-access"] }),
+  });
+
+  const s = status.data;
+
+  return (
+    <Panel title="Shared trading account" kicker="Optional · co-signed settlement">
+      <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
+        A centralised exchange makes you <em>deposit</em> — you hand over the coins and hold nothing.
+        Seeds does the opposite: you keep the seed, and you may lend Seeds a copy of{" "}
+        <span className="font-mono text-foreground">m/44&apos;/0&apos;/9&apos;</span> — one branch of
+        your own tree, used only for settling trades. You hold the identical key, you can sweep the
+        branch at any second, and revoking is one click. Your savings branch{" "}
+        <span className="font-mono text-foreground">m/44&apos;/0&apos;/0&apos;</span> is never
+        shared, and the seed itself never leaves this tab.
+      </p>
+
+      {err ? (
+        <p className="mt-4 rounded-sm border border-destructive/40 bg-destructive/10 px-3 py-2 font-mono text-xs text-destructive">
+          {err}
+        </p>
+      ) : null}
+
+      {s?.active ? (
+        <div className="mt-5 space-y-4 font-mono text-sm">
+          <div className="flex flex-wrap gap-8">
+            <div>
+              <p className="text-[10px] tracking-[0.18em] text-muted-foreground uppercase">Status</p>
+              <p className="mt-1 text-bid">Shared · instant settlement on</p>
+            </div>
+            <div>
+              <p className="text-[10px] tracking-[0.18em] text-muted-foreground uppercase">Cap</p>
+              <p className="mt-1 text-foreground tabular-nums">{fmtAmount(s.maxAmount, 2)} TXC</p>
+            </div>
+            <div>
+              <p className="text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
+                Expires
+              </p>
+              <p className="mt-1 text-foreground">
+                {s.expiresAt ? new Date(s.expiresAt).toLocaleDateString() : "—"}
+              </p>
+            </div>
+          </div>
+          <div>
+            <p className="text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
+              Shared branch address
+            </p>
+            <p className="mt-1 break-all text-foreground">{s.tradingAddress}</p>
+          </div>
+          <button
+            onClick={() => disable.mutate()}
+            disabled={disable.isPending}
+            className="rounded-sm border border-destructive px-5 py-2.5 font-mono text-xs tracking-[0.16em] text-destructive uppercase disabled:opacity-50"
+          >
+            {disable.isPending ? "Revoking…" : "Revoke shared access"}
+          </button>
+        </div>
+      ) : (
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <input
+            type="password"
+            value={pw}
+            onChange={(e) => setPw(e.target.value)}
+            placeholder="Vault password"
+            maxLength={200}
+            className="rounded-sm border border-input bg-background px-3 py-2.5 font-mono text-sm outline-none focus:border-primary sm:col-span-3"
+          />
+          <label className="font-mono text-[11px] text-muted-foreground">
+            Spending cap (TXC)
+            <input
+              type="number"
+              min={1}
+              value={cap}
+              onChange={(e) => setCap(e.target.value)}
+              className="mt-1 w-full rounded-sm border border-input bg-background px-3 py-2 font-mono text-sm text-foreground outline-none focus:border-primary"
+            />
+          </label>
+          <label className="font-mono text-[11px] text-muted-foreground">
+            Expires in (days)
+            <input
+              type="number"
+              min={1}
+              max={365}
+              value={days}
+              onChange={(e) => setDays(e.target.value)}
+              className="mt-1 w-full rounded-sm border border-input bg-background px-3 py-2 font-mono text-sm text-foreground outline-none focus:border-primary"
+            />
+          </label>
+          <button
+            onClick={() => enable.mutate()}
+            disabled={enable.isPending || pw.length === 0}
+            className="self-end rounded-sm bg-primary px-4 py-2.5 font-mono text-xs font-semibold tracking-[0.16em] text-primary-foreground uppercase disabled:opacity-50"
+          >
+            {enable.isPending ? "Sharing…" : "Share trading branch"}
+          </button>
+        </div>
+      )}
+    </Panel>
+  );
+}
+
