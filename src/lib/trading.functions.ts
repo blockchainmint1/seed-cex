@@ -1,0 +1,130 @@
+import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { z } from "zod";
+
+const PAIR = "USDC_TXC";
+
+const placeOrderInput = (input: unknown) =>
+  z
+    .object({
+      side: z.enum(["buy", "sell"]),
+      price: z.number().positive().max(1_000_000),
+      amount: z.number().positive().max(100_000_000),
+    })
+    .parse(input);
+
+/* ------------------------------ wallet vault ------------------------------ */
+
+export const getMyWallet = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("wallets")
+      .select("vault_ciphertext, kdf_salt, kdf_iterations, txc_address, evm_address, backed_up, created_at")
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data;
+  });
+
+export const saveMyWallet = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        vaultCiphertext: z.string().min(20).max(20_000),
+        kdfSalt: z.string().min(8).max(256),
+        kdfIterations: z.number().int().min(100_000).max(2_000_000),
+        txcAddress: z.string().trim().min(20).max(120),
+        evmAddress: z.string().trim().max(120).optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.from("wallets").upsert(
+      {
+        user_id: context.userId,
+        vault_ciphertext: data.vaultCiphertext,
+        kdf_salt: data.kdfSalt,
+        kdf_iterations: data.kdfIterations,
+        txc_address: data.txcAddress,
+        evm_address: data.evmAddress ?? null,
+      },
+      { onConflict: "user_id" },
+    );
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const markWalletBackedUp = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { error } = await context.supabase
+      .from("wallets")
+      .update({ backed_up: true })
+      .eq("user_id", context.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/* -------------------------------- orders --------------------------------- */
+
+export const getMyOrders = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("orders")
+      .select("id, side, price, amount, filled, status, created_at")
+      .eq("user_id", context.userId)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  });
+
+export const placeOrder = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(placeOrderInput)
+  .handler(async ({ data, context }) => {
+    const { matchOrder } = await import("./trading.server");
+    return matchOrder(context.userId, PAIR, data);
+  });
+
+export const cancelOrder = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("orders")
+      .update({ status: "cancelled" })
+      .eq("id", data.id)
+      .eq("user_id", context.userId)
+      .in("status", ["open", "partial"]);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/* -------------------------------- escrow ---------------------------------- */
+
+export const getMyTrades = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { loadMyTrades } = await import("./trading.server");
+    return loadMyTrades(context.userId);
+  });
+
+export const advanceEscrow = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        tradeId: z.string().uuid(),
+        action: z.enum(["fund", "release", "dispute"]),
+        leg: z.enum(["txc", "usdc"]),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { advance } = await import("./trading.server");
+    return advance(context.userId, data);
+  });
