@@ -93,7 +93,7 @@ function Custody() {
         the chain. Live tip height, peer count and mempool below.
       </p>
       <div className="mt-4 grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2">
-        {nodes.map((n) => (
+        {(nodes as NodeCard[]).map((n) => (
           <div key={n.chain} className="space-y-3 bg-surface px-5 py-5">
             <div className="flex items-center justify-between">
               <span className="font-display text-sm font-bold tracking-tight text-foreground uppercase">
