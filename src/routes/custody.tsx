@@ -91,7 +91,7 @@ function Custody() {
                 </td>
               </tr>
             ) : (
-              data.history.map((h) => (
+              data.history.map((h: { takenAt: string; keysHeld: number; keysWiped: number }) => (
                 <tr key={h.takenAt} className="border-t border-border/60">
                   <td className="px-4 py-3 text-muted-foreground">{fmt(h.takenAt)}</td>
                   <td className="px-4 py-3 text-right tabular-nums text-foreground">{h.keysHeld}</td>
