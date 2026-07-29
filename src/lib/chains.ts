@@ -32,7 +32,8 @@ export const CHAINS: ChainDef[] = [
     name: "TEXITcoin",
     evmChainId: null,
     nativeSymbol: "TXC",
-    sharedPath: "m/44'/0'/9'/0/0",
+    // SLIP-0044 coin type 696969, matching wallet.texitcoin.org
+    sharedPath: "m/44'/696969'/9'/0/0",
     assets: [{ symbol: "TXC", contract: null, decimals: 8 }],
     explorer: "https://mempool.texitcoin.org/address/",
   },
