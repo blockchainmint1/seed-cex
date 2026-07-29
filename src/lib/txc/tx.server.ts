@@ -229,8 +229,9 @@ export function buildAndSignTransfer(params: BuildParams): BuiltTx {
     }));
     const preimage = concat(serialize(preimageInputs, outputs), u32le(SIGHASH_ALL));
     const sig = secp256k1.sign(dsha256(preimage), priv, { format: "der", prehash: false });
-    signed.push(pushData(concat(sig, Uint8Array.of(SIGHASH_ALL))).length ? concat(pushData(concat(sig, Uint8Array.of(SIGHASH_ALL))), pushData(pubkey)) : new Uint8Array(0));
-    scripts[i] = signed[i];
+    const scriptSig = concat(pushData(concat(sig, Uint8Array.of(SIGHASH_ALL))), pushData(pubkey));
+    signed.push(scriptSig);
+    scripts[i] = scriptSig;
   }
 
   const finalInputs = chosen.map((utxo, i) => ({ utxo, script: scripts[i] }));
