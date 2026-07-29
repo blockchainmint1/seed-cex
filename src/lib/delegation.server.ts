@@ -1,7 +1,7 @@
 /**
  * Server-side envelope encryption for delegated trading keys.
  *
- * A delegated key is a *branch* key (m/44'/0'/9'/0/0), never the seed. It is
+ * A delegated key is a *branch* key (m/44'/696969'/9'/0/0), never the seed. It is
  * stored as AES-256-GCM ciphertext under SEEDS_DELEGATION_KEY, so a database
  * dump alone is inert.
  */
