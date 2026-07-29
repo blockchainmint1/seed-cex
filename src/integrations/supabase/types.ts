@@ -419,6 +419,7 @@ export type Database = {
         Returns: boolean
       }
       purge_expired_delegations: { Args: never; Returns: number }
+      purge_expired_wallet_challenges: { Args: never; Returns: number }
     }
     Enums: {
       app_role: "user" | "arbitrator" | "admin"
