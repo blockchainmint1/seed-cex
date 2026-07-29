@@ -21,6 +21,7 @@ import {
   newMnemonic,
 } from "@/lib/wallet/vault";
 import { fmtAmount, truncateMiddle } from "@/lib/format";
+import { ExplorerLink } from "@/components/site/ExplorerLink";
 
 export const Route = createFileRoute("/_authenticated/wallet")({
   head: () => ({
