@@ -151,6 +151,8 @@ export type TradeRow = {
     expected: number;
     funded: number;
     status: string;
+    releaseTxid: string | null;
+    confirmations: number;
   }>;
 };
 
@@ -158,7 +160,7 @@ export async function loadMyTrades(userId: string): Promise<TradeRow[]> {
   const { data, error } = await supabaseAdmin
     .from("trades")
     .select(
-      "id, side, price, amount, status, maker_id, taker_id, created_at, expires_at, escrows(leg, multisig_address, expected_amount, funded_amount, status)",
+      "id, side, price, amount, status, maker_id, taker_id, created_at, expires_at, escrows(leg, multisig_address, expected_amount, funded_amount, status, release_txid, confirmations)",
     )
     .or(`maker_id.eq.${userId},taker_id.eq.${userId}`)
     .order("created_at", { ascending: false })
@@ -180,6 +182,8 @@ export async function loadMyTrades(userId: string): Promise<TradeRow[]> {
       expected: Number(e.expected_amount),
       funded: Number(e.funded_amount),
       status: e.status,
+      releaseTxid: e.release_txid,
+      confirmations: Number(e.confirmations ?? 0),
     })),
   }));
 }

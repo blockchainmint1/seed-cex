@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { getMarketStats, getOrderBook, getPriceSeries, getTape } from "@/lib/market.functions";
+import { TxcLegPanel } from "@/components/trade/TxcLegPanel";
 import {
   advanceEscrow,
   cancelOrder,
@@ -262,7 +263,7 @@ function TradePage() {
           </p>
         </div>
         <span className="ml-auto rounded-sm border border-warn/50 bg-warn/10 px-3 py-1.5 font-mono text-[10px] tracking-[0.16em] text-warn uppercase">
-          Simulated settlement
+          TXC live · USDC simulated
         </span>
       </div>
 
@@ -306,7 +307,10 @@ function TradePage() {
                       <span className="ml-auto text-muted-foreground">{fmtAgo(t.createdAt)}</span>
                     </div>
                     <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                      {t.escrows.map((e) => (
+                      {t.escrows.map((e) =>
+                        e.leg === "txc" ? (
+                          <TxcLegPanel key={e.leg} tradeId={t.id} leg={e} />
+                        ) : (
                         <div
                           key={e.leg}
                           className="rounded-sm border border-border bg-background p-3 font-mono text-[11px]"
@@ -350,7 +354,8 @@ function TradePage() {
                             </button>
                           </div>
                         </div>
-                      ))}
+                        ),
+                      )}
                     </div>
                   </li>
                 ))}

@@ -71,11 +71,16 @@ function Terms() {
           your funds.</strong> Back up your phrase offline before funding a wallet.
         </p>
       </Section>
-      <Section heading="3. Simulation mode">
+      <Section heading="3. Settlement status">
         <p>
-          Settlement is currently simulated. Order matching, escrow state, and audit history are
-          real records, but escrow legs are not broadcast to any blockchain. Do not treat simulated
-          positions as legally or economically settled.
+          The TEXITcoin leg of a trade is settled on-chain: it is built and signed from the
+          authorized trading branch you granted, broadcast through a TEXITcoin node we operate, and
+          tracked to confirmation. On-chain transactions are irreversible and we cannot recall one
+          once broadcast.
+        </p>
+        <p>
+          The USDC leg remains simulated: it is recorded as funded and released without any
+          blockchain transaction. Do not treat a simulated leg as legally or economically settled.
         </p>
       </Section>
       <Section heading="4. Escrow and disputes">
