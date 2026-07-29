@@ -35,6 +35,24 @@ export type ChainSnapshot = {
 };
 
 export async function fetchChainSnapshot(): Promise<ChainSnapshot> {
+  // Our own node is authoritative; the public Esplora mirror is the fallback.
+  const { fetchNodeStatus, rpcConfigured } = await import("./rpc.server");
+  if (rpcConfigured("txc")) {
+    const node = await fetchNodeStatus("txc");
+    if (node.online) {
+      // estimatesmartfee returns coins/kvB; convert to sat/vB.
+      const satPerVb = node.feeRate ? Math.max(1, Math.round((node.feeRate * 1e8) / 1000)) : null;
+      return {
+        height: node.blocks,
+        lastBlockAt: node.medianTimeIso,
+        fastestFee: satPerVb,
+        halfHourFee: satPerVb,
+        mempoolCount: node.mempoolCount,
+        online: true,
+      };
+    }
+  }
+
   const [blocks, fees, mempool] = await Promise.all([
     get<Array<{ height: number; timestamp: number }>>("/api/blocks"),
     get<{ fastestFee: number; halfHourFee: number }>("/api/v1/fees/recommended"),
