@@ -276,40 +276,79 @@ export type Database = {
         }
         Relationships: []
       }
+      wallet_auth_challenges: {
+        Row: {
+          address: string
+          consumed_at: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          nonce: string
+          statement: string
+        }
+        Insert: {
+          address: string
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          nonce: string
+          statement: string
+        }
+        Update: {
+          address?: string
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          nonce?: string
+          statement?: string
+        }
+        Relationships: []
+      }
       wallet_delegations: {
         Row: {
+          asset: string
+          chain: string
           created_at: string
           expires_at: string
           id: string
           key_ciphertext: string
+          label: string | null
           max_amount: number
           revoked_at: string | null
+          trading_address: string
           trading_path: string
-          trading_txc_address: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          asset?: string
+          chain?: string
           created_at?: string
           expires_at?: string
           id?: string
           key_ciphertext: string
+          label?: string | null
           max_amount?: number
           revoked_at?: string | null
+          trading_address: string
           trading_path: string
-          trading_txc_address: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          asset?: string
+          chain?: string
           created_at?: string
           expires_at?: string
           id?: string
           key_ciphertext?: string
+          label?: string | null
           max_amount?: number
           revoked_at?: string | null
+          trading_address?: string
           trading_path?: string
-          trading_txc_address?: string
           updated_at?: string
           user_id?: string
         }

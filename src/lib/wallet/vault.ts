@@ -80,29 +80,40 @@ export function deriveAddresses(mnemonic: string): DerivedAddresses {
  *
  * This is the one branch of the tree the user may choose to co-share with
  * Seeds so trades can settle without waiting for them to be online. It is a
- * separate hardened account: knowing it never reveals the master seed and
- * never reaches the user's savings account at m/44'/0'/0'. The user keeps the
- * same key (they own the seed), can sweep it at any moment, and can revoke.
+ * separate hardened account (9') on each chain: knowing it never reveals the
+ * master seed and never reaches the user's savings accounts at 0'. The user
+ * keeps the identical key (they own the seed), can sweep it at any moment, and
+ * can revoke.
  */
 export const SHARED_TRADING_PATH = "m/44'/0'/9'/0/0";
+export const SHARED_EVM_PATH = "m/44'/60'/9'/0/0";
 
 export type SharedTradingKey = {
   path: string;
   privateKeyHex: string;
-  txcAddress: string;
+  address: string;
 };
 
-export function deriveSharedTradingKey(mnemonic: string): SharedTradingKey {
+/** Derive the shared branch key for a given BIP-44 path and address family. */
+export function deriveSharedKey(
+  mnemonic: string,
+  path: string,
+  kind: "txc" | "evm",
+): SharedTradingKey {
   const root = HDKey.fromMasterSeed(mnemonicToSeedSync(mnemonic));
-  const node = root.derive(SHARED_TRADING_PATH);
+  const node = root.derive(path);
   if (!node.privateKey || !node.publicKey) {
     throw new Error("Could not derive the shared trading key");
   }
-  return {
-    path: SHARED_TRADING_PATH,
-    privateKeyHex: bytesToHex(node.privateKey),
-    txcAddress: txcAddressFromPubkey(node.publicKey),
-  };
+  const address =
+    kind === "txc"
+      ? txcAddressFromPubkey(node.publicKey)
+      : evmAddressFromPubkey(secp256k1.Point.fromBytes(node.publicKey).toBytes(false));
+  return { path, privateKeyHex: bytesToHex(node.privateKey), address };
+}
+
+export function deriveSharedTradingKey(mnemonic: string): SharedTradingKey {
+  return deriveSharedKey(mnemonic, SHARED_TRADING_PATH, "txc");
 }
 
 export function newMnemonic(): string {

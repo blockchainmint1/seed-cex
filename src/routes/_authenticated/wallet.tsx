@@ -4,15 +4,18 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { getMyWallet, markWalletBackedUp, saveMyWallet } from "@/lib/trading.functions";
 import {
-  getSharedAccess,
-  grantSharedAccess,
-  revokeSharedAccess,
+  listAuthorizations,
+  grantAuthorization,
+  revokeAuthorization,
+  revokeAllAuthorizations,
 } from "@/lib/delegation.functions";
+import { CHAINS, EXPIRY_PRESETS, getChain, type ChainId } from "@/lib/chains";
 import { getAddressStats } from "@/lib/txc.functions";
+import { getEvmPortfolio } from "@/lib/evm.functions";
 import {
   decryptMnemonic,
   deriveAddresses,
-  deriveSharedTradingKey,
+  deriveSharedKey,
   encryptMnemonic,
   isValidMnemonic,
   newMnemonic,
@@ -334,6 +337,12 @@ function Wallet() {
         </Panel>
       </div>
 
+      {hasWallet && wallet.data!.evm_address ? (
+        <div className="mt-6">
+          <EvmBalancesPanel address={wallet.data!.evm_address} />
+        </div>
+      ) : null}
+
       {hasWallet ? (
         <div className="mt-6">
           <SharedAccessPanel wallet={wallet.data!} />
@@ -352,22 +361,40 @@ function Wallet() {
   );
 }
 
+function countdown(iso: string): string {
+  const ms = new Date(iso).getTime() - Date.now();
+  if (ms <= 0) return "expired";
+  const h = Math.floor(ms / 3_600_000);
+  const m = Math.floor((ms % 3_600_000) / 60_000);
+  if (h >= 48) return `${Math.floor(h / 24)}d ${h % 24}h left`;
+  return `${h}h ${m}m left`;
+}
+
 function SharedAccessPanel({
   wallet,
 }: {
   wallet: { vault_ciphertext: string; kdf_salt: string; kdf_iterations: number };
 }) {
   const queryClient = useQueryClient();
-  const fetchStatus = useServerFn(getSharedAccess);
-  const grant = useServerFn(grantSharedAccess);
-  const revoke = useServerFn(revokeSharedAccess);
+  const fetchList = useServerFn(listAuthorizations);
+  const grant = useServerFn(grantAuthorization);
+  const revoke = useServerFn(revokeAuthorization);
+  const revokeAll = useServerFn(revokeAllAuthorizations);
 
-  const status = useQuery({ queryKey: ["shared-access"], queryFn: () => fetchStatus() });
+  const list = useQuery({
+    queryKey: ["authorizations"],
+    queryFn: () => fetchList(),
+    refetchInterval: 60_000,
+  });
 
   const [pw, setPw] = useState("");
+  const [chainId, setChainId] = useState<ChainId>("txc");
+  const [asset, setAsset] = useState("TXC");
   const [cap, setCap] = useState("500");
-  const [days, setDays] = useState("30");
+  const [hours, setHours] = useState("24");
   const [err, setErr] = useState<string | null>(null);
+
+  const chain = getChain(chainId);
 
   const enable = useMutation({
     mutationFn: async () => {
@@ -379,42 +406,56 @@ function SharedAccessPanel({
         },
         pw,
       );
-      const shared = deriveSharedTradingKey(mnemonic);
+      const shared = deriveSharedKey(
+        mnemonic,
+        chain.sharedPath,
+        chain.evmChainId === null ? "txc" : "evm",
+      );
       return grant({
         data: {
+          chain: chainId,
+          asset,
           privateKeyHex: shared.privateKeyHex,
-          tradingAddress: shared.txcAddress,
-          tradingPath: shared.path,
+          address: shared.address,
+          path: shared.path,
           maxAmount: Number(cap),
-          days: Number(days),
+          hours: Number(hours),
         },
       });
     },
     onSuccess: () => {
       setPw("");
       setErr(null);
-      queryClient.invalidateQueries({ queryKey: ["shared-access"] });
+      queryClient.invalidateQueries({ queryKey: ["authorizations"] });
     },
-    onError: (e) => setErr(e instanceof Error ? e.message : "Could not enable shared access"),
+    onError: (e) => setErr(e instanceof Error ? e.message : "Could not authorize that branch"),
   });
 
   const disable = useMutation({
-    mutationFn: () => revoke(),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["shared-access"] }),
+    mutationFn: (c: ChainId) => revoke({ data: { chain: c } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["authorizations"] }),
   });
 
-  const s = status.data;
+  const killSwitch = useMutation({
+    mutationFn: () => revokeAll(),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["authorizations"] }),
+  });
+
+  const active = list.data ?? [];
 
   return (
-    <Panel title="Shared trading account" kicker="Optional · co-signed settlement">
+    <Panel title="Trading authorizations" kicker="Non-custodial · capped · expiring">
       <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
-        A centralised exchange makes you <em>deposit</em> — you hand over the coins and hold nothing.
-        Seeds does the opposite: you keep the seed, and you may lend Seeds a copy of{" "}
-        <span className="font-mono text-foreground">m/44&apos;/0&apos;/9&apos;</span> — one branch of
-        your own tree, used only for settling trades. You hold the identical key, you can sweep the
-        branch at any second, and revoking is one click. Your savings branch{" "}
-        <span className="font-mono text-foreground">m/44&apos;/0&apos;/0&apos;</span> is never
-        shared, and the seed itself never leaves this tab.
+        A centralised exchange makes you <em>deposit</em> — you hand over the coins and hold nothing
+        when they close their doors. Seeds does the opposite: you keep the seed and authorize one
+        branch of your own tree, account <span className="font-mono text-foreground">9&apos;</span>,
+        for a capped amount and a fixed window. When the clock runs out the key is{" "}
+        <Link to="/custody" className="text-primary underline-offset-4 hover:underline">
+          permanently wiped
+        </Link>
+        , and anyone can audit how many keys we hold. Your savings branch{" "}
+        <span className="font-mono text-foreground">0&apos;</span> is never authorized, and the seed
+        itself never leaves this tab.
       </p>
 
       {err ? (
@@ -423,81 +464,174 @@ function SharedAccessPanel({
         </p>
       ) : null}
 
-      {s?.active ? (
-        <div className="mt-5 space-y-4 font-mono text-sm">
-          <div className="flex flex-wrap gap-8">
-            <div>
-              <p className="text-[10px] tracking-[0.18em] text-muted-foreground uppercase">Status</p>
-              <p className="mt-1 text-bid">Shared · instant settlement on</p>
-            </div>
-            <div>
-              <p className="text-[10px] tracking-[0.18em] text-muted-foreground uppercase">Cap</p>
-              <p className="mt-1 text-foreground tabular-nums">{fmtAmount(s.maxAmount, 2)} TXC</p>
-            </div>
-            <div>
-              <p className="text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
-                Expires
-              </p>
-              <p className="mt-1 text-foreground">
-                {s.expiresAt ? new Date(s.expiresAt).toLocaleDateString() : "—"}
-              </p>
-            </div>
-          </div>
-          <div>
-            <p className="text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
-              Shared branch address
-            </p>
-            <p className="mt-1 break-all text-foreground">{s.tradingAddress}</p>
-          </div>
+      {active.length > 0 ? (
+        <div className="mt-5 overflow-x-auto">
+          <table className="w-full min-w-[640px] font-mono text-xs">
+            <thead>
+              <tr className="border-b border-border text-left text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
+                <th className="py-2 pr-4 font-normal">Chain</th>
+                <th className="py-2 pr-4 font-normal">Asset</th>
+                <th className="py-2 pr-4 font-normal">Cap</th>
+                <th className="py-2 pr-4 font-normal">Expires</th>
+                <th className="py-2 pr-4 font-normal">Address</th>
+                <th className="py-2 font-normal" />
+              </tr>
+            </thead>
+            <tbody>
+              {active.map((a) => (
+                <tr key={a.chain} className="border-b border-border/50">
+                  <td className="py-2.5 pr-4 text-foreground">{getChain(a.chain).name}</td>
+                  <td className="py-2.5 pr-4 text-foreground">{a.asset}</td>
+                  <td className="py-2.5 pr-4 tabular-nums text-foreground">
+                    {fmtAmount(a.maxAmount, 2)}
+                  </td>
+                  <td className="py-2.5 pr-4 text-warn">{countdown(a.expiresAt)}</td>
+                  <td className="py-2.5 pr-4 text-muted-foreground">
+                    {truncateMiddle(a.address, 10, 8)}
+                  </td>
+                  <td className="py-2.5 text-right">
+                    <button
+                      onClick={() => disable.mutate(a.chain)}
+                      disabled={disable.isPending}
+                      className="text-destructive uppercase tracking-[0.14em] hover:underline disabled:opacity-50"
+                    >
+                      Revoke
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
           <button
-            onClick={() => disable.mutate()}
-            disabled={disable.isPending}
-            className="rounded-sm border border-destructive px-5 py-2.5 font-mono text-xs tracking-[0.16em] text-destructive uppercase disabled:opacity-50"
+            onClick={() => killSwitch.mutate()}
+            disabled={killSwitch.isPending}
+            className="mt-4 rounded-sm border border-destructive px-5 py-2.5 font-mono text-xs tracking-[0.16em] text-destructive uppercase disabled:opacity-50"
           >
-            {disable.isPending ? "Revoking…" : "Revoke shared access"}
+            {killSwitch.isPending ? "Wiping…" : "Revoke everything now"}
           </button>
         </div>
       ) : (
-        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+        <p className="mt-5 font-mono text-xs text-muted-foreground">
+          No live authorizations. Seeds holds nothing of yours.
+        </p>
+      )}
+
+      <div className="mt-6 border-t border-border pt-5">
+        <p className="font-mono text-[10px] tracking-[0.2em] text-primary uppercase">
+          New authorization
+        </p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-4">
           <input
             type="password"
             value={pw}
             onChange={(e) => setPw(e.target.value)}
             placeholder="Vault password"
             maxLength={200}
-            className="rounded-sm border border-input bg-background px-3 py-2.5 font-mono text-sm outline-none focus:border-primary sm:col-span-3"
+            className="rounded-sm border border-input bg-background px-3 py-2.5 font-mono text-sm outline-none focus:border-primary sm:col-span-4"
           />
           <label className="font-mono text-[11px] text-muted-foreground">
-            Spending cap (TXC)
+            Chain
+            <select
+              value={chainId}
+              onChange={(e) => {
+                const next = e.target.value as ChainId;
+                setChainId(next);
+                setAsset(getChain(next).assets[0].symbol);
+              }}
+              className="mt-1 w-full rounded-sm border border-input bg-background px-3 py-2 font-mono text-sm text-foreground outline-none focus:border-primary"
+            >
+              {CHAINS.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="font-mono text-[11px] text-muted-foreground">
+            Asset
+            <select
+              value={asset}
+              onChange={(e) => setAsset(e.target.value)}
+              className="mt-1 w-full rounded-sm border border-input bg-background px-3 py-2 font-mono text-sm text-foreground outline-none focus:border-primary"
+            >
+              {chain.assets.map((a) => (
+                <option key={a.symbol} value={a.symbol}>
+                  {a.symbol}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="font-mono text-[11px] text-muted-foreground">
+            Spending cap ({asset})
             <input
               type="number"
-              min={1}
+              min={0}
+              step="any"
               value={cap}
               onChange={(e) => setCap(e.target.value)}
               className="mt-1 w-full rounded-sm border border-input bg-background px-3 py-2 font-mono text-sm text-foreground outline-none focus:border-primary"
             />
           </label>
           <label className="font-mono text-[11px] text-muted-foreground">
-            Expires in (days)
-            <input
-              type="number"
-              min={1}
-              max={365}
-              value={days}
-              onChange={(e) => setDays(e.target.value)}
+            Expires in
+            <select
+              value={hours}
+              onChange={(e) => setHours(e.target.value)}
               className="mt-1 w-full rounded-sm border border-input bg-background px-3 py-2 font-mono text-sm text-foreground outline-none focus:border-primary"
-            />
+            >
+              {EXPIRY_PRESETS.map((p) => (
+                <option key={p.hours} value={String(p.hours)}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
           </label>
-          <button
-            onClick={() => enable.mutate()}
-            disabled={enable.isPending || pw.length === 0}
-            className="self-end rounded-sm bg-primary px-4 py-2.5 font-mono text-xs font-semibold tracking-[0.16em] text-primary-foreground uppercase disabled:opacity-50"
-          >
-            {enable.isPending ? "Sharing…" : "Share trading branch"}
-          </button>
+        </div>
+        <button
+          onClick={() => enable.mutate()}
+          disabled={enable.isPending || pw.length === 0}
+          className="mt-4 rounded-sm bg-primary px-5 py-2.5 font-mono text-xs font-semibold tracking-[0.16em] text-primary-foreground uppercase disabled:opacity-50"
+        >
+          {enable.isPending ? "Authorizing…" : `Authorize on ${chain.name}`}
+        </button>
+        <p className="mt-3 font-mono text-[11px] text-muted-foreground">
+          One live authorization per chain — authorizing again replaces the previous one.
+        </p>
+      </div>
+    </Panel>
+  );
+}
+
+
+
+/** Live balances for the same EVM address across Base, Ethereum, and BNB Chain. */
+function EvmBalancesPanel({ address }: { address: string }) {
+  const fetchPortfolio = useServerFn(getEvmPortfolio);
+  const portfolio = useQuery({
+    queryKey: ["evm-portfolio", address],
+    queryFn: () => fetchPortfolio({ data: { address } }),
+    refetchInterval: 120_000,
+  });
+
+  return (
+    <Panel title="EVM balances" kicker="Base · Ethereum · BNB Chain">
+      <p className="font-mono text-[11px] break-all text-muted-foreground">{address}</p>
+      {portfolio.isPending ? (
+        <p className="mt-4 font-mono text-xs text-muted-foreground">Reading chains…</p>
+      ) : (
+        <div className="mt-4 grid gap-x-8 gap-y-3 sm:grid-cols-3">
+          {(portfolio.data ?? []).map((b) => (
+            <div key={`${b.chain}-${b.symbol}`} className="font-mono">
+              <p className="text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
+                {b.chainName} · {b.symbol}
+              </p>
+              <p className="mt-1 text-sm tabular-nums text-foreground">
+                {b.online ? fmtAmount(b.balance, 6) : "unavailable"}
+              </p>
+            </div>
+          ))}
         </div>
       )}
     </Panel>
   );
 }
-
