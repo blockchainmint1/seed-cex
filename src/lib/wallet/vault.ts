@@ -20,12 +20,14 @@ import { keccak_256 } from "@noble/hashes/sha3.js";
  * TEXITcoin mainnet params, read from the open-source chainparams.cpp:
  *   base58Prefixes[PUBKEY_ADDRESS] = 66  -> addresses start with "T"
  *   bech32_hrp = "txc"
- * TXC has no registered SLIP-44 coin type, so we follow its Bitcoin Core
- * lineage and use account path m/44'/0'/0'.
+ * TXC is registered in SLIP-0044 as coin type 696969, and the official
+ * wallet.texitcoin.org uses m/44'/696969'/0' (BIP44) — we match it.
  */
 const TXC_PUBKEY_VERSION = 66;
-const TXC_PATH = "m/44'/0'/0'/0/0";
+const TXC_COIN_TYPE = 696969;
+const TXC_PATH = `m/44'/${TXC_COIN_TYPE}'/0'/0/0`;
 const EVM_PATH = "m/44'/60'/0'/0/0";
+
 
 export const KDF_ITERATIONS = 600_000;
 
