@@ -499,7 +499,9 @@ function SharedAccessPanel({
                   </td>
                   <td className="py-2.5 pr-4 text-warn">{countdown(a.expiresAt)}</td>
                   <td className="py-2.5 pr-4 text-muted-foreground">
-                    {truncateMiddle(a.address, 10, 8)}
+                    <ExplorerLink chain={a.chain} address={a.address}>
+                      {truncateMiddle(a.address, 10, 8)}
+                    </ExplorerLink>
                   </td>
                   <td className="py-2.5 text-right">
                     <button
