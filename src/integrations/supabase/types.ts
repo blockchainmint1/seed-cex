@@ -255,6 +255,45 @@ export type Database = {
         }
         Relationships: []
       }
+      wallet_delegations: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          key_ciphertext: string
+          max_amount: number
+          revoked_at: string | null
+          trading_path: string
+          trading_txc_address: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          key_ciphertext: string
+          max_amount?: number
+          revoked_at?: string | null
+          trading_path: string
+          trading_txc_address: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          key_ciphertext?: string
+          max_amount?: number
+          revoked_at?: string | null
+          trading_path?: string
+          trading_txc_address?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       wallets: {
         Row: {
           backed_up: boolean
