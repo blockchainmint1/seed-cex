@@ -639,7 +639,10 @@ function EvmBalancesPanel({ address }: { address: string }) {
           {(portfolio.data ?? []).map((b) => (
             <div key={`${b.chain}-${b.symbol}`} className="font-mono">
               <p className="text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
-                {b.chainName} · {b.symbol}
+                <ExplorerLink chain={b.chain as ChainId} address={address}>
+                  {b.chainName}
+                </ExplorerLink>{" "}
+                · {b.symbol}
               </p>
               <p className="mt-1 text-sm tabular-nums text-foreground">
                 {b.online ? fmtAmount(b.balance, 6) : "unavailable"}
