@@ -263,7 +263,7 @@ function TradePage() {
           </p>
         </div>
         <span className="ml-auto rounded-sm border border-warn/50 bg-warn/10 px-3 py-1.5 font-mono text-[10px] tracking-[0.16em] text-warn uppercase">
-          Simulated settlement
+          TXC live · USDC simulated
         </span>
       </div>
 

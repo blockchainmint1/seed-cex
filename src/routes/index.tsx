@@ -151,11 +151,12 @@ function Index() {
             Read this before you deposit anything
           </p>
           <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-            Settlement on Seeds is currently in <strong className="text-foreground">simulation
-            mode</strong>: the order book, matching engine, escrow state machine, and audit trail
-            are real, but escrow legs are marked funded and released without broadcasting on-chain
-            transactions. Wallet generation, encryption, and TEXITcoin chain reads are live. Do not
-            treat simulated balances as settled value.
+            The <strong className="text-foreground">TEXITcoin leg settles on-chain</strong>:
+            trades are built, signed against your authorized trading branch, and broadcast through
+            our own TXC node, then watched to confirmation. The{" "}
+            <strong className="text-foreground">USDC leg is still simulated</strong> — it is marked
+            funded and released without touching an EVM chain. Trade small until the second leg is
+            live, and never authorize more than you are actively trading.
           </p>
         </div>
       </section>
