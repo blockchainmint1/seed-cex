@@ -3,10 +3,16 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { getMyWallet, markWalletBackedUp, saveMyWallet } from "@/lib/trading.functions";
+import {
+  getSharedAccess,
+  grantSharedAccess,
+  revokeSharedAccess,
+} from "@/lib/delegation.functions";
 import { getAddressStats } from "@/lib/txc.functions";
 import {
   decryptMnemonic,
   deriveAddresses,
+  deriveSharedTradingKey,
   encryptMnemonic,
   isValidMnemonic,
   newMnemonic,
