@@ -151,12 +151,12 @@ function Index() {
             Read this before you deposit anything
           </p>
           <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-            The <strong className="text-foreground">TEXITcoin leg settles on-chain</strong>:
-            trades are built, signed against your authorized trading branch, and broadcast through
-            our own TXC node, then watched to confirmation. The{" "}
-            <strong className="text-foreground">USDC leg is still simulated</strong> — it is marked
-            funded and released without touching an EVM chain. Trade small until the second leg is
-            live, and never authorize more than you are actively trading.
+            <strong className="text-foreground">Both legs now settle on-chain.</strong> TEXITcoin
+            is built, signed against your authorized trading branch, and broadcast through our own
+            TXC node. USDC is a real ERC-20 transfer signed from your authorized branch on Base,
+            Ethereum, or BNB Chain. Both are watched to confirmation, and both are irreversible
+            once broadcast. Trade small at first, and never authorize more than you are actively
+            trading.
           </p>
         </div>
       </section>
