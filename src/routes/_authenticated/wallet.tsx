@@ -21,6 +21,7 @@ import {
   newMnemonic,
 } from "@/lib/wallet/vault";
 import { fmtAmount, truncateMiddle } from "@/lib/format";
+import { ExplorerLink } from "@/components/site/ExplorerLink";
 
 export const Route = createFileRoute("/_authenticated/wallet")({
   head: () => ({
@@ -294,7 +295,9 @@ function Wallet() {
                 <dt className="text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
                   TXC address
                 </dt>
-                <dd className="mt-1 break-all text-foreground">{wallet.data!.txc_address}</dd>
+                <dd className="mt-1 break-all text-foreground">
+                  <ExplorerLink chain="txc" address={wallet.data!.txc_address} />
+                </dd>
               </div>
               <div className="flex gap-8">
                 <div>
@@ -320,8 +323,16 @@ function Wallet() {
                     USDC (EVM) address
                   </dt>
                   <dd className="mt-1 break-all text-foreground">
-                    {wallet.data!.evm_address}
+                    <ExplorerLink chain="ethereum" address={wallet.data!.evm_address} />
                   </dd>
+                  <p className="mt-1 flex gap-3 text-[10px] tracking-[0.14em] text-muted-foreground uppercase">
+                    {(["base", "ethereum", "bsc"] as const).map((c) => (
+                      <ExplorerLink key={c} chain={c} address={wallet.data!.evm_address!}>
+                        {getChain(c).name}
+                      </ExplorerLink>
+                    ))}
+                  </p>
+
 
                 </div>
               ) : null}
@@ -488,7 +499,9 @@ function SharedAccessPanel({
                   </td>
                   <td className="py-2.5 pr-4 text-warn">{countdown(a.expiresAt)}</td>
                   <td className="py-2.5 pr-4 text-muted-foreground">
-                    {truncateMiddle(a.address, 10, 8)}
+                    <ExplorerLink chain={a.chain} address={a.address}>
+                      {truncateMiddle(a.address, 10, 8)}
+                    </ExplorerLink>
                   </td>
                   <td className="py-2.5 text-right">
                     <button
@@ -616,7 +629,9 @@ function EvmBalancesPanel({ address }: { address: string }) {
 
   return (
     <Panel title="EVM balances" kicker="Base · Ethereum · BNB Chain">
-      <p className="font-mono text-[11px] break-all text-muted-foreground">{address}</p>
+      <p className="font-mono text-[11px] break-all text-muted-foreground">
+        <ExplorerLink chain="ethereum" address={address} />
+      </p>
       {portfolio.isPending ? (
         <p className="mt-4 font-mono text-xs text-muted-foreground">Reading chains…</p>
       ) : (
@@ -624,7 +639,10 @@ function EvmBalancesPanel({ address }: { address: string }) {
           {(portfolio.data ?? []).map((b) => (
             <div key={`${b.chain}-${b.symbol}`} className="font-mono">
               <p className="text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
-                {b.chainName} · {b.symbol}
+                <ExplorerLink chain={b.chain as ChainId} address={address}>
+                  {b.chainName}
+                </ExplorerLink>{" "}
+                · {b.symbol}
               </p>
               <p className="mt-1 text-sm tabular-nums text-foreground">
                 {b.online ? fmtAmount(b.balance, 6) : "unavailable"}
