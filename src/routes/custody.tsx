@@ -86,6 +86,55 @@ function Custody() {
       </dl>
 
       <h2 className="mt-14 font-display text-lg font-bold tracking-tight text-foreground uppercase">
+        Nodes we run
+      </h2>
+      <p className="mt-3 text-sm text-muted-foreground">
+        Seeds settles against its own full nodes — no third-party API sits between your order and
+        the chain. Live tip height, peer count and mempool below.
+      </p>
+      <div className="mt-4 grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2">
+        {nodes.map((n) => (
+          <div key={n.chain} className="space-y-3 bg-surface px-5 py-5">
+            <div className="flex items-center justify-between">
+              <span className="font-display text-sm font-bold tracking-tight text-foreground uppercase">
+                {n.label}
+              </span>
+              <span
+                className={`flex items-center gap-2 font-mono text-[11px] tracking-[0.18em] uppercase ${
+                  n.online ? "text-primary" : "text-destructive"
+                }`}
+              >
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${
+                    n.online ? "bg-primary" : "bg-destructive"
+                  }`}
+                />
+                {n.online ? (n.synced ? "synced" : "syncing") : "offline"}
+              </span>
+            </div>
+            <dl className="space-y-1.5 font-mono text-xs">
+              {[
+                ["Tip", n.blocks !== null ? `#${n.blocks.toLocaleString()}` : "—"],
+                ["Peers", n.connections !== null ? String(n.connections) : "—"],
+                [
+                  "Mempool",
+                  n.mempoolCount !== null ? `${n.mempoolCount} tx` : "—",
+                ],
+                ["Client", n.version ?? "—"],
+              ].map(([k, v]) => (
+                <div key={k} className="flex items-baseline justify-between gap-4">
+                  <dt className="text-muted-foreground">{k}</dt>
+                  <dd className="truncate text-right tabular-nums text-foreground">{v}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        ))}
+      </div>
+
+
+
+      <h2 className="mt-14 font-display text-lg font-bold tracking-tight text-foreground uppercase">
         Sweep log
       </h2>
       <div className="mt-4 overflow-hidden rounded-lg border border-border">
