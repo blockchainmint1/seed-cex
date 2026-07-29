@@ -265,7 +265,7 @@ export async function watchTxcLeg(userId: string, tradeId: string): Promise<Watc
 }
 
 /** Trade status is derived from its legs, never set by hand. */
-async function refreshTradeStatus(tradeId: string) {
+export async function refreshTradeStatus(tradeId: string) {
   const { data: legs } = await supabaseAdmin
     .from("escrows")
     .select("status")

@@ -79,8 +79,9 @@ function Terms() {
           once broadcast.
         </p>
         <p>
-          The USDC leg remains simulated: it is recorded as funded and released without any
-          blockchain transaction. Do not treat a simulated leg as legally or economically settled.
+          The USDC leg is settled on-chain as an ERC-20 transfer signed from the authorized branch
+          on the EVM network you selected (Base, Ethereum, or BNB Chain), paid for with the gas
+          balance of that branch. Network fees are yours; we do not subsidize or refund them.
         </p>
       </Section>
       <Section heading="4. Escrow and disputes">

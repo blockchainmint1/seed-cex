@@ -30,3 +30,32 @@ export const watchTxc = createServerFn({ method: "POST" })
     const { watchTxcLeg } = await import("./settlement.server");
     return watchTxcLeg(context.userId, data.tradeId);
   });
+
+/* ---------------------------------- usdc ---------------------------------- */
+
+/** Dry run of the USDC (EVM) leg — every gate, no decryption, no broadcast. */
+export const previewUsdcLeg = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(tradeIdInput)
+  .handler(async ({ data, context }) => {
+    const { previewUsdcSettlement } = await import("./evm-settlement.server");
+    return previewUsdcSettlement(context.userId, data.tradeId);
+  });
+
+/** Build, sign, and broadcast the USDC ERC-20 transfer on the live chain. */
+export const settleUsdc = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(tradeIdInput)
+  .handler(async ({ data, context }) => {
+    const { settleUsdcLeg } = await import("./evm-settlement.server");
+    return settleUsdcLeg(context.userId, data.tradeId);
+  });
+
+/** Confirmation depth for a broadcast USDC leg. */
+export const watchUsdc = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(tradeIdInput)
+  .handler(async ({ data, context }) => {
+    const { watchUsdcLeg } = await import("./evm-settlement.server");
+    return watchUsdcLeg(context.userId, data.tradeId);
+  });

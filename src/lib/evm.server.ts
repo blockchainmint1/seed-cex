@@ -100,3 +100,99 @@ export async function fetchEvmStatus(chainId: ChainId): Promise<EvmChainStatus> 
     blockNumber: hex ? Number(BigInt(hex)) : null,
   };
 }
+
+/* ------------------------------ write helpers ----------------------------- */
+
+/** Escape hatch for settlement: raw JSON-RPC against one chain. Server-only. */
+export async function evmRpc<T>(chain: ChainId, method: string, params: unknown[]) {
+  return rpc<T>(chain, method, params);
+}
+
+export async function fetchNonce(chain: ChainId, address: string): Promise<number | null> {
+  const hex = await rpc<string>(chain, "eth_getTransactionCount", [address, "pending"]);
+  return hex ? Number(BigInt(hex)) : null;
+}
+
+export type EvmFees = { maxFeePerGas: bigint; maxPriorityFeePerGas: bigint };
+
+/**
+ * EIP-1559 fee suggestion: base fee of the latest block, doubled for headroom,
+ * plus a priority tip. Falls back to eth_gasPrice on chains without 1559 data.
+ */
+export async function suggestFees(chain: ChainId): Promise<EvmFees | null> {
+  const block = await rpc<{ baseFeePerGas?: string }>(chain, "eth_getBlockByNumber", [
+    "latest",
+    false,
+  ]);
+  const tipHex = await rpc<string>(chain, "eth_maxPriorityFeePerGas", []);
+  const tip = tipHex ? BigInt(tipHex) : 1_500_000_000n;
+
+  if (block?.baseFeePerGas) {
+    const base = BigInt(block.baseFeePerGas);
+    return { maxFeePerGas: base * 2n + tip, maxPriorityFeePerGas: tip };
+  }
+
+  const gasPrice = await rpc<string>(chain, "eth_gasPrice", []);
+  if (!gasPrice) return null;
+  const price = BigInt(gasPrice);
+  return { maxFeePerGas: price, maxPriorityFeePerGas: price };
+}
+
+export async function estimateGas(
+  chain: ChainId,
+  tx: { from: string; to: string; data: string; value?: string },
+): Promise<bigint | null> {
+  const hex = await rpc<string>(chain, "eth_estimateGas", [{ ...tx, value: tx.value ?? "0x0" }]);
+  return hex ? BigInt(hex) : null;
+}
+
+export async function sendRawTransaction(chain: ChainId, raw: string): Promise<string> {
+  const url = RPC[chain];
+  if (!url) throw new Error(`No RPC endpoint for ${chain}`);
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "eth_sendRawTransaction",
+      params: [raw],
+    }),
+  });
+  const json = (await res.json()) as { result?: string; error?: { message: string } };
+  if (json.error) throw new Error(`Broadcast rejected: ${json.error.message}`);
+  if (!json.result) throw new Error("Broadcast returned no transaction hash");
+  return json.result;
+}
+
+export type EvmTxStatus = { confirmations: number | null; success: boolean | null };
+
+export async function fetchEvmTxStatus(chain: ChainId, hash: string): Promise<EvmTxStatus> {
+  const receipt = await rpc<{ blockNumber: string; status: string } | null>(
+    chain,
+    "eth_getTransactionReceipt",
+    [hash],
+  );
+  if (!receipt) return { confirmations: 0, success: null };
+  const head = await rpc<string>(chain, "eth_blockNumber", []);
+  if (!head) return { confirmations: null, success: receipt.status === "0x1" };
+  const confirmations = Number(BigInt(head) - BigInt(receipt.blockNumber)) + 1;
+  return { confirmations, success: receipt.status === "0x1" };
+}
+
+/** Token balance in whole units for one asset on one chain. */
+export async function fetchTokenBalance(
+  chain: ChainId,
+  contract: string | null,
+  address: string,
+  decimals: number,
+): Promise<number | null> {
+  let hex: string | null;
+  if (contract === null) {
+    hex = await rpc<string>(chain, "eth_getBalance", [address, "latest"]);
+  } else {
+    const data = `0x70a08231${address.toLowerCase().replace(/^0x/, "").padStart(64, "0")}`;
+    hex = await rpc<string>(chain, "eth_call", [{ to: contract, data }, "latest"]);
+  }
+  return hex === null ? null : fromWei(hex, decimals);
+}

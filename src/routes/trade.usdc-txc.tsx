@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { getMarketStats, getOrderBook, getPriceSeries, getTape } from "@/lib/market.functions";
 import { TxcLegPanel } from "@/components/trade/TxcLegPanel";
+import { UsdcLegPanel } from "@/components/trade/UsdcLegPanel";
 import {
   advanceEscrow,
   cancelOrder,
@@ -263,7 +264,7 @@ function TradePage() {
           </p>
         </div>
         <span className="ml-auto rounded-sm border border-warn/50 bg-warn/10 px-3 py-1.5 font-mono text-[10px] tracking-[0.16em] text-warn uppercase">
-          TXC live · USDC simulated
+          live settlement · txc + usdc
         </span>
       </div>
 
@@ -311,52 +312,11 @@ function TradePage() {
                         e.leg === "txc" ? (
                           <TxcLegPanel key={e.leg} tradeId={t.id} leg={e} />
                         ) : (
-                        <div
-                          key={e.leg}
-                          className="rounded-sm border border-border bg-background p-3 font-mono text-[11px]"
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="tracking-[0.16em] text-primary uppercase">{e.leg}</span>
-                            <span className="text-muted-foreground">{e.status}</span>
-                          </div>
-                          <p className="mt-1 text-muted-foreground">
-                            {e.address ? truncateMiddle(e.address, 10, 6) : "—"}
-                          </p>
-                          <p className="mt-1 tabular-nums">
-                            {fmtAmount(e.funded, 4)} / {fmtAmount(e.expected, 4)}
-                          </p>
-                          <div className="mt-2 flex gap-2">
-                            <button
-                              onClick={() =>
-                                escrowAction.mutate({ tradeId: t.id, action: "fund", leg: e.leg })
-                              }
-                              disabled={e.status !== "pending"}
-                              className="rounded-sm border border-border px-2 py-1 tracking-wider uppercase disabled:opacity-40"
-                            >
-                              Fund
-                            </button>
-                            <button
-                              onClick={() =>
-                                escrowAction.mutate({ tradeId: t.id, action: "release", leg: e.leg })
-                              }
-                              disabled={e.status !== "confirmed"}
-                              className="rounded-sm border border-border px-2 py-1 tracking-wider uppercase disabled:opacity-40"
-                            >
-                              Release
-                            </button>
-                            <button
-                              onClick={() =>
-                                escrowAction.mutate({ tradeId: t.id, action: "dispute", leg: e.leg })
-                              }
-                              className="ml-auto rounded-sm border border-destructive/50 px-2 py-1 tracking-wider text-destructive uppercase"
-                            >
-                              Dispute
-                            </button>
-                          </div>
-                        </div>
+                          <UsdcLegPanel key={e.leg} tradeId={t.id} leg={e} />
                         ),
                       )}
                     </div>
+
                   </li>
                 ))}
               </ul>
