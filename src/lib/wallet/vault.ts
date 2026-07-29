@@ -75,9 +75,40 @@ export function deriveAddresses(mnemonic: string): DerivedAddresses {
   };
 }
 
+/**
+ * The *shared* trading account.
+ *
+ * This is the one branch of the tree the user may choose to co-share with
+ * Seeds so trades can settle without waiting for them to be online. It is a
+ * separate hardened account: knowing it never reveals the master seed and
+ * never reaches the user's savings account at m/44'/0'/0'. The user keeps the
+ * same key (they own the seed), can sweep it at any moment, and can revoke.
+ */
+export const SHARED_TRADING_PATH = "m/44'/0'/9'/0/0";
+
+export type SharedTradingKey = {
+  path: string;
+  privateKeyHex: string;
+  txcAddress: string;
+};
+
+export function deriveSharedTradingKey(mnemonic: string): SharedTradingKey {
+  const root = HDKey.fromMasterSeed(mnemonicToSeedSync(mnemonic));
+  const node = root.derive(SHARED_TRADING_PATH);
+  if (!node.privateKey || !node.publicKey) {
+    throw new Error("Could not derive the shared trading key");
+  }
+  return {
+    path: SHARED_TRADING_PATH,
+    privateKeyHex: bytesToHex(node.privateKey),
+    txcAddress: txcAddressFromPubkey(node.publicKey),
+  };
+}
+
 export function newMnemonic(): string {
   return generateMnemonic(wordlist, 128);
 }
+
 
 export function isValidMnemonic(mnemonic: string): boolean {
   return validateMnemonic(mnemonic.trim().toLowerCase(), wordlist);
