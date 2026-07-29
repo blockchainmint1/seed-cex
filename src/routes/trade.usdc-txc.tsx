@@ -11,6 +11,7 @@ import {
   placeOrder,
 } from "@/lib/trading.functions";
 import { getChainSnapshot } from "@/lib/txc.functions";
+import { getReferencePrices } from "@/lib/cmc.functions";
 import { useSession } from "@/hooks/use-session";
 import { fmtAgo, fmtAmount, fmtPrice, fmtTime, truncateMiddle } from "@/lib/format";
 
