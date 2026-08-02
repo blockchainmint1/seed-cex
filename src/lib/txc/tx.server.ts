@@ -326,6 +326,14 @@ export function signRawTxWithKey(
   prevScripts: Record<string, string>,
 ): { hex: string; txid: string } {
   const parsed = parseRawTx(rawHex);
+  // Our serializer emits version 2, sequence 0xffffffff, locktime 0. Anything
+  // else would change the txid, so refuse rather than silently re-shape it.
+  if (parsed.version !== 2 || parsed.locktime !== 0) {
+    throw new Error("Unsupported transaction version or locktime");
+  }
+  if (parsed.inputs.some((i) => i.sequence !== 0xffffffff)) {
+    throw new Error("Unsupported input sequence");
+  }
   const priv = hexToBytes(privateKeyHex.toLowerCase());
   const pubkey = secp256k1.getPublicKey(priv, true);
   const ownScript = bytesToHex(p2pkhScript(hash160(pubkey)));
