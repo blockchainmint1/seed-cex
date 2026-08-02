@@ -2,11 +2,12 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
-const PAIR = "USDC_TXC";
+import { PAIR_IDS } from "@/lib/chains";
 
 const placeOrderInput = (input: unknown) =>
   z
     .object({
+      pair: z.enum(PAIR_IDS).default("TSD_TXC"),
       side: z.enum(["buy", "sell"]),
       price: z.number().positive().max(1_000_000),
       amount: z.number().positive().max(100_000_000),
@@ -74,7 +75,7 @@ export const getMyOrders = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("orders")
-      .select("id, side, price, amount, filled, status, created_at")
+      .select("id, pair, side, price, amount, filled, status, created_at")
       .eq("user_id", context.userId)
       .order("created_at", { ascending: false })
       .limit(100);
@@ -87,7 +88,8 @@ export const placeOrder = createServerFn({ method: "POST" })
   .inputValidator(placeOrderInput)
   .handler(async ({ data, context }) => {
     const { matchOrder } = await import("./trading.server");
-    return matchOrder(context.userId, PAIR, data);
+    const { pair, ...order } = data;
+    return matchOrder(context.userId, pair, order);
   });
 
 export const cancelOrder = createServerFn({ method: "POST" })
@@ -120,7 +122,7 @@ export const advanceEscrow = createServerFn({ method: "POST" })
       .object({
         tradeId: z.string().uuid(),
         action: z.enum(["fund", "release", "dispute"]),
-        leg: z.enum(["txc", "usdc"]),
+        leg: z.enum(["txc", "usdc", "tsd"]),
       })
       .parse(input),
   )

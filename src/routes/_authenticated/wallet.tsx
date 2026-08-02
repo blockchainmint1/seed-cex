@@ -363,10 +363,10 @@ function Wallet() {
 
       <div className="mt-8">
         <Link
-          to="/trade/usdc-txc"
+          to="/trade/tsd-txc"
           className="inline-block rounded-sm border border-border px-5 py-2.5 font-mono text-xs tracking-[0.16em] text-foreground uppercase transition-colors hover:border-primary hover:text-primary"
         >
-          Go to the USDC/TXC book
+          Go to the TSD/TXC book
         </Link>
       </div>
     </div>
@@ -444,7 +444,8 @@ function SharedAccessPanel({
   });
 
   const disable = useMutation({
-    mutationFn: (c: ChainId) => revoke({ data: { chain: c } }),
+    mutationFn: (v: { chain: ChainId; asset: string }) =>
+      revoke({ data: { chain: v.chain, asset: v.asset } }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["authorizations"] }),
   });
 
@@ -491,7 +492,7 @@ function SharedAccessPanel({
             </thead>
             <tbody>
               {active.map((a) => (
-                <tr key={a.chain} className="border-b border-border/50">
+                <tr key={`${a.chain}-${a.asset}`} className="border-b border-border/50">
                   <td className="py-2.5 pr-4 text-foreground">{getChain(a.chain).name}</td>
                   <td className="py-2.5 pr-4 text-foreground">{a.asset}</td>
                   <td className="py-2.5 pr-4 tabular-nums text-foreground">
@@ -505,7 +506,7 @@ function SharedAccessPanel({
                   </td>
                   <td className="py-2.5 text-right">
                     <button
-                      onClick={() => disable.mutate(a.chain)}
+                      onClick={() => disable.mutate({ chain: a.chain, asset: a.asset })}
                       disabled={disable.isPending}
                       className="text-destructive uppercase tracking-[0.14em] hover:underline disabled:opacity-50"
                     >

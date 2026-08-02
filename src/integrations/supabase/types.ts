@@ -423,7 +423,7 @@ export type Database = {
     }
     Enums: {
       app_role: "user" | "arbitrator" | "admin"
-      escrow_leg: "txc" | "usdc"
+      escrow_leg: "txc" | "usdc" | "tsd"
       escrow_status:
         | "awaiting_funding"
         | "funding_seen"
@@ -571,7 +571,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["user", "arbitrator", "admin"],
-      escrow_leg: ["txc", "usdc"],
+      escrow_leg: ["txc", "usdc", "tsd"],
       escrow_status: [
         "awaiting_funding",
         "funding_seen",

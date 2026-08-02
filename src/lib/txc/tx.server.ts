@@ -246,3 +246,128 @@ export function buildAndSignTransfer(params: BuildParams): BuiltTx {
     vbytes: raw.length,
   };
 }
+
+/* -------------------------------------------------------------------------- */
+/* Raw transaction parsing + signing                                          */
+/*                                                                            */
+/* Omni transactions are assembled by the node (payload → OP_RETURN →         */
+/* reference → change), which hands back an *unsigned* raw tx. We sign it      */
+/* here so private keys never leave this worker.                              */
+/* -------------------------------------------------------------------------- */
+
+type ParsedTx = {
+  version: number;
+  inputs: Array<{ txid: string; vout: number; sequence: number }>;
+  outputs: TxOutput[];
+  locktime: number;
+};
+
+function readVarint(b: Uint8Array, o: number): [number, number] {
+  const first = b[o];
+  if (first < 0xfd) return [first, o + 1];
+  const dv = new DataView(b.buffer, b.byteOffset, b.byteLength);
+  if (first === 0xfd) return [dv.getUint16(o + 1, true), o + 3];
+  if (first === 0xfe) return [dv.getUint32(o + 1, true), o + 5];
+  return [Number(dv.getBigUint64(o + 1, true)), o + 9];
+}
+
+/** Parse a legacy (non-segwit) transaction. Throws on anything else. */
+export function parseRawTx(hex: string): ParsedTx {
+  const b = hexToBytes(hex.toLowerCase());
+  const dv = new DataView(b.buffer, b.byteOffset, b.byteLength);
+  let o = 0;
+  const version = dv.getUint32(o, true);
+  o += 4;
+  if (b[o] === 0x00) throw new Error("Segwit transactions are not supported here");
+
+  let nIn: number;
+  [nIn, o] = readVarint(b, o);
+  const inputs: ParsedTx["inputs"] = [];
+  for (let i = 0; i < nIn; i++) {
+    const txid = bytesToHex(b.slice(o, o + 32).reverse());
+    o += 32;
+    const vout = dv.getUint32(o, true);
+    o += 4;
+    let scriptLen: number;
+    [scriptLen, o] = readVarint(b, o);
+    o += scriptLen;
+    const sequence = dv.getUint32(o, true);
+    o += 4;
+    inputs.push({ txid, vout, sequence });
+  }
+
+  let nOut: number;
+  [nOut, o] = readVarint(b, o);
+  const outputs: TxOutput[] = [];
+  for (let i = 0; i < nOut; i++) {
+    const value = dv.getBigUint64(o, true);
+    o += 8;
+    let scriptLen: number;
+    [scriptLen, o] = readVarint(b, o);
+    const script = b.slice(o, o + scriptLen);
+    o += scriptLen;
+    outputs.push({ script, value });
+  }
+
+  const locktime = dv.getUint32(o, true);
+  return { version, inputs, outputs, locktime };
+}
+
+/**
+ * Sign every input of a node-built raw transaction with one P2PKH key.
+ *
+ * `prevScripts` maps `txid:vout` to the hex scriptPubKey being spent. Every
+ * input must belong to the given key — this is only ever used for spends out of
+ * a single authorized branch address.
+ */
+export function signRawTxWithKey(
+  rawHex: string,
+  privateKeyHex: string,
+  prevScripts: Record<string, string>,
+): { hex: string; txid: string } {
+  const parsed = parseRawTx(rawHex);
+  // Our serializer emits version 2, sequence 0xffffffff, locktime 0. Anything
+  // else would change the txid, so refuse rather than silently re-shape it.
+  if (parsed.version !== 2 || parsed.locktime !== 0) {
+    throw new Error("Unsupported transaction version or locktime");
+  }
+  if (parsed.inputs.some((i) => i.sequence !== 0xffffffff)) {
+    throw new Error("Unsupported input sequence");
+  }
+  const priv = hexToBytes(privateKeyHex.toLowerCase());
+  const pubkey = secp256k1.getPublicKey(priv, true);
+  const ownScript = bytesToHex(p2pkhScript(hash160(pubkey)));
+
+  const prev = parsed.inputs.map((inp) => {
+    const script = prevScripts[`${inp.txid}:${inp.vout}`];
+    if (!script) throw new Error(`Missing previous output script for ${inp.txid}:${inp.vout}`);
+    if (script.toLowerCase() !== ownScript) {
+      throw new Error("The authorized key does not control every input of this transaction");
+    }
+    return hexToBytes(script.toLowerCase());
+  });
+
+  const asUtxo = (i: number): Utxo => ({
+    txid: parsed.inputs[i].txid,
+    vout: parsed.inputs[i].vout,
+    scriptPubKey: bytesToHex(prev[i]),
+    amount: 0,
+  });
+
+  const scriptSigs: Uint8Array[] = [];
+  for (let i = 0; i < parsed.inputs.length; i++) {
+    const preimageInputs = parsed.inputs.map((_, j) => ({
+      utxo: asUtxo(j),
+      script: j === i ? prev[i] : new Uint8Array(0),
+    }));
+    const preimage = concat(serialize(preimageInputs, parsed.outputs), u32le(SIGHASH_ALL));
+    const sig = secp256k1.sign(dsha256(preimage), priv, { format: "der", prehash: false });
+    scriptSigs.push(concat(pushData(concat(sig, Uint8Array.of(SIGHASH_ALL))), pushData(pubkey)));
+  }
+
+  const raw = serialize(
+    parsed.inputs.map((_, i) => ({ utxo: asUtxo(i), script: scriptSigs[i] })),
+    parsed.outputs,
+  );
+  return { hex: bytesToHex(raw), txid: bytesToHex(dsha256(raw).reverse()) };
+}

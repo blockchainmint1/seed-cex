@@ -8,19 +8,24 @@
  * caller's id is passed in explicitly — never read from request data.
  */
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { getPair } from "@/lib/chains";
 
 type Side = "buy" | "sell";
+type Leg = "txc" | "usdc" | "tsd";
 
 export type PlaceOrderInput = { side: Side; price: number; amount: number };
 
 /** Deterministic stand-in for a real 2-of-3 multisig address (Phase 2). */
-function simulatedEscrowAddress(leg: "txc" | "usdc", tradeId: string): string {
+function simulatedEscrowAddress(leg: Leg, tradeId: string): string {
   const compact = tradeId.replace(/-/g, "");
-  return leg === "txc" ? `T${compact.slice(0, 32)}` : `0x${compact.slice(0, 40)}`;
+  // TSD rides on the TEXITcoin chain, so its placeholder is a TXC-shaped address.
+  return leg === "usdc" ? `0x${compact.slice(0, 40)}` : `T${compact.slice(0, 32)}`;
 }
 
 export async function matchOrder(userId: string, pair: string, input: PlaceOrderInput) {
   const opposite: Side = input.side === "buy" ? "sell" : "buy";
+  // Which asset the quote leg delivers: TSD (Omni #39) or USDC (EVM).
+  const quoteLeg: Leg = getPair(pair).quoteLeg;
 
   // Best-priced resting orders that cross our limit.
   let query = supabaseAdmin
@@ -93,8 +98,8 @@ export async function matchOrder(userId: string, pair: string, input: PlaceOrder
       },
       {
         trade_id: trade.id,
-        leg: "usdc",
-        multisig_address: simulatedEscrowAddress("usdc", trade.id),
+        leg: quoteLeg,
+        multisig_address: simulatedEscrowAddress(quoteLeg, trade.id),
         expected_amount: fillAmount * fillPrice,
       },
     ]);
@@ -138,6 +143,7 @@ export async function matchOrder(userId: string, pair: string, input: PlaceOrder
 
 export type TradeRow = {
   id: string;
+  pair: string;
   side: Side;
   price: number;
   amount: number;
@@ -146,7 +152,7 @@ export type TradeRow = {
   createdAt: string;
   expiresAt: string;
   escrows: Array<{
-    leg: "txc" | "usdc";
+    leg: Leg;
     address: string | null;
     expected: number;
     funded: number;
@@ -160,7 +166,7 @@ export async function loadMyTrades(userId: string): Promise<TradeRow[]> {
   const { data, error } = await supabaseAdmin
     .from("trades")
     .select(
-      "id, side, price, amount, status, maker_id, taker_id, created_at, expires_at, escrows(leg, multisig_address, expected_amount, funded_amount, status, release_txid, confirmations)",
+      "id, pair, side, price, amount, status, maker_id, taker_id, created_at, expires_at, escrows(leg, multisig_address, expected_amount, funded_amount, status, release_txid, confirmations)",
     )
     .or(`maker_id.eq.${userId},taker_id.eq.${userId}`)
     .order("created_at", { ascending: false })
@@ -169,6 +175,7 @@ export async function loadMyTrades(userId: string): Promise<TradeRow[]> {
 
   return (data ?? []).map((t) => ({
     id: t.id,
+    pair: t.pair,
     side: t.side as Side,
     price: Number(t.price),
     amount: Number(t.amount),
@@ -177,7 +184,7 @@ export async function loadMyTrades(userId: string): Promise<TradeRow[]> {
     createdAt: t.created_at,
     expiresAt: t.expires_at,
     escrows: (t.escrows ?? []).map((e) => ({
-      leg: e.leg as "txc" | "usdc",
+      leg: e.leg as Leg,
       address: e.multisig_address,
       expected: Number(e.expected_amount),
       funded: Number(e.funded_amount),
@@ -191,7 +198,7 @@ export async function loadMyTrades(userId: string): Promise<TradeRow[]> {
 export type AdvanceInput = {
   tradeId: string;
   action: "fund" | "release" | "dispute";
-  leg: "txc" | "usdc";
+  leg: Leg;
 };
 
 export async function advance(userId: string, input: AdvanceInput) {

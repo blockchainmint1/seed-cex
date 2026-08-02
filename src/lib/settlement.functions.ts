@@ -59,3 +59,33 @@ export const watchUsdc = createServerFn({ method: "POST" })
     const { watchUsdcLeg } = await import("./evm-settlement.server");
     return watchUsdcLeg(context.userId, data.tradeId);
   });
+
+/* ----------------------------------- tsd ---------------------------------- */
+
+/** Dry run of the TSD (Omni #39) leg — every gate, no decryption, no broadcast. */
+export const previewTsdLeg = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(tradeIdInput)
+  .handler(async ({ data, context }) => {
+    const { previewTsdSettlement } = await import("./tsd-settlement.server");
+    return previewTsdSettlement(context.userId, data.tradeId);
+  });
+
+/** Build, sign, and broadcast the TSD Omni transfer on the TEXITcoin chain. */
+export const settleTsd = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(tradeIdInput)
+  .handler(async ({ data, context }) => {
+    const { settleTsdLeg } = await import("./tsd-settlement.server");
+    return settleTsdLeg(context.userId, data.tradeId);
+  });
+
+/** Confirmation depth for a broadcast TSD leg. */
+export const watchTsd = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(tradeIdInput)
+  .handler(async ({ data, context }) => {
+    const { watchTsdLeg } = await import("./tsd-settlement.server");
+    return watchTsdLeg(context.userId, data.tradeId);
+  });
+
