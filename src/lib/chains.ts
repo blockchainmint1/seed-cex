@@ -37,7 +37,11 @@ export const CHAINS: ChainDef[] = [
     nativeSymbol: "TXC",
     // SLIP-0044 coin type 696969, matching wallet.texitcoin.org
     sharedPath: "m/44'/696969'/9'/0/0",
-    assets: [{ symbol: "TXC", contract: null, decimals: 8 }],
+    assets: [
+      { symbol: "TXC", contract: null, decimals: 8 },
+      // Texas Stable Dollar — Omni Layer property #39 on TEXITcoin.
+      { symbol: "TSD", contract: null, decimals: 8, omniPropertyId: 39 },
+    ],
     explorer: "https://mempool.texitcoin.org/address/",
   },
   {
@@ -102,3 +106,57 @@ export const EXPIRY_PRESETS = [
   { label: "7 days", hours: 168 },
   { label: "30 days", hours: 720 },
 ] as const;
+
+/* ---------------------------------- pairs --------------------------------- */
+
+/** The Omni property id of TSD, the exchange's native settlement dollar. */
+export const TSD_PROPERTY_ID = 39;
+
+export type PairId = "TSD_TXC" | "USDC_TXC";
+
+export type PairDef = {
+  id: PairId;
+  /** URL segment under /trade */
+  slug: "tsd-txc" | "usdc-txc";
+  label: string;
+  /** The asset being bought and sold — order sizes are denominated in it. */
+  base: string;
+  /** The asset the price is quoted in. */
+  quote: string;
+  /** Escrow leg that delivers the quote asset. */
+  quoteLeg: "tsd" | "usdc";
+  blurb: string;
+  native: boolean;
+};
+
+export const PAIRS: PairDef[] = [
+  {
+    id: "TSD_TXC",
+    slug: "tsd-txc",
+    label: "TSD / TXC",
+    base: "TXC",
+    quote: "TSD",
+    quoteLeg: "tsd",
+    blurb:
+      "TEXITcoin against the Texas Stable Dollar — both legs settle on the TEXITcoin chain, no bridge in the middle.",
+    native: true,
+  },
+  {
+    id: "USDC_TXC",
+    slug: "usdc-txc",
+    label: "USDC / TXC",
+    base: "TXC",
+    quote: "USDC",
+    quoteLeg: "usdc",
+    blurb: "TEXITcoin against USDC on Base, Ethereum, or BNB Chain.",
+    native: false,
+  },
+];
+
+export const PAIR_IDS = PAIRS.map((p) => p.id) as [PairId, ...PairId[]];
+
+export function getPair(id: string): PairDef {
+  const pair = PAIRS.find((p) => p.id === id || p.slug === id);
+  if (!pair) throw new Error(`Unknown pair: ${id}`);
+  return pair;
+}
