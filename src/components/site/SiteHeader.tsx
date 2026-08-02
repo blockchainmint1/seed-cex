@@ -3,7 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
 
 const nav = [
-  { label: "Trade", to: "/trade/usdc-txc" },
+  { label: "TSD/TXC", to: "/trade/tsd-txc" },
+  { label: "USDC/TXC", to: "/trade/usdc-txc" },
   { label: "Wallet", to: "/wallet" },
   { label: "Manifesto", to: "/manifesto" },
 ] as const;

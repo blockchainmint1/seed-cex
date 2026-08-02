@@ -110,7 +110,7 @@ export const grantAuthorization = createServerFn({ method: "POST" })
         revoked_at: null,
         label: data.label ?? null,
       },
-      { onConflict: "user_id,chain" },
+      { onConflict: "user_id,chain,asset" },
     );
     if (error) throw new Error(error.message);
     return { ok: true, expiresAt: expires };
@@ -119,14 +119,20 @@ export const grantAuthorization = createServerFn({ method: "POST" })
 /** Revocation is a hard DELETE — the ciphertext stops existing. */
 export const revokeAuthorization = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ chain: z.enum(CHAIN_IDS) }).parse(input))
+  .inputValidator((input) =>
+    z
+      .object({ chain: z.enum(CHAIN_IDS), asset: z.string().trim().min(2).max(12).optional() })
+      .parse(input),
+  )
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin
+    let q = supabaseAdmin
       .from("wallet_delegations")
       .delete()
       .eq("user_id", context.userId)
       .eq("chain", data.chain);
+    if (data.asset) q = q.eq("asset", data.asset);
+    const { error } = await q;
     if (error) throw new Error(error.message);
     return { ok: true };
   });
