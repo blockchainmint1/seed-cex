@@ -12,7 +12,10 @@ export type AssetDef = {
   /** null = the chain's native coin */
   contract: string | null;
   decimals: number;
+  /** Omni Layer property id, for tokens that live on the TEXITcoin L2. */
+  omniPropertyId?: number;
 };
+
 
 export type ChainDef = {
   id: ChainId;
