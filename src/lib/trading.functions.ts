@@ -127,7 +127,17 @@ export const placeOrder = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { matchOrder } = await import("./trading.server");
     const { pair, ...order } = data;
-    return matchOrder(context.userId, pair, order);
+    const result = await matchOrder(context.userId, pair, order);
+
+    // Instant settlement: crossed fills are delivered straight away, wallet to
+    // wallet. Nothing is ever parked in an escrow address.
+    let settlements: Awaited<ReturnType<typeof import("./autosettle.server").autoSettleTrades>> = [];
+    if (result.tradeIds.length > 0) {
+      const { autoSettleTrades } = await import("./autosettle.server");
+      settlements = await autoSettleTrades(result.tradeIds);
+    }
+
+    return { ...result, settlements };
   });
 
 export const cancelOrder = createServerFn({ method: "POST" })
