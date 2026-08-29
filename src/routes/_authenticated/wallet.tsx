@@ -167,6 +167,49 @@ function Wallet() {
     onError: () => setError("Wrong password — the vault could not be decrypted"),
   });
 
+  const changePassword = useMutation({
+    mutationFn: async () => {
+      const w = wallet.data;
+      if (!w) throw new Error("No vault found");
+      if (!unlockPassword) throw new Error("Enter your current vault password above");
+      if (newPassword.length < 10) throw new Error("Use at least 10 characters for the new password");
+      if (newPassword !== newPasswordConfirm) throw new Error("New passwords do not match");
+
+      const mnemonic = await decryptMnemonic(
+        { ciphertext: w.vault_ciphertext, salt: w.kdf_salt, iterations: w.kdf_iterations },
+        unlockPassword,
+      ).catch(() => {
+        throw new Error("Current password is wrong — the vault could not be decrypted");
+      });
+
+      const { txcAddress, evmAddress, ltcAddress, iskAddress } = deriveAddresses(mnemonic);
+      const vault = await encryptMnemonic(mnemonic, newPassword);
+      await persistWallet({
+        data: {
+          vaultCiphertext: vault.ciphertext,
+          kdfSalt: vault.salt,
+          kdfIterations: vault.iterations,
+          txcAddress,
+          evmAddress,
+          ltcAddress,
+          iskAddress,
+        },
+      });
+    },
+    onSuccess: () => {
+      setUnlockPassword("");
+      setNewPassword("");
+      setNewPasswordConfirm("");
+      setError(null);
+      setPasswordNotice("Vault re-encrypted with your new password.");
+      queryClient.invalidateQueries({ queryKey: ["my-wallet"] });
+    },
+    onError: (e) => {
+      setPasswordNotice(null);
+      setError(e instanceof Error ? e.message : "Could not change the vault password");
+    },
+  });
+
 
   const backedUp = useMutation({
     mutationFn: () => confirmBackup(),
