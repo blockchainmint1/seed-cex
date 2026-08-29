@@ -520,8 +520,7 @@ function SpotBalances({
                 <td className="px-5 py-3 text-right">
                   {r.tradeSlug ? (
                     <Link
-                      to="/trade/$pair"
-                      params={{ pair: r.tradeSlug }}
+                      to={`/trade/${r.tradeSlug}` as string}
                       className="text-[10px] tracking-[0.14em] text-primary uppercase hover:underline"
                     >
                       Trade →
