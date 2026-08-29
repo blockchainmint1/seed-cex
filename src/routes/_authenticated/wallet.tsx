@@ -603,8 +603,11 @@ function DepositModal({ row, onClose }: { row: SpotRow; onClose: () => void }) {
         </div>
       ) : null}
       <div className="mt-4 rounded-sm border border-border bg-background p-4">
-        <p className="break-all font-mono text-sm text-foreground">{address}</p>
+        <p className="break-all font-mono text-sm text-foreground">
+          {address || "Unlock your vault below once — this derives and saves your address."}
+        </p>
       </div>
+
       <div className="mt-4 flex gap-3">
         <button
           onClick={() => {
