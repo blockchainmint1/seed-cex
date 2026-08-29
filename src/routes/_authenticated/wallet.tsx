@@ -3,7 +3,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { getMyWallet, markWalletBackedUp, saveMyWallet } from "@/lib/trading.functions";
+import {
+  getMyWallet,
+  markWalletBackedUp,
+  saveMyWallet,
+  updateMyWalletAddresses,
+} from "@/lib/trading.functions";
 import {
   listAuthorizations,
   grantAuthorization,
