@@ -425,21 +425,26 @@ function SpotBalances({
       leg: "tsd",
       tradeSlug: tradeSlugFor("TSD"),
     });
-    for (const b of utxo.data ?? []) {
-      if (!b.address) continue;
+    const utxoChains: { chain: "ltc" | "isk"; symbol: string; address: string | null }[] = [
+      { chain: "ltc", symbol: "LTC", address: wallet.ltc_address },
+      { chain: "isk", symbol: "ISK", address: wallet.isk_address },
+    ];
+    for (const c of utxoChains) {
+      const b = (utxo.data ?? []).find((x) => x.chain === c.chain);
       out.push({
-        key: b.chain,
-        symbol: b.symbol,
-        name: getChain(b.chain).name,
-        chain: b.chain as ChainId,
-        chainName: getChain(b.chain).name,
-        balance: b.online ? b.balance : null,
-        online: b.online,
-        address: b.address,
-        leg: b.chain as LegId,
-        tradeSlug: tradeSlugFor(b.symbol),
+        key: c.chain,
+        symbol: c.symbol,
+        name: getChain(c.chain).name,
+        chain: c.chain as ChainId,
+        chainName: getChain(c.chain).name,
+        balance: b?.online ? b.balance : null,
+        online: Boolean(b?.online),
+        address: c.address,
+        leg: c.chain as LegId,
+        tradeSlug: tradeSlugFor(c.symbol),
       });
     }
+
     for (const b of evm.data ?? []) {
       const leg =
         b.symbol === "USDC" ? "usdc" : b.symbol === "USDT" ? "usdt" : b.symbol === "ZCU" ? "zcu" : null;
