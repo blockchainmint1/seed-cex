@@ -84,6 +84,7 @@ function Wallet() {
   const fetchWallet = useServerFn(getMyWallet);
   const persistWallet = useServerFn(saveMyWallet);
   const confirmBackup = useServerFn(markWalletBackedUp);
+  const backfillAddresses = useServerFn(updateMyWalletAddresses);
 
   const wallet = useQuery({ queryKey: ["my-wallet"], queryFn: () => fetchWallet() });
 
