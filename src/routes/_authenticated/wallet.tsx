@@ -94,7 +94,11 @@ function Wallet() {
   const [tab, setTab] = useState<"create" | "import">("create");
   const [revealed, setRevealed] = useState<string | null>(null);
   const [unlockPassword, setUnlockPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
+  const [passwordNotice, setPasswordNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
 
   const create = useMutation({
     mutationFn: async () => {
@@ -161,6 +165,49 @@ function Wallet() {
       setError(null);
     },
     onError: () => setError("Wrong password — the vault could not be decrypted"),
+  });
+
+  const changePassword = useMutation({
+    mutationFn: async () => {
+      const w = wallet.data;
+      if (!w) throw new Error("No vault found");
+      if (!unlockPassword) throw new Error("Enter your current vault password above");
+      if (newPassword.length < 10) throw new Error("Use at least 10 characters for the new password");
+      if (newPassword !== newPasswordConfirm) throw new Error("New passwords do not match");
+
+      const mnemonic = await decryptMnemonic(
+        { ciphertext: w.vault_ciphertext, salt: w.kdf_salt, iterations: w.kdf_iterations },
+        unlockPassword,
+      ).catch(() => {
+        throw new Error("Current password is wrong — the vault could not be decrypted");
+      });
+
+      const { txcAddress, evmAddress, ltcAddress, iskAddress } = deriveAddresses(mnemonic);
+      const vault = await encryptMnemonic(mnemonic, newPassword);
+      await persistWallet({
+        data: {
+          vaultCiphertext: vault.ciphertext,
+          kdfSalt: vault.salt,
+          kdfIterations: vault.iterations,
+          txcAddress,
+          evmAddress,
+          ltcAddress,
+          iskAddress,
+        },
+      });
+    },
+    onSuccess: () => {
+      setUnlockPassword("");
+      setNewPassword("");
+      setNewPasswordConfirm("");
+      setError(null);
+      setPasswordNotice("Vault re-encrypted with your new password.");
+      queryClient.invalidateQueries({ queryKey: ["my-wallet"] });
+    },
+    onError: (e) => {
+      setPasswordNotice(null);
+      setError(e instanceof Error ? e.message : "Could not change the vault password");
+    },
   });
 
 
@@ -288,6 +335,10 @@ function Wallet() {
       ) : (
         <>
           <div className="mt-8">
+            <SharedAccessPanel wallet={wallet.data!} />
+          </div>
+
+          <div className="mt-6">
             <SpotBalances wallet={wallet.data!} />
           </div>
 
@@ -315,16 +366,49 @@ function Wallet() {
                 </span>
                 .
               </p>
+
+              <div className="mt-6 border-t border-border pt-5">
+                <p className="mb-3 font-mono text-[10px] tracking-[0.2em] text-primary uppercase">
+                  Change vault password
+                </p>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="New password (10+ characters)"
+                  maxLength={200}
+                  className="mb-3 w-full rounded-sm border border-input bg-background px-3 py-2.5 font-mono text-sm outline-none focus:border-primary"
+                />
+                <input
+                  type="password"
+                  value={newPasswordConfirm}
+                  onChange={(e) => setNewPasswordConfirm(e.target.value)}
+                  placeholder="Confirm new password"
+                  maxLength={200}
+                  className="mb-3 w-full rounded-sm border border-input bg-background px-3 py-2.5 font-mono text-sm outline-none focus:border-primary"
+                />
+                <button
+                  onClick={() => changePassword.mutate()}
+                  disabled={changePassword.isPending}
+                  className="w-full rounded-sm border border-border px-4 py-2.5 font-mono text-xs tracking-[0.16em] text-foreground uppercase disabled:opacity-50"
+                >
+                  {changePassword.isPending ? "Re-encrypting…" : "Re-encrypt vault"}
+                </button>
+                <p className="mt-3 font-mono text-[11px] leading-relaxed text-muted-foreground">
+                  Enter your current password above, then the new one here. The phrase is decrypted
+                  and re-encrypted in this tab — your addresses and funds are unchanged.
+                </p>
+                {passwordNotice ? (
+                  <p className="mt-3 font-mono text-[11px] text-bid">{passwordNotice}</p>
+                ) : null}
+              </div>
             </Panel>
 
             <WithdrawalHistory />
           </div>
-
-          <div className="mt-6">
-            <SharedAccessPanel wallet={wallet.data!} />
-          </div>
         </>
       )}
+
     </div>
   );
 }
