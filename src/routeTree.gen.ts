@@ -24,6 +24,12 @@ import { Route as TradeTsdTxcRouteImport } from './routes/trade.tsd-txc'
 import { Route as TradeLtcTsdRouteImport } from './routes/trade.ltc-tsd'
 import { Route as TradeIskTsdRouteImport } from './routes/trade.isk-tsd'
 import { Route as AuthenticatedWalletRouteImport } from './routes/_authenticated/wallet'
+import { Route as ApiPublicCmcIndexRouteImport } from './routes/api/public/cmc/index'
+import { Route as ApiPublicCmcTickerRouteImport } from './routes/api/public/cmc/ticker'
+import { Route as ApiPublicCmcSummaryRouteImport } from './routes/api/public/cmc/summary'
+import { Route as ApiPublicCmcAssetsRouteImport } from './routes/api/public/cmc/assets'
+import { Route as ApiPublicCmcTradesPairRouteImport } from './routes/api/public/cmc/trades.$pair'
+import { Route as ApiPublicCmcOrderbookPairRouteImport } from './routes/api/public/cmc/orderbook.$pair'
 
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
@@ -99,6 +105,37 @@ const AuthenticatedWalletRoute = AuthenticatedWalletRouteImport.update({
   path: '/wallet',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiPublicCmcIndexRoute = ApiPublicCmcIndexRouteImport.update({
+  id: '/api/public/cmc/',
+  path: '/api/public/cmc/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicCmcTickerRoute = ApiPublicCmcTickerRouteImport.update({
+  id: '/api/public/cmc/ticker',
+  path: '/api/public/cmc/ticker',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicCmcSummaryRoute = ApiPublicCmcSummaryRouteImport.update({
+  id: '/api/public/cmc/summary',
+  path: '/api/public/cmc/summary',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicCmcAssetsRoute = ApiPublicCmcAssetsRouteImport.update({
+  id: '/api/public/cmc/assets',
+  path: '/api/public/cmc/assets',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicCmcTradesPairRoute = ApiPublicCmcTradesPairRouteImport.update({
+  id: '/api/public/cmc/trades/$pair',
+  path: '/api/public/cmc/trades/$pair',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicCmcOrderbookPairRoute =
+  ApiPublicCmcOrderbookPairRouteImport.update({
+    id: '/api/public/cmc/orderbook/$pair',
+    path: '/api/public/cmc/orderbook/$pair',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -115,6 +152,12 @@ export interface FileRoutesByFullPath {
   '/trade/txc-usdt': typeof TradeTxcUsdtRoute
   '/trade/usdc-txc': typeof TradeUsdcTxcRoute
   '/trade/zcu-tsd': typeof TradeZcuTsdRoute
+  '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
+  '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
+  '/api/public/cmc/ticker': typeof ApiPublicCmcTickerRoute
+  '/api/public/cmc/': typeof ApiPublicCmcIndexRoute
+  '/api/public/cmc/orderbook/$pair': typeof ApiPublicCmcOrderbookPairRoute
+  '/api/public/cmc/trades/$pair': typeof ApiPublicCmcTradesPairRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -131,6 +174,12 @@ export interface FileRoutesByTo {
   '/trade/txc-usdt': typeof TradeTxcUsdtRoute
   '/trade/usdc-txc': typeof TradeUsdcTxcRoute
   '/trade/zcu-tsd': typeof TradeZcuTsdRoute
+  '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
+  '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
+  '/api/public/cmc/ticker': typeof ApiPublicCmcTickerRoute
+  '/api/public/cmc': typeof ApiPublicCmcIndexRoute
+  '/api/public/cmc/orderbook/$pair': typeof ApiPublicCmcOrderbookPairRoute
+  '/api/public/cmc/trades/$pair': typeof ApiPublicCmcTradesPairRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -149,6 +198,12 @@ export interface FileRoutesById {
   '/trade/txc-usdt': typeof TradeTxcUsdtRoute
   '/trade/usdc-txc': typeof TradeUsdcTxcRoute
   '/trade/zcu-tsd': typeof TradeZcuTsdRoute
+  '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
+  '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
+  '/api/public/cmc/ticker': typeof ApiPublicCmcTickerRoute
+  '/api/public/cmc/': typeof ApiPublicCmcIndexRoute
+  '/api/public/cmc/orderbook/$pair': typeof ApiPublicCmcOrderbookPairRoute
+  '/api/public/cmc/trades/$pair': typeof ApiPublicCmcTradesPairRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -167,6 +222,12 @@ export interface FileRouteTypes {
     | '/trade/txc-usdt'
     | '/trade/usdc-txc'
     | '/trade/zcu-tsd'
+    | '/api/public/cmc/assets'
+    | '/api/public/cmc/summary'
+    | '/api/public/cmc/ticker'
+    | '/api/public/cmc/'
+    | '/api/public/cmc/orderbook/$pair'
+    | '/api/public/cmc/trades/$pair'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -183,6 +244,12 @@ export interface FileRouteTypes {
     | '/trade/txc-usdt'
     | '/trade/usdc-txc'
     | '/trade/zcu-tsd'
+    | '/api/public/cmc/assets'
+    | '/api/public/cmc/summary'
+    | '/api/public/cmc/ticker'
+    | '/api/public/cmc'
+    | '/api/public/cmc/orderbook/$pair'
+    | '/api/public/cmc/trades/$pair'
   id:
     | '__root__'
     | '/'
@@ -200,6 +267,12 @@ export interface FileRouteTypes {
     | '/trade/txc-usdt'
     | '/trade/usdc-txc'
     | '/trade/zcu-tsd'
+    | '/api/public/cmc/assets'
+    | '/api/public/cmc/summary'
+    | '/api/public/cmc/ticker'
+    | '/api/public/cmc/'
+    | '/api/public/cmc/orderbook/$pair'
+    | '/api/public/cmc/trades/$pair'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -217,6 +290,12 @@ export interface RootRouteChildren {
   TradeTxcUsdtRoute: typeof TradeTxcUsdtRoute
   TradeUsdcTxcRoute: typeof TradeUsdcTxcRoute
   TradeZcuTsdRoute: typeof TradeZcuTsdRoute
+  ApiPublicCmcAssetsRoute: typeof ApiPublicCmcAssetsRoute
+  ApiPublicCmcSummaryRoute: typeof ApiPublicCmcSummaryRoute
+  ApiPublicCmcTickerRoute: typeof ApiPublicCmcTickerRoute
+  ApiPublicCmcIndexRoute: typeof ApiPublicCmcIndexRoute
+  ApiPublicCmcOrderbookPairRoute: typeof ApiPublicCmcOrderbookPairRoute
+  ApiPublicCmcTradesPairRoute: typeof ApiPublicCmcTradesPairRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -326,6 +405,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWalletRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/public/cmc/': {
+      id: '/api/public/cmc/'
+      path: '/api/public/cmc'
+      fullPath: '/api/public/cmc/'
+      preLoaderRoute: typeof ApiPublicCmcIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/cmc/ticker': {
+      id: '/api/public/cmc/ticker'
+      path: '/api/public/cmc/ticker'
+      fullPath: '/api/public/cmc/ticker'
+      preLoaderRoute: typeof ApiPublicCmcTickerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/cmc/summary': {
+      id: '/api/public/cmc/summary'
+      path: '/api/public/cmc/summary'
+      fullPath: '/api/public/cmc/summary'
+      preLoaderRoute: typeof ApiPublicCmcSummaryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/cmc/assets': {
+      id: '/api/public/cmc/assets'
+      path: '/api/public/cmc/assets'
+      fullPath: '/api/public/cmc/assets'
+      preLoaderRoute: typeof ApiPublicCmcAssetsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/cmc/trades/$pair': {
+      id: '/api/public/cmc/trades/$pair'
+      path: '/api/public/cmc/trades/$pair'
+      fullPath: '/api/public/cmc/trades/$pair'
+      preLoaderRoute: typeof ApiPublicCmcTradesPairRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/cmc/orderbook/$pair': {
+      id: '/api/public/cmc/orderbook/$pair'
+      path: '/api/public/cmc/orderbook/$pair'
+      fullPath: '/api/public/cmc/orderbook/$pair'
+      preLoaderRoute: typeof ApiPublicCmcOrderbookPairRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -355,6 +476,12 @@ const rootRouteChildren: RootRouteChildren = {
   TradeTxcUsdtRoute: TradeTxcUsdtRoute,
   TradeUsdcTxcRoute: TradeUsdcTxcRoute,
   TradeZcuTsdRoute: TradeZcuTsdRoute,
+  ApiPublicCmcAssetsRoute: ApiPublicCmcAssetsRoute,
+  ApiPublicCmcSummaryRoute: ApiPublicCmcSummaryRoute,
+  ApiPublicCmcTickerRoute: ApiPublicCmcTickerRoute,
+  ApiPublicCmcIndexRoute: ApiPublicCmcIndexRoute,
+  ApiPublicCmcOrderbookPairRoute: ApiPublicCmcOrderbookPairRoute,
+  ApiPublicCmcTradesPairRoute: ApiPublicCmcTradesPairRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
