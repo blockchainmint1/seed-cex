@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ManifestoRouteImport } from './routes/manifesto'
+import { Route as HowItWorksRouteImport } from './routes/how-it-works'
 import { Route as CustodyRouteImport } from './routes/custody'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
@@ -44,6 +45,11 @@ const PrivacyRoute = PrivacyRouteImport.update({
 const ManifestoRoute = ManifestoRouteImport.update({
   id: '/manifesto',
   path: '/manifesto',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HowItWorksRoute = HowItWorksRouteImport.update({
+  id: '/how-it-works',
+  path: '/how-it-works',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CustodyRoute = CustodyRouteImport.update({
@@ -141,6 +147,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/custody': typeof CustodyRoute
+  '/how-it-works': typeof HowItWorksRoute
   '/manifesto': typeof ManifestoRoute
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
@@ -163,6 +170,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/custody': typeof CustodyRoute
+  '/how-it-works': typeof HowItWorksRoute
   '/manifesto': typeof ManifestoRoute
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
@@ -187,6 +195,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/custody': typeof CustodyRoute
+  '/how-it-works': typeof HowItWorksRoute
   '/manifesto': typeof ManifestoRoute
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
@@ -211,6 +220,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/custody'
+    | '/how-it-works'
     | '/manifesto'
     | '/privacy'
     | '/terms'
@@ -233,6 +243,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/custody'
+    | '/how-it-works'
     | '/manifesto'
     | '/privacy'
     | '/terms'
@@ -256,6 +267,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/custody'
+    | '/how-it-works'
     | '/manifesto'
     | '/privacy'
     | '/terms'
@@ -280,6 +292,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   CustodyRoute: typeof CustodyRoute
+  HowItWorksRoute: typeof HowItWorksRoute
   ManifestoRoute: typeof ManifestoRoute
   PrivacyRoute: typeof PrivacyRoute
   TermsRoute: typeof TermsRoute
@@ -319,6 +332,13 @@ declare module '@tanstack/react-router' {
       path: '/manifesto'
       fullPath: '/manifesto'
       preLoaderRoute: typeof ManifestoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/how-it-works': {
+      id: '/how-it-works'
+      path: '/how-it-works'
+      fullPath: '/how-it-works'
+      preLoaderRoute: typeof HowItWorksRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/custody': {
@@ -466,6 +486,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   CustodyRoute: CustodyRoute,
+  HowItWorksRoute: HowItWorksRoute,
   ManifestoRoute: ManifestoRoute,
   PrivacyRoute: PrivacyRoute,
   TermsRoute: TermsRoute,
