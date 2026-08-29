@@ -100,7 +100,7 @@ function Wallet() {
         throw new Error("That is not a valid BIP-39 recovery phrase");
       }
 
-      const { txcAddress, evmAddress } = deriveAddresses(mnemonic);
+      const { txcAddress, evmAddress, ltcAddress, iskAddress } = deriveAddresses(mnemonic);
       const vault = await encryptMnemonic(mnemonic, password);
 
       await persistWallet({
@@ -110,6 +110,8 @@ function Wallet() {
           kdfIterations: vault.iterations,
           txcAddress,
           evmAddress,
+          ltcAddress,
+          iskAddress,
         },
       });
       return mnemonic;

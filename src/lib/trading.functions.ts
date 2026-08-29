@@ -21,7 +21,7 @@ export const getMyWallet = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("wallets")
-      .select("vault_ciphertext, kdf_salt, kdf_iterations, txc_address, evm_address, backed_up, created_at")
+      .select("vault_ciphertext, kdf_salt, kdf_iterations, txc_address, evm_address, ltc_address, isk_address, backed_up, created_at")
       .eq("user_id", context.userId)
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -38,6 +38,8 @@ export const saveMyWallet = createServerFn({ method: "POST" })
         kdfIterations: z.number().int().min(100_000).max(2_000_000),
         txcAddress: z.string().trim().min(20).max(120),
         evmAddress: z.string().trim().max(120).optional(),
+        ltcAddress: z.string().trim().max(120).optional(),
+        iskAddress: z.string().trim().max(120).optional(),
       })
       .parse(input),
   )
@@ -50,6 +52,8 @@ export const saveMyWallet = createServerFn({ method: "POST" })
         kdf_iterations: data.kdfIterations,
         txc_address: data.txcAddress,
         evm_address: data.evmAddress ?? null,
+        ltc_address: data.ltcAddress ?? null,
+        isk_address: data.iskAddress ?? null,
       },
       { onConflict: "user_id" },
     );
