@@ -6,42 +6,59 @@
  */
 import { getChain, type ChainId } from "@/lib/chains";
 
-const PUBLIC_RPC: Record<string, string> = {
-  ethereum: "https://ethereum-rpc.publicnode.com",
-  base: "https://base-rpc.publicnode.com",
-  bsc: "https://bsc-rpc.publicnode.com",
+const PUBLIC_RPC: Record<string, string[]> = {
+  ethereum: ["https://ethereum-rpc.publicnode.com", "https://1rpc.io/eth"],
+  base: ["https://base-rpc.publicnode.com", "https://mainnet.base.org", "https://1rpc.io/base"],
+  bsc: ["https://bsc-rpc.publicnode.com"],
+};
+
+/** Alchemy subdomains, used first when a key is configured. */
+const ALCHEMY_HOST: Record<string, string> = {
+  ethereum: "eth-mainnet",
+  base: "base-mainnet",
+  bsc: "bnb-mainnet",
 };
 
 type Endpoint = { url: string; headers: Record<string, string> };
 
 /**
- * Endpoint for one EVM chain. ZeroChill runs on our own authenticated node, so
- * its credentials are read from the environment inside the call.
+ * Every endpoint we may try for one EVM chain, best first. ZeroChill runs on
+ * our own authenticated node, so its credentials come from the environment.
  */
-function endpoint(chain: ChainId): Endpoint | null {
+function endpoints(chain: ChainId): Endpoint[] {
   const headers: Record<string, string> = { "content-type": "application/json" };
   if (chain === "zcu") {
     const url = process.env["ZCU_RPC_URL"];
-    if (!url) return null;
+    if (!url) return [];
     const user = process.env["ZCU_RPC_USER"];
     const pass = process.env["ZCU_RPC_PASS"];
     if (user && pass) {
       headers["authorization"] = `Basic ${btoa(`${user}:${pass}`)}`;
     }
-    return { url, headers };
+    return [{ url, headers }];
   }
-  const url = PUBLIC_RPC[chain];
-  return url ? { url, headers } : null;
+  const urls: string[] = [];
+  const key = process.env["ALCHEMY_KEY"];
+  const host = ALCHEMY_HOST[chain];
+  if (key && host) urls.push(`https://${host}.g.alchemy.com/v2/${key}`);
+  urls.push(...(PUBLIC_RPC[chain] ?? []));
+  return urls.map((url) => ({ url, headers }));
+}
+
+function endpoint(chain: ChainId): Endpoint | null {
+  return endpoints(chain)[0] ?? null;
 }
 
 /** True when we have a usable endpoint for the chain. */
 export function evmChainConfigured(chain: ChainId): boolean {
-  return endpoint(chain) !== null;
+  return endpoints(chain).length > 0;
 }
 
-async function rpc<T>(chain: ChainId, method: string, params: unknown[]): Promise<T | null> {
-  const ep = endpoint(chain);
-  if (!ep) return null;
+async function callOnce<T>(
+  ep: Endpoint,
+  method: string,
+  params: unknown[],
+): Promise<{ ok: true; value: T | null } | { ok: false }> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 7000);
   try {
@@ -51,23 +68,28 @@ async function rpc<T>(chain: ChainId, method: string, params: unknown[]): Promis
       headers: ep.headers,
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
     });
-    if (!res.ok) {
-      console.error(`[evm:${chain}] ${method} failed [${res.status}]`);
-      return null;
-    }
+    if (!res.ok) return { ok: false };
     const json = (await res.json()) as { result?: T; error?: { message: string } };
-    if (json.error) {
-      console.error(`[evm:${chain}] ${method} error: ${json.error.message}`);
-      return null;
-    }
-    return json.result ?? null;
-  } catch (err) {
-    console.error(`[evm:${chain}] ${method} threw`, err);
-    return null;
+    if (json.error) return { ok: false };
+    return { ok: true, value: json.result ?? null };
+  } catch {
+    return { ok: false };
   } finally {
     clearTimeout(timer);
   }
 }
+
+/** Try each endpoint in turn; only give up when every one fails. */
+async function rpc<T>(chain: ChainId, method: string, params: unknown[]): Promise<T | null> {
+  const list = endpoints(chain);
+  for (const ep of list) {
+    const attempt = await callOnce<T>(ep, method, params);
+    if (attempt.ok) return attempt.value;
+  }
+  console.error(`[evm:${chain}] ${method} failed on all ${list.length} endpoint(s)`);
+  return null;
+}
+
 
 
 function fromWei(hex: string | null, decimals: number): number {
