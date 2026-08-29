@@ -3,7 +3,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { getMyWallet, markWalletBackedUp, saveMyWallet } from "@/lib/trading.functions";
+import {
+  getMyWallet,
+  markWalletBackedUp,
+  saveMyWallet,
+  updateMyWalletAddresses,
+} from "@/lib/trading.functions";
 import {
   listAuthorizations,
   grantAuthorization,
@@ -79,6 +84,7 @@ function Wallet() {
   const fetchWallet = useServerFn(getMyWallet);
   const persistWallet = useServerFn(saveMyWallet);
   const confirmBackup = useServerFn(markWalletBackedUp);
+  const backfillAddresses = useServerFn(updateMyWalletAddresses);
 
   const wallet = useQuery({ queryKey: ["my-wallet"], queryFn: () => fetchWallet() });
 
@@ -131,10 +137,23 @@ function Wallet() {
     mutationFn: async () => {
       const w = wallet.data;
       if (!w) throw new Error("No vault found");
-      return decryptMnemonic(
+      const mnemonic = await decryptMnemonic(
         { ciphertext: w.vault_ciphertext, salt: w.kdf_salt, iterations: w.kdf_iterations },
         unlockPassword,
       );
+      // Older vaults predate the LTC/ISK branches — derive and backfill now.
+      if (!w.ltc_address || !w.isk_address || !w.evm_address) {
+        const derived = deriveAddresses(mnemonic);
+        await backfillAddresses({
+          data: {
+            evmAddress: w.evm_address ? undefined : derived.evmAddress,
+            ltcAddress: w.ltc_address ? undefined : derived.ltcAddress,
+            iskAddress: w.isk_address ? undefined : derived.iskAddress,
+          },
+        });
+        queryClient.invalidateQueries({ queryKey: ["my-wallet"] });
+      }
+      return mnemonic;
     },
     onSuccess: (mnemonic) => {
       setRevealed(mnemonic);
@@ -143,6 +162,7 @@ function Wallet() {
     },
     onError: () => setError("Wrong password — the vault could not be decrypted"),
   });
+
 
   const backedUp = useMutation({
     mutationFn: () => confirmBackup(),
@@ -405,21 +425,26 @@ function SpotBalances({
       leg: "tsd",
       tradeSlug: tradeSlugFor("TSD"),
     });
-    for (const b of utxo.data ?? []) {
-      if (!b.address) continue;
+    const utxoChains: { chain: "ltc" | "isk"; symbol: string; address: string | null }[] = [
+      { chain: "ltc", symbol: "LTC", address: wallet.ltc_address },
+      { chain: "isk", symbol: "ISK", address: wallet.isk_address },
+    ];
+    for (const c of utxoChains) {
+      const b = (utxo.data ?? []).find((x) => x.chain === c.chain);
       out.push({
-        key: b.chain,
-        symbol: b.symbol,
-        name: getChain(b.chain).name,
-        chain: b.chain as ChainId,
-        chainName: getChain(b.chain).name,
-        balance: b.online ? b.balance : null,
-        online: b.online,
-        address: b.address,
-        leg: b.chain as LegId,
-        tradeSlug: tradeSlugFor(b.symbol),
+        key: c.chain,
+        symbol: c.symbol,
+        name: getChain(c.chain).name,
+        chain: c.chain as ChainId,
+        chainName: getChain(c.chain).name,
+        balance: b?.online ? b.balance : null,
+        online: Boolean(b?.online),
+        address: c.address,
+        leg: c.chain as LegId,
+        tradeSlug: tradeSlugFor(c.symbol),
       });
     }
+
     for (const b of evm.data ?? []) {
       const leg =
         b.symbol === "USDC" ? "usdc" : b.symbol === "USDT" ? "usdt" : b.symbol === "ZCU" ? "zcu" : null;
@@ -578,8 +603,11 @@ function DepositModal({ row, onClose }: { row: SpotRow; onClose: () => void }) {
         </div>
       ) : null}
       <div className="mt-4 rounded-sm border border-border bg-background p-4">
-        <p className="break-all font-mono text-sm text-foreground">{address}</p>
+        <p className="break-all font-mono text-sm text-foreground">
+          {address || "Unlock your vault below once — this derives and saves your address."}
+        </p>
       </div>
+
       <div className="mt-4 flex gap-3">
         <button
           onClick={() => {
