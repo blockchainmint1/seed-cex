@@ -137,10 +137,23 @@ function Wallet() {
     mutationFn: async () => {
       const w = wallet.data;
       if (!w) throw new Error("No vault found");
-      return decryptMnemonic(
+      const mnemonic = await decryptMnemonic(
         { ciphertext: w.vault_ciphertext, salt: w.kdf_salt, iterations: w.kdf_iterations },
         unlockPassword,
       );
+      // Older vaults predate the LTC/ISK branches — derive and backfill now.
+      if (!w.ltc_address || !w.isk_address || !w.evm_address) {
+        const derived = deriveAddresses(mnemonic);
+        await backfillAddresses({
+          data: {
+            evmAddress: w.evm_address ? undefined : derived.evmAddress,
+            ltcAddress: w.ltc_address ? undefined : derived.ltcAddress,
+            iskAddress: w.isk_address ? undefined : derived.iskAddress,
+          },
+        });
+        queryClient.invalidateQueries({ queryKey: ["my-wallet"] });
+      }
+      return mnemonic;
     },
     onSuccess: (mnemonic) => {
       setRevealed(mnemonic);
@@ -149,6 +162,7 @@ function Wallet() {
     },
     onError: () => setError("Wrong password — the vault could not be decrypted"),
   });
+
 
   const backedUp = useMutation({
     mutationFn: () => confirmBackup(),
