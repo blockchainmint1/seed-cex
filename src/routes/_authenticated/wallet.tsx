@@ -423,7 +423,7 @@ function SharedAccessPanel({
       const shared = deriveSharedKey(
         mnemonic,
         chain.sharedPath,
-        chain.evmChainId === null ? "txc" : "evm",
+        chain.evmChainId === null ? (chain.p2pkhVersion ?? 66) : "evm",
       );
       return grant({
         data: {
