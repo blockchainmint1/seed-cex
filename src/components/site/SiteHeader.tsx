@@ -36,6 +36,15 @@ export function SiteHeader() {
         </Link>
 
         <nav className="hidden items-center gap-5 font-mono text-xs tracking-wider uppercase md:flex">
+          {user ? (
+            <Link
+              to="/trades"
+              className="text-muted-foreground transition-colors hover:text-foreground"
+              activeProps={{ className: "text-primary" }}
+            >
+              Trades
+            </Link>
+          ) : null}
           {nav.map((n) => (
             <Link
               key={n.to}
