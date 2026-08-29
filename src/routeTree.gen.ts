@@ -16,8 +16,13 @@ import { Route as CustodyRouteImport } from './routes/custody'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as TradeZcuTsdRouteImport } from './routes/trade.zcu-tsd'
 import { Route as TradeUsdcTxcRouteImport } from './routes/trade.usdc-txc'
+import { Route as TradeTxcUsdtRouteImport } from './routes/trade.txc-usdt'
+import { Route as TradeTsdUsdcRouteImport } from './routes/trade.tsd-usdc'
 import { Route as TradeTsdTxcRouteImport } from './routes/trade.tsd-txc'
+import { Route as TradeLtcTsdRouteImport } from './routes/trade.ltc-tsd'
+import { Route as TradeIskTsdRouteImport } from './routes/trade.isk-tsd'
 import { Route as AuthenticatedWalletRouteImport } from './routes/_authenticated/wallet'
 
 const TermsRoute = TermsRouteImport.update({
@@ -54,14 +59,39 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TradeZcuTsdRoute = TradeZcuTsdRouteImport.update({
+  id: '/trade/zcu-tsd',
+  path: '/trade/zcu-tsd',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TradeUsdcTxcRoute = TradeUsdcTxcRouteImport.update({
   id: '/trade/usdc-txc',
   path: '/trade/usdc-txc',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TradeTxcUsdtRoute = TradeTxcUsdtRouteImport.update({
+  id: '/trade/txc-usdt',
+  path: '/trade/txc-usdt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TradeTsdUsdcRoute = TradeTsdUsdcRouteImport.update({
+  id: '/trade/tsd-usdc',
+  path: '/trade/tsd-usdc',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TradeTsdTxcRoute = TradeTsdTxcRouteImport.update({
   id: '/trade/tsd-txc',
   path: '/trade/tsd-txc',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TradeLtcTsdRoute = TradeLtcTsdRouteImport.update({
+  id: '/trade/ltc-tsd',
+  path: '/trade/ltc-tsd',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TradeIskTsdRoute = TradeIskTsdRouteImport.update({
+  id: '/trade/isk-tsd',
+  path: '/trade/isk-tsd',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedWalletRoute = AuthenticatedWalletRouteImport.update({
@@ -78,8 +108,13 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
   '/wallet': typeof AuthenticatedWalletRoute
+  '/trade/isk-tsd': typeof TradeIskTsdRoute
+  '/trade/ltc-tsd': typeof TradeLtcTsdRoute
   '/trade/tsd-txc': typeof TradeTsdTxcRoute
+  '/trade/tsd-usdc': typeof TradeTsdUsdcRoute
+  '/trade/txc-usdt': typeof TradeTxcUsdtRoute
   '/trade/usdc-txc': typeof TradeUsdcTxcRoute
+  '/trade/zcu-tsd': typeof TradeZcuTsdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -89,8 +124,13 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
   '/wallet': typeof AuthenticatedWalletRoute
+  '/trade/isk-tsd': typeof TradeIskTsdRoute
+  '/trade/ltc-tsd': typeof TradeLtcTsdRoute
   '/trade/tsd-txc': typeof TradeTsdTxcRoute
+  '/trade/tsd-usdc': typeof TradeTsdUsdcRoute
+  '/trade/txc-usdt': typeof TradeTxcUsdtRoute
   '/trade/usdc-txc': typeof TradeUsdcTxcRoute
+  '/trade/zcu-tsd': typeof TradeZcuTsdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -102,8 +142,13 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
   '/_authenticated/wallet': typeof AuthenticatedWalletRoute
+  '/trade/isk-tsd': typeof TradeIskTsdRoute
+  '/trade/ltc-tsd': typeof TradeLtcTsdRoute
   '/trade/tsd-txc': typeof TradeTsdTxcRoute
+  '/trade/tsd-usdc': typeof TradeTsdUsdcRoute
+  '/trade/txc-usdt': typeof TradeTxcUsdtRoute
   '/trade/usdc-txc': typeof TradeUsdcTxcRoute
+  '/trade/zcu-tsd': typeof TradeZcuTsdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -115,8 +160,13 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/terms'
     | '/wallet'
+    | '/trade/isk-tsd'
+    | '/trade/ltc-tsd'
     | '/trade/tsd-txc'
+    | '/trade/tsd-usdc'
+    | '/trade/txc-usdt'
     | '/trade/usdc-txc'
+    | '/trade/zcu-tsd'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -126,8 +176,13 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/terms'
     | '/wallet'
+    | '/trade/isk-tsd'
+    | '/trade/ltc-tsd'
     | '/trade/tsd-txc'
+    | '/trade/tsd-usdc'
+    | '/trade/txc-usdt'
     | '/trade/usdc-txc'
+    | '/trade/zcu-tsd'
   id:
     | '__root__'
     | '/'
@@ -138,8 +193,13 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/terms'
     | '/_authenticated/wallet'
+    | '/trade/isk-tsd'
+    | '/trade/ltc-tsd'
     | '/trade/tsd-txc'
+    | '/trade/tsd-usdc'
+    | '/trade/txc-usdt'
     | '/trade/usdc-txc'
+    | '/trade/zcu-tsd'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -150,8 +210,13 @@ export interface RootRouteChildren {
   ManifestoRoute: typeof ManifestoRoute
   PrivacyRoute: typeof PrivacyRoute
   TermsRoute: typeof TermsRoute
+  TradeIskTsdRoute: typeof TradeIskTsdRoute
+  TradeLtcTsdRoute: typeof TradeLtcTsdRoute
   TradeTsdTxcRoute: typeof TradeTsdTxcRoute
+  TradeTsdUsdcRoute: typeof TradeTsdUsdcRoute
+  TradeTxcUsdtRoute: typeof TradeTxcUsdtRoute
   TradeUsdcTxcRoute: typeof TradeUsdcTxcRoute
+  TradeZcuTsdRoute: typeof TradeZcuTsdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -205,6 +270,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/trade/zcu-tsd': {
+      id: '/trade/zcu-tsd'
+      path: '/trade/zcu-tsd'
+      fullPath: '/trade/zcu-tsd'
+      preLoaderRoute: typeof TradeZcuTsdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/trade/usdc-txc': {
       id: '/trade/usdc-txc'
       path: '/trade/usdc-txc'
@@ -212,11 +284,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TradeUsdcTxcRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/trade/txc-usdt': {
+      id: '/trade/txc-usdt'
+      path: '/trade/txc-usdt'
+      fullPath: '/trade/txc-usdt'
+      preLoaderRoute: typeof TradeTxcUsdtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/trade/tsd-usdc': {
+      id: '/trade/tsd-usdc'
+      path: '/trade/tsd-usdc'
+      fullPath: '/trade/tsd-usdc'
+      preLoaderRoute: typeof TradeTsdUsdcRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/trade/tsd-txc': {
       id: '/trade/tsd-txc'
       path: '/trade/tsd-txc'
       fullPath: '/trade/tsd-txc'
       preLoaderRoute: typeof TradeTsdTxcRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/trade/ltc-tsd': {
+      id: '/trade/ltc-tsd'
+      path: '/trade/ltc-tsd'
+      fullPath: '/trade/ltc-tsd'
+      preLoaderRoute: typeof TradeLtcTsdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/trade/isk-tsd': {
+      id: '/trade/isk-tsd'
+      path: '/trade/isk-tsd'
+      fullPath: '/trade/isk-tsd'
+      preLoaderRoute: typeof TradeIskTsdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/wallet': {
@@ -248,8 +348,13 @@ const rootRouteChildren: RootRouteChildren = {
   ManifestoRoute: ManifestoRoute,
   PrivacyRoute: PrivacyRoute,
   TermsRoute: TermsRoute,
+  TradeIskTsdRoute: TradeIskTsdRoute,
+  TradeLtcTsdRoute: TradeLtcTsdRoute,
   TradeTsdTxcRoute: TradeTsdTxcRoute,
+  TradeTsdUsdcRoute: TradeTsdUsdcRoute,
+  TradeTxcUsdtRoute: TradeTxcUsdtRoute,
   TradeUsdcTxcRoute: TradeUsdcTxcRoute,
+  TradeZcuTsdRoute: TradeZcuTsdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

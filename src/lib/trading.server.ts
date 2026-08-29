@@ -8,24 +8,24 @@
  * caller's id is passed in explicitly — never read from request data.
  */
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { getPair } from "@/lib/chains";
+import { getLeg, getPair, type LegId } from "@/lib/chains";
 
 type Side = "buy" | "sell";
-type Leg = "txc" | "usdc" | "tsd";
+type Leg = LegId;
 
 export type PlaceOrderInput = { side: Side; price: number; amount: number };
 
 /** Deterministic stand-in for a real 2-of-3 multisig address (Phase 2). */
 function simulatedEscrowAddress(leg: Leg, tradeId: string): string {
   const compact = tradeId.replace(/-/g, "");
-  // TSD rides on the TEXITcoin chain, so its placeholder is a TXC-shaped address.
-  return leg === "usdc" ? `0x${compact.slice(0, 40)}` : `T${compact.slice(0, 32)}`;
+  // EVM legs get a 0x-shaped placeholder; UTXO/Omni legs a base58-shaped one.
+  return getLeg(leg).kind === "evm" ? `0x${compact.slice(0, 40)}` : `T${compact.slice(0, 32)}`;
 }
 
 export async function matchOrder(userId: string, pair: string, input: PlaceOrderInput) {
   const opposite: Side = input.side === "buy" ? "sell" : "buy";
   // Which asset the quote leg delivers: TSD (Omni #39) or USDC (EVM).
-  const quoteLeg: Leg = getPair(pair).quoteLeg;
+  const { baseLeg, quoteLeg } = getPair(pair);
 
   // Best-priced resting orders that cross our limit.
   let query = supabaseAdmin
@@ -92,8 +92,8 @@ export async function matchOrder(userId: string, pair: string, input: PlaceOrder
     await supabaseAdmin.from("escrows").insert([
       {
         trade_id: trade.id,
-        leg: "txc",
-        multisig_address: simulatedEscrowAddress("txc", trade.id),
+        leg: baseLeg,
+        multisig_address: simulatedEscrowAddress(baseLeg, trade.id),
         expected_amount: fillAmount,
       },
       {

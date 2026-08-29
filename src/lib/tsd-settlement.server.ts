@@ -17,34 +17,27 @@ import { fetchOmniBalance, fetchOmniTx, omniSimpleSend } from "./omni.server";
 import { rpcConfigured } from "./rpc.server";
 import { isValidTxcAddress } from "./txc/tx.server";
 import { loadUtxos, refreshTradeStatus } from "./settlement.server";
+import { delivererOf, legAmount, legRole, receiverOf as receiverFor, type TradeShape } from "./leg-roles";
 
 const CONFIRMATIONS_REQUIRED = 2;
 /** Whole TXC the branch needs on hand to pay the Omni carrier's miner fee. */
 const CARRIER_FEE_TXC = 0.001;
 
-type TradeParties = {
-  id: string;
-  status: string;
-  side: "buy" | "sell";
-  amount: number;
-  price: number;
-  maker_id: string | null;
-  taker_id: string | null;
-};
+type TradeParties = TradeShape;
 
-/** Whoever delivers the TSD: the counterparty of the TXC seller. */
+/** Whoever delivers the TSD leg of this pair. */
 function senderOf(t: TradeParties): string {
-  return t.side === "sell" ? (t.maker_id as string) : (t.taker_id as string);
+  return delivererOf(t, legRole(t.pair, "tsd")) as string;
 }
 
 function receiverOf(t: TradeParties): string {
-  return t.side === "sell" ? (t.taker_id as string) : (t.maker_id as string);
+  return receiverFor(t, legRole(t.pair, "tsd")) as string;
 }
 
 async function loadTrade(userId: string, tradeId: string): Promise<TradeParties> {
   const { data, error } = await supabaseAdmin
     .from("trades")
-    .select("id, status, side, amount, price, maker_id, taker_id")
+    .select("id, status, side, amount, price, pair, maker_id, taker_id")
     .eq("id", tradeId)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -87,7 +80,7 @@ async function loadTsdDelegation(userId: string): Promise<TsdDelegation | null> 
 }
 
 function tsdAmountOf(t: TradeParties, expected?: number | null): number {
-  return Number(expected ?? t.amount * t.price);
+  return legAmount(t, legRole(t.pair, "tsd"), expected);
 }
 
 /* --------------------------------- preview -------------------------------- */

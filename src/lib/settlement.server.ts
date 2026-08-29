@@ -1,8 +1,8 @@
 /**
- * Real TXC settlement.
+ * Real UTXO settlement — TEXITcoin, Litecoin, and Iskandercoin.
  *
  * The path is: authorization → cap/expiry gate → decrypt branch key → gather
- * UTXOs → build + sign → broadcast to our own node → watch confirmations.
+ * UTXOs → build + sign → broadcast → watch confirmations.
  *
  * Every gate lives here, in one file, so no future code path can reach
  * `decryptDelegatedKey` without passing them. Service-role writes are used
@@ -10,59 +10,42 @@
  * always authenticated and authorized before we get here.
  */
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { bytesToHex } from "@noble/hashes/utils.js";
+import { getChain, type UtxoChainId } from "@/lib/chains";
 import { decryptDelegatedKey } from "./delegation.server";
-import { broadcastRawTx, fetchTxConfirmations, rpcConfigured, scanAddressUtxos } from "./rpc.server";
-import { addressToScript, buildAndSignTransfer, isValidTxcAddress, type Utxo } from "./txc/tx.server";
+import {
+  broadcastFor,
+  confirmationsFor,
+  feeRateFor,
+  isValidUtxoAddress,
+  loadUtxosFor,
+  p2pkhVersionOf,
+  utxoChainOnline,
+} from "./utxo/io.server";
+import { buildAndSignTransfer, isValidTxcAddress, type Utxo } from "./txc/tx.server";
+import {
+  delivererOf,
+  legAmount,
+  legRole,
+  receiverOf,
+  type TradeShape,
+} from "./leg-roles";
 
 const CONFIRMATIONS_REQUIRED = 2;
-const DEFAULT_FEE_RATE = 10; // sat/vB
 
-/* ---------------------------------- utxos --------------------------------- */
+/** Which wallets column holds the receiving address for each UTXO chain. */
+const RECEIVE_COLUMN: Record<UtxoChainId, "txc_address" | "ltc_address" | "isk_address"> = {
+  txc: "txc_address",
+  ltc: "ltc_address",
+  isk: "isk_address",
+};
 
-/** Our node first (scantxoutset), public Esplora mirror as the fallback. */
-export async function loadUtxos(address: string): Promise<Utxo[]> {
-  if (rpcConfigured("txc")) {
-    const scan = await scanAddressUtxos("txc", [address]);
-    if (scan) {
-      return scan.utxos.map((u) => ({
-        txid: u.txid,
-        vout: u.vout,
-        scriptPubKey: u.scriptPubKey,
-        amount: u.amount,
-        height: u.height,
-      }));
-    }
-  }
-
-  const script = bytesToHex(addressToScript(address));
-  const res = await fetch(`https://mempool.texitcoin.org/api/address/${encodeURIComponent(address)}/utxo`, {
-    headers: { accept: "application/json" },
-  });
-  if (!res.ok) throw new Error(`Could not read UTXOs for ${address}`);
-  const rows = (await res.json()) as Array<{
-    txid: string;
-    vout: number;
-    value: number;
-    status?: { block_height?: number };
-  }>;
-  return rows.map((r) => ({
-    txid: r.txid,
-    vout: r.vout,
-    scriptPubKey: script,
-    amount: r.value / 1e8,
-    height: r.status?.block_height ?? 0,
-  }));
+function symbolOf(chain: UtxoChainId): string {
+  return getChain(chain).nativeSymbol;
 }
 
-async function feeRateSatPerVb(): Promise<number> {
-  try {
-    const { fetchChainSnapshot } = await import("./txc.server");
-    const snap = await fetchChainSnapshot();
-    return snap.halfHourFee && snap.halfHourFee > 0 ? snap.halfHourFee : DEFAULT_FEE_RATE;
-  } catch {
-    return DEFAULT_FEE_RATE;
-  }
+/** TXC UTXOs — kept for the Omni (TSD) carrier fee check. */
+export async function loadUtxos(address: string): Promise<Utxo[]> {
+  return loadUtxosFor("txc", address);
 }
 
 /* ------------------------------ authorization ----------------------------- */
@@ -70,28 +53,36 @@ async function feeRateSatPerVb(): Promise<number> {
 export type AuthorizedKey = { privateKeyHex: string; address: string; maxAmount: number };
 
 /**
- * The single gate. Loads the seller's TXC authorization and refuses to decrypt
- * anything unless it is live and the amount is inside the cap.
+ * The single gate. Loads the seller's authorization for one chain/asset and
+ * refuses to decrypt anything unless it is live and inside the cap.
  */
-async function openAuthorization(userId: string, amount: number): Promise<AuthorizedKey> {
+async function openAuthorization(
+  userId: string,
+  chain: UtxoChainId,
+  amount: number,
+): Promise<AuthorizedKey> {
   // Expired rows are destroyed, not hidden — sweep before reading.
   await supabaseAdmin.rpc("purge_expired_delegations");
+  const symbol = symbolOf(chain);
 
   const { data, error } = await supabaseAdmin
     .from("wallet_delegations")
     .select("key_ciphertext, trading_address, max_amount, expires_at, revoked_at")
     .eq("user_id", userId)
-    .eq("chain", "txc")
+    .eq("chain", chain)
+    .eq("asset", symbol)
     .is("revoked_at", null)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  if (!data) throw new Error("No live TXC authorization — the seller must authorize the trading branch");
+  if (!data) {
+    throw new Error(`No live ${symbol} authorization — the seller must authorize the trading branch`);
+  }
   if (new Date(data.expires_at).getTime() <= Date.now()) {
-    throw new Error("The TXC authorization has expired");
+    throw new Error(`The ${symbol} authorization has expired`);
   }
   if (amount > Number(data.max_amount) + 1e-8) {
     throw new Error(
-      `Trade size ${amount} TXC exceeds the authorized cap of ${Number(data.max_amount)} TXC`,
+      `Trade size ${amount} ${symbol} exceeds the authorized cap of ${Number(data.max_amount)} ${symbol}`,
     );
   }
 
@@ -104,24 +95,17 @@ async function openAuthorization(userId: string, amount: number): Promise<Author
 
 /* -------------------------------- settlement ------------------------------ */
 
-type TradeParties = {
-  id: string;
-  status: string;
-  side: "buy" | "sell";
-  amount: number;
-  price: number;
-  maker_id: string | null;
-  taker_id: string | null;
-};
+type TradeParties = TradeShape;
 
-/** Whoever delivers the TXC leg: the taker when they sold, otherwise the maker. */
-function sellerOf(trade: TradeParties): string {
-  return trade.side === "sell" ? (trade.taker_id as string) : (trade.maker_id as string);
+/** Whoever delivers this UTXO leg, given its role in the pair. */
+function sellerOf(trade: TradeParties, chain: UtxoChainId): string {
+  return delivererOf(trade, legRole(trade.pair, chain)) as string;
 }
 
-function buyerOf(trade: TradeParties): string {
-  return trade.side === "sell" ? (trade.maker_id as string) : (trade.taker_id as string);
+function buyerOf(trade: TradeParties, chain: UtxoChainId): string {
+  return receiverOf(trade, legRole(trade.pair, chain)) as string;
 }
+
 
 export type SettleResult = {
   txid: string;
@@ -132,14 +116,19 @@ export type SettleResult = {
 };
 
 /**
- * Deliver the TXC leg of a trade on-chain: seller's authorized branch → buyer's
+ * Deliver a UTXO leg of a trade on-chain: seller's authorized branch → buyer's
  * savings address. Idempotent — a leg that already has a release txid is never
  * broadcast twice.
  */
-export async function settleTxcLeg(userId: string, tradeId: string): Promise<SettleResult> {
+export async function settleUtxoLeg(
+  userId: string,
+  tradeId: string,
+  chain: UtxoChainId,
+): Promise<SettleResult> {
+  const symbol = symbolOf(chain);
   const { data: trade, error } = await supabaseAdmin
     .from("trades")
-    .select("id, status, side, amount, price, maker_id, taker_id")
+    .select("id, status, side, amount, price, pair, maker_id, taker_id")
     .eq("id", tradeId)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -152,35 +141,39 @@ export async function settleTxcLeg(userId: string, tradeId: string): Promise<Set
   if (t.status === "settled" || t.status === "released") throw new Error("This trade is already settled");
   if (t.status === "disputed") throw new Error("This trade is in dispute");
 
-  const seller = sellerOf(t);
-  const buyer = buyerOf(t);
+  const seller = sellerOf(t, chain);
+  const buyer = buyerOf(t, chain);
   if (!seller || !buyer) throw new Error("This trade has no counterparty yet");
 
   const { data: leg } = await supabaseAdmin
     .from("escrows")
     .select("id, status, release_txid, expected_amount")
     .eq("trade_id", t.id)
-    .eq("leg", "txc")
+    .eq("leg", chain)
     .maybeSingle();
-  if (!leg) throw new Error("TXC escrow leg not found");
+  if (!leg) throw new Error(`${symbol} escrow leg not found`);
   if (leg.release_txid && !leg.release_txid.startsWith("sim-")) {
-    throw new Error("The TXC leg has already been broadcast");
+    throw new Error(`The ${symbol} leg has already been broadcast`);
   }
 
+  const column = RECEIVE_COLUMN[chain];
   const { data: buyerWallet } = await supabaseAdmin
     .from("wallets")
-    .select("txc_address")
+    .select(column)
     .eq("user_id", buyer)
     .maybeSingle();
-  const destination = buyerWallet?.txc_address;
-  if (!destination || !isValidTxcAddress(destination)) {
-    throw new Error("The buyer has no valid TXC receiving address");
+  const destination = (buyerWallet as Record<string, string | null> | null)?.[column] ?? null;
+  if (!destination || !isValidUtxoAddress(chain, destination)) {
+    throw new Error(`The buyer has no valid ${symbol} receiving address`);
   }
 
-  const amount = Number(leg.expected_amount ?? t.amount);
-  const auth = await openAuthorization(seller, amount);
+  const amount = legAmount(t, legRole(t.pair, chain), leg.expected_amount);
+  const auth = await openAuthorization(seller, chain, amount);
 
-  const [utxos, feeRate] = await Promise.all([loadUtxos(auth.address), feeRateSatPerVb()]);
+  const [utxos, feeRate] = await Promise.all([
+    loadUtxosFor(chain, auth.address),
+    feeRateFor(chain),
+  ]);
 
   const built = buildAndSignTransfer({
     privateKeyHex: auth.privateKeyHex,
@@ -189,9 +182,11 @@ export async function settleTxcLeg(userId: string, tradeId: string): Promise<Set
     amount,
     utxos,
     feeRate,
+    p2pkhVersion: p2pkhVersionOf(chain),
+    symbol,
   });
 
-  const txid = await broadcastRawTx("txc", built.hex);
+  const txid = await broadcastFor(chain, built.hex);
 
   await supabaseAdmin
     .from("escrows")
@@ -201,7 +196,7 @@ export async function settleTxcLeg(userId: string, tradeId: string): Promise<Set
   await supabaseAdmin.from("trade_events").insert({
     trade_id: t.id,
     actor_id: userId,
-    event: "txc_broadcast",
+    event: `${chain}_broadcast`,
     detail: {
       txid,
       amount,
@@ -218,18 +213,27 @@ export async function settleTxcLeg(userId: string, tradeId: string): Promise<Set
   return { txid, amount, to: destination, feeSats: built.feeSats, inputs: built.inputCount };
 }
 
+/** Back-compat: the TXC leg. */
+export async function settleTxcLeg(userId: string, tradeId: string): Promise<SettleResult> {
+  return settleUtxoLeg(userId, tradeId, "txc");
+}
+
 /* ------------------------------- confirmations ---------------------------- */
 
 export type WatchResult = {
   tradeId: string;
-  leg: "txc";
+  leg: UtxoChainId;
   txid: string | null;
   confirmations: number | null;
   status: string;
 };
 
-/** Poll the node for the TXC leg's confirmation depth and advance the trade. */
-export async function watchTxcLeg(userId: string, tradeId: string): Promise<WatchResult> {
+/** Poll the chain for a UTXO leg's confirmation depth and advance the trade. */
+export async function watchUtxoLeg(
+  userId: string,
+  tradeId: string,
+  chain: UtxoChainId,
+): Promise<WatchResult> {
   const { data: trade } = await supabaseAdmin
     .from("trades")
     .select("id, maker_id, taker_id")
@@ -244,24 +248,28 @@ export async function watchTxcLeg(userId: string, tradeId: string): Promise<Watc
     .from("escrows")
     .select("id, release_txid, status, confirmations")
     .eq("trade_id", tradeId)
-    .eq("leg", "txc")
+    .eq("leg", chain)
     .maybeSingle();
-  if (!leg) throw new Error("TXC escrow leg not found");
+  if (!leg) throw new Error(`${symbolOf(chain)} escrow leg not found`);
 
   const txid = leg.release_txid;
   if (!txid || txid.startsWith("sim-")) {
-    return { tradeId, leg: "txc", txid: null, confirmations: null, status: leg.status };
+    return { tradeId, leg: chain, txid: null, confirmations: null, status: leg.status };
   }
 
-  const confirmations = await fetchTxConfirmations("txc", txid);
+  const confirmations = await confirmationsFor(chain, txid);
   if (confirmations === null) {
-    return { tradeId, leg: "txc", txid, confirmations: null, status: leg.status };
+    return { tradeId, leg: chain, txid, confirmations: null, status: leg.status };
   }
 
   await supabaseAdmin.from("escrows").update({ confirmations }).eq("id", leg.id);
   if (confirmations >= CONFIRMATIONS_REQUIRED) await refreshTradeStatus(tradeId);
 
-  return { tradeId, leg: "txc", txid, confirmations, status: leg.status };
+  return { tradeId, leg: chain, txid, confirmations, status: leg.status };
+}
+
+export async function watchTxcLeg(userId: string, tradeId: string): Promise<WatchResult> {
+  return watchUtxoLeg(userId, tradeId, "txc");
 }
 
 /** Trade status is derived from its legs, never set by hand. */
@@ -294,14 +302,17 @@ export type SettlementPreview = {
   amount: number;
   feeRate: number;
   nodeOnline: boolean;
+  symbol: string;
 };
 
-/** Dry run: everything settleTxcLeg checks, minus decrypting or broadcasting. */
-export async function previewTxcSettlement(
+/** Dry run: everything settleUtxoLeg checks, minus decrypting or broadcasting. */
+export async function previewUtxoSettlement(
   userId: string,
   tradeId: string,
+  chain: UtxoChainId,
 ): Promise<SettlementPreview> {
-  const feeRate = await feeRateSatPerVb();
+  const symbol = symbolOf(chain);
+  const feeRate = await feeRateFor(chain);
   const base: SettlementPreview = {
     ready: false,
     reason: null,
@@ -310,12 +321,13 @@ export async function previewTxcSettlement(
     balance: null,
     amount: 0,
     feeRate,
-    nodeOnline: rpcConfigured("txc"),
+    nodeOnline: utxoChainOnline(chain),
+    symbol,
   };
 
   const { data: trade } = await supabaseAdmin
     .from("trades")
-    .select("id, status, side, amount, price, maker_id, taker_id")
+    .select("id, status, side, amount, price, pair, maker_id, taker_id")
     .eq("id", tradeId)
     .maybeSingle();
   if (!trade) return { ...base, reason: "Trade not found" };
@@ -325,26 +337,28 @@ export async function previewTxcSettlement(
     return { ...base, reason: "You are not a party to this trade" };
   }
 
-  const amount = Number(t.amount);
-  const seller = sellerOf(t);
-  const buyer = buyerOf(t);
+  const amount = legAmount(t, legRole(t.pair, chain));
+  const seller = sellerOf(t, chain);
+  const buyer = buyerOf(t, chain);
+  const column = RECEIVE_COLUMN[chain];
 
   const [{ data: del }, { data: buyerWallet }] = await Promise.all([
     supabaseAdmin
       .from("wallet_delegations")
       .select("trading_address, max_amount, expires_at")
       .eq("user_id", seller ?? "")
-      .eq("chain", "txc")
+      .eq("chain", chain)
+      .eq("asset", symbol)
       .is("revoked_at", null)
       .maybeSingle(),
-    supabaseAdmin.from("wallets").select("txc_address").eq("user_id", buyer ?? "").maybeSingle(),
+    supabaseAdmin.from("wallets").select(column).eq("user_id", buyer ?? "").maybeSingle(),
   ]);
 
-  const toAddress = buyerWallet?.txc_address ?? null;
+  const toAddress = (buyerWallet as Record<string, string | null> | null)?.[column] ?? null;
   const fromAddress = del?.trading_address ?? null;
 
   if (!del) {
-    return { ...base, amount, toAddress, reason: "The seller has no live TXC authorization" };
+    return { ...base, amount, toAddress, reason: `The seller has no live ${symbol} authorization` };
   }
   if (new Date(del.expires_at).getTime() <= Date.now()) {
     return { ...base, amount, fromAddress, toAddress, reason: "The seller's authorization expired" };
@@ -355,16 +369,16 @@ export async function previewTxcSettlement(
       amount,
       fromAddress,
       toAddress,
-      reason: `Trade size exceeds the authorized cap of ${Number(del.max_amount)} TXC`,
+      reason: `Trade size exceeds the authorized cap of ${Number(del.max_amount)} ${symbol}`,
     };
   }
-  if (!toAddress || !isValidTxcAddress(toAddress)) {
-    return { ...base, amount, fromAddress, reason: "The buyer has no valid TXC receiving address" };
+  if (!toAddress || !isValidUtxoAddress(chain, toAddress)) {
+    return { ...base, amount, fromAddress, reason: `The buyer has no valid ${symbol} receiving address` };
   }
 
   let balance: number | null = null;
   try {
-    const utxos = await loadUtxos(fromAddress as string);
+    const utxos = await loadUtxosFor(chain, fromAddress as string);
     balance = utxos.reduce((sum, u) => sum + u.amount, 0);
   } catch {
     return { ...base, amount, fromAddress, toAddress, reason: "Could not read the branch balance" };
@@ -377,9 +391,18 @@ export async function previewTxcSettlement(
       fromAddress,
       toAddress,
       balance,
-      reason: `The authorized branch holds ${balance.toFixed(8)} TXC, needs ${amount} TXC`,
+      reason: `The authorized branch holds ${balance.toFixed(8)} ${symbol}, needs ${amount} ${symbol}`,
     };
   }
 
   return { ...base, ready: true, amount, fromAddress, toAddress, balance };
 }
+
+export async function previewTxcSettlement(
+  userId: string,
+  tradeId: string,
+): Promise<SettlementPreview> {
+  return previewUtxoSettlement(userId, tradeId, "txc");
+}
+
+export { isValidTxcAddress };

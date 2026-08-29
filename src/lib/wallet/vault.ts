@@ -37,12 +37,17 @@ function hash160(data: Uint8Array): Uint8Array {
   return ripemd160(sha256(data));
 }
 
-/** P2PKH address for the TEXITcoin mainnet. */
-export function txcAddressFromPubkey(pubkey: Uint8Array): string {
+/** Legacy base58 P2PKH address for any Bitcoin-derived chain. */
+export function p2pkhAddressFromPubkey(pubkey: Uint8Array, version: number): string {
   const payload = new Uint8Array(21);
-  payload[0] = TXC_PUBKEY_VERSION;
+  payload[0] = version;
   payload.set(hash160(pubkey), 1);
   return b58check.encode(payload);
+}
+
+/** P2PKH address for the TEXITcoin mainnet. */
+export function txcAddressFromPubkey(pubkey: Uint8Array): string {
+  return p2pkhAddressFromPubkey(pubkey, TXC_PUBKEY_VERSION);
 }
 
 /** EIP-55 checksummed address, for the USDC side of a pair. */
@@ -57,7 +62,18 @@ export function evmAddressFromPubkey(uncompressed: Uint8Array): string {
   return out;
 }
 
-export type DerivedAddresses = { txcAddress: string; evmAddress: string };
+/** Litecoin + Iskandercoin savings branches (LTC coin type, forked params). */
+const LTC_PATH = "m/44'/2'/0'/0/0";
+const LTC_PUBKEY_VERSION = 48;
+const ISK_PATH = "m/44'/2'/10'/0/0";
+const ISK_PUBKEY_VERSION = 45;
+
+export type DerivedAddresses = {
+  txcAddress: string;
+  evmAddress: string;
+  ltcAddress: string;
+  iskAddress: string;
+};
 
 export function deriveAddresses(mnemonic: string): DerivedAddresses {
   const seed = mnemonicToSeedSync(mnemonic);
@@ -71,9 +87,15 @@ export function deriveAddresses(mnemonic: string): DerivedAddresses {
   // BIP-32 gives us the compressed point; keccak needs the uncompressed body.
   const uncompressed = secp256k1.Point.fromBytes(evmNode.publicKey).toBytes(false);
 
+  const ltcNode = root.derive(LTC_PATH);
+  const iskNode = root.derive(ISK_PATH);
+  if (!ltcNode.publicKey || !iskNode.publicKey) throw new Error("Could not derive the UTXO keys");
+
   return {
     txcAddress: txcAddressFromPubkey(txcNode.publicKey),
     evmAddress: evmAddressFromPubkey(uncompressed),
+    ltcAddress: p2pkhAddressFromPubkey(ltcNode.publicKey, LTC_PUBKEY_VERSION),
+    iskAddress: p2pkhAddressFromPubkey(iskNode.publicKey, ISK_PUBKEY_VERSION),
   };
 }
 
@@ -96,20 +118,25 @@ export type SharedTradingKey = {
   address: string;
 };
 
-/** Derive the shared branch key for a given BIP-44 path and address family. */
+/**
+ * Derive the shared branch key for a given BIP-44 path and address family.
+ * `kind` is "evm" for account-model chains, or the base58 P2PKH version byte
+ * for a UTXO chain (66 TXC, 48 LTC, 45 ISK).
+ */
 export function deriveSharedKey(
   mnemonic: string,
   path: string,
-  kind: "txc" | "evm",
+  kind: "txc" | "evm" | number,
 ): SharedTradingKey {
   const root = HDKey.fromMasterSeed(mnemonicToSeedSync(mnemonic));
   const node = root.derive(path);
   if (!node.privateKey || !node.publicKey) {
     throw new Error("Could not derive the shared trading key");
   }
+  const version = kind === "txc" ? TXC_PUBKEY_VERSION : typeof kind === "number" ? kind : null;
   const address =
-    kind === "txc"
-      ? txcAddressFromPubkey(node.publicKey)
+    version !== null
+      ? p2pkhAddressFromPubkey(node.publicKey, version)
       : evmAddressFromPubkey(secp256k1.Point.fromBytes(node.publicKey).toBytes(false));
   return { path, privateKeyHex: bytesToHex(node.privateKey), address };
 }

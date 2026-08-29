@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { hexToBytes } from "@noble/hashes/utils.js";
-import { txcAddressFromPubkey, evmAddressFromPubkey } from "@/lib/wallet/vault";
+import { p2pkhAddressFromPubkey, evmAddressFromPubkey } from "@/lib/wallet/vault";
 import { CHAIN_IDS, getChain, type ChainId } from "@/lib/chains";
 import { z } from "zod";
 
@@ -87,7 +87,7 @@ export const grantAuthorization = createServerFn({ method: "POST" })
     const priv = hexToBytes(data.privateKeyHex.toLowerCase());
     const derived =
       chain.evmChainId === null
-        ? txcAddressFromPubkey(secp256k1.getPublicKey(priv, true))
+        ? p2pkhAddressFromPubkey(secp256k1.getPublicKey(priv, true), chain.p2pkhVersion ?? 66)
         : evmAddressFromPubkey(secp256k1.getPublicKey(priv, false));
     if (derived.toLowerCase() !== data.address.toLowerCase()) {
       throw new Error("The authorized key does not match its address");

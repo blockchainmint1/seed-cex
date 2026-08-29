@@ -89,3 +89,73 @@ export const watchTsd = createServerFn({ method: "POST" })
     return watchTsdLeg(context.userId, data.tradeId);
   });
 
+
+/* --------------------------- generic leg dispatch -------------------------- */
+
+const legInput = (input: unknown) =>
+  z
+    .object({
+      tradeId: z.string().uuid(),
+      leg: z.enum(["txc", "tsd", "usdc", "usdt", "ltc", "isk", "zcu"]),
+    })
+    .parse(input);
+
+/** Dry run of any settlement leg — every gate, no decryption, no broadcast. */
+export const previewLeg = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(legInput)
+  .handler(async ({ data, context }) => {
+    if (data.leg === "tsd") {
+      const { previewTsdSettlement } = await import("./tsd-settlement.server");
+      const p = await previewTsdSettlement(context.userId, data.tradeId);
+      return { kind: "omni" as const, ...p };
+    }
+    if (data.leg === "txc" || data.leg === "ltc" || data.leg === "isk") {
+      const { previewUtxoSettlement } = await import("./settlement.server");
+      const p = await previewUtxoSettlement(context.userId, data.tradeId, data.leg);
+      return { kind: "utxo" as const, ...p };
+    }
+    const { previewEvmSettlement } = await import("./evm-settlement.server");
+    const p = await previewEvmSettlement(context.userId, data.tradeId, data.leg);
+    return { kind: "evm" as const, ...p };
+  });
+
+/** Build, sign, and broadcast any settlement leg on its live chain. */
+export const settleLeg = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(legInput)
+  .handler(async ({ data, context }) => {
+    if (data.leg === "tsd") {
+      const { settleTsdLeg } = await import("./tsd-settlement.server");
+      const r = await settleTsdLeg(context.userId, data.tradeId);
+      return { id: r.txid, amount: r.amount, to: r.to };
+    }
+    if (data.leg === "txc" || data.leg === "ltc" || data.leg === "isk") {
+      const { settleUtxoLeg } = await import("./settlement.server");
+      const r = await settleUtxoLeg(context.userId, data.tradeId, data.leg);
+      return { id: r.txid, amount: r.amount, to: r.to };
+    }
+    const { settleEvmLeg } = await import("./evm-settlement.server");
+    const r = await settleEvmLeg(context.userId, data.tradeId, data.leg);
+    return { id: r.hash, amount: r.amount, to: r.to, chain: r.chain };
+  });
+
+/** Confirmation depth for any broadcast leg. */
+export const watchLeg = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(legInput)
+  .handler(async ({ data, context }) => {
+    if (data.leg === "tsd") {
+      const { watchTsdLeg } = await import("./tsd-settlement.server");
+      const r = await watchTsdLeg(context.userId, data.tradeId);
+      return { id: r.txid, confirmations: r.confirmations };
+    }
+    if (data.leg === "txc" || data.leg === "ltc" || data.leg === "isk") {
+      const { watchUtxoLeg } = await import("./settlement.server");
+      const r = await watchUtxoLeg(context.userId, data.tradeId, data.leg);
+      return { id: r.txid, confirmations: r.confirmations };
+    }
+    const { watchEvmLeg } = await import("./evm-settlement.server");
+    const r = await watchEvmLeg(context.userId, data.tradeId, data.leg);
+    return { id: r.hash, confirmations: r.confirmations, chain: r.chain };
+  });

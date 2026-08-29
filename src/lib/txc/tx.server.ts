@@ -87,20 +87,28 @@ export function p2shScript(hash: Uint8Array): Uint8Array {
   return concat(Uint8Array.of(0xa9, 0x14), hash, Uint8Array.of(0x87));
 }
 
-/** Decode a TXC base58 address into its output script. Throws on bad input. */
-export function addressToScript(address: string): Uint8Array {
+/**
+ * Decode a base58 address into its output script for a given chain's P2PKH
+ * version byte (66 TXC, 48 LTC, 45 ISK). P2SH is accepted on version 5.
+ */
+export function addressToScriptFor(address: string, p2pkhVersion: number): Uint8Array {
   let payload: Uint8Array;
   try {
     payload = b58check.decode(address);
   } catch {
-    throw new Error(`Not a valid TEXITcoin address: ${address}`);
+    throw new Error(`Not a valid address: ${address}`);
   }
   if (payload.length !== 21) throw new Error(`Unsupported address payload: ${address}`);
   const version = payload[0];
   const hash = payload.subarray(1);
-  if (version === TXC_P2PKH_VERSION) return p2pkhScript(hash);
+  if (version === p2pkhVersion) return p2pkhScript(hash);
   if (version === TXC_P2SH_VERSION) return p2shScript(hash);
-  throw new Error(`Address ${address} is not on the TEXITcoin mainnet`);
+  throw new Error(`Address ${address} is not on the expected network`);
+}
+
+/** Decode a TXC base58 address into its output script. Throws on bad input. */
+export function addressToScript(address: string): Uint8Array {
+  return addressToScriptFor(address, TXC_P2PKH_VERSION);
 }
 
 export function isValidTxcAddress(address: string): boolean {
@@ -159,6 +167,10 @@ export type BuildParams = {
   utxos: Utxo[];
   /** sat/vB */
   feeRate: number;
+  /** base58 P2PKH version byte of the chain; defaults to TEXITcoin. */
+  p2pkhVersion?: number;
+  /** ticker used in error messages */
+  symbol?: string;
 };
 
 /**
@@ -169,17 +181,19 @@ export type BuildParams = {
  * creating an unspendable output.
  */
 export function buildAndSignTransfer(params: BuildParams): BuiltTx {
+  const version = params.p2pkhVersion ?? TXC_P2PKH_VERSION;
+  const ticker = params.symbol ?? "TXC";
   const priv = hexToBytes(params.privateKeyHex.toLowerCase());
   const pubkey = secp256k1.getPublicKey(priv, true);
   const ownerHash = hash160(pubkey);
   const ownScript = p2pkhScript(ownerHash);
 
-  const expected = addressToScript(params.fromAddress);
+  const expected = addressToScriptFor(params.fromAddress, version);
   if (bytesToHex(expected) !== bytesToHex(ownScript)) {
     throw new Error("The authorized key does not control the funding address");
   }
 
-  const toScript = addressToScript(params.toAddress);
+  const toScript = addressToScriptFor(params.toAddress, version);
   const target = BigInt(Math.round(params.amount * SATS));
   if (target < BigInt(DUST_SATS)) throw new Error("Amount is below the dust limit");
 
@@ -201,7 +215,7 @@ export function buildAndSignTransfer(params: BuildParams): BuiltTx {
 
   if (total < target + fee) {
     throw new Error(
-      `Insufficient balance on the authorized branch: need ${(Number(target + fee) / SATS).toFixed(8)} TXC, have ${(Number(total) / SATS).toFixed(8)} TXC`,
+      `Insufficient balance on the authorized branch: need ${(Number(target + fee) / SATS).toFixed(8)} ${ticker}, have ${(Number(total) / SATS).toFixed(8)} ${ticker}`,
     );
   }
 

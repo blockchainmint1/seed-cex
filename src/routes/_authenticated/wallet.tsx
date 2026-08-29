@@ -11,6 +11,7 @@ import {
 } from "@/lib/delegation.functions";
 import { CHAINS, EXPIRY_PRESETS, getChain, type ChainId } from "@/lib/chains";
 import { getAddressStats } from "@/lib/txc.functions";
+import { getUtxoBalances } from "@/lib/utxo.functions";
 import { getEvmPortfolio } from "@/lib/evm.functions";
 import {
   decryptMnemonic,
@@ -100,7 +101,7 @@ function Wallet() {
         throw new Error("That is not a valid BIP-39 recovery phrase");
       }
 
-      const { txcAddress, evmAddress } = deriveAddresses(mnemonic);
+      const { txcAddress, evmAddress, ltcAddress, iskAddress } = deriveAddresses(mnemonic);
       const vault = await encryptMnemonic(mnemonic, password);
 
       await persistWallet({
@@ -110,6 +111,8 @@ function Wallet() {
           kdfIterations: vault.iterations,
           txcAddress,
           evmAddress,
+          ltcAddress,
+          iskAddress,
         },
       });
       return mnemonic;
@@ -355,6 +358,15 @@ function Wallet() {
         </div>
       ) : null}
 
+      {hasWallet && (wallet.data!.ltc_address || wallet.data!.isk_address) ? (
+        <div className="mt-6">
+          <UtxoBalancesPanel
+            ltcAddress={wallet.data!.ltc_address}
+            iskAddress={wallet.data!.isk_address}
+          />
+        </div>
+      ) : null}
+
       {hasWallet ? (
         <div className="mt-6">
           <SharedAccessPanel wallet={wallet.data!} />
@@ -421,7 +433,7 @@ function SharedAccessPanel({
       const shared = deriveSharedKey(
         mnemonic,
         chain.sharedPath,
-        chain.evmChainId === null ? "txc" : "evm",
+        chain.evmChainId === null ? (chain.p2pkhVersion ?? 66) : "evm",
       );
       return grant({
         data: {
@@ -619,6 +631,48 @@ function SharedAccessPanel({
 
 
 
+/** Live balances on the Litecoin-family chains Seeds settles on. */
+function UtxoBalancesPanel({
+  ltcAddress,
+  iskAddress,
+}: {
+  ltcAddress: string | null;
+  iskAddress: string | null;
+}) {
+  const fetchBalances = useServerFn(getUtxoBalances);
+  const balances = useQuery({
+    queryKey: ["utxo-balances", ltcAddress, iskAddress],
+    queryFn: () => fetchBalances({ data: { ltcAddress, iskAddress } }),
+    refetchInterval: 120_000,
+  });
+
+  return (
+    <Panel title="Litecoin & Iskandercoin" kicker="Legacy receive addresses">
+      {balances.isPending ? (
+        <p className="font-mono text-xs text-muted-foreground">Reading chains…</p>
+      ) : (
+        <div className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
+          {(balances.data ?? []).map((b) =>
+            b.address ? (
+              <div key={b.chain} className="font-mono">
+                <p className="text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
+                  {b.symbol} address
+                </p>
+                <p className="mt-1 text-[11px] break-all text-foreground">
+                  <ExplorerLink chain={b.chain as ChainId} address={b.address} />
+                </p>
+                <p className="mt-1 text-sm tabular-nums text-foreground">
+                  {b.online ? fmtAmount(b.balance, 8) : "unavailable"}
+                </p>
+              </div>
+            ) : null,
+          )}
+        </div>
+      )}
+    </Panel>
+  );
+}
+
 /** Live balances for the same EVM address across Base, Ethereum, and BNB Chain. */
 function EvmBalancesPanel({ address }: { address: string }) {
   const fetchPortfolio = useServerFn(getEvmPortfolio);
@@ -629,7 +683,7 @@ function EvmBalancesPanel({ address }: { address: string }) {
   });
 
   return (
-    <Panel title="EVM balances" kicker="Base · Ethereum · BNB Chain">
+    <Panel title="EVM balances" kicker="Base · Ethereum · BNB Chain · ZeroChill">
       <p className="font-mono text-[11px] break-all text-muted-foreground">
         <ExplorerLink chain="ethereum" address={address} />
       </p>
