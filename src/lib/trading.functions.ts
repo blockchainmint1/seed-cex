@@ -77,7 +77,11 @@ export const updateMyWalletAddresses = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const patch: Record<string, string> = {};
+    const patch: {
+      evm_address?: string;
+      ltc_address?: string;
+      isk_address?: string;
+    } = {};
     if (data.evmAddress) patch.evm_address = data.evmAddress;
     if (data.ltcAddress) patch.ltc_address = data.ltcAddress;
     if (data.iskAddress) patch.isk_address = data.iskAddress;
