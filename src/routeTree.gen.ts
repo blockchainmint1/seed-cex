@@ -25,6 +25,7 @@ import { Route as TradeTsdTxcRouteImport } from './routes/trade.tsd-txc'
 import { Route as TradeLtcTsdRouteImport } from './routes/trade.ltc-tsd'
 import { Route as TradeIskTsdRouteImport } from './routes/trade.isk-tsd'
 import { Route as AuthenticatedWalletRouteImport } from './routes/_authenticated/wallet'
+import { Route as AuthenticatedTradesRouteImport } from './routes/_authenticated/trades'
 import { Route as ApiPublicCmcIndexRouteImport } from './routes/api/public/cmc/index'
 import { Route as ApiPublicCmcTickerRouteImport } from './routes/api/public/cmc/ticker'
 import { Route as ApiPublicCmcSummaryRouteImport } from './routes/api/public/cmc/summary'
@@ -111,6 +112,11 @@ const AuthenticatedWalletRoute = AuthenticatedWalletRouteImport.update({
   path: '/wallet',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedTradesRoute = AuthenticatedTradesRouteImport.update({
+  id: '/trades',
+  path: '/trades',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const ApiPublicCmcIndexRoute = ApiPublicCmcIndexRouteImport.update({
   id: '/api/public/cmc/',
   path: '/api/public/cmc/',
@@ -151,6 +157,7 @@ export interface FileRoutesByFullPath {
   '/manifesto': typeof ManifestoRoute
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
+  '/trades': typeof AuthenticatedTradesRoute
   '/wallet': typeof AuthenticatedWalletRoute
   '/trade/isk-tsd': typeof TradeIskTsdRoute
   '/trade/ltc-tsd': typeof TradeLtcTsdRoute
@@ -174,6 +181,7 @@ export interface FileRoutesByTo {
   '/manifesto': typeof ManifestoRoute
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
+  '/trades': typeof AuthenticatedTradesRoute
   '/wallet': typeof AuthenticatedWalletRoute
   '/trade/isk-tsd': typeof TradeIskTsdRoute
   '/trade/ltc-tsd': typeof TradeLtcTsdRoute
@@ -199,6 +207,7 @@ export interface FileRoutesById {
   '/manifesto': typeof ManifestoRoute
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
+  '/_authenticated/trades': typeof AuthenticatedTradesRoute
   '/_authenticated/wallet': typeof AuthenticatedWalletRoute
   '/trade/isk-tsd': typeof TradeIskTsdRoute
   '/trade/ltc-tsd': typeof TradeLtcTsdRoute
@@ -224,6 +233,7 @@ export interface FileRouteTypes {
     | '/manifesto'
     | '/privacy'
     | '/terms'
+    | '/trades'
     | '/wallet'
     | '/trade/isk-tsd'
     | '/trade/ltc-tsd'
@@ -247,6 +257,7 @@ export interface FileRouteTypes {
     | '/manifesto'
     | '/privacy'
     | '/terms'
+    | '/trades'
     | '/wallet'
     | '/trade/isk-tsd'
     | '/trade/ltc-tsd'
@@ -271,6 +282,7 @@ export interface FileRouteTypes {
     | '/manifesto'
     | '/privacy'
     | '/terms'
+    | '/_authenticated/trades'
     | '/_authenticated/wallet'
     | '/trade/isk-tsd'
     | '/trade/ltc-tsd'
@@ -425,6 +437,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWalletRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/trades': {
+      id: '/_authenticated/trades'
+      path: '/trades'
+      fullPath: '/trades'
+      preLoaderRoute: typeof AuthenticatedTradesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/api/public/cmc/': {
       id: '/api/public/cmc/'
       path: '/api/public/cmc'
@@ -471,10 +490,12 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedTradesRoute: typeof AuthenticatedTradesRoute
   AuthenticatedWalletRoute: typeof AuthenticatedWalletRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedTradesRoute: AuthenticatedTradesRoute,
   AuthenticatedWalletRoute: AuthenticatedWalletRoute,
 }
 
