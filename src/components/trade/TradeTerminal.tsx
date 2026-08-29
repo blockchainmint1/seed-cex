@@ -3,9 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { getMarketStats, getOrderBook, getPriceSeries, getTape } from "@/lib/market.functions";
-import { TxcLegPanel } from "@/components/trade/TxcLegPanel";
-import { UsdcLegPanel } from "@/components/trade/UsdcLegPanel";
-import { TsdLegPanel } from "@/components/trade/TsdLegPanel";
+import { LegPanel } from "@/components/trade/LegPanel";
 import {
   cancelOrder,
   getMyOrders,
@@ -98,7 +96,7 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
     queryFn: () => getReferencePrices(),
     refetchInterval: 60_000,
   });
-  const refQuote = ref.data?.quotes.find((q) => q.symbol === "TXC");
+  const refQuote = ref.data?.quotes.find((q) => q.symbol === pair.base);
   // How far the local book's last print sits from the global reference.
   const basisPct =
     ref.data?.txcUsd != null && ref.data.txcUsd > 0 && stats.data?.last != null
@@ -150,7 +148,7 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
       setFormError(null);
       setReceipt(
         res.filled > 0
-          ? `Filled ${fmtAmount(res.filled, 4)} TXC across ${res.tradeIds.length} escrowed trade(s)${
+          ? `Filled ${fmtAmount(res.filled, 4)} ${pair.base} across ${res.tradeIds.length} escrowed trade(s)${
               res.resting > 0 ? `, ${fmtAmount(res.resting, 4)} resting on the book` : ""
             }.`
           : "Order resting on the book — no crossing liquidity yet.",
@@ -233,7 +231,7 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
             24h volume
           </p>
           <p className="font-mono text-lg text-foreground tabular-nums">
-            {stats.data ? fmtAmount(stats.data.volume24h) : "—"} TXC
+            {stats.data ? fmtAmount(stats.data.volume24h) : "—"} {pair.base}
           </p>
         </div>
         <div>
@@ -294,7 +292,7 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
                       <span className={t.side === "buy" ? "text-bid" : "text-ask"}>
                         {t.side.toUpperCase()}
                       </span>
-                      <span className="tabular-nums">{fmtAmount(t.amount, 4)} TXC</span>
+                      <span className="tabular-nums">{fmtAmount(t.amount, 4)} {pair.base}</span>
                       <span className="tabular-nums">@ {fmtPrice(t.price)}</span>
                       <span className="text-muted-foreground">{t.role}</span>
                       <span className="rounded-sm border border-border px-2 py-0.5 tracking-wider uppercase">
@@ -303,15 +301,9 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
                       <span className="ml-auto text-muted-foreground">{fmtAgo(t.createdAt)}</span>
                     </div>
                     <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                      {t.escrows.map((e) =>
-                        e.leg === "txc" ? (
-                          <TxcLegPanel key={e.leg} tradeId={t.id} leg={e} />
-                        ) : e.leg === "tsd" ? (
-                          <TsdLegPanel key={e.leg} tradeId={t.id} leg={e} />
-                        ) : (
-                          <UsdcLegPanel key={e.leg} tradeId={t.id} leg={e} />
-                        ),
-                      )}
+                      {t.escrows.map((e) => (
+                        <LegPanel key={e.leg} tradeId={t.id} leg={e} />
+                      ))}
                     </div>
 
                   </li>
@@ -377,7 +369,7 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
           <div className="px-3 py-2 font-mono text-[10px] tracking-[0.14em] text-muted-foreground uppercase">
             <div className="flex justify-between">
               <span>Price</span>
-              <span>Size TXC</span>
+              <span>Size {pair.base}</span>
             </div>
           </div>
           <ul>
@@ -428,7 +420,7 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
                         : "border-border text-muted-foreground"
                     }`}
                   >
-                    {s === "buy" ? "Buy TXC" : "Sell TXC"}
+                    {s === "buy" ? `Buy ${pair.base}` : `Sell ${pair.base}`}
                   </button>
                 ))}
               </div>
@@ -445,7 +437,7 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
               />
 
               <label className="font-mono text-[10px] tracking-[0.16em] text-muted-foreground uppercase">
-                Amount (TXC)
+                Amount ({pair.base})
               </label>
               <input
                 value={amount}
@@ -479,7 +471,7 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
                     side === "buy" ? "bg-bid text-background" : "bg-ask text-background"
                   }`}
                 >
-                  {submit.isPending ? "Matching…" : `${side} TXC`}
+                  {submit.isPending ? "Matching…" : `${side} ${pair.base}`}
                 </button>
               ) : (
                 <Link
