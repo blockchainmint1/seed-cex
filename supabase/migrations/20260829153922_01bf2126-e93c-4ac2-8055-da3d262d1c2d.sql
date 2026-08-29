@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS public.wallet_delegations_user_chain_uidx;
