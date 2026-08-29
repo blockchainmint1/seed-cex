@@ -75,10 +75,13 @@ export async function allSnapshots(): Promise<PairSnapshot[]> {
 
 function quoteVolume(tape: TapeEntry[]): number {
   const cutoff = Date.now() - 86_400_000;
-  return tape
-    .filter((t) => new Date(t.createdAt).getTime() >= cutoff)
-    .reduce((sum, t) => sum + t.amount * t.price, 0);
+  const recent = tape.filter((t) => new Date(t.createdAt).getTime() >= cutoff);
+  // Mirror fetchStats: with no fills in the last 24h, fall back to the tape
+  // window so base_volume and quote_volume always describe the same trades.
+  const window = recent.length ? recent : tape;
+  return window.reduce((sum, t) => sum + t.amount * t.price, 0);
 }
+
 
 /** /summary — one flat array of every market. */
 export function toSummary(snaps: PairSnapshot[]) {
