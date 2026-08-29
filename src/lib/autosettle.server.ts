@@ -48,6 +48,8 @@ export async function autoSettleTrade(tradeId: string): Promise<AutoLegResult[]>
     .maybeSingle();
   if (!trade) return [];
   if (trade.status === "settled" || trade.status === "disputed") return [];
+  const actor = trade.maker_id;
+  if (!actor) return [];
 
   const { data: legs } = await supabaseAdmin
     .from("escrows")
@@ -60,13 +62,13 @@ export async function autoSettleTrade(tradeId: string): Promise<AutoLegResult[]>
     // Already broadcast? Never send twice.
     if (row.release_txid && !row.release_txid.startsWith("sim-")) continue;
     try {
-      results.push(await settleOne(trade.maker_id, tradeId, leg));
+      results.push(await settleOne(actor, tradeId, leg));
     } catch (e) {
       const message = e instanceof Error ? e.message : "Settlement failed";
       results.push({ leg, ok: false, error: message });
       await supabaseAdmin.from("trade_events").insert({
         trade_id: tradeId,
-        actor_id: trade.maker_id,
+        actor_id: actor,
         event: `${leg}_autosettle_failed`,
         detail: { error: message },
       });
