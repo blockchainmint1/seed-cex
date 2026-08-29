@@ -288,6 +288,10 @@ function Wallet() {
       ) : (
         <>
           <div className="mt-8">
+            <SharedAccessPanel wallet={wallet.data!} />
+          </div>
+
+          <div className="mt-6">
             <SpotBalances wallet={wallet.data!} />
           </div>
 
@@ -315,16 +319,49 @@ function Wallet() {
                 </span>
                 .
               </p>
+
+              <div className="mt-6 border-t border-border pt-5">
+                <p className="mb-3 font-mono text-[10px] tracking-[0.2em] text-primary uppercase">
+                  Change vault password
+                </p>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="New password (10+ characters)"
+                  maxLength={200}
+                  className="mb-3 w-full rounded-sm border border-input bg-background px-3 py-2.5 font-mono text-sm outline-none focus:border-primary"
+                />
+                <input
+                  type="password"
+                  value={newPasswordConfirm}
+                  onChange={(e) => setNewPasswordConfirm(e.target.value)}
+                  placeholder="Confirm new password"
+                  maxLength={200}
+                  className="mb-3 w-full rounded-sm border border-input bg-background px-3 py-2.5 font-mono text-sm outline-none focus:border-primary"
+                />
+                <button
+                  onClick={() => changePassword.mutate()}
+                  disabled={changePassword.isPending}
+                  className="w-full rounded-sm border border-border px-4 py-2.5 font-mono text-xs tracking-[0.16em] text-foreground uppercase disabled:opacity-50"
+                >
+                  {changePassword.isPending ? "Re-encrypting…" : "Re-encrypt vault"}
+                </button>
+                <p className="mt-3 font-mono text-[11px] leading-relaxed text-muted-foreground">
+                  Enter your current password above, then the new one here. The phrase is decrypted
+                  and re-encrypted in this tab — your addresses and funds are unchanged.
+                </p>
+                {passwordNotice ? (
+                  <p className="mt-3 font-mono text-[11px] text-bid">{passwordNotice}</p>
+                ) : null}
+              </div>
             </Panel>
 
             <WithdrawalHistory />
           </div>
-
-          <div className="mt-6">
-            <SharedAccessPanel wallet={wallet.data!} />
-          </div>
         </>
       )}
+
     </div>
   );
 }
