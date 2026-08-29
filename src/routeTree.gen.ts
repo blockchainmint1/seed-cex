@@ -24,6 +24,7 @@ import { Route as TradeTsdTxcRouteImport } from './routes/trade.tsd-txc'
 import { Route as TradeLtcTsdRouteImport } from './routes/trade.ltc-tsd'
 import { Route as TradeIskTsdRouteImport } from './routes/trade.isk-tsd'
 import { Route as AuthenticatedWalletRouteImport } from './routes/_authenticated/wallet'
+import { Route as ApiPublicCmcTickerRouteImport } from './routes/api/public/cmc/ticker'
 import { Route as ApiPublicCmcSummaryRouteImport } from './routes/api/public/cmc/summary'
 import { Route as ApiPublicCmcAssetsRouteImport } from './routes/api/public/cmc/assets'
 
@@ -101,6 +102,11 @@ const AuthenticatedWalletRoute = AuthenticatedWalletRouteImport.update({
   path: '/wallet',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiPublicCmcTickerRoute = ApiPublicCmcTickerRouteImport.update({
+  id: '/api/public/cmc/ticker',
+  path: '/api/public/cmc/ticker',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicCmcSummaryRoute = ApiPublicCmcSummaryRouteImport.update({
   id: '/api/public/cmc/summary',
   path: '/api/public/cmc/summary',
@@ -129,6 +135,7 @@ export interface FileRoutesByFullPath {
   '/trade/zcu-tsd': typeof TradeZcuTsdRoute
   '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
   '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
+  '/api/public/cmc/ticker': typeof ApiPublicCmcTickerRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -147,6 +154,7 @@ export interface FileRoutesByTo {
   '/trade/zcu-tsd': typeof TradeZcuTsdRoute
   '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
   '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
+  '/api/public/cmc/ticker': typeof ApiPublicCmcTickerRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -167,6 +175,7 @@ export interface FileRoutesById {
   '/trade/zcu-tsd': typeof TradeZcuTsdRoute
   '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
   '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
+  '/api/public/cmc/ticker': typeof ApiPublicCmcTickerRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -187,6 +196,7 @@ export interface FileRouteTypes {
     | '/trade/zcu-tsd'
     | '/api/public/cmc/assets'
     | '/api/public/cmc/summary'
+    | '/api/public/cmc/ticker'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -205,6 +215,7 @@ export interface FileRouteTypes {
     | '/trade/zcu-tsd'
     | '/api/public/cmc/assets'
     | '/api/public/cmc/summary'
+    | '/api/public/cmc/ticker'
   id:
     | '__root__'
     | '/'
@@ -224,6 +235,7 @@ export interface FileRouteTypes {
     | '/trade/zcu-tsd'
     | '/api/public/cmc/assets'
     | '/api/public/cmc/summary'
+    | '/api/public/cmc/ticker'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -243,6 +255,7 @@ export interface RootRouteChildren {
   TradeZcuTsdRoute: typeof TradeZcuTsdRoute
   ApiPublicCmcAssetsRoute: typeof ApiPublicCmcAssetsRoute
   ApiPublicCmcSummaryRoute: typeof ApiPublicCmcSummaryRoute
+  ApiPublicCmcTickerRoute: typeof ApiPublicCmcTickerRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -352,6 +365,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWalletRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/public/cmc/ticker': {
+      id: '/api/public/cmc/ticker'
+      path: '/api/public/cmc/ticker'
+      fullPath: '/api/public/cmc/ticker'
+      preLoaderRoute: typeof ApiPublicCmcTickerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/cmc/summary': {
       id: '/api/public/cmc/summary'
       path: '/api/public/cmc/summary'
@@ -397,6 +417,7 @@ const rootRouteChildren: RootRouteChildren = {
   TradeZcuTsdRoute: TradeZcuTsdRoute,
   ApiPublicCmcAssetsRoute: ApiPublicCmcAssetsRoute,
   ApiPublicCmcSummaryRoute: ApiPublicCmcSummaryRoute,
+  ApiPublicCmcTickerRoute: ApiPublicCmcTickerRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
