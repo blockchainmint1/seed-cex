@@ -591,15 +591,17 @@ function DepositModal({ row, onClose }: { row: SpotRow; onClose: () => void }) {
         derived from your own seed.
       </p>
       {address ? (
-        <div className="mt-4 flex justify-center rounded-sm border border-border bg-white p-4">
-          <QRCodeSVG
-            value={address}
-            size={180}
-            bgColor="#ffffff"
-            fgColor="#0F172A"
-            level="M"
-            includeMargin={false}
-          />
+        <div className="mt-5 flex justify-center">
+          <div className="rounded-xl bg-[#f2f8ef] p-3.5 shadow-[inset_0_0_0_1px_oklch(0.87_0.03_150),0_10px_28px_-14px_oklch(0.2_0.05_150/55%)]">
+            <QRCodeSVG
+              value={address}
+              size={164}
+              bgColor="transparent"
+              fgColor="#17301d"
+              level="M"
+              includeMargin={false}
+            />
+          </div>
         </div>
       ) : null}
       <div className="mt-4 rounded-sm border border-border bg-background p-4">

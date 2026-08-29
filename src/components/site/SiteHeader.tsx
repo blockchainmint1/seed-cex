@@ -1,6 +1,8 @@
 import { Link, useNavigate } from "@tanstack/react-router";
+import { Moon, Sun } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
+import { useTheme } from "@/hooks/use-theme";
 
 const nav = [
   { label: "Markets", to: "/trade/tsd-txc" },
@@ -10,6 +12,7 @@ const nav = [
 
 export function SiteHeader() {
   const { user, loading } = useSession();
+  const { theme, toggle } = useTheme();
   const navigate = useNavigate();
 
   async function signOut() {
@@ -45,6 +48,13 @@ export function SiteHeader() {
         </nav>
 
         <div className="ml-auto flex items-center gap-3 font-mono text-xs">
+          <button
+            onClick={toggle}
+            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            className="flex h-8 w-8 items-center justify-center rounded-sm border border-border text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+          >
+            {theme === "dark" ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+          </button>
           {loading ? null : user ? (
             <>
               <span className="hidden text-muted-foreground sm:inline">{user.email}</span>

@@ -80,9 +80,66 @@
 /*
  * Seeds runs dark-first: a trading instrument, not a brochure.
  * Deep forest-floor substrate, live sprout-green accent, market green + rust.
+ * :root = light "daylight meadow" palette; .dark = the forest-floor default.
  */
 :root {
+  color-scheme: light;
   --radius: 0.25rem;
+
+  --background: oklch(0.965 0.012 150);
+  --foreground: oklch(0.24 0.03 152);
+  --surface: oklch(0.94 0.014 150);
+  --surface-raised: oklch(0.99 0.006 150);
+  --grid: oklch(0.9 0.016 150);
+
+  --card: oklch(0.985 0.008 150);
+  --card-foreground: oklch(0.24 0.03 152);
+  --popover: oklch(0.985 0.008 150);
+  --popover-foreground: oklch(0.24 0.03 152);
+
+  --primary: oklch(0.56 0.15 148);
+  --primary-foreground: oklch(0.98 0.01 140);
+
+  --secondary: oklch(0.92 0.02 150);
+  --secondary-foreground: oklch(0.26 0.03 152);
+
+  --muted: oklch(0.93 0.015 150);
+  --muted-foreground: oklch(0.46 0.03 148);
+
+  --accent: oklch(0.91 0.03 150);
+  --accent-foreground: oklch(0.24 0.03 152);
+
+  --destructive: oklch(0.55 0.2 27);
+  --destructive-foreground: oklch(0.98 0.01 140);
+
+  --bid: oklch(0.58 0.17 148);
+  --bid-muted: oklch(0.58 0.17 148 / 14%);
+  --ask: oklch(0.56 0.2 30);
+  --ask-muted: oklch(0.56 0.2 30 / 14%);
+  --warn: oklch(0.68 0.15 86);
+
+  --border: oklch(0.87 0.02 150);
+  --input: oklch(0.87 0.02 150);
+  --ring: oklch(0.56 0.15 148);
+
+  --chart-1: oklch(0.56 0.15 148);
+  --chart-2: oklch(0.58 0.17 132);
+  --chart-3: oklch(0.56 0.2 30);
+  --chart-4: oklch(0.6 0.1 200);
+  --chart-5: oklch(0.5 0.03 145);
+
+  --sidebar: oklch(0.95 0.013 150);
+  --sidebar-foreground: oklch(0.24 0.03 152);
+  --sidebar-primary: oklch(0.56 0.15 148);
+  --sidebar-primary-foreground: oklch(0.98 0.01 140);
+  --sidebar-accent: oklch(0.92 0.02 150);
+  --sidebar-accent-foreground: oklch(0.24 0.03 152);
+  --sidebar-border: oklch(0.87 0.02 150);
+  --sidebar-ring: oklch(0.56 0.15 148);
+}
+
+.dark {
+  color-scheme: dark;
 
   --background: oklch(0.158 0.014 152);
   --foreground: oklch(0.93 0.014 140);
@@ -136,18 +193,9 @@
   --sidebar-ring: oklch(0.76 0.175 143);
 }
 
-/* Seeds is dark-only for now; .dark exists so shadcn variants keep working. */
-.dark {
-  color-scheme: dark;
-}
-
 @layer base {
   * {
     border-color: var(--color-border);
-  }
-
-  html {
-    color-scheme: dark;
   }
 
   body {
