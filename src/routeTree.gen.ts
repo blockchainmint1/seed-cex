@@ -25,6 +25,7 @@ import { Route as TradeLtcTsdRouteImport } from './routes/trade.ltc-tsd'
 import { Route as TradeIskTsdRouteImport } from './routes/trade.isk-tsd'
 import { Route as AuthenticatedWalletRouteImport } from './routes/_authenticated/wallet'
 import { Route as ApiPublicCmcSummaryRouteImport } from './routes/api/public/cmc/summary'
+import { Route as ApiPublicCmcAssetsRouteImport } from './routes/api/public/cmc/assets'
 
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
@@ -105,6 +106,11 @@ const ApiPublicCmcSummaryRoute = ApiPublicCmcSummaryRouteImport.update({
   path: '/api/public/cmc/summary',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicCmcAssetsRoute = ApiPublicCmcAssetsRouteImport.update({
+  id: '/api/public/cmc/assets',
+  path: '/api/public/cmc/assets',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -121,6 +127,7 @@ export interface FileRoutesByFullPath {
   '/trade/txc-usdt': typeof TradeTxcUsdtRoute
   '/trade/usdc-txc': typeof TradeUsdcTxcRoute
   '/trade/zcu-tsd': typeof TradeZcuTsdRoute
+  '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
   '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
 }
 export interface FileRoutesByTo {
@@ -138,6 +145,7 @@ export interface FileRoutesByTo {
   '/trade/txc-usdt': typeof TradeTxcUsdtRoute
   '/trade/usdc-txc': typeof TradeUsdcTxcRoute
   '/trade/zcu-tsd': typeof TradeZcuTsdRoute
+  '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
   '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
 }
 export interface FileRoutesById {
@@ -157,6 +165,7 @@ export interface FileRoutesById {
   '/trade/txc-usdt': typeof TradeTxcUsdtRoute
   '/trade/usdc-txc': typeof TradeUsdcTxcRoute
   '/trade/zcu-tsd': typeof TradeZcuTsdRoute
+  '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
   '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
 }
 export interface FileRouteTypes {
@@ -176,6 +185,7 @@ export interface FileRouteTypes {
     | '/trade/txc-usdt'
     | '/trade/usdc-txc'
     | '/trade/zcu-tsd'
+    | '/api/public/cmc/assets'
     | '/api/public/cmc/summary'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -193,6 +203,7 @@ export interface FileRouteTypes {
     | '/trade/txc-usdt'
     | '/trade/usdc-txc'
     | '/trade/zcu-tsd'
+    | '/api/public/cmc/assets'
     | '/api/public/cmc/summary'
   id:
     | '__root__'
@@ -211,6 +222,7 @@ export interface FileRouteTypes {
     | '/trade/txc-usdt'
     | '/trade/usdc-txc'
     | '/trade/zcu-tsd'
+    | '/api/public/cmc/assets'
     | '/api/public/cmc/summary'
   fileRoutesById: FileRoutesById
 }
@@ -229,6 +241,7 @@ export interface RootRouteChildren {
   TradeTxcUsdtRoute: typeof TradeTxcUsdtRoute
   TradeUsdcTxcRoute: typeof TradeUsdcTxcRoute
   TradeZcuTsdRoute: typeof TradeZcuTsdRoute
+  ApiPublicCmcAssetsRoute: typeof ApiPublicCmcAssetsRoute
   ApiPublicCmcSummaryRoute: typeof ApiPublicCmcSummaryRoute
 }
 
@@ -346,6 +359,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCmcSummaryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cmc/assets': {
+      id: '/api/public/cmc/assets'
+      path: '/api/public/cmc/assets'
+      fullPath: '/api/public/cmc/assets'
+      preLoaderRoute: typeof ApiPublicCmcAssetsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -375,6 +395,7 @@ const rootRouteChildren: RootRouteChildren = {
   TradeTxcUsdtRoute: TradeTxcUsdtRoute,
   TradeUsdcTxcRoute: TradeUsdcTxcRoute,
   TradeZcuTsdRoute: TradeZcuTsdRoute,
+  ApiPublicCmcAssetsRoute: ApiPublicCmcAssetsRoute,
   ApiPublicCmcSummaryRoute: ApiPublicCmcSummaryRoute,
 }
 export const routeTree = rootRouteImport
