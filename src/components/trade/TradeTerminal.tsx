@@ -190,11 +190,11 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
           <h1 className="font-display text-2xl font-black tracking-tight text-foreground">
             {pair.label}
           </h1>
-          <nav className="mt-2 flex gap-2">
+          <nav className="mt-2 flex flex-wrap gap-2">
             {PAIRS.map((p) => (
               <Link
                 key={p.id}
-                to={p.slug === "tsd-txc" ? "/trade/tsd-txc" : "/trade/usdc-txc"}
+                to={`/trade/${p.slug}` as string}
                 className={`rounded-sm border px-2 py-0.5 font-mono text-[10px] tracking-[0.14em] uppercase ${
                   p.id === PAIR
                     ? "border-primary text-primary"
