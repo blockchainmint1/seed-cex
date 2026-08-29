@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { getMyWallet, markWalletBackedUp, saveMyWallet } from "@/lib/trading.functions";
 import {
   listAuthorizations,
@@ -9,10 +9,16 @@ import {
   revokeAuthorization,
   revokeAllAuthorizations,
 } from "@/lib/delegation.functions";
-import { CHAINS, EXPIRY_PRESETS, getChain, type ChainId } from "@/lib/chains";
+import { CHAINS, EXPIRY_PRESETS, PAIRS, getChain, type ChainId, type LegId } from "@/lib/chains";
 import { getAddressStats } from "@/lib/txc.functions";
 import { getUtxoBalances } from "@/lib/utxo.functions";
 import { getEvmPortfolio } from "@/lib/evm.functions";
+import { getTsdBalance } from "@/lib/omni.functions";
+import {
+  listMyWithdrawals,
+  previewWithdrawalFn,
+  requestWithdrawal,
+} from "@/lib/withdrawal.functions";
 import {
   decryptMnemonic,
   deriveAddresses,
@@ -27,16 +33,16 @@ import { ExplorerLink } from "@/components/site/ExplorerLink";
 export const Route = createFileRoute("/_authenticated/wallet")({
   head: () => ({
     meta: [
-      { title: "Wallet Vault — Seeds" },
+      { title: "Spot Balances — Seeds" },
       {
         name: "description",
         content:
-          "Create or unlock your browser-encrypted Seeds wallet, view your TEXITcoin balance, and back up your recovery phrase.",
+          "Your Seeds spot wallet: live balances across every chain, deposit addresses, withdrawals, and capped trading authorizations.",
       },
-      { property: "og:title", content: "Wallet Vault — Seeds" },
+      { property: "og:title", content: "Spot Balances — Seeds" },
       {
         property: "og:description",
-        content: "Browser-encrypted recovery phrase, TXC balance, and backup status.",
+        content: "Balances, deposits, and withdrawals — non-custodial, straight from your own keys.",
       },
     ],
   }),
@@ -72,16 +78,8 @@ function Wallet() {
   const fetchWallet = useServerFn(getMyWallet);
   const persistWallet = useServerFn(saveMyWallet);
   const confirmBackup = useServerFn(markWalletBackedUp);
-  const fetchStats = useServerFn(getAddressStats);
 
   const wallet = useQuery({ queryKey: ["my-wallet"], queryFn: () => fetchWallet() });
-
-  const balance = useQuery({
-    queryKey: ["txc-balance", wallet.data?.txc_address],
-    queryFn: () => fetchStats({ data: { address: wallet.data!.txc_address } }),
-    enabled: Boolean(wallet.data?.txc_address),
-    refetchInterval: 90_000,
-  });
 
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -156,14 +154,15 @@ function Wallet() {
   const hasWallet = Boolean(wallet.data);
 
   return (
-    <div className="mx-auto max-w-5xl px-5 py-12">
-      <p className="font-mono text-[11px] tracking-[0.24em] text-primary uppercase">Vault</p>
+    <div className="mx-auto max-w-6xl px-5 py-12">
+      <p className="font-mono text-[11px] tracking-[0.24em] text-primary uppercase">Wallet</p>
       <h1 className="mt-3 font-display text-3xl font-black tracking-tight text-foreground uppercase">
-        Your wallet
+        Spot balances
       </h1>
       <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-        Everything below happens in this browser tab. Seeds receives only the encrypted blob and
-        your public addresses — never the phrase, never the password.
+        Your coins live at your own addresses — Seeds never takes a deposit. Vault encryption and
+        decryption happen in this browser tab; the server only ever sees the encrypted blob and
+        your public addresses.
       </p>
 
       {error ? (
@@ -207,8 +206,8 @@ function Wallet() {
         </div>
       ) : null}
 
-      <div className="mt-8 grid gap-6 md:grid-cols-2">
-        {!hasWallet ? (
+      {!hasWallet ? (
+        <div className="mt-8 max-w-xl">
           <Panel title={tab === "create" ? "Generate a vault" : "Import a phrase"} kicker="Step 1">
             <div className="mb-5 flex gap-2">
               {(["create", "import"] as const).map((t) => (
@@ -264,126 +263,547 @@ function Wallet() {
               600,000 PBKDF2 rounds · AES-256-GCM · nothing readable leaves this tab.
             </p>
           </Panel>
-        ) : (
-          <Panel title="Unlock" kicker="Local decryption">
-            <input
-              type="password"
-              value={unlockPassword}
-              onChange={(e) => setUnlockPassword(e.target.value)}
-              placeholder="Vault password"
-              maxLength={200}
-              className="mb-4 w-full rounded-sm border border-input bg-background px-3 py-2.5 font-mono text-sm outline-none focus:border-primary"
-            />
-            <button
-              onClick={() => unlock.mutate()}
-              disabled={unlock.isPending}
-              className="w-full rounded-sm border border-primary px-4 py-3 font-mono text-xs tracking-[0.16em] text-primary uppercase disabled:opacity-50"
-            >
-              {unlock.isPending ? "Decrypting…" : "Reveal recovery phrase"}
-            </button>
-            <p className="mt-3 font-mono text-[11px] leading-relaxed text-muted-foreground">
-              Decryption runs locally. A wrong password simply fails — there is no reset.
-            </p>
-          </Panel>
-        )}
+        </div>
+      ) : (
+        <>
+          <div className="mt-8">
+            <SpotBalances wallet={wallet.data!} />
+          </div>
 
-        <Panel title="Balances" kicker="TEXITcoin mainnet">
-          {!hasWallet ? (
-            <p className="font-mono text-xs text-muted-foreground">
-              Create a vault to get a receive address.
-            </p>
-          ) : (
-            <dl className="space-y-4 font-mono text-sm">
-              <div>
-                <dt className="text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
-                  TXC address
-                </dt>
-                <dd className="mt-1 break-all text-foreground">
-                  <ExplorerLink chain="txc" address={wallet.data!.txc_address} />
-                </dd>
-              </div>
-              <div className="flex gap-8">
-                <div>
-                  <dt className="text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
-                    Confirmed
-                  </dt>
-                  <dd className="mt-1 text-xl text-foreground tabular-nums">
-                    {balance.data ? fmtAmount(balance.data.confirmed, 8) : "—"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
-                    Pending
-                  </dt>
-                  <dd className="mt-1 text-xl text-foreground tabular-nums">
-                    {balance.data ? fmtAmount(balance.data.unconfirmed, 8) : "—"}
-                  </dd>
-                </div>
-              </div>
-              {wallet.data!.evm_address ? (
-                <div>
-                  <dt className="text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
-                    USDC (EVM) address
-                  </dt>
-                  <dd className="mt-1 break-all text-foreground">
-                    <ExplorerLink chain="ethereum" address={wallet.data!.evm_address} />
-                  </dd>
-                  <p className="mt-1 flex gap-3 text-[10px] tracking-[0.14em] text-muted-foreground uppercase">
-                    {(["base", "ethereum", "bsc"] as const).map((c) => (
-                      <ExplorerLink key={c} chain={c} address={wallet.data!.evm_address!}>
-                        {getChain(c).name}
-                      </ExplorerLink>
-                    ))}
-                  </p>
+          <div className="mt-6 grid gap-6 lg:grid-cols-2">
+            <Panel title="Unlock vault" kicker="Local decryption">
+              <input
+                type="password"
+                value={unlockPassword}
+                onChange={(e) => setUnlockPassword(e.target.value)}
+                placeholder="Vault password"
+                maxLength={200}
+                className="mb-4 w-full rounded-sm border border-input bg-background px-3 py-2.5 font-mono text-sm outline-none focus:border-primary"
+              />
+              <button
+                onClick={() => unlock.mutate()}
+                disabled={unlock.isPending}
+                className="w-full rounded-sm border border-primary px-4 py-3 font-mono text-xs tracking-[0.16em] text-primary uppercase disabled:opacity-50"
+              >
+                {unlock.isPending ? "Decrypting…" : "Reveal recovery phrase"}
+              </button>
+              <p className="mt-3 font-mono text-[11px] leading-relaxed text-muted-foreground">
+                Decryption runs locally. Backup status:{" "}
+                <span className={wallet.data!.backed_up ? "text-bid" : "text-warn"}>
+                  {wallet.data!.backed_up ? "confirmed" : "not confirmed"}
+                </span>
+                .
+              </p>
+            </Panel>
 
+            <WithdrawalHistory />
+          </div>
 
-                </div>
-              ) : null}
-              <div>
-                <dt className="text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
-                  Backup status
-                </dt>
-                <dd className={wallet.data!.backed_up ? "mt-1 text-bid" : "mt-1 text-warn"}>
-                  {wallet.data!.backed_up ? "Confirmed backed up" : "Not confirmed — reveal and write it down"}
-                </dd>
-              </div>
-            </dl>
-          )}
-        </Panel>
+          <div className="mt-6">
+            <SharedAccessPanel wallet={wallet.data!} />
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------ spot balances ----------------------------- */
+
+type SpotRow = {
+  key: string;
+  symbol: string;
+  name: string;
+  chain: ChainId;
+  chainName: string;
+  balance: number | null;
+  pending?: number | null;
+  online: boolean;
+  address: string | null;
+  leg: LegId | null;
+  tradeSlug: string | null;
+};
+
+function tradeSlugFor(symbol: string): string | null {
+  const pair = PAIRS.find((p) => p.base === symbol || p.quote === symbol);
+  return pair ? pair.slug : null;
+}
+
+function SpotBalances({
+  wallet,
+}: {
+  wallet: {
+    txc_address: string;
+    evm_address: string | null;
+    ltc_address: string | null;
+    isk_address: string | null;
+  };
+}) {
+  const fetchStats = useServerFn(getAddressStats);
+  const fetchTsd = useServerFn(getTsdBalance);
+  const fetchUtxo = useServerFn(getUtxoBalances);
+  const fetchPortfolio = useServerFn(getEvmPortfolio);
+  const fetchAuths = useServerFn(listAuthorizations);
+
+  const txc = useQuery({
+    queryKey: ["txc-balance", wallet.txc_address],
+    queryFn: () => fetchStats({ data: { address: wallet.txc_address } }),
+    refetchInterval: 90_000,
+  });
+  const tsd = useQuery({
+    queryKey: ["tsd-balance", wallet.txc_address],
+    queryFn: () => fetchTsd({ data: { address: wallet.txc_address } }),
+    refetchInterval: 90_000,
+  });
+  const utxo = useQuery({
+    queryKey: ["utxo-balances", wallet.ltc_address, wallet.isk_address],
+    queryFn: () => fetchUtxo({ data: { ltcAddress: wallet.ltc_address, iskAddress: wallet.isk_address } }),
+    refetchInterval: 120_000,
+  });
+  const evm = useQuery({
+    queryKey: ["evm-portfolio", wallet.evm_address],
+    queryFn: () => fetchPortfolio({ data: { address: wallet.evm_address! } }),
+    enabled: Boolean(wallet.evm_address),
+    refetchInterval: 120_000,
+  });
+  const auths = useQuery({
+    queryKey: ["authorizations"],
+    queryFn: () => fetchAuths(),
+    refetchInterval: 60_000,
+  });
+
+  const authorizedAssets = useMemo(
+    () => new Set((auths.data ?? []).map((a) => a.asset)),
+    [auths.data],
+  );
+
+  const rows: SpotRow[] = useMemo(() => {
+    const out: SpotRow[] = [];
+    out.push({
+      key: "txc",
+      symbol: "TXC",
+      name: "TEXITcoin",
+      chain: "txc",
+      chainName: "TEXITcoin",
+      balance: txc.data ? txc.data.confirmed : null,
+      pending: txc.data ? txc.data.unconfirmed : null,
+      online: Boolean(txc.data),
+      address: wallet.txc_address,
+      leg: "txc",
+      tradeSlug: tradeSlugFor("TXC"),
+    });
+    out.push({
+      key: "tsd",
+      symbol: "TSD",
+      name: "Texas Stable Dollar",
+      chain: "txc",
+      chainName: "TEXITcoin · Omni #39",
+      balance: tsd.data ? tsd.data.balance : null,
+      online: Boolean(tsd.data?.online),
+      address: wallet.txc_address,
+      leg: "tsd",
+      tradeSlug: tradeSlugFor("TSD"),
+    });
+    for (const b of utxo.data ?? []) {
+      if (!b.address) continue;
+      out.push({
+        key: b.chain,
+        symbol: b.symbol,
+        name: getChain(b.chain).name,
+        chain: b.chain as ChainId,
+        chainName: getChain(b.chain).name,
+        balance: b.online ? b.balance : null,
+        online: b.online,
+        address: b.address,
+        leg: b.chain as LegId,
+        tradeSlug: tradeSlugFor(b.symbol),
+      });
+    }
+    for (const b of evm.data ?? []) {
+      const leg =
+        b.symbol === "USDC" ? "usdc" : b.symbol === "USDT" ? "usdt" : b.symbol === "ZCU" ? "zcu" : null;
+      out.push({
+        key: `${b.chain}-${b.symbol}`,
+        symbol: b.symbol,
+        name: b.chainName,
+        chain: b.chain as ChainId,
+        chainName: b.chainName,
+        balance: b.online ? b.balance : null,
+        online: b.online,
+        address: wallet.evm_address,
+        leg,
+        tradeSlug: tradeSlugFor(b.symbol),
+      });
+    }
+    return out;
+  }, [txc.data, tsd.data, utxo.data, evm.data, wallet]);
+
+  const [depositRow, setDepositRow] = useState<SpotRow | null>(null);
+  const [withdrawRow, setWithdrawRow] = useState<SpotRow | null>(null);
+
+  const loading = txc.isPending && utxo.isPending && evm.isPending;
+
+  return (
+    <section className="rounded-sm border border-border bg-surface">
+      <header className="flex items-center justify-between border-b border-border px-5 py-3">
+        <div>
+          <p className="font-mono text-[10px] tracking-[0.2em] text-primary uppercase">
+            Spot account
+          </p>
+          <h2 className="font-display text-sm font-bold tracking-[0.1em] text-foreground uppercase">
+            Balances
+          </h2>
+        </div>
+        <p className="font-mono text-[10px] tracking-[0.14em] text-muted-foreground uppercase">
+          Non-custodial · your keys
+        </p>
+      </header>
+
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[760px] font-mono text-xs">
+          <thead>
+            <tr className="border-b border-border text-left text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
+              <th className="px-5 py-2.5 font-normal">Asset</th>
+              <th className="py-2.5 pr-4 font-normal">Network</th>
+              <th className="py-2.5 pr-4 font-normal text-right">Available</th>
+              <th className="py-2.5 pr-4 font-normal text-right">Deposit</th>
+              <th className="py-2.5 pr-4 font-normal text-right">Withdraw</th>
+              <th className="px-5 py-2.5 font-normal text-right">Trade</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.key} className="border-b border-border/50 last:border-0">
+                <td className="px-5 py-3">
+                  <p className="font-semibold text-foreground">{r.symbol}</p>
+                  <p className="mt-0.5 text-[10px] text-muted-foreground">{r.name}</p>
+                </td>
+                <td className="py-3 pr-4 text-muted-foreground">{r.chainName}</td>
+                <td className="py-3 pr-4 text-right tabular-nums text-foreground">
+                  {r.balance === null ? (
+                    <span className="text-muted-foreground">{r.online ? "…" : "unavailable"}</span>
+                  ) : (
+                    <>
+                      {fmtAmount(r.balance, r.balance >= 1000 ? 2 : 6)}
+                      {r.pending !== null && r.pending !== undefined && r.pending !== 0 ? (
+                        <span className="block text-[10px] text-warn">
+                          +{fmtAmount(r.pending, 8)} pending
+                        </span>
+                      ) : null}
+                    </>
+                  )}
+                </td>
+                <td className="py-3 pr-4 text-right">
+                  <button
+                    onClick={() => setDepositRow(r)}
+                    className="rounded-sm border border-border px-3 py-1.5 text-[10px] tracking-[0.14em] text-foreground uppercase transition-colors hover:border-primary hover:text-primary"
+                  >
+                    Deposit
+                  </button>
+                </td>
+                <td className="py-3 pr-4 text-right">
+                  {r.leg ? (
+                    <button
+                      onClick={() => setWithdrawRow(r)}
+                      className={`rounded-sm border px-3 py-1.5 text-[10px] tracking-[0.14em] uppercase transition-colors ${
+                        authorizedAssets.has(r.symbol)
+                          ? "border-border text-foreground hover:border-primary hover:text-primary"
+                          : "border-border/50 text-muted-foreground"
+                      }`}
+                    >
+                      Withdraw
+                    </button>
+                  ) : (
+                    <span className="text-[10px] text-muted-foreground">gas only</span>
+                  )}
+                </td>
+                <td className="px-5 py-3 text-right">
+                  {r.tradeSlug ? (
+                    <Link
+                      to="/trade/$pair"
+                      params={{ pair: r.tradeSlug }}
+                      className="text-[10px] tracking-[0.14em] text-primary uppercase hover:underline"
+                    >
+                      Trade →
+                    </Link>
+                  ) : (
+                    <span className="text-[10px] text-muted-foreground">—</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
-
-      {hasWallet && wallet.data!.evm_address ? (
-        <div className="mt-6">
-          <EvmBalancesPanel address={wallet.data!.evm_address} />
-        </div>
+      {loading ? (
+        <p className="border-t border-border px-5 py-3 font-mono text-[10px] text-muted-foreground">
+          Reading chains…
+        </p>
       ) : null}
 
-      {hasWallet && (wallet.data!.ltc_address || wallet.data!.isk_address) ? (
-        <div className="mt-6">
-          <UtxoBalancesPanel
-            ltcAddress={wallet.data!.ltc_address}
-            iskAddress={wallet.data!.isk_address}
-          />
-        </div>
+      {depositRow ? <DepositModal row={depositRow} onClose={() => setDepositRow(null)} /> : null}
+      {withdrawRow ? (
+        <WithdrawModal
+          row={withdrawRow}
+          authorized={authorizedAssets.has(withdrawRow.symbol)}
+          onClose={() => setWithdrawRow(null)}
+        />
       ) : null}
+    </section>
+  );
+}
 
-      {hasWallet ? (
-        <div className="mt-6">
-          <SharedAccessPanel wallet={wallet.data!} />
-        </div>
-      ) : null}
+/* --------------------------------- deposit -------------------------------- */
 
-      <div className="mt-8">
-        <Link
-          to="/trade/tsd-txc"
-          className="inline-block rounded-sm border border-border px-5 py-2.5 font-mono text-xs tracking-[0.16em] text-foreground uppercase transition-colors hover:border-primary hover:text-primary"
+function DepositModal({ row, onClose }: { row: SpotRow; onClose: () => void }) {
+  const [copied, setCopied] = useState(false);
+  const address = row.address ?? "";
+  return (
+    <Modal onClose={onClose} title={`Deposit ${row.symbol}`}>
+      <p className="font-mono text-[11px] leading-relaxed text-muted-foreground">
+        Send only <span className="text-foreground">{row.symbol}</span> on{" "}
+        <span className="text-foreground">{row.chainName}</span> to this address. It is yours —
+        derived from your own seed.
+      </p>
+      <div className="mt-4 rounded-sm border border-border bg-background p-4">
+        <p className="break-all font-mono text-sm text-foreground">{address}</p>
+      </div>
+      <div className="mt-4 flex gap-3">
+        <button
+          onClick={() => {
+            void navigator.clipboard.writeText(address);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1500);
+          }}
+          className="flex-1 rounded-sm bg-primary px-4 py-2.5 font-mono text-xs tracking-[0.16em] text-primary-foreground uppercase"
         >
-          Go to the TSD/TXC book
-        </Link>
+          {copied ? "Copied" : "Copy address"}
+        </button>
+        <ExplorerLink chain={row.chain} address={address}>
+          <span className="block rounded-sm border border-border px-4 py-2.5 font-mono text-xs tracking-[0.16em] text-foreground uppercase">
+            Explorer
+          </span>
+        </ExplorerLink>
+      </div>
+      <p className="mt-4 font-mono text-[10px] leading-relaxed text-muted-foreground">
+        No deposit to Seeds is ever needed — funds land in your wallet directly. To let the
+        exchange settle trades, authorize the branch below with a cap and an expiry.
+      </p>
+    </Modal>
+  );
+}
+
+/* -------------------------------- withdraw -------------------------------- */
+
+function WithdrawModal({
+  row,
+  authorized,
+  onClose,
+}: {
+  row: SpotRow;
+  authorized: boolean;
+  onClose: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const preview = useServerFn(previewWithdrawalFn);
+  const withdraw = useServerFn(requestWithdrawal);
+
+  const [to, setTo] = useState("");
+  const [amount, setAmount] = useState("");
+  const [result, setResult] = useState<{ txid: string } | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  const leg = row.leg as LegId;
+  const parsedAmount = Number(amount);
+
+  const dryRun = useMutation({
+    mutationFn: () =>
+      preview({ data: { leg, to: to.trim(), amount: parsedAmount } }),
+    onError: (e) => setErr(e instanceof Error ? e.message : "Preview failed"),
+  });
+
+  const send = useMutation({
+    mutationFn: () => withdraw({ data: { leg, to: to.trim(), amount: parsedAmount } }),
+    onSuccess: (r) => {
+      setResult({ txid: r.txid });
+      setErr(null);
+      queryClient.invalidateQueries({ queryKey: ["my-withdrawals"] });
+    },
+    onError: (e) => setErr(e instanceof Error ? e.message : "Withdrawal failed"),
+  });
+
+  return (
+    <Modal onClose={onClose} title={`Withdraw ${row.symbol}`}>
+      {!authorized ? (
+        <p className="font-mono text-[11px] leading-relaxed text-muted-foreground">
+          Withdrawals are signed by your authorized trading branch — Seeds never holds your savings
+          key. Scroll down to <span className="text-foreground">Trading authorizations</span> and
+          authorize <span className="text-foreground">{row.symbol}</span> with a cap and expiry
+          first, then come back.
+        </p>
+      ) : result ? (
+        <div>
+          <p className="font-mono text-xs text-bid uppercase tracking-[0.14em]">Broadcast</p>
+          <p className="mt-2 break-all font-mono text-sm text-foreground">{result.txid}</p>
+          <a
+            href={`${getChain(row.chain).explorer.replace("/address/", "/tx/")}${result.txid}`}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-3 inline-block rounded-sm border border-border px-4 py-2.5 font-mono text-xs tracking-[0.16em] text-foreground uppercase hover:border-primary hover:text-primary"
+          >
+            View on explorer
+          </a>
+        </div>
+      ) : (
+        <div>
+          <p className="font-mono text-[11px] leading-relaxed text-muted-foreground">
+            Sends from your capped trading branch on{" "}
+            <span className="text-foreground">{row.chainName}</span>. Available there is limited by
+            your authorization cap — the server checks cap, expiry, and balance before signing.
+          </p>
+          <label className="mt-4 block font-mono text-[11px] text-muted-foreground">
+            Destination address
+            <input
+              value={to}
+              onChange={(e) => setTo(e.target.value)}
+              placeholder={`${row.symbol} address on ${row.chainName}`}
+              maxLength={120}
+              className="mt-1 w-full rounded-sm border border-input bg-background px-3 py-2.5 font-mono text-sm text-foreground outline-none focus:border-primary"
+            />
+          </label>
+          <label className="mt-3 block font-mono text-[11px] text-muted-foreground">
+            Amount ({row.symbol})
+            <input
+              type="number"
+              min={0}
+              step="any"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="mt-1 w-full rounded-sm border border-input bg-background px-3 py-2.5 font-mono text-sm text-foreground outline-none focus:border-primary"
+            />
+          </label>
+
+          {dryRun.data ? (
+            <p
+              className={`mt-3 rounded-sm border px-3 py-2 font-mono text-[11px] ${
+                dryRun.data.ready
+                  ? "border-bid/40 bg-bid/10 text-bid"
+                  : "border-warn/40 bg-warn/10 text-warn"
+              }`}
+            >
+              {dryRun.data.ready
+                ? `Ready — branch holds ${fmtAmount(dryRun.data.balance ?? 0, 6)} ${row.symbol} on ${dryRun.data.chainName}`
+                : dryRun.data.reason}
+            </p>
+          ) : null}
+          {err ? (
+            <p className="mt-3 rounded-sm border border-destructive/40 bg-destructive/10 px-3 py-2 font-mono text-[11px] text-destructive">
+              {err}
+            </p>
+          ) : null}
+
+          <div className="mt-4 flex gap-3">
+            <button
+              onClick={() => dryRun.mutate()}
+              disabled={dryRun.isPending || !to.trim() || !(parsedAmount > 0)}
+              className="flex-1 rounded-sm border border-border px-4 py-2.5 font-mono text-xs tracking-[0.16em] text-foreground uppercase disabled:opacity-50"
+            >
+              {dryRun.isPending ? "Checking…" : "Dry run"}
+            </button>
+            <button
+              onClick={() => send.mutate()}
+              disabled={send.isPending || !(dryRun.data?.ready)}
+              className="flex-1 rounded-sm bg-primary px-4 py-2.5 font-mono text-xs font-semibold tracking-[0.16em] text-primary-foreground uppercase disabled:opacity-50"
+            >
+              {send.isPending ? "Broadcasting…" : "Send on-chain"}
+            </button>
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+function Modal({
+  title,
+  onClose,
+  children,
+}: {
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-sm border border-border bg-surface p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="font-display text-sm font-bold tracking-[0.1em] text-foreground uppercase">
+            {title}
+          </h3>
+          <button
+            onClick={onClose}
+            className="font-mono text-xs text-muted-foreground uppercase hover:text-foreground"
+          >
+            Close
+          </button>
+        </div>
+        <div className="mt-4">{children}</div>
       </div>
     </div>
   );
 }
+
+/* ---------------------------- withdrawal history --------------------------- */
+
+function WithdrawalHistory() {
+  const fetchWithdrawals = useServerFn(listMyWithdrawals);
+  const list = useQuery({
+    queryKey: ["my-withdrawals"],
+    queryFn: () => fetchWithdrawals(),
+    refetchInterval: 60_000,
+  });
+
+  return (
+    <Panel title="Withdrawals" kicker="Recent">
+      {(list.data ?? []).length === 0 ? (
+        <p className="font-mono text-xs text-muted-foreground">No withdrawals yet.</p>
+      ) : (
+        <ul className="space-y-3 font-mono text-xs">
+          {(list.data ?? []).map((w) => (
+            <li key={w.id} className="border-b border-border/50 pb-3 last:border-0 last:pb-0">
+              <p className="text-foreground tabular-nums">
+                {fmtAmount(w.amount, 6)} {w.asset}{" "}
+                <span className="text-muted-foreground">on {getChain(w.chain).name}</span>
+              </p>
+              <p className="mt-1 text-muted-foreground">
+                to {truncateMiddle(w.to_address, 10, 8)} ·{" "}
+                <a
+                  href={`${getChain(w.chain).explorer.replace("/address/", "/tx/")}${w.txid}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  {truncateMiddle(w.txid, 8, 6)}
+                </a>
+              </p>
+              <p className="mt-0.5 text-[10px] text-muted-foreground uppercase tracking-[0.14em]">
+                {new Date(w.created_at).toLocaleString()} · {w.status}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Panel>
+  );
+}
+
+/* --------------------------- trading authorizations ------------------------ */
 
 function countdown(iso: string): string {
   const ms = new Date(iso).getTime() - Date.now();
@@ -622,90 +1042,9 @@ function SharedAccessPanel({
           {enable.isPending ? "Authorizing…" : `Authorize on ${chain.name}`}
         </button>
         <p className="mt-3 font-mono text-[11px] text-muted-foreground">
-          One live authorization per chain — authorizing again replaces the previous one.
+          One live authorization per asset — authorizing again replaces the previous one.
         </p>
       </div>
-    </Panel>
-  );
-}
-
-
-
-/** Live balances on the Litecoin-family chains Seeds settles on. */
-function UtxoBalancesPanel({
-  ltcAddress,
-  iskAddress,
-}: {
-  ltcAddress: string | null;
-  iskAddress: string | null;
-}) {
-  const fetchBalances = useServerFn(getUtxoBalances);
-  const balances = useQuery({
-    queryKey: ["utxo-balances", ltcAddress, iskAddress],
-    queryFn: () => fetchBalances({ data: { ltcAddress, iskAddress } }),
-    refetchInterval: 120_000,
-  });
-
-  return (
-    <Panel title="Litecoin & Iskandercoin" kicker="Legacy receive addresses">
-      {balances.isPending ? (
-        <p className="font-mono text-xs text-muted-foreground">Reading chains…</p>
-      ) : (
-        <div className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
-          {(balances.data ?? []).map((b) =>
-            b.address ? (
-              <div key={b.chain} className="font-mono">
-                <p className="text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
-                  {b.symbol} address
-                </p>
-                <p className="mt-1 text-[11px] break-all text-foreground">
-                  <ExplorerLink chain={b.chain as ChainId} address={b.address} />
-                </p>
-                <p className="mt-1 text-sm tabular-nums text-foreground">
-                  {b.online ? fmtAmount(b.balance, 8) : "unavailable"}
-                </p>
-              </div>
-            ) : null,
-          )}
-        </div>
-      )}
-    </Panel>
-  );
-}
-
-/** Live balances for the same EVM address across Base, Ethereum, and BNB Chain. */
-function EvmBalancesPanel({ address }: { address: string }) {
-  const fetchPortfolio = useServerFn(getEvmPortfolio);
-  const portfolio = useQuery({
-    queryKey: ["evm-portfolio", address],
-    queryFn: () => fetchPortfolio({ data: { address } }),
-    refetchInterval: 120_000,
-  });
-
-  return (
-    <Panel title="EVM balances" kicker="Base · Ethereum · BNB Chain · ZeroChill">
-      <p className="font-mono text-[11px] break-all text-muted-foreground">
-        <ExplorerLink chain="ethereum" address={address} />
-      </p>
-      {portfolio.isPending ? (
-        <p className="mt-4 font-mono text-xs text-muted-foreground">Reading chains…</p>
-      ) : (
-        <div className="mt-4 grid gap-x-8 gap-y-3 sm:grid-cols-3">
-          {(portfolio.data ?? []).map((b) => (
-            <div key={`${b.chain}-${b.symbol}`} className="font-mono">
-              <p className="text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
-                <ExplorerLink chain={b.chain as ChainId} address={address}>
-                  {b.chainName}
-                </ExplorerLink>{" "}
-                · {b.symbol}
-              </p>
-              <p className="mt-1 text-sm tabular-nums text-foreground">
-                {b.online ? fmtAmount(b.balance, 6) : "unavailable"}
-              </p>
-            </div>
-          ))}
-        </div>
-      )}
     </Panel>
   );
 }
