@@ -2,10 +2,14 @@
  * Chain + asset registry.
  *
  * Client-safe: addresses, decimals, and labels only. RPC calls live in
- * `evm.server.ts` so browser tabs never hammer public endpoints directly.
+ * `evm.server.ts` / `rpc.server.ts` so browser tabs never hammer endpoints
+ * directly.
  */
 
-export type ChainId = "txc" | "ethereum" | "base" | "bsc";
+export type ChainId = "txc" | "ethereum" | "base" | "bsc" | "ltc" | "isk" | "zcu";
+
+/** Every settlement leg Seeds can deliver on-chain. */
+export type LegId = "txc" | "tsd" | "usdc" | "usdt" | "ltc" | "isk" | "zcu";
 
 export type AssetDef = {
   symbol: string;
@@ -16,18 +20,22 @@ export type AssetDef = {
   omniPropertyId?: number;
 };
 
-
 export type ChainDef = {
   id: ChainId;
   name: string;
-  /** EVM numeric chain id; null for TEXITcoin */
+  /** EVM numeric chain id; null for UTXO chains */
   evmChainId: number | null;
   nativeSymbol: string;
+  /** base58 P2PKH version byte — UTXO chains only */
+  p2pkhVersion?: number;
   /** BIP-44 branch used for the *shared* trading account on this chain. */
   sharedPath: string;
   assets: AssetDef[];
   explorer: string;
 };
+
+/** Litecoin's SLIP-0044 coin type. ISK is a Litecoin fork and inherits it. */
+const LTC_COIN_TYPE = 2;
 
 export const CHAINS: ChainDef[] = [
   {
@@ -35,6 +43,7 @@ export const CHAINS: ChainDef[] = [
     name: "TEXITcoin",
     evmChainId: null,
     nativeSymbol: "TXC",
+    p2pkhVersion: 66,
     // SLIP-0044 coin type 696969, matching wallet.texitcoin.org
     sharedPath: "m/44'/696969'/9'/0/0",
     assets: [
@@ -83,6 +92,35 @@ export const CHAINS: ChainDef[] = [
     ],
     explorer: "https://bscscan.com/address/",
   },
+  {
+    id: "ltc",
+    name: "Litecoin",
+    evmChainId: null,
+    nativeSymbol: "LTC",
+    p2pkhVersion: 48,
+    sharedPath: `m/44'/${LTC_COIN_TYPE}'/9'/0/0`,
+    assets: [{ symbol: "LTC", contract: null, decimals: 8 }],
+    explorer: "https://blockchair.com/litecoin/address/",
+  },
+  {
+    id: "isk",
+    name: "Iskandercoin",
+    evmChainId: null,
+    nativeSymbol: "ISK",
+    p2pkhVersion: 45,
+    sharedPath: `m/44'/${LTC_COIN_TYPE}'/19'/0/0`,
+    assets: [{ symbol: "ISK", contract: null, decimals: 8 }],
+    explorer: "https://explorer.iskandercoin.com/address/",
+  },
+  {
+    id: "zcu",
+    name: "ZeroChill",
+    evmChainId: 90031273,
+    nativeSymbol: "ZCU",
+    sharedPath: "m/44'/60'/9'/0/0",
+    assets: [{ symbol: "ZCU", contract: null, decimals: 18 }],
+    explorer: "https://explorer.zerochill.com/address/",
+  },
 ];
 
 export const CHAIN_IDS = CHAINS.map((c) => c.id) as [ChainId, ...ChainId[]];
@@ -97,6 +135,14 @@ export function isEvmChain(id: string): boolean {
   return getChain(id).evmChainId !== null;
 }
 
+/** UTXO chains Seeds can build and sign legacy P2PKH spends on. */
+export const UTXO_CHAIN_IDS = ["txc", "ltc", "isk"] as const;
+export type UtxoChainId = (typeof UTXO_CHAIN_IDS)[number];
+
+export function isUtxoChain(id: string): id is UtxoChainId {
+  return (UTXO_CHAIN_IDS as readonly string[]).includes(id);
+}
+
 /** Preset authorization windows. Short by default — that is the whole point. */
 export const EXPIRY_PRESETS = [
   { label: "1 hour", hours: 1 },
@@ -107,25 +153,67 @@ export const EXPIRY_PRESETS = [
   { label: "30 days", hours: 720 },
 ] as const;
 
+/* ---------------------------------- legs ---------------------------------- */
+
+export type LegKind = "utxo" | "omni" | "evm";
+
+export type LegDef = {
+  id: LegId;
+  symbol: string;
+  kind: LegKind;
+  /** For utxo/omni legs: the single chain it settles on. */
+  chain?: ChainId;
+  /** For EVM legs: which chains can deliver it. */
+  evmChains?: ChainId[];
+  /** EVM native-coin leg (ZCU) rather than an ERC-20 transfer. */
+  native?: boolean;
+};
+
+export const LEGS: Record<LegId, LegDef> = {
+  txc: { id: "txc", symbol: "TXC", kind: "utxo", chain: "txc" },
+  ltc: { id: "ltc", symbol: "LTC", kind: "utxo", chain: "ltc" },
+  isk: { id: "isk", symbol: "ISK", kind: "utxo", chain: "isk" },
+  tsd: { id: "tsd", symbol: "TSD", kind: "omni", chain: "txc" },
+  usdc: { id: "usdc", symbol: "USDC", kind: "evm", evmChains: ["base", "ethereum", "bsc"] },
+  usdt: { id: "usdt", symbol: "USDT", kind: "evm", evmChains: ["base", "ethereum", "bsc"] },
+  zcu: { id: "zcu", symbol: "ZCU", kind: "evm", evmChains: ["zcu"], native: true },
+};
+
+export function getLeg(id: string): LegDef {
+  const leg = LEGS[id as LegId];
+  if (!leg) throw new Error(`Unknown settlement leg: ${id}`);
+  return leg;
+}
+
 /* ---------------------------------- pairs --------------------------------- */
 
 /** The Omni property id of TSD, the exchange's native settlement dollar. */
 export const TSD_PROPERTY_ID = 39;
 
-export type PairId = "TSD_TXC" | "USDC_TXC";
+export type PairId =
+  | "TSD_TXC"
+  | "USDC_TXC"
+  | "TXC_USDT"
+  | "TSD_USDC"
+  | "LTC_TSD"
+  | "ISK_TSD"
+  | "ZCU_TSD";
 
 export type PairDef = {
   id: PairId;
   /** URL segment under /trade */
-  slug: "tsd-txc" | "usdc-txc";
+  slug: string;
   label: string;
   /** The asset being bought and sold — order sizes are denominated in it. */
   base: string;
   /** The asset the price is quoted in. */
   quote: string;
+  /** Escrow leg that delivers the base asset. */
+  baseLeg: LegId;
   /** Escrow leg that delivers the quote asset. */
-  quoteLeg: "tsd" | "usdc";
+  quoteLeg: LegId;
   blurb: string;
+  /** Both legs settle on the TEXITcoin chain. */
   native: boolean;
 };
 
@@ -133,9 +221,10 @@ export const PAIRS: PairDef[] = [
   {
     id: "TSD_TXC",
     slug: "tsd-txc",
-    label: "TSD / TXC",
+    label: "TXC / TSD",
     base: "TXC",
     quote: "TSD",
+    baseLeg: "txc",
     quoteLeg: "tsd",
     blurb:
       "TEXITcoin against the Texas Stable Dollar — both legs settle on the TEXITcoin chain, no bridge in the middle.",
@@ -144,11 +233,67 @@ export const PAIRS: PairDef[] = [
   {
     id: "USDC_TXC",
     slug: "usdc-txc",
-    label: "USDC / TXC",
+    label: "TXC / USDC",
     base: "TXC",
     quote: "USDC",
+    baseLeg: "txc",
     quoteLeg: "usdc",
     blurb: "TEXITcoin against USDC on Base, Ethereum, or BNB Chain.",
+    native: false,
+  },
+  {
+    id: "TXC_USDT",
+    slug: "txc-usdt",
+    label: "TXC / USDT",
+    base: "TXC",
+    quote: "USDT",
+    baseLeg: "txc",
+    quoteLeg: "usdt",
+    blurb: "TEXITcoin against USDT on Base, Ethereum, or BNB Chain.",
+    native: false,
+  },
+  {
+    id: "TSD_USDC",
+    slug: "tsd-usdc",
+    label: "TSD / USDC",
+    base: "TSD",
+    quote: "USDC",
+    baseLeg: "tsd",
+    quoteLeg: "usdc",
+    blurb: "The Texas Stable Dollar against USDC — Omni #39 on one side, EVM stablecoin on the other.",
+    native: false,
+  },
+  {
+    id: "LTC_TSD",
+    slug: "ltc-tsd",
+    label: "LTC / TSD",
+    base: "LTC",
+    quote: "TSD",
+    baseLeg: "ltc",
+    quoteLeg: "tsd",
+    blurb: "Litecoin priced in Texas Stable Dollars, settled peer to peer on both chains.",
+    native: false,
+  },
+  {
+    id: "ISK_TSD",
+    slug: "isk-tsd",
+    label: "ISK / TSD",
+    base: "ISK",
+    quote: "TSD",
+    baseLeg: "isk",
+    quoteLeg: "tsd",
+    blurb: "Iskandercoin priced in Texas Stable Dollars, settled through our own ISK node.",
+    native: false,
+  },
+  {
+    id: "ZCU_TSD",
+    slug: "zcu-tsd",
+    label: "ZCU / TSD",
+    base: "ZCU",
+    quote: "TSD",
+    baseLeg: "zcu",
+    quoteLeg: "tsd",
+    blurb: "ZeroChill priced in Texas Stable Dollars — native ZCU transfers on the ZeroChill network.",
     native: false,
   },
 ];

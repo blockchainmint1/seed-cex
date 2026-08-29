@@ -360,8 +360,10 @@ export type Database = {
           created_at: string
           evm_address: string | null
           id: string
+          isk_address: string | null
           kdf_iterations: number
           kdf_salt: string
+          ltc_address: string | null
           txc_address: string
           updated_at: string
           user_id: string
@@ -372,8 +374,10 @@ export type Database = {
           created_at?: string
           evm_address?: string | null
           id?: string
+          isk_address?: string | null
           kdf_iterations?: number
           kdf_salt: string
+          ltc_address?: string | null
           txc_address: string
           updated_at?: string
           user_id: string
@@ -384,8 +388,10 @@ export type Database = {
           created_at?: string
           evm_address?: string | null
           id?: string
+          isk_address?: string | null
           kdf_iterations?: number
           kdf_salt?: string
+          ltc_address?: string | null
           txc_address?: string
           updated_at?: string
           user_id?: string
@@ -423,7 +429,7 @@ export type Database = {
     }
     Enums: {
       app_role: "user" | "arbitrator" | "admin"
-      escrow_leg: "txc" | "usdc" | "tsd"
+      escrow_leg: "txc" | "usdc" | "tsd" | "usdt" | "ltc" | "isk" | "zcu"
       escrow_status:
         | "awaiting_funding"
         | "funding_seen"
@@ -571,7 +577,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["user", "arbitrator", "admin"],
-      escrow_leg: ["txc", "usdc", "tsd"],
+      escrow_leg: ["txc", "usdc", "tsd", "usdt", "ltc", "isk", "zcu"],
       escrow_status: [
         "awaiting_funding",
         "funding_seen",

@@ -6,22 +6,49 @@
  */
 import { getChain, type ChainId } from "@/lib/chains";
 
-const RPC: Record<string, string> = {
+const PUBLIC_RPC: Record<string, string> = {
   ethereum: "https://ethereum-rpc.publicnode.com",
   base: "https://base-rpc.publicnode.com",
   bsc: "https://bsc-rpc.publicnode.com",
 };
 
+type Endpoint = { url: string; headers: Record<string, string> };
+
+/**
+ * Endpoint for one EVM chain. ZeroChill runs on our own authenticated node, so
+ * its credentials are read from the environment inside the call.
+ */
+function endpoint(chain: ChainId): Endpoint | null {
+  const headers: Record<string, string> = { "content-type": "application/json" };
+  if (chain === "zcu") {
+    const url = process.env["ZCU_RPC_URL"];
+    if (!url) return null;
+    const user = process.env["ZCU_RPC_USER"];
+    const pass = process.env["ZCU_RPC_PASS"];
+    if (user && pass) {
+      headers["authorization"] = `Basic ${btoa(`${user}:${pass}`)}`;
+    }
+    return { url, headers };
+  }
+  const url = PUBLIC_RPC[chain];
+  return url ? { url, headers } : null;
+}
+
+/** True when we have a usable endpoint for the chain. */
+export function evmChainConfigured(chain: ChainId): boolean {
+  return endpoint(chain) !== null;
+}
+
 async function rpc<T>(chain: ChainId, method: string, params: unknown[]): Promise<T | null> {
-  const url = RPC[chain];
-  if (!url) return null;
+  const ep = endpoint(chain);
+  if (!ep) return null;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 7000);
   try {
-    const res = await fetch(url, {
+    const res = await fetch(ep.url, {
       method: "POST",
       signal: controller.signal,
-      headers: { "content-type": "application/json" },
+      headers: ep.headers,
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
     });
     if (!res.ok) {
@@ -41,6 +68,7 @@ async function rpc<T>(chain: ChainId, method: string, params: unknown[]): Promis
     clearTimeout(timer);
   }
 }
+
 
 function fromWei(hex: string | null, decimals: number): number {
   if (!hex || hex === "0x") return 0;
@@ -147,11 +175,11 @@ export async function estimateGas(
 }
 
 export async function sendRawTransaction(chain: ChainId, raw: string): Promise<string> {
-  const url = RPC[chain];
-  if (!url) throw new Error(`No RPC endpoint for ${chain}`);
-  const res = await fetch(url, {
+  const ep = endpoint(chain);
+  if (!ep) throw new Error(`No RPC endpoint for ${chain}`);
+  const res = await fetch(ep.url, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: ep.headers,
     body: JSON.stringify({
       jsonrpc: "2.0",
       id: 1,
@@ -159,6 +187,7 @@ export async function sendRawTransaction(chain: ChainId, raw: string): Promise<s
       params: [raw],
     }),
   });
+
   const json = (await res.json()) as { result?: string; error?: { message: string } };
   if (json.error) throw new Error(`Broadcast rejected: ${json.error.message}`);
   if (!json.result) throw new Error("Broadcast returned no transaction hash");
