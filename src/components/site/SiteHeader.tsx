@@ -7,6 +7,7 @@ import { useTheme } from "@/hooks/use-theme";
 const nav = [
   { label: "Markets", to: "/trade/tsd-txc" },
   { label: "Wallet", to: "/wallet" },
+  { label: "How it works", to: "/how-it-works" },
   { label: "Manifesto", to: "/manifesto" },
 ] as const;
 
