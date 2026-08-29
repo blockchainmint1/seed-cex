@@ -565,6 +565,18 @@ function DepositModal({ row, onClose }: { row: SpotRow; onClose: () => void }) {
         <span className="text-foreground">{row.chainName}</span> to this address. It is yours —
         derived from your own seed.
       </p>
+      {address ? (
+        <div className="mt-4 flex justify-center rounded-sm border border-border bg-white p-4">
+          <QRCodeSVG
+            value={address}
+            size={180}
+            bgColor="#ffffff"
+            fgColor="#0F172A"
+            level="M"
+            includeMargin={false}
+          />
+        </div>
+      ) : null}
       <div className="mt-4 rounded-sm border border-border bg-background p-4">
         <p className="break-all font-mono text-sm text-foreground">{address}</p>
       </div>
