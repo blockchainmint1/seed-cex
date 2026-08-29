@@ -94,7 +94,11 @@ function Wallet() {
   const [tab, setTab] = useState<"create" | "import">("create");
   const [revealed, setRevealed] = useState<string | null>(null);
   const [unlockPassword, setUnlockPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
+  const [passwordNotice, setPasswordNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
 
   const create = useMutation({
     mutationFn: async () => {
