@@ -24,6 +24,7 @@ import { Route as TradeTsdTxcRouteImport } from './routes/trade.tsd-txc'
 import { Route as TradeLtcTsdRouteImport } from './routes/trade.ltc-tsd'
 import { Route as TradeIskTsdRouteImport } from './routes/trade.isk-tsd'
 import { Route as AuthenticatedWalletRouteImport } from './routes/_authenticated/wallet'
+import { Route as ApiPublicCmcIndexRouteImport } from './routes/api/public/cmc/index'
 import { Route as ApiPublicCmcTickerRouteImport } from './routes/api/public/cmc/ticker'
 import { Route as ApiPublicCmcSummaryRouteImport } from './routes/api/public/cmc/summary'
 import { Route as ApiPublicCmcAssetsRouteImport } from './routes/api/public/cmc/assets'
@@ -104,6 +105,11 @@ const AuthenticatedWalletRoute = AuthenticatedWalletRouteImport.update({
   path: '/wallet',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiPublicCmcIndexRoute = ApiPublicCmcIndexRouteImport.update({
+  id: '/api/public/cmc/',
+  path: '/api/public/cmc/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicCmcTickerRoute = ApiPublicCmcTickerRouteImport.update({
   id: '/api/public/cmc/ticker',
   path: '/api/public/cmc/ticker',
@@ -149,6 +155,7 @@ export interface FileRoutesByFullPath {
   '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
   '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
   '/api/public/cmc/ticker': typeof ApiPublicCmcTickerRoute
+  '/api/public/cmc/': typeof ApiPublicCmcIndexRoute
   '/api/public/cmc/orderbook/$pair': typeof ApiPublicCmcOrderbookPairRoute
   '/api/public/cmc/trades/$pair': typeof ApiPublicCmcTradesPairRoute
 }
@@ -170,6 +177,7 @@ export interface FileRoutesByTo {
   '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
   '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
   '/api/public/cmc/ticker': typeof ApiPublicCmcTickerRoute
+  '/api/public/cmc': typeof ApiPublicCmcIndexRoute
   '/api/public/cmc/orderbook/$pair': typeof ApiPublicCmcOrderbookPairRoute
   '/api/public/cmc/trades/$pair': typeof ApiPublicCmcTradesPairRoute
 }
@@ -193,6 +201,7 @@ export interface FileRoutesById {
   '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
   '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
   '/api/public/cmc/ticker': typeof ApiPublicCmcTickerRoute
+  '/api/public/cmc/': typeof ApiPublicCmcIndexRoute
   '/api/public/cmc/orderbook/$pair': typeof ApiPublicCmcOrderbookPairRoute
   '/api/public/cmc/trades/$pair': typeof ApiPublicCmcTradesPairRoute
 }
@@ -216,6 +225,7 @@ export interface FileRouteTypes {
     | '/api/public/cmc/assets'
     | '/api/public/cmc/summary'
     | '/api/public/cmc/ticker'
+    | '/api/public/cmc/'
     | '/api/public/cmc/orderbook/$pair'
     | '/api/public/cmc/trades/$pair'
   fileRoutesByTo: FileRoutesByTo
@@ -237,6 +247,7 @@ export interface FileRouteTypes {
     | '/api/public/cmc/assets'
     | '/api/public/cmc/summary'
     | '/api/public/cmc/ticker'
+    | '/api/public/cmc'
     | '/api/public/cmc/orderbook/$pair'
     | '/api/public/cmc/trades/$pair'
   id:
@@ -259,6 +270,7 @@ export interface FileRouteTypes {
     | '/api/public/cmc/assets'
     | '/api/public/cmc/summary'
     | '/api/public/cmc/ticker'
+    | '/api/public/cmc/'
     | '/api/public/cmc/orderbook/$pair'
     | '/api/public/cmc/trades/$pair'
   fileRoutesById: FileRoutesById
@@ -281,6 +293,7 @@ export interface RootRouteChildren {
   ApiPublicCmcAssetsRoute: typeof ApiPublicCmcAssetsRoute
   ApiPublicCmcSummaryRoute: typeof ApiPublicCmcSummaryRoute
   ApiPublicCmcTickerRoute: typeof ApiPublicCmcTickerRoute
+  ApiPublicCmcIndexRoute: typeof ApiPublicCmcIndexRoute
   ApiPublicCmcOrderbookPairRoute: typeof ApiPublicCmcOrderbookPairRoute
   ApiPublicCmcTradesPairRoute: typeof ApiPublicCmcTradesPairRoute
 }
@@ -392,6 +405,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWalletRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/public/cmc/': {
+      id: '/api/public/cmc/'
+      path: '/api/public/cmc'
+      fullPath: '/api/public/cmc/'
+      preLoaderRoute: typeof ApiPublicCmcIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/cmc/ticker': {
       id: '/api/public/cmc/ticker'
       path: '/api/public/cmc/ticker'
@@ -459,6 +479,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCmcAssetsRoute: ApiPublicCmcAssetsRoute,
   ApiPublicCmcSummaryRoute: ApiPublicCmcSummaryRoute,
   ApiPublicCmcTickerRoute: ApiPublicCmcTickerRoute,
+  ApiPublicCmcIndexRoute: ApiPublicCmcIndexRoute,
   ApiPublicCmcOrderbookPairRoute: ApiPublicCmcOrderbookPairRoute,
   ApiPublicCmcTradesPairRoute: ApiPublicCmcTradesPairRoute,
 }
