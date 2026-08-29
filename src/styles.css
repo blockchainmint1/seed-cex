@@ -193,18 +193,9 @@
   --sidebar-ring: oklch(0.76 0.175 143);
 }
 
-/* Seeds is dark-only for now; .dark exists so shadcn variants keep working. */
-.dark {
-  color-scheme: dark;
-}
-
 @layer base {
   * {
     border-color: var(--color-border);
-  }
-
-  html {
-    color-scheme: dark;
   }
 
   body {
