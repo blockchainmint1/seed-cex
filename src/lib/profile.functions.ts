@@ -72,7 +72,7 @@ export const updateMyProfile = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: row, error } = await supabaseAdmin
       .from("profiles")
-      .upsert({ id: context.userId, ...data }, { onConflict: "id" })
+      .upsert({ id: context.userId, ...data } as never, { onConflict: "id" })
       .select(COLS)
       .single();
     if (error) throw new Error(error.message);
