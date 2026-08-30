@@ -549,6 +549,72 @@ export type Database = {
         }
         Relationships: []
       }
+      wrap_orders: {
+        Row: {
+          amount_delivered: number | null
+          amount_expected: number | null
+          amount_received: number | null
+          base_symbol: string
+          created_at: string
+          delivery_txid: string | null
+          deposit_address: string | null
+          deposit_txid: string | null
+          direction: Database["public"]["Enums"]["wrap_direction"]
+          error: string | null
+          expires_at: string | null
+          id: string
+          issuer_order_id: string | null
+          issuer_status: string | null
+          payout_address: string | null
+          status: Database["public"]["Enums"]["wrap_status"]
+          updated_at: string
+          user_id: string
+          wrapped_symbol: string
+        }
+        Insert: {
+          amount_delivered?: number | null
+          amount_expected?: number | null
+          amount_received?: number | null
+          base_symbol: string
+          created_at?: string
+          delivery_txid?: string | null
+          deposit_address?: string | null
+          deposit_txid?: string | null
+          direction: Database["public"]["Enums"]["wrap_direction"]
+          error?: string | null
+          expires_at?: string | null
+          id?: string
+          issuer_order_id?: string | null
+          issuer_status?: string | null
+          payout_address?: string | null
+          status?: Database["public"]["Enums"]["wrap_status"]
+          updated_at?: string
+          user_id: string
+          wrapped_symbol: string
+        }
+        Update: {
+          amount_delivered?: number | null
+          amount_expected?: number | null
+          amount_received?: number | null
+          base_symbol?: string
+          created_at?: string
+          delivery_txid?: string | null
+          deposit_address?: string | null
+          deposit_txid?: string | null
+          direction?: Database["public"]["Enums"]["wrap_direction"]
+          error?: string | null
+          expires_at?: string | null
+          id?: string
+          issuer_order_id?: string | null
+          issuer_status?: string | null
+          payout_address?: string | null
+          status?: Database["public"]["Enums"]["wrap_status"]
+          updated_at?: string
+          user_id?: string
+          wrapped_symbol?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -603,6 +669,16 @@ export type Database = {
         | "arbitrated"
         | "timed_out"
         | "refunded"
+      wrap_direction: "wrap" | "unwrap"
+      wrap_status:
+        | "created"
+        | "awaiting_deposit"
+        | "deposit_detected"
+        | "deposit_confirmed"
+        | "processing"
+        | "complete"
+        | "failed"
+        | "expired"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -752,6 +828,17 @@ export const Constants = {
         "arbitrated",
         "timed_out",
         "refunded",
+      ],
+      wrap_direction: ["wrap", "unwrap"],
+      wrap_status: [
+        "created",
+        "awaiting_deposit",
+        "deposit_detected",
+        "deposit_confirmed",
+        "processing",
+        "complete",
+        "failed",
+        "expired",
       ],
     },
   },
