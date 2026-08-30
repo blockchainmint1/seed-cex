@@ -8,6 +8,7 @@ const nav = [
   { label: "Markets", to: "/trade/tsd-txc" },
   { label: "Wallet", to: "/wallet" },
   { label: "How it works", to: "/how-it-works" },
+  { label: "API", to: "/api-docs" },
   { label: "Manifesto", to: "/manifesto" },
 ] as const;
 
