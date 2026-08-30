@@ -72,7 +72,7 @@ export const getPublicStats = createServerFn({ method: "GET" }).handler(
     const snapRow = Array.isArray(custodySnap.data) ? custodySnap.data[0] : null;
 
     const routeFor = (pairId: string) =>
-      `/trade/${pairId.toLowerCase().split("_").reverse().join("-")}`;
+      `/trade/${pairId.toLowerCase().replace("_", "-")}`;
 
     return {
       generatedAt: new Date().toISOString(),
