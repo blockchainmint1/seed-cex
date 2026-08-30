@@ -189,25 +189,76 @@ export type Database = {
       }
       profiles: {
         Row: {
+          confirm_before_order: boolean
           created_at: string
+          default_auth_cap: number | null
+          default_auth_hours: number
+          default_pair: string | null
           display_name: string
           id: string
+          notify_auth_expiring: boolean
+          notify_deposit: boolean
+          notify_login: boolean
+          notify_order_filled: boolean
+          notify_settlement: boolean
+          notify_settlement_failed: boolean
+          notify_weekly_digest: boolean
           reputation: number
+          telegram_chat_id: string | null
+          telegram_code: string | null
+          telegram_code_expires_at: string | null
+          telegram_verified: boolean
+          timezone: string
           trades_completed: number
+          updated_at: string
         }
         Insert: {
+          confirm_before_order?: boolean
           created_at?: string
+          default_auth_cap?: number | null
+          default_auth_hours?: number
+          default_pair?: string | null
           display_name?: string
           id: string
+          notify_auth_expiring?: boolean
+          notify_deposit?: boolean
+          notify_login?: boolean
+          notify_order_filled?: boolean
+          notify_settlement?: boolean
+          notify_settlement_failed?: boolean
+          notify_weekly_digest?: boolean
           reputation?: number
+          telegram_chat_id?: string | null
+          telegram_code?: string | null
+          telegram_code_expires_at?: string | null
+          telegram_verified?: boolean
+          timezone?: string
           trades_completed?: number
+          updated_at?: string
         }
         Update: {
+          confirm_before_order?: boolean
           created_at?: string
+          default_auth_cap?: number | null
+          default_auth_hours?: number
+          default_pair?: string | null
           display_name?: string
           id?: string
+          notify_auth_expiring?: boolean
+          notify_deposit?: boolean
+          notify_login?: boolean
+          notify_order_filled?: boolean
+          notify_settlement?: boolean
+          notify_settlement_failed?: boolean
+          notify_weekly_digest?: boolean
           reputation?: number
+          telegram_chat_id?: string | null
+          telegram_code?: string | null
+          telegram_code_expires_at?: string | null
+          telegram_verified?: boolean
+          timezone?: string
           trades_completed?: number
+          updated_at?: string
         }
         Relationships: []
       }
