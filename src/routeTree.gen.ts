@@ -30,6 +30,7 @@ import { Route as ApiPublicV1IndexRouteImport } from './routes/api/public/v1/ind
 import { Route as ApiPublicCmcIndexRouteImport } from './routes/api/public/cmc/index'
 import { Route as ApiPublicV1TradesRouteImport } from './routes/api/public/v1/trades'
 import { Route as ApiPublicV1TimeRouteImport } from './routes/api/public/v1/time'
+import { Route as ApiPublicV1StreamRouteImport } from './routes/api/public/v1/stream'
 import { Route as ApiPublicV1PingRouteImport } from './routes/api/public/v1/ping'
 import { Route as ApiPublicV1OrderRouteImport } from './routes/api/public/v1/order'
 import { Route as ApiPublicV1OpenOrdersRouteImport } from './routes/api/public/v1/openOrders'
@@ -151,6 +152,11 @@ const ApiPublicV1TimeRoute = ApiPublicV1TimeRouteImport.update({
   path: '/api/public/v1/time',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicV1StreamRoute = ApiPublicV1StreamRouteImport.update({
+  id: '/api/public/v1/stream',
+  path: '/api/public/v1/stream',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicV1PingRoute = ApiPublicV1PingRouteImport.update({
   id: '/api/public/v1/ping',
   path: '/api/public/v1/ping',
@@ -262,6 +268,7 @@ export interface FileRoutesByFullPath {
   '/api/public/v1/openOrders': typeof ApiPublicV1OpenOrdersRoute
   '/api/public/v1/order': typeof ApiPublicV1OrderRoute
   '/api/public/v1/ping': typeof ApiPublicV1PingRoute
+  '/api/public/v1/stream': typeof ApiPublicV1StreamRoute
   '/api/public/v1/time': typeof ApiPublicV1TimeRoute
   '/api/public/v1/trades': typeof ApiPublicV1TradesRoute
   '/api/public/cmc/': typeof ApiPublicCmcIndexRoute
@@ -300,6 +307,7 @@ export interface FileRoutesByTo {
   '/api/public/v1/openOrders': typeof ApiPublicV1OpenOrdersRoute
   '/api/public/v1/order': typeof ApiPublicV1OrderRoute
   '/api/public/v1/ping': typeof ApiPublicV1PingRoute
+  '/api/public/v1/stream': typeof ApiPublicV1StreamRoute
   '/api/public/v1/time': typeof ApiPublicV1TimeRoute
   '/api/public/v1/trades': typeof ApiPublicV1TradesRoute
   '/api/public/cmc': typeof ApiPublicCmcIndexRoute
@@ -340,6 +348,7 @@ export interface FileRoutesById {
   '/api/public/v1/openOrders': typeof ApiPublicV1OpenOrdersRoute
   '/api/public/v1/order': typeof ApiPublicV1OrderRoute
   '/api/public/v1/ping': typeof ApiPublicV1PingRoute
+  '/api/public/v1/stream': typeof ApiPublicV1StreamRoute
   '/api/public/v1/time': typeof ApiPublicV1TimeRoute
   '/api/public/v1/trades': typeof ApiPublicV1TradesRoute
   '/api/public/cmc/': typeof ApiPublicCmcIndexRoute
@@ -380,6 +389,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/openOrders'
     | '/api/public/v1/order'
     | '/api/public/v1/ping'
+    | '/api/public/v1/stream'
     | '/api/public/v1/time'
     | '/api/public/v1/trades'
     | '/api/public/cmc/'
@@ -418,6 +428,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/openOrders'
     | '/api/public/v1/order'
     | '/api/public/v1/ping'
+    | '/api/public/v1/stream'
     | '/api/public/v1/time'
     | '/api/public/v1/trades'
     | '/api/public/cmc'
@@ -457,6 +468,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/openOrders'
     | '/api/public/v1/order'
     | '/api/public/v1/ping'
+    | '/api/public/v1/stream'
     | '/api/public/v1/time'
     | '/api/public/v1/trades'
     | '/api/public/cmc/'
@@ -495,6 +507,7 @@ export interface RootRouteChildren {
   ApiPublicV1OpenOrdersRoute: typeof ApiPublicV1OpenOrdersRoute
   ApiPublicV1OrderRoute: typeof ApiPublicV1OrderRoute
   ApiPublicV1PingRoute: typeof ApiPublicV1PingRoute
+  ApiPublicV1StreamRoute: typeof ApiPublicV1StreamRoute
   ApiPublicV1TimeRoute: typeof ApiPublicV1TimeRoute
   ApiPublicV1TradesRoute: typeof ApiPublicV1TradesRoute
   ApiPublicCmcIndexRoute: typeof ApiPublicCmcIndexRoute
@@ -654,6 +667,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicV1TimeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/v1/stream': {
+      id: '/api/public/v1/stream'
+      path: '/api/public/v1/stream'
+      fullPath: '/api/public/v1/stream'
+      preLoaderRoute: typeof ApiPublicV1StreamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/v1/ping': {
       id: '/api/public/v1/ping'
       path: '/api/public/v1/ping'
@@ -810,6 +830,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicV1OpenOrdersRoute: ApiPublicV1OpenOrdersRoute,
   ApiPublicV1OrderRoute: ApiPublicV1OrderRoute,
   ApiPublicV1PingRoute: ApiPublicV1PingRoute,
+  ApiPublicV1StreamRoute: ApiPublicV1StreamRoute,
   ApiPublicV1TimeRoute: ApiPublicV1TimeRoute,
   ApiPublicV1TradesRoute: ApiPublicV1TradesRoute,
   ApiPublicCmcIndexRoute: ApiPublicCmcIndexRoute,
