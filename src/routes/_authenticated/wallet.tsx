@@ -342,6 +342,11 @@ function Wallet() {
             <SpotBalances wallet={wallet.data!} />
           </div>
 
+          <div className="mt-6">
+            <WrapDesk />
+          </div>
+
+
           <div className="mt-6 grid gap-6 lg:grid-cols-2">
             <Panel title="Unlock vault" kicker="Local decryption">
               <input
