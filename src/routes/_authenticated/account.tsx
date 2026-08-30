@@ -132,7 +132,7 @@ function AccountPage() {
   });
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 px-5 py-12">
+    <div className="mx-auto max-w-7xl space-y-6 px-5 py-12">
       <header className="space-y-2">
         <p className="font-mono text-[11px] tracking-[0.28em] text-primary uppercase">Account</p>
         <h1 className="font-display text-3xl font-extrabold tracking-tight">Profile & settings</h1>

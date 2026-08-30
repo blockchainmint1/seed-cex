@@ -46,7 +46,7 @@ function Row({ k, v }: { k: string; v: string }) {
 
 function CodePage() {
   return (
-    <div className="mx-auto max-w-4xl space-y-12 px-5 py-14">
+    <div className="mx-auto max-w-7xl space-y-12 px-5 py-14">
       <header className="space-y-3">
         <p className="font-mono text-[11px] tracking-[0.28em] text-primary uppercase">Proof</p>
         <h1 className="font-display text-3xl font-extrabold tracking-tight md:text-4xl">Our code</h1>

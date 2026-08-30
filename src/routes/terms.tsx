@@ -10,7 +10,7 @@ function LegalShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="mx-auto max-w-3xl px-5 py-16">
+    <div className="mx-auto max-w-7xl px-5 py-16">
       <p className="font-mono text-[11px] tracking-[0.24em] text-primary uppercase">Seeds</p>
       <h1 className="mt-3 font-display text-3xl font-black tracking-tight text-foreground uppercase">
         {title}

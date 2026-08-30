@@ -60,7 +60,7 @@ const ENDPOINTS: Array<[string, string, string, string]> = [
 
 function ApiDocs() {
   return (
-    <main className="mx-auto max-w-4xl px-5 pb-24">
+    <main className="mx-auto max-w-7xl px-5 pb-24">
       <header className="py-14">
         <p className="font-mono text-xs tracking-[0.3em] text-primary uppercase">Developers</p>
         <h1 className="mt-3 font-display text-4xl font-extrabold tracking-tight">Seeds API v1</h1>

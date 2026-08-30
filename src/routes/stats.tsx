@@ -49,7 +49,7 @@ function StatsPage() {
   const p = (v: number | null) => (v == null ? "—" : v.toLocaleString("en-US", { maximumFractionDigits: 8 }));
 
   return (
-    <div className="mx-auto max-w-6xl space-y-10 px-5 py-14">
+    <div className="mx-auto max-w-7xl space-y-10 px-5 py-14">
       <header className="space-y-3">
         <p className="font-mono text-[11px] tracking-[0.28em] text-primary uppercase">Proof</p>
         <h1 className="font-display text-3xl font-extrabold tracking-tight md:text-4xl">

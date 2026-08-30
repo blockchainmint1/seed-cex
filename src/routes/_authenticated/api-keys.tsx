@@ -73,7 +73,7 @@ function ApiKeysPage() {
   });
 
   return (
-    <main className="mx-auto max-w-5xl px-5 pb-20">
+    <main className="mx-auto max-w-7xl px-5 pb-20">
       <header className="py-10">
         <p className="font-mono text-xs tracking-[0.3em] text-primary uppercase">Developers</p>
         <h1 className="mt-2 font-display text-3xl font-extrabold tracking-tight">API Keys</h1>
