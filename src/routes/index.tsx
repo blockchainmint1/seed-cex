@@ -26,17 +26,19 @@ export const Route = createFileRoute("/")({
 });
 
 const PAIR_LABELS: Record<string, string> = {
-  "USDC_TXC": "USDC / TXC",
-  "USDT_TXC": "TXC / USDT",
+  "TXC_TSD": "TXC / TSD",
+  "TXC_USDC": "TXC / USDC",
+  "TXC_USDT": "TXC / USDT",
   "TSD_USDC": "TSD / USDC",
   "LTC_TSD": "LTC / TSD",
   "ISK_TSD": "ISK / TSD",
   "ZCU_TSD": "ZCU / TSD",
 };
 
-const PAIR_ROUTE: Record<string, "/trade/usdc-txc" | "/trade/txc-usdt" | "/trade/tsd-usdc" | "/trade/ltc-tsd" | "/trade/isk-tsd" | "/trade/zcu-tsd"> = {
-  "USDC_TXC": "/trade/usdc-txc",
-  "USDT_TXC": "/trade/txc-usdt",
+const PAIR_ROUTE: Record<string, "/trade/tsd-txc" | "/trade/usdc-txc" | "/trade/txc-usdt" | "/trade/tsd-usdc" | "/trade/ltc-tsd" | "/trade/isk-tsd" | "/trade/zcu-tsd"> = {
+  "TXC_TSD": "/trade/tsd-txc",
+  "TXC_USDC": "/trade/usdc-txc",
+  "TXC_USDT": "/trade/txc-usdt",
   "TSD_USDC": "/trade/tsd-usdc",
   "LTC_TSD": "/trade/ltc-tsd",
   "ISK_TSD": "/trade/isk-tsd",
