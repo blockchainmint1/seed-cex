@@ -37,6 +37,7 @@ import { Route as ApiPublicV1DepthRouteImport } from './routes/api/public/v1/dep
 import { Route as ApiPublicCmcTickerRouteImport } from './routes/api/public/cmc/ticker'
 import { Route as ApiPublicCmcSummaryRouteImport } from './routes/api/public/cmc/summary'
 import { Route as ApiPublicCmcAssetsRouteImport } from './routes/api/public/cmc/assets'
+import { Route as ApiPublicV1TickerPriceRouteImport } from './routes/api/public/v1/ticker/price'
 import { Route as ApiPublicV1Ticker24hrRouteImport } from './routes/api/public/v1/ticker/24hr'
 import { Route as ApiPublicCmcTradesPairRouteImport } from './routes/api/public/cmc/trades.$pair'
 import { Route as ApiPublicCmcOrderbookPairRouteImport } from './routes/api/public/cmc/orderbook.$pair'
@@ -180,6 +181,11 @@ const ApiPublicCmcAssetsRoute = ApiPublicCmcAssetsRouteImport.update({
   path: '/api/public/cmc/assets',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicV1TickerPriceRoute = ApiPublicV1TickerPriceRouteImport.update({
+  id: '/api/public/v1/ticker/price',
+  path: '/api/public/v1/ticker/price',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicV1Ticker24hrRoute = ApiPublicV1Ticker24hrRouteImport.update({
   id: '/api/public/v1/ticker/24hr',
   path: '/api/public/v1/ticker/24hr',
@@ -228,6 +234,7 @@ export interface FileRoutesByFullPath {
   '/api/public/cmc/orderbook/$pair': typeof ApiPublicCmcOrderbookPairRoute
   '/api/public/cmc/trades/$pair': typeof ApiPublicCmcTradesPairRoute
   '/api/public/v1/ticker/24hr': typeof ApiPublicV1Ticker24hrRoute
+  '/api/public/v1/ticker/price': typeof ApiPublicV1TickerPriceRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -260,6 +267,7 @@ export interface FileRoutesByTo {
   '/api/public/cmc/orderbook/$pair': typeof ApiPublicCmcOrderbookPairRoute
   '/api/public/cmc/trades/$pair': typeof ApiPublicCmcTradesPairRoute
   '/api/public/v1/ticker/24hr': typeof ApiPublicV1Ticker24hrRoute
+  '/api/public/v1/ticker/price': typeof ApiPublicV1TickerPriceRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -294,6 +302,7 @@ export interface FileRoutesById {
   '/api/public/cmc/orderbook/$pair': typeof ApiPublicCmcOrderbookPairRoute
   '/api/public/cmc/trades/$pair': typeof ApiPublicCmcTradesPairRoute
   '/api/public/v1/ticker/24hr': typeof ApiPublicV1Ticker24hrRoute
+  '/api/public/v1/ticker/price': typeof ApiPublicV1TickerPriceRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -328,6 +337,7 @@ export interface FileRouteTypes {
     | '/api/public/cmc/orderbook/$pair'
     | '/api/public/cmc/trades/$pair'
     | '/api/public/v1/ticker/24hr'
+    | '/api/public/v1/ticker/price'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -360,6 +370,7 @@ export interface FileRouteTypes {
     | '/api/public/cmc/orderbook/$pair'
     | '/api/public/cmc/trades/$pair'
     | '/api/public/v1/ticker/24hr'
+    | '/api/public/v1/ticker/price'
   id:
     | '__root__'
     | '/'
@@ -393,6 +404,7 @@ export interface FileRouteTypes {
     | '/api/public/cmc/orderbook/$pair'
     | '/api/public/cmc/trades/$pair'
     | '/api/public/v1/ticker/24hr'
+    | '/api/public/v1/ticker/price'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -425,6 +437,7 @@ export interface RootRouteChildren {
   ApiPublicCmcOrderbookPairRoute: typeof ApiPublicCmcOrderbookPairRoute
   ApiPublicCmcTradesPairRoute: typeof ApiPublicCmcTradesPairRoute
   ApiPublicV1Ticker24hrRoute: typeof ApiPublicV1Ticker24hrRoute
+  ApiPublicV1TickerPriceRoute: typeof ApiPublicV1TickerPriceRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -625,6 +638,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCmcAssetsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/v1/ticker/price': {
+      id: '/api/public/v1/ticker/price'
+      path: '/api/public/v1/ticker/price'
+      fullPath: '/api/public/v1/ticker/price'
+      preLoaderRoute: typeof ApiPublicV1TickerPriceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/v1/ticker/24hr': {
       id: '/api/public/v1/ticker/24hr'
       path: '/api/public/v1/ticker/24hr'
@@ -692,6 +712,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCmcOrderbookPairRoute: ApiPublicCmcOrderbookPairRoute,
   ApiPublicCmcTradesPairRoute: ApiPublicCmcTradesPairRoute,
   ApiPublicV1Ticker24hrRoute: ApiPublicV1Ticker24hrRoute,
+  ApiPublicV1TickerPriceRoute: ApiPublicV1TickerPriceRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
