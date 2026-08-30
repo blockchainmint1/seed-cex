@@ -32,6 +32,7 @@ import { Route as ApiPublicV1TradesRouteImport } from './routes/api/public/v1/tr
 import { Route as ApiPublicV1TimeRouteImport } from './routes/api/public/v1/time'
 import { Route as ApiPublicV1PingRouteImport } from './routes/api/public/v1/ping'
 import { Route as ApiPublicV1OpenOrdersRouteImport } from './routes/api/public/v1/openOrders'
+import { Route as ApiPublicV1MyTradesRouteImport } from './routes/api/public/v1/myTrades'
 import { Route as ApiPublicV1KlinesRouteImport } from './routes/api/public/v1/klines'
 import { Route as ApiPublicV1ExchangeInfoRouteImport } from './routes/api/public/v1/exchangeInfo'
 import { Route as ApiPublicV1DepthRouteImport } from './routes/api/public/v1/depth'
@@ -159,6 +160,11 @@ const ApiPublicV1OpenOrdersRoute = ApiPublicV1OpenOrdersRouteImport.update({
   path: '/api/public/v1/openOrders',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicV1MyTradesRoute = ApiPublicV1MyTradesRouteImport.update({
+  id: '/api/public/v1/myTrades',
+  path: '/api/public/v1/myTrades',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicV1KlinesRoute = ApiPublicV1KlinesRouteImport.update({
   id: '/api/public/v1/klines',
   path: '/api/public/v1/klines',
@@ -246,6 +252,7 @@ export interface FileRoutesByFullPath {
   '/api/public/v1/depth': typeof ApiPublicV1DepthRoute
   '/api/public/v1/exchangeInfo': typeof ApiPublicV1ExchangeInfoRoute
   '/api/public/v1/klines': typeof ApiPublicV1KlinesRoute
+  '/api/public/v1/myTrades': typeof ApiPublicV1MyTradesRoute
   '/api/public/v1/openOrders': typeof ApiPublicV1OpenOrdersRoute
   '/api/public/v1/ping': typeof ApiPublicV1PingRoute
   '/api/public/v1/time': typeof ApiPublicV1TimeRoute
@@ -282,6 +289,7 @@ export interface FileRoutesByTo {
   '/api/public/v1/depth': typeof ApiPublicV1DepthRoute
   '/api/public/v1/exchangeInfo': typeof ApiPublicV1ExchangeInfoRoute
   '/api/public/v1/klines': typeof ApiPublicV1KlinesRoute
+  '/api/public/v1/myTrades': typeof ApiPublicV1MyTradesRoute
   '/api/public/v1/openOrders': typeof ApiPublicV1OpenOrdersRoute
   '/api/public/v1/ping': typeof ApiPublicV1PingRoute
   '/api/public/v1/time': typeof ApiPublicV1TimeRoute
@@ -320,6 +328,7 @@ export interface FileRoutesById {
   '/api/public/v1/depth': typeof ApiPublicV1DepthRoute
   '/api/public/v1/exchangeInfo': typeof ApiPublicV1ExchangeInfoRoute
   '/api/public/v1/klines': typeof ApiPublicV1KlinesRoute
+  '/api/public/v1/myTrades': typeof ApiPublicV1MyTradesRoute
   '/api/public/v1/openOrders': typeof ApiPublicV1OpenOrdersRoute
   '/api/public/v1/ping': typeof ApiPublicV1PingRoute
   '/api/public/v1/time': typeof ApiPublicV1TimeRoute
@@ -358,6 +367,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/depth'
     | '/api/public/v1/exchangeInfo'
     | '/api/public/v1/klines'
+    | '/api/public/v1/myTrades'
     | '/api/public/v1/openOrders'
     | '/api/public/v1/ping'
     | '/api/public/v1/time'
@@ -394,6 +404,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/depth'
     | '/api/public/v1/exchangeInfo'
     | '/api/public/v1/klines'
+    | '/api/public/v1/myTrades'
     | '/api/public/v1/openOrders'
     | '/api/public/v1/ping'
     | '/api/public/v1/time'
@@ -431,6 +442,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/depth'
     | '/api/public/v1/exchangeInfo'
     | '/api/public/v1/klines'
+    | '/api/public/v1/myTrades'
     | '/api/public/v1/openOrders'
     | '/api/public/v1/ping'
     | '/api/public/v1/time'
@@ -467,6 +479,7 @@ export interface RootRouteChildren {
   ApiPublicV1DepthRoute: typeof ApiPublicV1DepthRoute
   ApiPublicV1ExchangeInfoRoute: typeof ApiPublicV1ExchangeInfoRoute
   ApiPublicV1KlinesRoute: typeof ApiPublicV1KlinesRoute
+  ApiPublicV1MyTradesRoute: typeof ApiPublicV1MyTradesRoute
   ApiPublicV1OpenOrdersRoute: typeof ApiPublicV1OpenOrdersRoute
   ApiPublicV1PingRoute: typeof ApiPublicV1PingRoute
   ApiPublicV1TimeRoute: typeof ApiPublicV1TimeRoute
@@ -642,6 +655,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicV1OpenOrdersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/v1/myTrades': {
+      id: '/api/public/v1/myTrades'
+      path: '/api/public/v1/myTrades'
+      fullPath: '/api/public/v1/myTrades'
+      preLoaderRoute: typeof ApiPublicV1MyTradesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/v1/klines': {
       id: '/api/public/v1/klines'
       path: '/api/public/v1/klines'
@@ -766,6 +786,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicV1DepthRoute: ApiPublicV1DepthRoute,
   ApiPublicV1ExchangeInfoRoute: ApiPublicV1ExchangeInfoRoute,
   ApiPublicV1KlinesRoute: ApiPublicV1KlinesRoute,
+  ApiPublicV1MyTradesRoute: ApiPublicV1MyTradesRoute,
   ApiPublicV1OpenOrdersRoute: ApiPublicV1OpenOrdersRoute,
   ApiPublicV1PingRoute: ApiPublicV1PingRoute,
   ApiPublicV1TimeRoute: ApiPublicV1TimeRoute,
