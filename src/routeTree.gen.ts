@@ -30,6 +30,7 @@ import { Route as ProofCodeRouteImport } from './routes/proof.code'
 import { Route as AuthenticatedWalletRouteImport } from './routes/_authenticated/wallet'
 import { Route as AuthenticatedTradesRouteImport } from './routes/_authenticated/trades'
 import { Route as AuthenticatedApiKeysRouteImport } from './routes/_authenticated/api-keys'
+import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticated/account'
 import { Route as ApiPublicV1IndexRouteImport } from './routes/api/public/v1/index'
 import { Route as ApiPublicCmcIndexRouteImport } from './routes/api/public/cmc/index'
 import { Route as ApiPublicV1TradesRouteImport } from './routes/api/public/v1/trades'
@@ -157,6 +158,11 @@ const AuthenticatedApiKeysRoute = AuthenticatedApiKeysRouteImport.update({
   path: '/api-keys',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAccountRoute = AuthenticatedAccountRouteImport.update({
+  id: '/account',
+  path: '/account',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const ApiPublicV1IndexRoute = ApiPublicV1IndexRouteImport.update({
   id: '/api/public/v1/',
   path: '/api/public/v1/',
@@ -280,6 +286,7 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/stats': typeof StatsRoute
   '/terms': typeof TermsRoute
+  '/account': typeof AuthenticatedAccountRoute
   '/api-keys': typeof AuthenticatedApiKeysRoute
   '/trades': typeof AuthenticatedTradesRoute
   '/wallet': typeof AuthenticatedWalletRoute
@@ -324,6 +331,7 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/stats': typeof StatsRoute
   '/terms': typeof TermsRoute
+  '/account': typeof AuthenticatedAccountRoute
   '/api-keys': typeof AuthenticatedApiKeysRoute
   '/trades': typeof AuthenticatedTradesRoute
   '/wallet': typeof AuthenticatedWalletRoute
@@ -370,6 +378,7 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/stats': typeof StatsRoute
   '/terms': typeof TermsRoute
+  '/_authenticated/account': typeof AuthenticatedAccountRoute
   '/_authenticated/api-keys': typeof AuthenticatedApiKeysRoute
   '/_authenticated/trades': typeof AuthenticatedTradesRoute
   '/_authenticated/wallet': typeof AuthenticatedWalletRoute
@@ -416,6 +425,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/stats'
     | '/terms'
+    | '/account'
     | '/api-keys'
     | '/trades'
     | '/wallet'
@@ -460,6 +470,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/stats'
     | '/terms'
+    | '/account'
     | '/api-keys'
     | '/trades'
     | '/wallet'
@@ -505,6 +516,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/stats'
     | '/terms'
+    | '/_authenticated/account'
     | '/_authenticated/api-keys'
     | '/_authenticated/trades'
     | '/_authenticated/wallet'
@@ -732,6 +744,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedApiKeysRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/account': {
+      id: '/_authenticated/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof AuthenticatedAccountRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/api/public/v1/': {
       id: '/api/public/v1/'
       path: '/api/public/v1'
@@ -890,12 +909,14 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAccountRoute: typeof AuthenticatedAccountRoute
   AuthenticatedApiKeysRoute: typeof AuthenticatedApiKeysRoute
   AuthenticatedTradesRoute: typeof AuthenticatedTradesRoute
   AuthenticatedWalletRoute: typeof AuthenticatedWalletRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAccountRoute: AuthenticatedAccountRoute,
   AuthenticatedApiKeysRoute: AuthenticatedApiKeysRoute,
   AuthenticatedTradesRoute: AuthenticatedTradesRoute,
   AuthenticatedWalletRoute: AuthenticatedWalletRoute,

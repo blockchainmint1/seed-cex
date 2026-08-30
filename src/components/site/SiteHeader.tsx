@@ -1,16 +1,45 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Moon, Sun } from "lucide-react";
+import { ChevronDown, Moon, Sun } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
 import { useTheme } from "@/hooks/use-theme";
 
-const nav = [
-  { label: "Markets", to: "/trade/tsd-txc" },
-  { label: "Wallet", to: "/wallet" },
-  { label: "How it works", to: "/how-it-works" },
-  { label: "API", to: "/api-docs" },
-  { label: "Manifesto", to: "/manifesto" },
-] as const;
+const about = [
+  { label: "How it works", to: "/how-it-works" as const },
+  { label: "Manifesto", to: "/manifesto" as const },
+  { label: "API", to: "/api-docs" as const },
+];
+
+const proof = [
+  { label: "Our code", to: "/proof/code" as const },
+  { label: "Custody ledger", to: "/custody" as const },
+  { label: "Stats", to: "/stats" as const },
+];
+
+function NavMenu({ label, items }: { label: string; items: { label: string; to: string }[] }) {
+  return (
+    <div className="group relative">
+      <button className="flex items-center gap-1 text-muted-foreground transition-colors group-hover:text-foreground">
+        {label}
+        <ChevronDown className="h-3 w-3" />
+      </button>
+      <div className="invisible absolute left-0 top-full z-50 pt-3 opacity-0 transition-opacity group-hover:visible group-hover:opacity-100">
+        <div className="min-w-44 rounded-sm border border-border bg-background p-1 shadow-lg">
+          {items.map((i) => (
+            <Link
+              key={i.to}
+              to={i.to as "/custody"}
+              className="block rounded-sm px-3 py-2 text-muted-foreground transition-colors hover:bg-surface hover:text-primary"
+              activeProps={{ className: "text-primary" }}
+            >
+              {i.label}
+            </Link>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function SiteHeader() {
   const { user, loading } = useSession();
@@ -37,6 +66,20 @@ export function SiteHeader() {
         </Link>
 
         <nav className="hidden items-center gap-5 font-mono text-xs tracking-wider uppercase md:flex">
+          <Link
+            to="/trade/tsd-txc"
+            className="text-muted-foreground transition-colors hover:text-foreground"
+            activeProps={{ className: "text-primary" }}
+          >
+            Markets
+          </Link>
+          <Link
+            to="/wallet"
+            className="text-muted-foreground transition-colors hover:text-foreground"
+            activeProps={{ className: "text-primary" }}
+          >
+            Wallet
+          </Link>
           {user ? (
             <Link
               to="/trades"
@@ -46,16 +89,8 @@ export function SiteHeader() {
               Trades
             </Link>
           ) : null}
-          {nav.map((n) => (
-            <Link
-              key={n.to}
-              to={n.to}
-              className="text-muted-foreground transition-colors hover:text-foreground"
-              activeProps={{ className: "text-primary" }}
-            >
-              {n.label}
-            </Link>
-          ))}
+          <NavMenu label="About" items={about} />
+          <NavMenu label="Proof" items={proof} />
         </nav>
 
         <div className="ml-auto flex items-center gap-3 font-mono text-xs">
@@ -68,7 +103,12 @@ export function SiteHeader() {
           </button>
           {loading ? null : user ? (
             <>
-              <span className="hidden text-muted-foreground sm:inline">{user.email}</span>
+              <Link
+                to="/account"
+                className="hidden text-muted-foreground transition-colors hover:text-primary sm:inline"
+              >
+                {user.email}
+              </Link>
               <button
                 onClick={signOut}
                 className="rounded-sm border border-border px-3 py-1.5 tracking-wider uppercase transition-colors hover:border-primary hover:text-primary"
