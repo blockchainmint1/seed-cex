@@ -2,11 +2,13 @@ import { Link } from "@tanstack/react-router";
 
 const links = [
   { label: "How it works", to: "/how-it-works" },
+  { label: "Manifesto", to: "/manifesto" },
+  { label: "API", to: "/api-docs" },
+  { label: "Our code", to: "/proof/code" },
+  { label: "Custody Ledger", to: "/custody" },
+  { label: "Stats", to: "/stats" },
   { label: "Terms", to: "/terms" },
   { label: "Privacy", to: "/privacy" },
-  { label: "Manifesto", to: "/manifesto" },
-  { label: "Custody Ledger", to: "/custody" },
-  { label: "API", to: "/api-docs" },
 ] as const;
 
 export function SiteFooter() {
