@@ -15,6 +15,7 @@ import { Route as ManifestoRouteImport } from './routes/manifesto'
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
 import { Route as CustodyRouteImport } from './routes/custody'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ApiDocsRouteImport } from './routes/api-docs'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TradeZcuTsdRouteImport } from './routes/trade.zcu-tsd'
@@ -77,6 +78,11 @@ const CustodyRoute = CustodyRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDocsRoute = ApiDocsRouteImport.update({
+  id: '/api-docs',
+  path: '/api-docs',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
@@ -248,6 +254,7 @@ const ApiPublicCmcOrderbookPairRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api-docs': typeof ApiDocsRoute
   '/auth': typeof AuthRoute
   '/custody': typeof CustodyRoute
   '/how-it-works': typeof HowItWorksRoute
@@ -288,6 +295,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api-docs': typeof ApiDocsRoute
   '/auth': typeof AuthRoute
   '/custody': typeof CustodyRoute
   '/how-it-works': typeof HowItWorksRoute
@@ -330,6 +338,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/api-docs': typeof ApiDocsRoute
   '/auth': typeof AuthRoute
   '/custody': typeof CustodyRoute
   '/how-it-works': typeof HowItWorksRoute
@@ -372,6 +381,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/api-docs'
     | '/auth'
     | '/custody'
     | '/how-it-works'
@@ -412,6 +422,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/api-docs'
     | '/auth'
     | '/custody'
     | '/how-it-works'
@@ -453,6 +464,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/api-docs'
     | '/auth'
     | '/custody'
     | '/how-it-works'
@@ -495,6 +507,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  ApiDocsRoute: typeof ApiDocsRoute
   AuthRoute: typeof AuthRoute
   CustodyRoute: typeof CustodyRoute
   HowItWorksRoute: typeof HowItWorksRoute
@@ -574,6 +587,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api-docs': {
+      id: '/api-docs'
+      path: '/api-docs'
+      fullPath: '/api-docs'
+      preLoaderRoute: typeof ApiDocsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -826,6 +846,7 @@ const AuthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  ApiDocsRoute: ApiDocsRoute,
   AuthRoute: AuthRoute,
   CustodyRoute: CustodyRoute,
   HowItWorksRoute: HowItWorksRoute,
