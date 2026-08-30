@@ -34,6 +34,15 @@ const PAIR_LABELS: Record<string, string> = {
   "ZCU_TSD": "ZCU / TSD",
 };
 
+const PAIR_ROUTE: Record<string, "/trade/usdc-txc" | "/trade/usdt-txc" | "/trade/tsd-usdc" | "/trade/ltc-tsd" | "/trade/isk-tsd" | "/trade/zcu-tsd"> = {
+  "USDC_TXC": "/trade/usdc-txc",
+  "USDT_TXC": "/trade/usdt-txc",
+  "TSD_USDC": "/trade/tsd-usdc",
+  "LTC_TSD": "/trade/ltc-tsd",
+  "ISK_TSD": "/trade/isk-tsd",
+  "ZCU_TSD": "/trade/zcu-tsd",
+};
+
 function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div className="border-l border-border pl-4">
