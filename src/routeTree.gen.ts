@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as StatsRouteImport } from './routes/stats'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ManifestoRouteImport } from './routes/manifesto'
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
@@ -54,6 +55,11 @@ import { Route as ApiPublicCmcOrderbookPairRouteImport } from './routes/api/publ
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StatsRoute = StatsRouteImport.update({
+  id: '/stats',
+  path: '/stats',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyRoute = PrivacyRouteImport.update({
@@ -266,6 +272,7 @@ export interface FileRoutesByFullPath {
   '/how-it-works': typeof HowItWorksRoute
   '/manifesto': typeof ManifestoRoute
   '/privacy': typeof PrivacyRoute
+  '/stats': typeof StatsRoute
   '/terms': typeof TermsRoute
   '/api-keys': typeof AuthenticatedApiKeysRoute
   '/trades': typeof AuthenticatedTradesRoute
@@ -308,6 +315,7 @@ export interface FileRoutesByTo {
   '/how-it-works': typeof HowItWorksRoute
   '/manifesto': typeof ManifestoRoute
   '/privacy': typeof PrivacyRoute
+  '/stats': typeof StatsRoute
   '/terms': typeof TermsRoute
   '/api-keys': typeof AuthenticatedApiKeysRoute
   '/trades': typeof AuthenticatedTradesRoute
@@ -352,6 +360,7 @@ export interface FileRoutesById {
   '/how-it-works': typeof HowItWorksRoute
   '/manifesto': typeof ManifestoRoute
   '/privacy': typeof PrivacyRoute
+  '/stats': typeof StatsRoute
   '/terms': typeof TermsRoute
   '/_authenticated/api-keys': typeof AuthenticatedApiKeysRoute
   '/_authenticated/trades': typeof AuthenticatedTradesRoute
@@ -396,6 +405,7 @@ export interface FileRouteTypes {
     | '/how-it-works'
     | '/manifesto'
     | '/privacy'
+    | '/stats'
     | '/terms'
     | '/api-keys'
     | '/trades'
@@ -438,6 +448,7 @@ export interface FileRouteTypes {
     | '/how-it-works'
     | '/manifesto'
     | '/privacy'
+    | '/stats'
     | '/terms'
     | '/api-keys'
     | '/trades'
@@ -481,6 +492,7 @@ export interface FileRouteTypes {
     | '/how-it-works'
     | '/manifesto'
     | '/privacy'
+    | '/stats'
     | '/terms'
     | '/_authenticated/api-keys'
     | '/_authenticated/trades'
@@ -525,6 +537,7 @@ export interface RootRouteChildren {
   HowItWorksRoute: typeof HowItWorksRoute
   ManifestoRoute: typeof ManifestoRoute
   PrivacyRoute: typeof PrivacyRoute
+  StatsRoute: typeof StatsRoute
   TermsRoute: typeof TermsRoute
   TradeIskTsdRoute: typeof TradeIskTsdRoute
   TradeLtcTsdRoute: typeof TradeLtcTsdRoute
@@ -564,6 +577,13 @@ declare module '@tanstack/react-router' {
       path: '/terms'
       fullPath: '/terms'
       preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/stats': {
+      id: '/stats'
+      path: '/stats'
+      fullPath: '/stats'
+      preLoaderRoute: typeof StatsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy': {
@@ -873,6 +893,7 @@ const rootRouteChildren: RootRouteChildren = {
   HowItWorksRoute: HowItWorksRoute,
   ManifestoRoute: ManifestoRoute,
   PrivacyRoute: PrivacyRoute,
+  StatsRoute: StatsRoute,
   TermsRoute: TermsRoute,
   TradeIskTsdRoute: TradeIskTsdRoute,
   TradeLtcTsdRoute: TradeLtcTsdRoute,
