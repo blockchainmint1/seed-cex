@@ -46,6 +46,15 @@ export function SiteHeader() {
   const { user, loading } = useSession();
   const { theme, toggle } = useTheme();
   const navigate = useNavigate();
+  const checkAdmin = useServerFn(amIAdmin);
+  const admin = useQuery({
+    queryKey: ["am-i-admin", user?.id ?? "anon"],
+    queryFn: () => checkAdmin(),
+    enabled: Boolean(user),
+    retry: false,
+    staleTime: 300_000,
+  });
+
 
   async function signOut() {
     await supabase.auth.signOut();
