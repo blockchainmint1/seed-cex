@@ -82,11 +82,11 @@ export const getPublicStats = createServerFn({ method: "GET" }).handler(
           pair: p.id,
           label: p.id.replace("_", " / "),
           route: routeFor(p.id),
-          lastPrice: s?.lastPrice ?? null,
-          baseVolume: s?.baseVolume ?? 0,
-          quoteVolume: s?.quoteVolume ?? 0,
-          bid: s?.bid ?? null,
-          ask: s?.ask ?? null,
+          lastPrice: s?.stats.last ?? null,
+          baseVolume: s?.stats.volume24h ?? 0,
+          quoteVolume: s ? s.tape.reduce((a, t) => a + t.amount * t.price, 0) : 0,
+          bid: s?.book.bids[0]?.price ?? null,
+          ask: s?.book.asks[0]?.price ?? null,
         };
       }),
       totals: {
