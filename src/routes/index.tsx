@@ -208,7 +208,7 @@ function Index() {
                   </tr>
                 ) : (
                   markets.map((m) => {
-                    const pairId = m.trading_pairs?.toLowerCase().replace(/_/g, "-") ?? "usdc-txc";
+                    const route = PAIR_ROUTE[m.trading_pairs];
                     const change = m.price_change_percent_24h ?? 0;
                     const positive = change >= 0;
                     return (
@@ -231,12 +231,14 @@ function Index() {
                           {change.toFixed(2)}%
                         </td>
                         <td className="px-4 py-4 text-right">
-                          <Link
-                            to={`/trade/${pairId}`}
-                            className="inline-flex rounded-sm border border-border px-3 py-1.5 font-mono text-[10px] tracking-wider text-foreground uppercase transition-colors hover:border-primary hover:text-primary"
-                          >
-                            Trade
-                          </Link>
+                          {route ? (
+                            <Link
+                              to={route}
+                              className="inline-flex rounded-sm border border-border px-3 py-1.5 font-mono text-[10px] tracking-wider text-foreground uppercase transition-colors hover:border-primary hover:text-primary"
+                            >
+                              Trade
+                            </Link>
+                          ) : null}
                         </td>
                       </tr>
                     );
