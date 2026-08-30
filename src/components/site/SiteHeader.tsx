@@ -1,8 +1,12 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ChevronDown, Moon, Sun } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
+import { amIAdmin } from "@/lib/admin.functions";
 import { useSession } from "@/hooks/use-session";
 import { useTheme } from "@/hooks/use-theme";
+
 
 const about = [
   { label: "How it works", to: "/how-it-works" as const },
