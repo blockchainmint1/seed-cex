@@ -26,6 +26,7 @@ import { Route as TradeTsdUsdcRouteImport } from './routes/trade.tsd-usdc'
 import { Route as TradeTsdTxcRouteImport } from './routes/trade.tsd-txc'
 import { Route as TradeLtcTsdRouteImport } from './routes/trade.ltc-tsd'
 import { Route as TradeIskTsdRouteImport } from './routes/trade.isk-tsd'
+import { Route as ProofCodeRouteImport } from './routes/proof.code'
 import { Route as AuthenticatedWalletRouteImport } from './routes/_authenticated/wallet'
 import { Route as AuthenticatedTradesRouteImport } from './routes/_authenticated/trades'
 import { Route as AuthenticatedApiKeysRouteImport } from './routes/_authenticated/api-keys'
@@ -134,6 +135,11 @@ const TradeLtcTsdRoute = TradeLtcTsdRouteImport.update({
 const TradeIskTsdRoute = TradeIskTsdRouteImport.update({
   id: '/trade/isk-tsd',
   path: '/trade/isk-tsd',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProofCodeRoute = ProofCodeRouteImport.update({
+  id: '/proof/code',
+  path: '/proof/code',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedWalletRoute = AuthenticatedWalletRouteImport.update({
@@ -277,6 +283,7 @@ export interface FileRoutesByFullPath {
   '/api-keys': typeof AuthenticatedApiKeysRoute
   '/trades': typeof AuthenticatedTradesRoute
   '/wallet': typeof AuthenticatedWalletRoute
+  '/proof/code': typeof ProofCodeRoute
   '/trade/isk-tsd': typeof TradeIskTsdRoute
   '/trade/ltc-tsd': typeof TradeLtcTsdRoute
   '/trade/tsd-txc': typeof TradeTsdTxcRoute
@@ -320,6 +327,7 @@ export interface FileRoutesByTo {
   '/api-keys': typeof AuthenticatedApiKeysRoute
   '/trades': typeof AuthenticatedTradesRoute
   '/wallet': typeof AuthenticatedWalletRoute
+  '/proof/code': typeof ProofCodeRoute
   '/trade/isk-tsd': typeof TradeIskTsdRoute
   '/trade/ltc-tsd': typeof TradeLtcTsdRoute
   '/trade/tsd-txc': typeof TradeTsdTxcRoute
@@ -365,6 +373,7 @@ export interface FileRoutesById {
   '/_authenticated/api-keys': typeof AuthenticatedApiKeysRoute
   '/_authenticated/trades': typeof AuthenticatedTradesRoute
   '/_authenticated/wallet': typeof AuthenticatedWalletRoute
+  '/proof/code': typeof ProofCodeRoute
   '/trade/isk-tsd': typeof TradeIskTsdRoute
   '/trade/ltc-tsd': typeof TradeLtcTsdRoute
   '/trade/tsd-txc': typeof TradeTsdTxcRoute
@@ -410,6 +419,7 @@ export interface FileRouteTypes {
     | '/api-keys'
     | '/trades'
     | '/wallet'
+    | '/proof/code'
     | '/trade/isk-tsd'
     | '/trade/ltc-tsd'
     | '/trade/tsd-txc'
@@ -453,6 +463,7 @@ export interface FileRouteTypes {
     | '/api-keys'
     | '/trades'
     | '/wallet'
+    | '/proof/code'
     | '/trade/isk-tsd'
     | '/trade/ltc-tsd'
     | '/trade/tsd-txc'
@@ -497,6 +508,7 @@ export interface FileRouteTypes {
     | '/_authenticated/api-keys'
     | '/_authenticated/trades'
     | '/_authenticated/wallet'
+    | '/proof/code'
     | '/trade/isk-tsd'
     | '/trade/ltc-tsd'
     | '/trade/tsd-txc'
@@ -539,6 +551,7 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   StatsRoute: typeof StatsRoute
   TermsRoute: typeof TermsRoute
+  ProofCodeRoute: typeof ProofCodeRoute
   TradeIskTsdRoute: typeof TradeIskTsdRoute
   TradeLtcTsdRoute: typeof TradeLtcTsdRoute
   TradeTsdTxcRoute: typeof TradeTsdTxcRoute
@@ -689,6 +702,13 @@ declare module '@tanstack/react-router' {
       path: '/trade/isk-tsd'
       fullPath: '/trade/isk-tsd'
       preLoaderRoute: typeof TradeIskTsdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/proof/code': {
+      id: '/proof/code'
+      path: '/proof/code'
+      fullPath: '/proof/code'
+      preLoaderRoute: typeof ProofCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/wallet': {
@@ -895,6 +915,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   StatsRoute: StatsRoute,
   TermsRoute: TermsRoute,
+  ProofCodeRoute: ProofCodeRoute,
   TradeIskTsdRoute: TradeIskTsdRoute,
   TradeLtcTsdRoute: TradeLtcTsdRoute,
   TradeTsdTxcRoute: TradeTsdTxcRoute,
