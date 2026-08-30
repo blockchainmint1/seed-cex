@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { Github, ExternalLink, ShieldCheck, Code2, Lock } from "lucide-react";
 
 export const Route = createFileRoute("/proof/code")({
   head: () => ({
