@@ -28,6 +28,7 @@ import { Route as AuthenticatedWalletRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedTradesRouteImport } from './routes/_authenticated/trades'
 import { Route as ApiPublicV1IndexRouteImport } from './routes/api/public/v1/index'
 import { Route as ApiPublicCmcIndexRouteImport } from './routes/api/public/cmc/index'
+import { Route as ApiPublicV1TradesRouteImport } from './routes/api/public/v1/trades'
 import { Route as ApiPublicV1TimeRouteImport } from './routes/api/public/v1/time'
 import { Route as ApiPublicV1PingRouteImport } from './routes/api/public/v1/ping'
 import { Route as ApiPublicV1ExchangeInfoRouteImport } from './routes/api/public/v1/exchangeInfo'
@@ -132,6 +133,11 @@ const ApiPublicCmcIndexRoute = ApiPublicCmcIndexRouteImport.update({
   path: '/api/public/cmc/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicV1TradesRoute = ApiPublicV1TradesRouteImport.update({
+  id: '/api/public/v1/trades',
+  path: '/api/public/v1/trades',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicV1TimeRoute = ApiPublicV1TimeRouteImport.update({
   id: '/api/public/v1/time',
   path: '/api/public/v1/time',
@@ -203,6 +209,7 @@ export interface FileRoutesByFullPath {
   '/api/public/v1/exchangeInfo': typeof ApiPublicV1ExchangeInfoRoute
   '/api/public/v1/ping': typeof ApiPublicV1PingRoute
   '/api/public/v1/time': typeof ApiPublicV1TimeRoute
+  '/api/public/v1/trades': typeof ApiPublicV1TradesRoute
   '/api/public/cmc/': typeof ApiPublicCmcIndexRoute
   '/api/public/v1/': typeof ApiPublicV1IndexRoute
   '/api/public/cmc/orderbook/$pair': typeof ApiPublicCmcOrderbookPairRoute
@@ -232,6 +239,7 @@ export interface FileRoutesByTo {
   '/api/public/v1/exchangeInfo': typeof ApiPublicV1ExchangeInfoRoute
   '/api/public/v1/ping': typeof ApiPublicV1PingRoute
   '/api/public/v1/time': typeof ApiPublicV1TimeRoute
+  '/api/public/v1/trades': typeof ApiPublicV1TradesRoute
   '/api/public/cmc': typeof ApiPublicCmcIndexRoute
   '/api/public/v1': typeof ApiPublicV1IndexRoute
   '/api/public/cmc/orderbook/$pair': typeof ApiPublicCmcOrderbookPairRoute
@@ -263,6 +271,7 @@ export interface FileRoutesById {
   '/api/public/v1/exchangeInfo': typeof ApiPublicV1ExchangeInfoRoute
   '/api/public/v1/ping': typeof ApiPublicV1PingRoute
   '/api/public/v1/time': typeof ApiPublicV1TimeRoute
+  '/api/public/v1/trades': typeof ApiPublicV1TradesRoute
   '/api/public/cmc/': typeof ApiPublicCmcIndexRoute
   '/api/public/v1/': typeof ApiPublicV1IndexRoute
   '/api/public/cmc/orderbook/$pair': typeof ApiPublicCmcOrderbookPairRoute
@@ -294,6 +303,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/exchangeInfo'
     | '/api/public/v1/ping'
     | '/api/public/v1/time'
+    | '/api/public/v1/trades'
     | '/api/public/cmc/'
     | '/api/public/v1/'
     | '/api/public/cmc/orderbook/$pair'
@@ -323,6 +333,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/exchangeInfo'
     | '/api/public/v1/ping'
     | '/api/public/v1/time'
+    | '/api/public/v1/trades'
     | '/api/public/cmc'
     | '/api/public/v1'
     | '/api/public/cmc/orderbook/$pair'
@@ -353,6 +364,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/exchangeInfo'
     | '/api/public/v1/ping'
     | '/api/public/v1/time'
+    | '/api/public/v1/trades'
     | '/api/public/cmc/'
     | '/api/public/v1/'
     | '/api/public/cmc/orderbook/$pair'
@@ -382,6 +394,7 @@ export interface RootRouteChildren {
   ApiPublicV1ExchangeInfoRoute: typeof ApiPublicV1ExchangeInfoRoute
   ApiPublicV1PingRoute: typeof ApiPublicV1PingRoute
   ApiPublicV1TimeRoute: typeof ApiPublicV1TimeRoute
+  ApiPublicV1TradesRoute: typeof ApiPublicV1TradesRoute
   ApiPublicCmcIndexRoute: typeof ApiPublicCmcIndexRoute
   ApiPublicV1IndexRoute: typeof ApiPublicV1IndexRoute
   ApiPublicCmcOrderbookPairRoute: typeof ApiPublicCmcOrderbookPairRoute
@@ -523,6 +536,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCmcIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/v1/trades': {
+      id: '/api/public/v1/trades'
+      path: '/api/public/v1/trades'
+      fullPath: '/api/public/v1/trades'
+      preLoaderRoute: typeof ApiPublicV1TradesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/v1/time': {
       id: '/api/public/v1/time'
       path: '/api/public/v1/time'
@@ -625,6 +645,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicV1ExchangeInfoRoute: ApiPublicV1ExchangeInfoRoute,
   ApiPublicV1PingRoute: ApiPublicV1PingRoute,
   ApiPublicV1TimeRoute: ApiPublicV1TimeRoute,
+  ApiPublicV1TradesRoute: ApiPublicV1TradesRoute,
   ApiPublicCmcIndexRoute: ApiPublicCmcIndexRoute,
   ApiPublicV1IndexRoute: ApiPublicV1IndexRoute,
   ApiPublicCmcOrderbookPairRoute: ApiPublicCmcOrderbookPairRoute,
