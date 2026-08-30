@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TsdRouteImport } from './routes/tsd'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as StatsRouteImport } from './routes/stats'
 import { Route as PrivacyRouteImport } from './routes/privacy'
@@ -54,6 +55,11 @@ import { Route as ApiPublicV1Ticker24hrRouteImport } from './routes/api/public/v
 import { Route as ApiPublicCmcTradesPairRouteImport } from './routes/api/public/cmc/trades.$pair'
 import { Route as ApiPublicCmcOrderbookPairRouteImport } from './routes/api/public/cmc/orderbook.$pair'
 
+const TsdRoute = TsdRouteImport.update({
+  id: '/tsd',
+  path: '/tsd',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
@@ -286,6 +292,7 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/stats': typeof StatsRoute
   '/terms': typeof TermsRoute
+  '/tsd': typeof TsdRoute
   '/account': typeof AuthenticatedAccountRoute
   '/api-keys': typeof AuthenticatedApiKeysRoute
   '/trades': typeof AuthenticatedTradesRoute
@@ -331,6 +338,7 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/stats': typeof StatsRoute
   '/terms': typeof TermsRoute
+  '/tsd': typeof TsdRoute
   '/account': typeof AuthenticatedAccountRoute
   '/api-keys': typeof AuthenticatedApiKeysRoute
   '/trades': typeof AuthenticatedTradesRoute
@@ -378,6 +386,7 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/stats': typeof StatsRoute
   '/terms': typeof TermsRoute
+  '/tsd': typeof TsdRoute
   '/_authenticated/account': typeof AuthenticatedAccountRoute
   '/_authenticated/api-keys': typeof AuthenticatedApiKeysRoute
   '/_authenticated/trades': typeof AuthenticatedTradesRoute
@@ -425,6 +434,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/stats'
     | '/terms'
+    | '/tsd'
     | '/account'
     | '/api-keys'
     | '/trades'
@@ -470,6 +480,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/stats'
     | '/terms'
+    | '/tsd'
     | '/account'
     | '/api-keys'
     | '/trades'
@@ -516,6 +527,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/stats'
     | '/terms'
+    | '/tsd'
     | '/_authenticated/account'
     | '/_authenticated/api-keys'
     | '/_authenticated/trades'
@@ -563,6 +575,7 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   StatsRoute: typeof StatsRoute
   TermsRoute: typeof TermsRoute
+  TsdRoute: typeof TsdRoute
   ProofCodeRoute: typeof ProofCodeRoute
   TradeIskTsdRoute: typeof TradeIskTsdRoute
   TradeLtcTsdRoute: typeof TradeLtcTsdRoute
@@ -597,6 +610,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/tsd': {
+      id: '/tsd'
+      path: '/tsd'
+      fullPath: '/tsd'
+      preLoaderRoute: typeof TsdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/terms': {
       id: '/terms'
       path: '/terms'
@@ -936,6 +956,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   StatsRoute: StatsRoute,
   TermsRoute: TermsRoute,
+  TsdRoute: TsdRoute,
   ProofCodeRoute: ProofCodeRoute,
   TradeIskTsdRoute: TradeIskTsdRoute,
   TradeLtcTsdRoute: TradeLtcTsdRoute,
