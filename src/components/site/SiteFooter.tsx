@@ -6,6 +6,7 @@ const links = [
   { label: "Privacy", to: "/privacy" },
   { label: "Manifesto", to: "/manifesto" },
   { label: "Custody Ledger", to: "/custody" },
+  { label: "API", to: "/api-docs" },
 ] as const;
 
 export function SiteFooter() {

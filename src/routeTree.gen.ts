@@ -15,6 +15,7 @@ import { Route as ManifestoRouteImport } from './routes/manifesto'
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
 import { Route as CustodyRouteImport } from './routes/custody'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ApiDocsRouteImport } from './routes/api-docs'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TradeZcuTsdRouteImport } from './routes/trade.zcu-tsd'
@@ -26,10 +27,27 @@ import { Route as TradeLtcTsdRouteImport } from './routes/trade.ltc-tsd'
 import { Route as TradeIskTsdRouteImport } from './routes/trade.isk-tsd'
 import { Route as AuthenticatedWalletRouteImport } from './routes/_authenticated/wallet'
 import { Route as AuthenticatedTradesRouteImport } from './routes/_authenticated/trades'
+import { Route as AuthenticatedApiKeysRouteImport } from './routes/_authenticated/api-keys'
+import { Route as ApiPublicV1IndexRouteImport } from './routes/api/public/v1/index'
 import { Route as ApiPublicCmcIndexRouteImport } from './routes/api/public/cmc/index'
+import { Route as ApiPublicV1TradesRouteImport } from './routes/api/public/v1/trades'
+import { Route as ApiPublicV1TimeRouteImport } from './routes/api/public/v1/time'
+import { Route as ApiPublicV1StreamRouteImport } from './routes/api/public/v1/stream'
+import { Route as ApiPublicV1PingRouteImport } from './routes/api/public/v1/ping'
+import { Route as ApiPublicV1OrderRouteImport } from './routes/api/public/v1/order'
+import { Route as ApiPublicV1OpenapiDotjsonRouteImport } from './routes/api/public/v1/openapi[.]json'
+import { Route as ApiPublicV1OpenOrdersRouteImport } from './routes/api/public/v1/openOrders'
+import { Route as ApiPublicV1MyTradesRouteImport } from './routes/api/public/v1/myTrades'
+import { Route as ApiPublicV1KlinesRouteImport } from './routes/api/public/v1/klines'
+import { Route as ApiPublicV1ExchangeInfoRouteImport } from './routes/api/public/v1/exchangeInfo'
+import { Route as ApiPublicV1DepthRouteImport } from './routes/api/public/v1/depth'
+import { Route as ApiPublicV1AllOrdersRouteImport } from './routes/api/public/v1/allOrders'
+import { Route as ApiPublicV1AccountRouteImport } from './routes/api/public/v1/account'
 import { Route as ApiPublicCmcTickerRouteImport } from './routes/api/public/cmc/ticker'
 import { Route as ApiPublicCmcSummaryRouteImport } from './routes/api/public/cmc/summary'
 import { Route as ApiPublicCmcAssetsRouteImport } from './routes/api/public/cmc/assets'
+import { Route as ApiPublicV1TickerPriceRouteImport } from './routes/api/public/v1/ticker/price'
+import { Route as ApiPublicV1Ticker24hrRouteImport } from './routes/api/public/v1/ticker/24hr'
 import { Route as ApiPublicCmcTradesPairRouteImport } from './routes/api/public/cmc/trades.$pair'
 import { Route as ApiPublicCmcOrderbookPairRouteImport } from './routes/api/public/cmc/orderbook.$pair'
 
@@ -61,6 +79,11 @@ const CustodyRoute = CustodyRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDocsRoute = ApiDocsRouteImport.update({
+  id: '/api-docs',
+  path: '/api-docs',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
@@ -117,9 +140,85 @@ const AuthenticatedTradesRoute = AuthenticatedTradesRouteImport.update({
   path: '/trades',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedApiKeysRoute = AuthenticatedApiKeysRouteImport.update({
+  id: '/api-keys',
+  path: '/api-keys',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const ApiPublicV1IndexRoute = ApiPublicV1IndexRouteImport.update({
+  id: '/api/public/v1/',
+  path: '/api/public/v1/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicCmcIndexRoute = ApiPublicCmcIndexRouteImport.update({
   id: '/api/public/cmc/',
   path: '/api/public/cmc/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicV1TradesRoute = ApiPublicV1TradesRouteImport.update({
+  id: '/api/public/v1/trades',
+  path: '/api/public/v1/trades',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicV1TimeRoute = ApiPublicV1TimeRouteImport.update({
+  id: '/api/public/v1/time',
+  path: '/api/public/v1/time',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicV1StreamRoute = ApiPublicV1StreamRouteImport.update({
+  id: '/api/public/v1/stream',
+  path: '/api/public/v1/stream',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicV1PingRoute = ApiPublicV1PingRouteImport.update({
+  id: '/api/public/v1/ping',
+  path: '/api/public/v1/ping',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicV1OrderRoute = ApiPublicV1OrderRouteImport.update({
+  id: '/api/public/v1/order',
+  path: '/api/public/v1/order',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicV1OpenapiDotjsonRoute =
+  ApiPublicV1OpenapiDotjsonRouteImport.update({
+    id: '/api/public/v1/openapi.json',
+    path: '/api/public/v1/openapi.json',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicV1OpenOrdersRoute = ApiPublicV1OpenOrdersRouteImport.update({
+  id: '/api/public/v1/openOrders',
+  path: '/api/public/v1/openOrders',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicV1MyTradesRoute = ApiPublicV1MyTradesRouteImport.update({
+  id: '/api/public/v1/myTrades',
+  path: '/api/public/v1/myTrades',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicV1KlinesRoute = ApiPublicV1KlinesRouteImport.update({
+  id: '/api/public/v1/klines',
+  path: '/api/public/v1/klines',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicV1ExchangeInfoRoute = ApiPublicV1ExchangeInfoRouteImport.update({
+  id: '/api/public/v1/exchangeInfo',
+  path: '/api/public/v1/exchangeInfo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicV1DepthRoute = ApiPublicV1DepthRouteImport.update({
+  id: '/api/public/v1/depth',
+  path: '/api/public/v1/depth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicV1AllOrdersRoute = ApiPublicV1AllOrdersRouteImport.update({
+  id: '/api/public/v1/allOrders',
+  path: '/api/public/v1/allOrders',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicV1AccountRoute = ApiPublicV1AccountRouteImport.update({
+  id: '/api/public/v1/account',
+  path: '/api/public/v1/account',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicCmcTickerRoute = ApiPublicCmcTickerRouteImport.update({
@@ -137,6 +236,16 @@ const ApiPublicCmcAssetsRoute = ApiPublicCmcAssetsRouteImport.update({
   path: '/api/public/cmc/assets',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicV1TickerPriceRoute = ApiPublicV1TickerPriceRouteImport.update({
+  id: '/api/public/v1/ticker/price',
+  path: '/api/public/v1/ticker/price',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicV1Ticker24hrRoute = ApiPublicV1Ticker24hrRouteImport.update({
+  id: '/api/public/v1/ticker/24hr',
+  path: '/api/public/v1/ticker/24hr',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicCmcTradesPairRoute = ApiPublicCmcTradesPairRouteImport.update({
   id: '/api/public/cmc/trades/$pair',
   path: '/api/public/cmc/trades/$pair',
@@ -151,12 +260,14 @@ const ApiPublicCmcOrderbookPairRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api-docs': typeof ApiDocsRoute
   '/auth': typeof AuthRoute
   '/custody': typeof CustodyRoute
   '/how-it-works': typeof HowItWorksRoute
   '/manifesto': typeof ManifestoRoute
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
+  '/api-keys': typeof AuthenticatedApiKeysRoute
   '/trades': typeof AuthenticatedTradesRoute
   '/wallet': typeof AuthenticatedWalletRoute
   '/trade/isk-tsd': typeof TradeIskTsdRoute
@@ -169,18 +280,36 @@ export interface FileRoutesByFullPath {
   '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
   '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
   '/api/public/cmc/ticker': typeof ApiPublicCmcTickerRoute
+  '/api/public/v1/account': typeof ApiPublicV1AccountRoute
+  '/api/public/v1/allOrders': typeof ApiPublicV1AllOrdersRoute
+  '/api/public/v1/depth': typeof ApiPublicV1DepthRoute
+  '/api/public/v1/exchangeInfo': typeof ApiPublicV1ExchangeInfoRoute
+  '/api/public/v1/klines': typeof ApiPublicV1KlinesRoute
+  '/api/public/v1/myTrades': typeof ApiPublicV1MyTradesRoute
+  '/api/public/v1/openOrders': typeof ApiPublicV1OpenOrdersRoute
+  '/api/public/v1/openapi.json': typeof ApiPublicV1OpenapiDotjsonRoute
+  '/api/public/v1/order': typeof ApiPublicV1OrderRoute
+  '/api/public/v1/ping': typeof ApiPublicV1PingRoute
+  '/api/public/v1/stream': typeof ApiPublicV1StreamRoute
+  '/api/public/v1/time': typeof ApiPublicV1TimeRoute
+  '/api/public/v1/trades': typeof ApiPublicV1TradesRoute
   '/api/public/cmc/': typeof ApiPublicCmcIndexRoute
+  '/api/public/v1/': typeof ApiPublicV1IndexRoute
   '/api/public/cmc/orderbook/$pair': typeof ApiPublicCmcOrderbookPairRoute
   '/api/public/cmc/trades/$pair': typeof ApiPublicCmcTradesPairRoute
+  '/api/public/v1/ticker/24hr': typeof ApiPublicV1Ticker24hrRoute
+  '/api/public/v1/ticker/price': typeof ApiPublicV1TickerPriceRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api-docs': typeof ApiDocsRoute
   '/auth': typeof AuthRoute
   '/custody': typeof CustodyRoute
   '/how-it-works': typeof HowItWorksRoute
   '/manifesto': typeof ManifestoRoute
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
+  '/api-keys': typeof AuthenticatedApiKeysRoute
   '/trades': typeof AuthenticatedTradesRoute
   '/wallet': typeof AuthenticatedWalletRoute
   '/trade/isk-tsd': typeof TradeIskTsdRoute
@@ -193,20 +322,38 @@ export interface FileRoutesByTo {
   '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
   '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
   '/api/public/cmc/ticker': typeof ApiPublicCmcTickerRoute
+  '/api/public/v1/account': typeof ApiPublicV1AccountRoute
+  '/api/public/v1/allOrders': typeof ApiPublicV1AllOrdersRoute
+  '/api/public/v1/depth': typeof ApiPublicV1DepthRoute
+  '/api/public/v1/exchangeInfo': typeof ApiPublicV1ExchangeInfoRoute
+  '/api/public/v1/klines': typeof ApiPublicV1KlinesRoute
+  '/api/public/v1/myTrades': typeof ApiPublicV1MyTradesRoute
+  '/api/public/v1/openOrders': typeof ApiPublicV1OpenOrdersRoute
+  '/api/public/v1/openapi.json': typeof ApiPublicV1OpenapiDotjsonRoute
+  '/api/public/v1/order': typeof ApiPublicV1OrderRoute
+  '/api/public/v1/ping': typeof ApiPublicV1PingRoute
+  '/api/public/v1/stream': typeof ApiPublicV1StreamRoute
+  '/api/public/v1/time': typeof ApiPublicV1TimeRoute
+  '/api/public/v1/trades': typeof ApiPublicV1TradesRoute
   '/api/public/cmc': typeof ApiPublicCmcIndexRoute
+  '/api/public/v1': typeof ApiPublicV1IndexRoute
   '/api/public/cmc/orderbook/$pair': typeof ApiPublicCmcOrderbookPairRoute
   '/api/public/cmc/trades/$pair': typeof ApiPublicCmcTradesPairRoute
+  '/api/public/v1/ticker/24hr': typeof ApiPublicV1Ticker24hrRoute
+  '/api/public/v1/ticker/price': typeof ApiPublicV1TickerPriceRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/api-docs': typeof ApiDocsRoute
   '/auth': typeof AuthRoute
   '/custody': typeof CustodyRoute
   '/how-it-works': typeof HowItWorksRoute
   '/manifesto': typeof ManifestoRoute
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
+  '/_authenticated/api-keys': typeof AuthenticatedApiKeysRoute
   '/_authenticated/trades': typeof AuthenticatedTradesRoute
   '/_authenticated/wallet': typeof AuthenticatedWalletRoute
   '/trade/isk-tsd': typeof TradeIskTsdRoute
@@ -219,20 +366,38 @@ export interface FileRoutesById {
   '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
   '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
   '/api/public/cmc/ticker': typeof ApiPublicCmcTickerRoute
+  '/api/public/v1/account': typeof ApiPublicV1AccountRoute
+  '/api/public/v1/allOrders': typeof ApiPublicV1AllOrdersRoute
+  '/api/public/v1/depth': typeof ApiPublicV1DepthRoute
+  '/api/public/v1/exchangeInfo': typeof ApiPublicV1ExchangeInfoRoute
+  '/api/public/v1/klines': typeof ApiPublicV1KlinesRoute
+  '/api/public/v1/myTrades': typeof ApiPublicV1MyTradesRoute
+  '/api/public/v1/openOrders': typeof ApiPublicV1OpenOrdersRoute
+  '/api/public/v1/openapi.json': typeof ApiPublicV1OpenapiDotjsonRoute
+  '/api/public/v1/order': typeof ApiPublicV1OrderRoute
+  '/api/public/v1/ping': typeof ApiPublicV1PingRoute
+  '/api/public/v1/stream': typeof ApiPublicV1StreamRoute
+  '/api/public/v1/time': typeof ApiPublicV1TimeRoute
+  '/api/public/v1/trades': typeof ApiPublicV1TradesRoute
   '/api/public/cmc/': typeof ApiPublicCmcIndexRoute
+  '/api/public/v1/': typeof ApiPublicV1IndexRoute
   '/api/public/cmc/orderbook/$pair': typeof ApiPublicCmcOrderbookPairRoute
   '/api/public/cmc/trades/$pair': typeof ApiPublicCmcTradesPairRoute
+  '/api/public/v1/ticker/24hr': typeof ApiPublicV1Ticker24hrRoute
+  '/api/public/v1/ticker/price': typeof ApiPublicV1TickerPriceRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/api-docs'
     | '/auth'
     | '/custody'
     | '/how-it-works'
     | '/manifesto'
     | '/privacy'
     | '/terms'
+    | '/api-keys'
     | '/trades'
     | '/wallet'
     | '/trade/isk-tsd'
@@ -245,18 +410,36 @@ export interface FileRouteTypes {
     | '/api/public/cmc/assets'
     | '/api/public/cmc/summary'
     | '/api/public/cmc/ticker'
+    | '/api/public/v1/account'
+    | '/api/public/v1/allOrders'
+    | '/api/public/v1/depth'
+    | '/api/public/v1/exchangeInfo'
+    | '/api/public/v1/klines'
+    | '/api/public/v1/myTrades'
+    | '/api/public/v1/openOrders'
+    | '/api/public/v1/openapi.json'
+    | '/api/public/v1/order'
+    | '/api/public/v1/ping'
+    | '/api/public/v1/stream'
+    | '/api/public/v1/time'
+    | '/api/public/v1/trades'
     | '/api/public/cmc/'
+    | '/api/public/v1/'
     | '/api/public/cmc/orderbook/$pair'
     | '/api/public/cmc/trades/$pair'
+    | '/api/public/v1/ticker/24hr'
+    | '/api/public/v1/ticker/price'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/api-docs'
     | '/auth'
     | '/custody'
     | '/how-it-works'
     | '/manifesto'
     | '/privacy'
     | '/terms'
+    | '/api-keys'
     | '/trades'
     | '/wallet'
     | '/trade/isk-tsd'
@@ -269,19 +452,37 @@ export interface FileRouteTypes {
     | '/api/public/cmc/assets'
     | '/api/public/cmc/summary'
     | '/api/public/cmc/ticker'
+    | '/api/public/v1/account'
+    | '/api/public/v1/allOrders'
+    | '/api/public/v1/depth'
+    | '/api/public/v1/exchangeInfo'
+    | '/api/public/v1/klines'
+    | '/api/public/v1/myTrades'
+    | '/api/public/v1/openOrders'
+    | '/api/public/v1/openapi.json'
+    | '/api/public/v1/order'
+    | '/api/public/v1/ping'
+    | '/api/public/v1/stream'
+    | '/api/public/v1/time'
+    | '/api/public/v1/trades'
     | '/api/public/cmc'
+    | '/api/public/v1'
     | '/api/public/cmc/orderbook/$pair'
     | '/api/public/cmc/trades/$pair'
+    | '/api/public/v1/ticker/24hr'
+    | '/api/public/v1/ticker/price'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/api-docs'
     | '/auth'
     | '/custody'
     | '/how-it-works'
     | '/manifesto'
     | '/privacy'
     | '/terms'
+    | '/_authenticated/api-keys'
     | '/_authenticated/trades'
     | '/_authenticated/wallet'
     | '/trade/isk-tsd'
@@ -294,14 +495,31 @@ export interface FileRouteTypes {
     | '/api/public/cmc/assets'
     | '/api/public/cmc/summary'
     | '/api/public/cmc/ticker'
+    | '/api/public/v1/account'
+    | '/api/public/v1/allOrders'
+    | '/api/public/v1/depth'
+    | '/api/public/v1/exchangeInfo'
+    | '/api/public/v1/klines'
+    | '/api/public/v1/myTrades'
+    | '/api/public/v1/openOrders'
+    | '/api/public/v1/openapi.json'
+    | '/api/public/v1/order'
+    | '/api/public/v1/ping'
+    | '/api/public/v1/stream'
+    | '/api/public/v1/time'
+    | '/api/public/v1/trades'
     | '/api/public/cmc/'
+    | '/api/public/v1/'
     | '/api/public/cmc/orderbook/$pair'
     | '/api/public/cmc/trades/$pair'
+    | '/api/public/v1/ticker/24hr'
+    | '/api/public/v1/ticker/price'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  ApiDocsRoute: typeof ApiDocsRoute
   AuthRoute: typeof AuthRoute
   CustodyRoute: typeof CustodyRoute
   HowItWorksRoute: typeof HowItWorksRoute
@@ -318,9 +536,25 @@ export interface RootRouteChildren {
   ApiPublicCmcAssetsRoute: typeof ApiPublicCmcAssetsRoute
   ApiPublicCmcSummaryRoute: typeof ApiPublicCmcSummaryRoute
   ApiPublicCmcTickerRoute: typeof ApiPublicCmcTickerRoute
+  ApiPublicV1AccountRoute: typeof ApiPublicV1AccountRoute
+  ApiPublicV1AllOrdersRoute: typeof ApiPublicV1AllOrdersRoute
+  ApiPublicV1DepthRoute: typeof ApiPublicV1DepthRoute
+  ApiPublicV1ExchangeInfoRoute: typeof ApiPublicV1ExchangeInfoRoute
+  ApiPublicV1KlinesRoute: typeof ApiPublicV1KlinesRoute
+  ApiPublicV1MyTradesRoute: typeof ApiPublicV1MyTradesRoute
+  ApiPublicV1OpenOrdersRoute: typeof ApiPublicV1OpenOrdersRoute
+  ApiPublicV1OpenapiDotjsonRoute: typeof ApiPublicV1OpenapiDotjsonRoute
+  ApiPublicV1OrderRoute: typeof ApiPublicV1OrderRoute
+  ApiPublicV1PingRoute: typeof ApiPublicV1PingRoute
+  ApiPublicV1StreamRoute: typeof ApiPublicV1StreamRoute
+  ApiPublicV1TimeRoute: typeof ApiPublicV1TimeRoute
+  ApiPublicV1TradesRoute: typeof ApiPublicV1TradesRoute
   ApiPublicCmcIndexRoute: typeof ApiPublicCmcIndexRoute
+  ApiPublicV1IndexRoute: typeof ApiPublicV1IndexRoute
   ApiPublicCmcOrderbookPairRoute: typeof ApiPublicCmcOrderbookPairRoute
   ApiPublicCmcTradesPairRoute: typeof ApiPublicCmcTradesPairRoute
+  ApiPublicV1Ticker24hrRoute: typeof ApiPublicV1Ticker24hrRoute
+  ApiPublicV1TickerPriceRoute: typeof ApiPublicV1TickerPriceRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -365,6 +599,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api-docs': {
+      id: '/api-docs'
+      path: '/api-docs'
+      fullPath: '/api-docs'
+      preLoaderRoute: typeof ApiDocsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -444,11 +685,116 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTradesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/api-keys': {
+      id: '/_authenticated/api-keys'
+      path: '/api-keys'
+      fullPath: '/api-keys'
+      preLoaderRoute: typeof AuthenticatedApiKeysRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/public/v1/': {
+      id: '/api/public/v1/'
+      path: '/api/public/v1'
+      fullPath: '/api/public/v1/'
+      preLoaderRoute: typeof ApiPublicV1IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/cmc/': {
       id: '/api/public/cmc/'
       path: '/api/public/cmc'
       fullPath: '/api/public/cmc/'
       preLoaderRoute: typeof ApiPublicCmcIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/v1/trades': {
+      id: '/api/public/v1/trades'
+      path: '/api/public/v1/trades'
+      fullPath: '/api/public/v1/trades'
+      preLoaderRoute: typeof ApiPublicV1TradesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/v1/time': {
+      id: '/api/public/v1/time'
+      path: '/api/public/v1/time'
+      fullPath: '/api/public/v1/time'
+      preLoaderRoute: typeof ApiPublicV1TimeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/v1/stream': {
+      id: '/api/public/v1/stream'
+      path: '/api/public/v1/stream'
+      fullPath: '/api/public/v1/stream'
+      preLoaderRoute: typeof ApiPublicV1StreamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/v1/ping': {
+      id: '/api/public/v1/ping'
+      path: '/api/public/v1/ping'
+      fullPath: '/api/public/v1/ping'
+      preLoaderRoute: typeof ApiPublicV1PingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/v1/order': {
+      id: '/api/public/v1/order'
+      path: '/api/public/v1/order'
+      fullPath: '/api/public/v1/order'
+      preLoaderRoute: typeof ApiPublicV1OrderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/v1/openapi.json': {
+      id: '/api/public/v1/openapi.json'
+      path: '/api/public/v1/openapi.json'
+      fullPath: '/api/public/v1/openapi.json'
+      preLoaderRoute: typeof ApiPublicV1OpenapiDotjsonRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/v1/openOrders': {
+      id: '/api/public/v1/openOrders'
+      path: '/api/public/v1/openOrders'
+      fullPath: '/api/public/v1/openOrders'
+      preLoaderRoute: typeof ApiPublicV1OpenOrdersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/v1/myTrades': {
+      id: '/api/public/v1/myTrades'
+      path: '/api/public/v1/myTrades'
+      fullPath: '/api/public/v1/myTrades'
+      preLoaderRoute: typeof ApiPublicV1MyTradesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/v1/klines': {
+      id: '/api/public/v1/klines'
+      path: '/api/public/v1/klines'
+      fullPath: '/api/public/v1/klines'
+      preLoaderRoute: typeof ApiPublicV1KlinesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/v1/exchangeInfo': {
+      id: '/api/public/v1/exchangeInfo'
+      path: '/api/public/v1/exchangeInfo'
+      fullPath: '/api/public/v1/exchangeInfo'
+      preLoaderRoute: typeof ApiPublicV1ExchangeInfoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/v1/depth': {
+      id: '/api/public/v1/depth'
+      path: '/api/public/v1/depth'
+      fullPath: '/api/public/v1/depth'
+      preLoaderRoute: typeof ApiPublicV1DepthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/v1/allOrders': {
+      id: '/api/public/v1/allOrders'
+      path: '/api/public/v1/allOrders'
+      fullPath: '/api/public/v1/allOrders'
+      preLoaderRoute: typeof ApiPublicV1AllOrdersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/v1/account': {
+      id: '/api/public/v1/account'
+      path: '/api/public/v1/account'
+      fullPath: '/api/public/v1/account'
+      preLoaderRoute: typeof ApiPublicV1AccountRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/cmc/ticker': {
@@ -472,6 +818,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCmcAssetsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/v1/ticker/price': {
+      id: '/api/public/v1/ticker/price'
+      path: '/api/public/v1/ticker/price'
+      fullPath: '/api/public/v1/ticker/price'
+      preLoaderRoute: typeof ApiPublicV1TickerPriceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/v1/ticker/24hr': {
+      id: '/api/public/v1/ticker/24hr'
+      path: '/api/public/v1/ticker/24hr'
+      fullPath: '/api/public/v1/ticker/24hr'
+      preLoaderRoute: typeof ApiPublicV1Ticker24hrRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/cmc/trades/$pair': {
       id: '/api/public/cmc/trades/$pair'
       path: '/api/public/cmc/trades/$pair'
@@ -490,11 +850,13 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedApiKeysRoute: typeof AuthenticatedApiKeysRoute
   AuthenticatedTradesRoute: typeof AuthenticatedTradesRoute
   AuthenticatedWalletRoute: typeof AuthenticatedWalletRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedApiKeysRoute: AuthenticatedApiKeysRoute,
   AuthenticatedTradesRoute: AuthenticatedTradesRoute,
   AuthenticatedWalletRoute: AuthenticatedWalletRoute,
 }
@@ -505,6 +867,7 @@ const AuthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  ApiDocsRoute: ApiDocsRoute,
   AuthRoute: AuthRoute,
   CustodyRoute: CustodyRoute,
   HowItWorksRoute: HowItWorksRoute,
@@ -521,9 +884,25 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCmcAssetsRoute: ApiPublicCmcAssetsRoute,
   ApiPublicCmcSummaryRoute: ApiPublicCmcSummaryRoute,
   ApiPublicCmcTickerRoute: ApiPublicCmcTickerRoute,
+  ApiPublicV1AccountRoute: ApiPublicV1AccountRoute,
+  ApiPublicV1AllOrdersRoute: ApiPublicV1AllOrdersRoute,
+  ApiPublicV1DepthRoute: ApiPublicV1DepthRoute,
+  ApiPublicV1ExchangeInfoRoute: ApiPublicV1ExchangeInfoRoute,
+  ApiPublicV1KlinesRoute: ApiPublicV1KlinesRoute,
+  ApiPublicV1MyTradesRoute: ApiPublicV1MyTradesRoute,
+  ApiPublicV1OpenOrdersRoute: ApiPublicV1OpenOrdersRoute,
+  ApiPublicV1OpenapiDotjsonRoute: ApiPublicV1OpenapiDotjsonRoute,
+  ApiPublicV1OrderRoute: ApiPublicV1OrderRoute,
+  ApiPublicV1PingRoute: ApiPublicV1PingRoute,
+  ApiPublicV1StreamRoute: ApiPublicV1StreamRoute,
+  ApiPublicV1TimeRoute: ApiPublicV1TimeRoute,
+  ApiPublicV1TradesRoute: ApiPublicV1TradesRoute,
   ApiPublicCmcIndexRoute: ApiPublicCmcIndexRoute,
+  ApiPublicV1IndexRoute: ApiPublicV1IndexRoute,
   ApiPublicCmcOrderbookPairRoute: ApiPublicCmcOrderbookPairRoute,
   ApiPublicCmcTradesPairRoute: ApiPublicCmcTradesPairRoute,
+  ApiPublicV1Ticker24hrRoute: ApiPublicV1Ticker24hrRoute,
+  ApiPublicV1TickerPriceRoute: ApiPublicV1TickerPriceRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

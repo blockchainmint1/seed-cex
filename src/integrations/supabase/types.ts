@@ -14,6 +14,63 @@ export type Database = {
   }
   public: {
     Tables: {
+      api_keys: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          ip_allowlist: string[]
+          key_id: string
+          label: string
+          last_used_at: string | null
+          scopes: string[]
+          secret: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          ip_allowlist?: string[]
+          key_id: string
+          label?: string
+          last_used_at?: string | null
+          scopes?: string[]
+          secret: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          ip_allowlist?: string[]
+          key_id?: string
+          label?: string
+          last_used_at?: string | null
+          scopes?: string[]
+          secret?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      api_rate_buckets: {
+        Row: {
+          key_id: string
+          weight: number
+          window_start: string
+        }
+        Insert: {
+          key_id: string
+          weight?: number
+          window_start: string
+        }
+        Update: {
+          key_id?: string
+          weight?: number
+          window_start?: string
+        }
+        Relationships: []
+      }
       custody_attestations: {
         Row: {
           id: string
@@ -446,6 +503,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      api_bump_rate: {
+        Args: { _key: string; _weight: number; _window: string }
+        Returns: number
+      }
       custody_snapshot: {
         Args: never
         Returns: {
