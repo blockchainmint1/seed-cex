@@ -33,6 +33,7 @@ import { Route as ApiPublicV1TimeRouteImport } from './routes/api/public/v1/time
 import { Route as ApiPublicV1StreamRouteImport } from './routes/api/public/v1/stream'
 import { Route as ApiPublicV1PingRouteImport } from './routes/api/public/v1/ping'
 import { Route as ApiPublicV1OrderRouteImport } from './routes/api/public/v1/order'
+import { Route as ApiPublicV1OpenapiDotjsonRouteImport } from './routes/api/public/v1/openapi[.]json'
 import { Route as ApiPublicV1OpenOrdersRouteImport } from './routes/api/public/v1/openOrders'
 import { Route as ApiPublicV1MyTradesRouteImport } from './routes/api/public/v1/myTrades'
 import { Route as ApiPublicV1KlinesRouteImport } from './routes/api/public/v1/klines'
@@ -167,6 +168,12 @@ const ApiPublicV1OrderRoute = ApiPublicV1OrderRouteImport.update({
   path: '/api/public/v1/order',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicV1OpenapiDotjsonRoute =
+  ApiPublicV1OpenapiDotjsonRouteImport.update({
+    id: '/api/public/v1/openapi.json',
+    path: '/api/public/v1/openapi.json',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicV1OpenOrdersRoute = ApiPublicV1OpenOrdersRouteImport.update({
   id: '/api/public/v1/openOrders',
   path: '/api/public/v1/openOrders',
@@ -266,6 +273,7 @@ export interface FileRoutesByFullPath {
   '/api/public/v1/klines': typeof ApiPublicV1KlinesRoute
   '/api/public/v1/myTrades': typeof ApiPublicV1MyTradesRoute
   '/api/public/v1/openOrders': typeof ApiPublicV1OpenOrdersRoute
+  '/api/public/v1/openapi.json': typeof ApiPublicV1OpenapiDotjsonRoute
   '/api/public/v1/order': typeof ApiPublicV1OrderRoute
   '/api/public/v1/ping': typeof ApiPublicV1PingRoute
   '/api/public/v1/stream': typeof ApiPublicV1StreamRoute
@@ -305,6 +313,7 @@ export interface FileRoutesByTo {
   '/api/public/v1/klines': typeof ApiPublicV1KlinesRoute
   '/api/public/v1/myTrades': typeof ApiPublicV1MyTradesRoute
   '/api/public/v1/openOrders': typeof ApiPublicV1OpenOrdersRoute
+  '/api/public/v1/openapi.json': typeof ApiPublicV1OpenapiDotjsonRoute
   '/api/public/v1/order': typeof ApiPublicV1OrderRoute
   '/api/public/v1/ping': typeof ApiPublicV1PingRoute
   '/api/public/v1/stream': typeof ApiPublicV1StreamRoute
@@ -346,6 +355,7 @@ export interface FileRoutesById {
   '/api/public/v1/klines': typeof ApiPublicV1KlinesRoute
   '/api/public/v1/myTrades': typeof ApiPublicV1MyTradesRoute
   '/api/public/v1/openOrders': typeof ApiPublicV1OpenOrdersRoute
+  '/api/public/v1/openapi.json': typeof ApiPublicV1OpenapiDotjsonRoute
   '/api/public/v1/order': typeof ApiPublicV1OrderRoute
   '/api/public/v1/ping': typeof ApiPublicV1PingRoute
   '/api/public/v1/stream': typeof ApiPublicV1StreamRoute
@@ -387,6 +397,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/klines'
     | '/api/public/v1/myTrades'
     | '/api/public/v1/openOrders'
+    | '/api/public/v1/openapi.json'
     | '/api/public/v1/order'
     | '/api/public/v1/ping'
     | '/api/public/v1/stream'
@@ -426,6 +437,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/klines'
     | '/api/public/v1/myTrades'
     | '/api/public/v1/openOrders'
+    | '/api/public/v1/openapi.json'
     | '/api/public/v1/order'
     | '/api/public/v1/ping'
     | '/api/public/v1/stream'
@@ -466,6 +478,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/klines'
     | '/api/public/v1/myTrades'
     | '/api/public/v1/openOrders'
+    | '/api/public/v1/openapi.json'
     | '/api/public/v1/order'
     | '/api/public/v1/ping'
     | '/api/public/v1/stream'
@@ -505,6 +518,7 @@ export interface RootRouteChildren {
   ApiPublicV1KlinesRoute: typeof ApiPublicV1KlinesRoute
   ApiPublicV1MyTradesRoute: typeof ApiPublicV1MyTradesRoute
   ApiPublicV1OpenOrdersRoute: typeof ApiPublicV1OpenOrdersRoute
+  ApiPublicV1OpenapiDotjsonRoute: typeof ApiPublicV1OpenapiDotjsonRoute
   ApiPublicV1OrderRoute: typeof ApiPublicV1OrderRoute
   ApiPublicV1PingRoute: typeof ApiPublicV1PingRoute
   ApiPublicV1StreamRoute: typeof ApiPublicV1StreamRoute
@@ -688,6 +702,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicV1OrderRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/v1/openapi.json': {
+      id: '/api/public/v1/openapi.json'
+      path: '/api/public/v1/openapi.json'
+      fullPath: '/api/public/v1/openapi.json'
+      preLoaderRoute: typeof ApiPublicV1OpenapiDotjsonRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/v1/openOrders': {
       id: '/api/public/v1/openOrders'
       path: '/api/public/v1/openOrders'
@@ -828,6 +849,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicV1KlinesRoute: ApiPublicV1KlinesRoute,
   ApiPublicV1MyTradesRoute: ApiPublicV1MyTradesRoute,
   ApiPublicV1OpenOrdersRoute: ApiPublicV1OpenOrdersRoute,
+  ApiPublicV1OpenapiDotjsonRoute: ApiPublicV1OpenapiDotjsonRoute,
   ApiPublicV1OrderRoute: ApiPublicV1OrderRoute,
   ApiPublicV1PingRoute: ApiPublicV1PingRoute,
   ApiPublicV1StreamRoute: ApiPublicV1StreamRoute,
