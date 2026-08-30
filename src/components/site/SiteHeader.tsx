@@ -1,8 +1,12 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ChevronDown, Moon, Sun } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
+import { amIAdmin } from "@/lib/admin.functions";
 import { useSession } from "@/hooks/use-session";
 import { useTheme } from "@/hooks/use-theme";
+
 
 const about = [
   { label: "How it works", to: "/how-it-works" as const },
@@ -46,6 +50,15 @@ export function SiteHeader() {
   const { user, loading } = useSession();
   const { theme, toggle } = useTheme();
   const navigate = useNavigate();
+  const checkAdmin = useServerFn(amIAdmin);
+  const admin = useQuery({
+    queryKey: ["am-i-admin", user?.id ?? "anon"],
+    queryFn: () => checkAdmin(),
+    enabled: Boolean(user),
+    retry: false,
+    staleTime: 300_000,
+  });
+
 
   async function signOut() {
     await supabase.auth.signOut();
@@ -90,6 +103,16 @@ export function SiteHeader() {
               Trades
             </Link>
           ) : null}
+          {admin.data ? (
+            <Link
+              to="/admin"
+              className="text-muted-foreground transition-colors hover:text-foreground"
+              activeProps={{ className: "text-primary" }}
+            >
+              Admin
+            </Link>
+          ) : null}
+
           <NavMenu label="About" items={about} />
           <NavMenu label="Proof" items={proof} />
         </nav>

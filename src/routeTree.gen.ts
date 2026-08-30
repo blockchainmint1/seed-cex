@@ -21,8 +21,6 @@ import { Route as ApiDocsRouteImport } from './routes/api-docs'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TradeZcuTsdRouteImport } from './routes/trade.zcu-tsd'
-import { Route as TradeUsdcTxcRouteImport } from './routes/trade.usdc-txc'
-import { Route as TradeTxcUsdtRouteImport } from './routes/trade.txc-usdt'
 import { Route as TradeTsdUsdcRouteImport } from './routes/trade.tsd-usdc'
 import { Route as TradeTsdTxcRouteImport } from './routes/trade.tsd-txc'
 import { Route as TradeLtcTsdRouteImport } from './routes/trade.ltc-tsd'
@@ -31,6 +29,7 @@ import { Route as ProofCodeRouteImport } from './routes/proof.code'
 import { Route as AuthenticatedWalletRouteImport } from './routes/_authenticated/wallet'
 import { Route as AuthenticatedTradesRouteImport } from './routes/_authenticated/trades'
 import { Route as AuthenticatedApiKeysRouteImport } from './routes/_authenticated/api-keys'
+import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticated/account'
 import { Route as ApiPublicV1IndexRouteImport } from './routes/api/public/v1/index'
 import { Route as ApiPublicCmcIndexRouteImport } from './routes/api/public/cmc/index'
@@ -114,16 +113,6 @@ const TradeZcuTsdRoute = TradeZcuTsdRouteImport.update({
   path: '/trade/zcu-tsd',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TradeUsdcTxcRoute = TradeUsdcTxcRouteImport.update({
-  id: '/trade/usdc-txc',
-  path: '/trade/usdc-txc',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TradeTxcUsdtRoute = TradeTxcUsdtRouteImport.update({
-  id: '/trade/txc-usdt',
-  path: '/trade/txc-usdt',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const TradeTsdUsdcRoute = TradeTsdUsdcRouteImport.update({
   id: '/trade/tsd-usdc',
   path: '/trade/tsd-usdc',
@@ -162,6 +151,11 @@ const AuthenticatedTradesRoute = AuthenticatedTradesRouteImport.update({
 const AuthenticatedApiKeysRoute = AuthenticatedApiKeysRouteImport.update({
   id: '/api-keys',
   path: '/api-keys',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedAccountRoute = AuthenticatedAccountRouteImport.update({
@@ -294,6 +288,7 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/tsd': typeof TsdRoute
   '/account': typeof AuthenticatedAccountRoute
+  '/admin': typeof AuthenticatedAdminRoute
   '/api-keys': typeof AuthenticatedApiKeysRoute
   '/trades': typeof AuthenticatedTradesRoute
   '/wallet': typeof AuthenticatedWalletRoute
@@ -302,8 +297,6 @@ export interface FileRoutesByFullPath {
   '/trade/ltc-tsd': typeof TradeLtcTsdRoute
   '/trade/tsd-txc': typeof TradeTsdTxcRoute
   '/trade/tsd-usdc': typeof TradeTsdUsdcRoute
-  '/trade/txc-usdt': typeof TradeTxcUsdtRoute
-  '/trade/usdc-txc': typeof TradeUsdcTxcRoute
   '/trade/zcu-tsd': typeof TradeZcuTsdRoute
   '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
   '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
@@ -340,6 +333,7 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/tsd': typeof TsdRoute
   '/account': typeof AuthenticatedAccountRoute
+  '/admin': typeof AuthenticatedAdminRoute
   '/api-keys': typeof AuthenticatedApiKeysRoute
   '/trades': typeof AuthenticatedTradesRoute
   '/wallet': typeof AuthenticatedWalletRoute
@@ -348,8 +342,6 @@ export interface FileRoutesByTo {
   '/trade/ltc-tsd': typeof TradeLtcTsdRoute
   '/trade/tsd-txc': typeof TradeTsdTxcRoute
   '/trade/tsd-usdc': typeof TradeTsdUsdcRoute
-  '/trade/txc-usdt': typeof TradeTxcUsdtRoute
-  '/trade/usdc-txc': typeof TradeUsdcTxcRoute
   '/trade/zcu-tsd': typeof TradeZcuTsdRoute
   '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
   '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
@@ -388,6 +380,7 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/tsd': typeof TsdRoute
   '/_authenticated/account': typeof AuthenticatedAccountRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/api-keys': typeof AuthenticatedApiKeysRoute
   '/_authenticated/trades': typeof AuthenticatedTradesRoute
   '/_authenticated/wallet': typeof AuthenticatedWalletRoute
@@ -396,8 +389,6 @@ export interface FileRoutesById {
   '/trade/ltc-tsd': typeof TradeLtcTsdRoute
   '/trade/tsd-txc': typeof TradeTsdTxcRoute
   '/trade/tsd-usdc': typeof TradeTsdUsdcRoute
-  '/trade/txc-usdt': typeof TradeTxcUsdtRoute
-  '/trade/usdc-txc': typeof TradeUsdcTxcRoute
   '/trade/zcu-tsd': typeof TradeZcuTsdRoute
   '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
   '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
@@ -436,6 +427,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/tsd'
     | '/account'
+    | '/admin'
     | '/api-keys'
     | '/trades'
     | '/wallet'
@@ -444,8 +436,6 @@ export interface FileRouteTypes {
     | '/trade/ltc-tsd'
     | '/trade/tsd-txc'
     | '/trade/tsd-usdc'
-    | '/trade/txc-usdt'
-    | '/trade/usdc-txc'
     | '/trade/zcu-tsd'
     | '/api/public/cmc/assets'
     | '/api/public/cmc/summary'
@@ -482,6 +472,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/tsd'
     | '/account'
+    | '/admin'
     | '/api-keys'
     | '/trades'
     | '/wallet'
@@ -490,8 +481,6 @@ export interface FileRouteTypes {
     | '/trade/ltc-tsd'
     | '/trade/tsd-txc'
     | '/trade/tsd-usdc'
-    | '/trade/txc-usdt'
-    | '/trade/usdc-txc'
     | '/trade/zcu-tsd'
     | '/api/public/cmc/assets'
     | '/api/public/cmc/summary'
@@ -529,6 +518,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/tsd'
     | '/_authenticated/account'
+    | '/_authenticated/admin'
     | '/_authenticated/api-keys'
     | '/_authenticated/trades'
     | '/_authenticated/wallet'
@@ -537,8 +527,6 @@ export interface FileRouteTypes {
     | '/trade/ltc-tsd'
     | '/trade/tsd-txc'
     | '/trade/tsd-usdc'
-    | '/trade/txc-usdt'
-    | '/trade/usdc-txc'
     | '/trade/zcu-tsd'
     | '/api/public/cmc/assets'
     | '/api/public/cmc/summary'
@@ -581,8 +569,6 @@ export interface RootRouteChildren {
   TradeLtcTsdRoute: typeof TradeLtcTsdRoute
   TradeTsdTxcRoute: typeof TradeTsdTxcRoute
   TradeTsdUsdcRoute: typeof TradeTsdUsdcRoute
-  TradeTxcUsdtRoute: typeof TradeTxcUsdtRoute
-  TradeUsdcTxcRoute: typeof TradeUsdcTxcRoute
   TradeZcuTsdRoute: typeof TradeZcuTsdRoute
   ApiPublicCmcAssetsRoute: typeof ApiPublicCmcAssetsRoute
   ApiPublicCmcSummaryRoute: typeof ApiPublicCmcSummaryRoute
@@ -694,20 +680,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TradeZcuTsdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/trade/usdc-txc': {
-      id: '/trade/usdc-txc'
-      path: '/trade/usdc-txc'
-      fullPath: '/trade/usdc-txc'
-      preLoaderRoute: typeof TradeUsdcTxcRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/trade/txc-usdt': {
-      id: '/trade/txc-usdt'
-      path: '/trade/txc-usdt'
-      fullPath: '/trade/txc-usdt'
-      preLoaderRoute: typeof TradeTxcUsdtRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/trade/tsd-usdc': {
       id: '/trade/tsd-usdc'
       path: '/trade/tsd-usdc'
@@ -762,6 +734,13 @@ declare module '@tanstack/react-router' {
       path: '/api-keys'
       fullPath: '/api-keys'
       preLoaderRoute: typeof AuthenticatedApiKeysRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/account': {
@@ -930,6 +909,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAccountRoute: typeof AuthenticatedAccountRoute
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedApiKeysRoute: typeof AuthenticatedApiKeysRoute
   AuthenticatedTradesRoute: typeof AuthenticatedTradesRoute
   AuthenticatedWalletRoute: typeof AuthenticatedWalletRoute
@@ -937,6 +917,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAccountRoute: AuthenticatedAccountRoute,
+  AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedApiKeysRoute: AuthenticatedApiKeysRoute,
   AuthenticatedTradesRoute: AuthenticatedTradesRoute,
   AuthenticatedWalletRoute: AuthenticatedWalletRoute,
@@ -962,8 +943,6 @@ const rootRouteChildren: RootRouteChildren = {
   TradeLtcTsdRoute: TradeLtcTsdRoute,
   TradeTsdTxcRoute: TradeTsdTxcRoute,
   TradeTsdUsdcRoute: TradeTsdUsdcRoute,
-  TradeTxcUsdtRoute: TradeTxcUsdtRoute,
-  TradeUsdcTxcRoute: TradeUsdcTxcRoute,
   TradeZcuTsdRoute: TradeZcuTsdRoute,
   ApiPublicCmcAssetsRoute: ApiPublicCmcAssetsRoute,
   ApiPublicCmcSummaryRoute: ApiPublicCmcSummaryRoute,
