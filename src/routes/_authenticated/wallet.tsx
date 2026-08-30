@@ -35,6 +35,8 @@ import {
 } from "@/lib/wallet/vault";
 import { fmtAmount, truncateMiddle } from "@/lib/format";
 import { ExplorerLink } from "@/components/site/ExplorerLink";
+import { WrapDesk } from "@/components/wallet/WrapDesk";
+
 
 export const Route = createFileRoute("/_authenticated/wallet")({
   head: () => ({
