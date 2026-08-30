@@ -131,11 +131,11 @@ export type WrapOrderRow = {
 async function txcTradingAddress(userId: string): Promise<string> {
   const { data, error } = await supabaseAdmin
     .from("wallets")
-    .select("shared_address")
+    .select("txc_address")
     .eq("user_id", userId)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  const addr = (data as { shared_address?: string | null } | null)?.shared_address;
+  const addr = (data as { txc_address?: string | null } | null)?.txc_address;
   if (!addr) {
     throw new Error(
       "No TEXITcoin trading address yet. Unlock your wallet on the Wallet page first.",
