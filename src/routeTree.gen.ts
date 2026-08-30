@@ -28,6 +28,7 @@ import { Route as AuthenticatedWalletRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedTradesRouteImport } from './routes/_authenticated/trades'
 import { Route as ApiPublicV1IndexRouteImport } from './routes/api/public/v1/index'
 import { Route as ApiPublicCmcIndexRouteImport } from './routes/api/public/cmc/index'
+import { Route as ApiPublicV1TimeRouteImport } from './routes/api/public/v1/time'
 import { Route as ApiPublicV1PingRouteImport } from './routes/api/public/v1/ping'
 import { Route as ApiPublicCmcTickerRouteImport } from './routes/api/public/cmc/ticker'
 import { Route as ApiPublicCmcSummaryRouteImport } from './routes/api/public/cmc/summary'
@@ -129,6 +130,11 @@ const ApiPublicCmcIndexRoute = ApiPublicCmcIndexRouteImport.update({
   path: '/api/public/cmc/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicV1TimeRoute = ApiPublicV1TimeRouteImport.update({
+  id: '/api/public/v1/time',
+  path: '/api/public/v1/time',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicV1PingRoute = ApiPublicV1PingRouteImport.update({
   id: '/api/public/v1/ping',
   path: '/api/public/v1/ping',
@@ -182,6 +188,7 @@ export interface FileRoutesByFullPath {
   '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
   '/api/public/cmc/ticker': typeof ApiPublicCmcTickerRoute
   '/api/public/v1/ping': typeof ApiPublicV1PingRoute
+  '/api/public/v1/time': typeof ApiPublicV1TimeRoute
   '/api/public/cmc/': typeof ApiPublicCmcIndexRoute
   '/api/public/v1/': typeof ApiPublicV1IndexRoute
   '/api/public/cmc/orderbook/$pair': typeof ApiPublicCmcOrderbookPairRoute
@@ -208,6 +215,7 @@ export interface FileRoutesByTo {
   '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
   '/api/public/cmc/ticker': typeof ApiPublicCmcTickerRoute
   '/api/public/v1/ping': typeof ApiPublicV1PingRoute
+  '/api/public/v1/time': typeof ApiPublicV1TimeRoute
   '/api/public/cmc': typeof ApiPublicCmcIndexRoute
   '/api/public/v1': typeof ApiPublicV1IndexRoute
   '/api/public/cmc/orderbook/$pair': typeof ApiPublicCmcOrderbookPairRoute
@@ -236,6 +244,7 @@ export interface FileRoutesById {
   '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
   '/api/public/cmc/ticker': typeof ApiPublicCmcTickerRoute
   '/api/public/v1/ping': typeof ApiPublicV1PingRoute
+  '/api/public/v1/time': typeof ApiPublicV1TimeRoute
   '/api/public/cmc/': typeof ApiPublicCmcIndexRoute
   '/api/public/v1/': typeof ApiPublicV1IndexRoute
   '/api/public/cmc/orderbook/$pair': typeof ApiPublicCmcOrderbookPairRoute
@@ -264,6 +273,7 @@ export interface FileRouteTypes {
     | '/api/public/cmc/summary'
     | '/api/public/cmc/ticker'
     | '/api/public/v1/ping'
+    | '/api/public/v1/time'
     | '/api/public/cmc/'
     | '/api/public/v1/'
     | '/api/public/cmc/orderbook/$pair'
@@ -290,6 +300,7 @@ export interface FileRouteTypes {
     | '/api/public/cmc/summary'
     | '/api/public/cmc/ticker'
     | '/api/public/v1/ping'
+    | '/api/public/v1/time'
     | '/api/public/cmc'
     | '/api/public/v1'
     | '/api/public/cmc/orderbook/$pair'
@@ -317,6 +328,7 @@ export interface FileRouteTypes {
     | '/api/public/cmc/summary'
     | '/api/public/cmc/ticker'
     | '/api/public/v1/ping'
+    | '/api/public/v1/time'
     | '/api/public/cmc/'
     | '/api/public/v1/'
     | '/api/public/cmc/orderbook/$pair'
@@ -343,6 +355,7 @@ export interface RootRouteChildren {
   ApiPublicCmcSummaryRoute: typeof ApiPublicCmcSummaryRoute
   ApiPublicCmcTickerRoute: typeof ApiPublicCmcTickerRoute
   ApiPublicV1PingRoute: typeof ApiPublicV1PingRoute
+  ApiPublicV1TimeRoute: typeof ApiPublicV1TimeRoute
   ApiPublicCmcIndexRoute: typeof ApiPublicCmcIndexRoute
   ApiPublicV1IndexRoute: typeof ApiPublicV1IndexRoute
   ApiPublicCmcOrderbookPairRoute: typeof ApiPublicCmcOrderbookPairRoute
@@ -484,6 +497,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCmcIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/v1/time': {
+      id: '/api/public/v1/time'
+      path: '/api/public/v1/time'
+      fullPath: '/api/public/v1/time'
+      preLoaderRoute: typeof ApiPublicV1TimeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/v1/ping': {
       id: '/api/public/v1/ping'
       path: '/api/public/v1/ping'
@@ -562,6 +582,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCmcSummaryRoute: ApiPublicCmcSummaryRoute,
   ApiPublicCmcTickerRoute: ApiPublicCmcTickerRoute,
   ApiPublicV1PingRoute: ApiPublicV1PingRoute,
+  ApiPublicV1TimeRoute: ApiPublicV1TimeRoute,
   ApiPublicCmcIndexRoute: ApiPublicCmcIndexRoute,
   ApiPublicV1IndexRoute: ApiPublicV1IndexRoute,
   ApiPublicCmcOrderbookPairRoute: ApiPublicCmcOrderbookPairRoute,
