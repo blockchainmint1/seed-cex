@@ -31,6 +31,7 @@ import { Route as ApiPublicCmcIndexRouteImport } from './routes/api/public/cmc/i
 import { Route as ApiPublicV1TradesRouteImport } from './routes/api/public/v1/trades'
 import { Route as ApiPublicV1TimeRouteImport } from './routes/api/public/v1/time'
 import { Route as ApiPublicV1PingRouteImport } from './routes/api/public/v1/ping'
+import { Route as ApiPublicV1KlinesRouteImport } from './routes/api/public/v1/klines'
 import { Route as ApiPublicV1ExchangeInfoRouteImport } from './routes/api/public/v1/exchangeInfo'
 import { Route as ApiPublicV1DepthRouteImport } from './routes/api/public/v1/depth'
 import { Route as ApiPublicCmcTickerRouteImport } from './routes/api/public/cmc/ticker'
@@ -148,6 +149,11 @@ const ApiPublicV1PingRoute = ApiPublicV1PingRouteImport.update({
   path: '/api/public/v1/ping',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicV1KlinesRoute = ApiPublicV1KlinesRouteImport.update({
+  id: '/api/public/v1/klines',
+  path: '/api/public/v1/klines',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicV1ExchangeInfoRoute = ApiPublicV1ExchangeInfoRouteImport.update({
   id: '/api/public/v1/exchangeInfo',
   path: '/api/public/v1/exchangeInfo',
@@ -207,6 +213,7 @@ export interface FileRoutesByFullPath {
   '/api/public/cmc/ticker': typeof ApiPublicCmcTickerRoute
   '/api/public/v1/depth': typeof ApiPublicV1DepthRoute
   '/api/public/v1/exchangeInfo': typeof ApiPublicV1ExchangeInfoRoute
+  '/api/public/v1/klines': typeof ApiPublicV1KlinesRoute
   '/api/public/v1/ping': typeof ApiPublicV1PingRoute
   '/api/public/v1/time': typeof ApiPublicV1TimeRoute
   '/api/public/v1/trades': typeof ApiPublicV1TradesRoute
@@ -237,6 +244,7 @@ export interface FileRoutesByTo {
   '/api/public/cmc/ticker': typeof ApiPublicCmcTickerRoute
   '/api/public/v1/depth': typeof ApiPublicV1DepthRoute
   '/api/public/v1/exchangeInfo': typeof ApiPublicV1ExchangeInfoRoute
+  '/api/public/v1/klines': typeof ApiPublicV1KlinesRoute
   '/api/public/v1/ping': typeof ApiPublicV1PingRoute
   '/api/public/v1/time': typeof ApiPublicV1TimeRoute
   '/api/public/v1/trades': typeof ApiPublicV1TradesRoute
@@ -269,6 +277,7 @@ export interface FileRoutesById {
   '/api/public/cmc/ticker': typeof ApiPublicCmcTickerRoute
   '/api/public/v1/depth': typeof ApiPublicV1DepthRoute
   '/api/public/v1/exchangeInfo': typeof ApiPublicV1ExchangeInfoRoute
+  '/api/public/v1/klines': typeof ApiPublicV1KlinesRoute
   '/api/public/v1/ping': typeof ApiPublicV1PingRoute
   '/api/public/v1/time': typeof ApiPublicV1TimeRoute
   '/api/public/v1/trades': typeof ApiPublicV1TradesRoute
@@ -301,6 +310,7 @@ export interface FileRouteTypes {
     | '/api/public/cmc/ticker'
     | '/api/public/v1/depth'
     | '/api/public/v1/exchangeInfo'
+    | '/api/public/v1/klines'
     | '/api/public/v1/ping'
     | '/api/public/v1/time'
     | '/api/public/v1/trades'
@@ -331,6 +341,7 @@ export interface FileRouteTypes {
     | '/api/public/cmc/ticker'
     | '/api/public/v1/depth'
     | '/api/public/v1/exchangeInfo'
+    | '/api/public/v1/klines'
     | '/api/public/v1/ping'
     | '/api/public/v1/time'
     | '/api/public/v1/trades'
@@ -362,6 +373,7 @@ export interface FileRouteTypes {
     | '/api/public/cmc/ticker'
     | '/api/public/v1/depth'
     | '/api/public/v1/exchangeInfo'
+    | '/api/public/v1/klines'
     | '/api/public/v1/ping'
     | '/api/public/v1/time'
     | '/api/public/v1/trades'
@@ -392,6 +404,7 @@ export interface RootRouteChildren {
   ApiPublicCmcTickerRoute: typeof ApiPublicCmcTickerRoute
   ApiPublicV1DepthRoute: typeof ApiPublicV1DepthRoute
   ApiPublicV1ExchangeInfoRoute: typeof ApiPublicV1ExchangeInfoRoute
+  ApiPublicV1KlinesRoute: typeof ApiPublicV1KlinesRoute
   ApiPublicV1PingRoute: typeof ApiPublicV1PingRoute
   ApiPublicV1TimeRoute: typeof ApiPublicV1TimeRoute
   ApiPublicV1TradesRoute: typeof ApiPublicV1TradesRoute
@@ -557,6 +570,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicV1PingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/v1/klines': {
+      id: '/api/public/v1/klines'
+      path: '/api/public/v1/klines'
+      fullPath: '/api/public/v1/klines'
+      preLoaderRoute: typeof ApiPublicV1KlinesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/v1/exchangeInfo': {
       id: '/api/public/v1/exchangeInfo'
       path: '/api/public/v1/exchangeInfo'
@@ -643,6 +663,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCmcTickerRoute: ApiPublicCmcTickerRoute,
   ApiPublicV1DepthRoute: ApiPublicV1DepthRoute,
   ApiPublicV1ExchangeInfoRoute: ApiPublicV1ExchangeInfoRoute,
+  ApiPublicV1KlinesRoute: ApiPublicV1KlinesRoute,
   ApiPublicV1PingRoute: ApiPublicV1PingRoute,
   ApiPublicV1TimeRoute: ApiPublicV1TimeRoute,
   ApiPublicV1TradesRoute: ApiPublicV1TradesRoute,
