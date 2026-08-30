@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { Github, ExternalLink, ShieldCheck, Code2, Lock } from "lucide-react";
 
 export const Route = createFileRoute("/proof/code")({
   head: () => ({
@@ -54,6 +55,50 @@ function CodePage() {
           Seeds runs, and the independent places you can go to confirm we are telling the truth.
         </p>
       </header>
+
+      <section className="relative overflow-hidden rounded-xl border border-border bg-gradient-to-br from-primary/10 via-primary/5 to-background p-6 md:p-10">
+        <div className="relative z-10 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+          <div className="max-w-2xl space-y-4">
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              Verify before you trust
+            </div>
+            <h2 className="font-display text-2xl font-bold tracking-tight md:text-3xl">
+              Our code is public. Our claims are checkable.
+            </h2>
+            <p className="text-sm text-muted-foreground md:text-base">
+              Seeds runs the same open logic whether you read it here, in the repo, or on-chain. Clone it, audit the derivation and settlement paths, and run it against your own node.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <a
+                href="https://github.com/blockchainmint1/seed-cex"
+                target="_blank"
+                rel="noreferrer noopener"
+                className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
+              >
+                <Github className="h-4 w-4" />
+                View on GitHub
+                <ExternalLink className="h-3.5 w-3.5 opacity-70" />
+              </a>
+              <Link
+                to="/custody"
+                className="inline-flex items-center gap-2 rounded-md border border-border bg-surface px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-surface/80"
+              >
+                <Lock className="h-4 w-4" />
+                Custody ledger
+              </Link>
+            </div>
+          </div>
+
+          <div className="hidden md:block">
+            <div className="rounded-lg border border-border bg-surface/80 p-5 shadow-sm backdrop-blur">
+              <Code2 className="h-10 w-10 text-primary" />
+              <p className="mt-3 font-mono text-xs text-muted-foreground">github.com/blockchainmint1</p>
+              <p className="font-mono text-sm font-semibold text-foreground">/seed-cex</p>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <section>
         <h2 className="font-display text-xl font-bold">What the software does</h2>
