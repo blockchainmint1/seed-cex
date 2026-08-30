@@ -67,7 +67,7 @@ function Custody() {
 
 
   return (
-    <div className="mx-auto max-w-3xl px-5 py-16">
+    <div className="mx-auto max-w-7xl px-5 py-16">
       <p className="font-mono text-[11px] tracking-[0.24em] text-primary uppercase">
         Custody ledger
       </p>

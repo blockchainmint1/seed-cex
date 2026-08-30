@@ -57,7 +57,7 @@ const reasons = [
 
 export default function TsdPage() {
   return (
-    <main className="mx-auto max-w-5xl px-5 py-16">
+    <main className="mx-auto max-w-7xl px-5 py-16">
       <p className="font-mono text-xs tracking-[0.3em] text-primary uppercase">
         The native stablecoin of Seeds Exchange
       </p>

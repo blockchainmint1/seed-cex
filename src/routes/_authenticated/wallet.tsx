@@ -222,7 +222,7 @@ function Wallet() {
   const hasWallet = Boolean(wallet.data);
 
   return (
-    <div className="mx-auto max-w-6xl px-5 py-12">
+    <div className="mx-auto max-w-7xl px-5 py-12">
       <p className="font-mono text-[11px] tracking-[0.24em] text-primary uppercase">Wallet</p>
       <h1 className="mt-3 font-display text-3xl font-black tracking-tight text-foreground uppercase">
         Spot balances

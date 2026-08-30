@@ -180,7 +180,7 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
   );
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
+    <div className="mx-auto max-w-7xl px-5 py-8">
       {/* ticker */}
       <div className="flex flex-wrap items-end gap-x-10 gap-y-4 border-b border-border pb-6">
         <div>

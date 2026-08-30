@@ -49,7 +49,7 @@ const theses = [
 
 function Manifesto() {
   return (
-    <div className="mx-auto max-w-3xl px-5 py-16">
+    <div className="mx-auto max-w-7xl px-5 py-16">
       <p className="font-mono text-[11px] tracking-[0.24em] text-primary uppercase">Manifesto</p>
       <h1 className="mt-3 font-display text-4xl leading-[1.05] font-black tracking-tight text-foreground uppercase">
         Custody is the bug.
