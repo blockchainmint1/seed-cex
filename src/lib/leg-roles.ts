@@ -20,7 +20,7 @@ export type TradeShape = {
 export type LegRole = "base" | "quote";
 
 export function legRole(pairId: string | null | undefined, leg: LegId): LegRole {
-  const pair = getPair(pairId ?? "USDC_TXC");
+  const pair = getPair(pairId ?? "TSD_TXC");
   if (pair.baseLeg === leg) return "base";
   if (pair.quoteLeg === leg) return "quote";
   throw new Error(`${leg.toUpperCase()} is not a leg of ${pair.label}`);

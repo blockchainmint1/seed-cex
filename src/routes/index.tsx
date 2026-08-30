@@ -27,18 +27,14 @@ export const Route = createFileRoute("/")({
 
 const PAIR_LABELS: Record<string, string> = {
   "TXC_TSD": "TXC / TSD",
-  "TXC_USDC": "TXC / USDC",
-  "TXC_USDT": "TXC / USDT",
   "TSD_USDC": "TSD / USDC",
   "LTC_TSD": "LTC / TSD",
   "ISK_TSD": "ISK / TSD",
   "ZCU_TSD": "ZCU / TSD",
 };
 
-const PAIR_ROUTE: Record<string, "/trade/tsd-txc" | "/trade/usdc-txc" | "/trade/txc-usdt" | "/trade/tsd-usdc" | "/trade/ltc-tsd" | "/trade/isk-tsd" | "/trade/zcu-tsd"> = {
+const PAIR_ROUTE: Record<string, "/trade/tsd-txc" | "/trade/tsd-usdc" | "/trade/ltc-tsd" | "/trade/isk-tsd" | "/trade/zcu-tsd"> = {
   "TXC_TSD": "/trade/tsd-txc",
-  "TXC_USDC": "/trade/usdc-txc",
-  "TXC_USDT": "/trade/txc-usdt",
   "TSD_USDC": "/trade/tsd-usdc",
   "LTC_TSD": "/trade/ltc-tsd",
   "ISK_TSD": "/trade/isk-tsd",
@@ -65,8 +61,8 @@ function Index() {
   });
 
   const stats = useQuery({
-    queryKey: ["market-stats", "USDC_TXC"],
-    queryFn: () => getMarketStats({ data: { pair: "USDC_TXC" } }),
+    queryKey: ["market-stats", "TSD_TXC"],
+    queryFn: () => getMarketStats({ data: { pair: "TSD_TXC" } }),
     refetchInterval: 30_000,
   });
 
@@ -109,7 +105,7 @@ function Index() {
               Get started
             </Link>
             <Link
-              to="/trade/usdc-txc"
+              to="/trade/tsd-txc"
               className="rounded-sm border border-border px-6 py-3 font-mono text-xs tracking-[0.16em] text-foreground uppercase transition-colors hover:border-primary hover:text-primary"
             >
               View markets
@@ -183,7 +179,7 @@ function Index() {
               </h2>
             </div>
             <Link
-              to="/trade/usdc-txc"
+              to="/trade/tsd-txc"
               className="font-mono text-xs tracking-wider text-primary uppercase hover:underline"
             >
               View all markets →

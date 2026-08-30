@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-const PAIR = "USDC_TXC";
+const PAIR = "TSD_TXC";
 const pairInput = (input: unknown) =>
   z.object({ pair: z.string().trim().max(24).default(PAIR) }).parse(input ?? {});
 

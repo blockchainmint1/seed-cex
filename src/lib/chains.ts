@@ -192,8 +192,6 @@ export const TSD_PROPERTY_ID = 39;
 
 export type PairId =
   | "TSD_TXC"
-  | "USDC_TXC"
-  | "TXC_USDT"
   | "TSD_USDC"
   | "LTC_TSD"
   | "ISK_TSD"
@@ -229,28 +227,6 @@ export const PAIRS: PairDef[] = [
     blurb:
       "TEXITcoin against the Texas Stable Dollar — both legs settle on the TEXITcoin chain, no bridge in the middle.",
     native: true,
-  },
-  {
-    id: "USDC_TXC",
-    slug: "usdc-txc",
-    label: "TXC / USDC",
-    base: "TXC",
-    quote: "USDC",
-    baseLeg: "txc",
-    quoteLeg: "usdc",
-    blurb: "TEXITcoin against USDC on Base, Ethereum, or BNB Chain.",
-    native: false,
-  },
-  {
-    id: "TXC_USDT",
-    slug: "txc-usdt",
-    label: "TXC / USDT",
-    base: "TXC",
-    quote: "USDT",
-    baseLeg: "txc",
-    quoteLeg: "usdt",
-    blurb: "TEXITcoin against USDT on Base, Ethereum, or BNB Chain.",
-    native: false,
   },
   {
     id: "TSD_USDC",
