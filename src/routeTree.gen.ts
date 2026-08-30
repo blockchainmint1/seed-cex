@@ -35,6 +35,7 @@ import { Route as ApiPublicV1OpenOrdersRouteImport } from './routes/api/public/v
 import { Route as ApiPublicV1KlinesRouteImport } from './routes/api/public/v1/klines'
 import { Route as ApiPublicV1ExchangeInfoRouteImport } from './routes/api/public/v1/exchangeInfo'
 import { Route as ApiPublicV1DepthRouteImport } from './routes/api/public/v1/depth'
+import { Route as ApiPublicV1AllOrdersRouteImport } from './routes/api/public/v1/allOrders'
 import { Route as ApiPublicV1AccountRouteImport } from './routes/api/public/v1/account'
 import { Route as ApiPublicCmcTickerRouteImport } from './routes/api/public/cmc/ticker'
 import { Route as ApiPublicCmcSummaryRouteImport } from './routes/api/public/cmc/summary'
@@ -173,6 +174,11 @@ const ApiPublicV1DepthRoute = ApiPublicV1DepthRouteImport.update({
   path: '/api/public/v1/depth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicV1AllOrdersRoute = ApiPublicV1AllOrdersRouteImport.update({
+  id: '/api/public/v1/allOrders',
+  path: '/api/public/v1/allOrders',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicV1AccountRoute = ApiPublicV1AccountRouteImport.update({
   id: '/api/public/v1/account',
   path: '/api/public/v1/account',
@@ -236,6 +242,7 @@ export interface FileRoutesByFullPath {
   '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
   '/api/public/cmc/ticker': typeof ApiPublicCmcTickerRoute
   '/api/public/v1/account': typeof ApiPublicV1AccountRoute
+  '/api/public/v1/allOrders': typeof ApiPublicV1AllOrdersRoute
   '/api/public/v1/depth': typeof ApiPublicV1DepthRoute
   '/api/public/v1/exchangeInfo': typeof ApiPublicV1ExchangeInfoRoute
   '/api/public/v1/klines': typeof ApiPublicV1KlinesRoute
@@ -271,6 +278,7 @@ export interface FileRoutesByTo {
   '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
   '/api/public/cmc/ticker': typeof ApiPublicCmcTickerRoute
   '/api/public/v1/account': typeof ApiPublicV1AccountRoute
+  '/api/public/v1/allOrders': typeof ApiPublicV1AllOrdersRoute
   '/api/public/v1/depth': typeof ApiPublicV1DepthRoute
   '/api/public/v1/exchangeInfo': typeof ApiPublicV1ExchangeInfoRoute
   '/api/public/v1/klines': typeof ApiPublicV1KlinesRoute
@@ -308,6 +316,7 @@ export interface FileRoutesById {
   '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
   '/api/public/cmc/ticker': typeof ApiPublicCmcTickerRoute
   '/api/public/v1/account': typeof ApiPublicV1AccountRoute
+  '/api/public/v1/allOrders': typeof ApiPublicV1AllOrdersRoute
   '/api/public/v1/depth': typeof ApiPublicV1DepthRoute
   '/api/public/v1/exchangeInfo': typeof ApiPublicV1ExchangeInfoRoute
   '/api/public/v1/klines': typeof ApiPublicV1KlinesRoute
@@ -345,6 +354,7 @@ export interface FileRouteTypes {
     | '/api/public/cmc/summary'
     | '/api/public/cmc/ticker'
     | '/api/public/v1/account'
+    | '/api/public/v1/allOrders'
     | '/api/public/v1/depth'
     | '/api/public/v1/exchangeInfo'
     | '/api/public/v1/klines'
@@ -380,6 +390,7 @@ export interface FileRouteTypes {
     | '/api/public/cmc/summary'
     | '/api/public/cmc/ticker'
     | '/api/public/v1/account'
+    | '/api/public/v1/allOrders'
     | '/api/public/v1/depth'
     | '/api/public/v1/exchangeInfo'
     | '/api/public/v1/klines'
@@ -416,6 +427,7 @@ export interface FileRouteTypes {
     | '/api/public/cmc/summary'
     | '/api/public/cmc/ticker'
     | '/api/public/v1/account'
+    | '/api/public/v1/allOrders'
     | '/api/public/v1/depth'
     | '/api/public/v1/exchangeInfo'
     | '/api/public/v1/klines'
@@ -451,6 +463,7 @@ export interface RootRouteChildren {
   ApiPublicCmcSummaryRoute: typeof ApiPublicCmcSummaryRoute
   ApiPublicCmcTickerRoute: typeof ApiPublicCmcTickerRoute
   ApiPublicV1AccountRoute: typeof ApiPublicV1AccountRoute
+  ApiPublicV1AllOrdersRoute: typeof ApiPublicV1AllOrdersRoute
   ApiPublicV1DepthRoute: typeof ApiPublicV1DepthRoute
   ApiPublicV1ExchangeInfoRoute: typeof ApiPublicV1ExchangeInfoRoute
   ApiPublicV1KlinesRoute: typeof ApiPublicV1KlinesRoute
@@ -650,6 +663,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicV1DepthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/v1/allOrders': {
+      id: '/api/public/v1/allOrders'
+      path: '/api/public/v1/allOrders'
+      fullPath: '/api/public/v1/allOrders'
+      preLoaderRoute: typeof ApiPublicV1AllOrdersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/v1/account': {
       id: '/api/public/v1/account'
       path: '/api/public/v1/account'
@@ -742,6 +762,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCmcSummaryRoute: ApiPublicCmcSummaryRoute,
   ApiPublicCmcTickerRoute: ApiPublicCmcTickerRoute,
   ApiPublicV1AccountRoute: ApiPublicV1AccountRoute,
+  ApiPublicV1AllOrdersRoute: ApiPublicV1AllOrdersRoute,
   ApiPublicV1DepthRoute: ApiPublicV1DepthRoute,
   ApiPublicV1ExchangeInfoRoute: ApiPublicV1ExchangeInfoRoute,
   ApiPublicV1KlinesRoute: ApiPublicV1KlinesRoute,
