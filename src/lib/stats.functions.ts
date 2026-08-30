@@ -60,8 +60,8 @@ export const getPublicStats = createServerFn({ method: "GET" }).handler(
         .from("orders")
         .select("id", { count: "exact", head: true })
         .eq("status", "open"),
-      supabaseAdmin.from("settlement_legs").select("status"),
-      supabaseAdmin.from("wallet_vaults").select("id", { count: "exact", head: true }),
+      supabaseAdmin.from("escrows").select("status"),
+      supabaseAdmin.from("wallets").select("id", { count: "exact", head: true }),
       supabaseAdmin.from("api_keys").select("id", { count: "exact", head: true }),
       supabaseAdmin.rpc("custody_snapshot"),
       supabaseAdmin.from("custody_attestations").select("keys_wiped"),
