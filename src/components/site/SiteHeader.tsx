@@ -103,6 +103,16 @@ export function SiteHeader() {
               Trades
             </Link>
           ) : null}
+          {admin.data ? (
+            <Link
+              to="/admin"
+              className="text-muted-foreground transition-colors hover:text-foreground"
+              activeProps={{ className: "text-primary" }}
+            >
+              Admin
+            </Link>
+          ) : null}
+
           <NavMenu label="About" items={about} />
           <NavMenu label="Proof" items={proof} />
         </nav>
