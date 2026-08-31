@@ -1,0 +1,1 @@
+ALTER TABLE public.wallets ADD COLUMN IF NOT EXISTS btc_address text;
