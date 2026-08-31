@@ -9,7 +9,17 @@
 export type ChainId = "txc" | "ethereum" | "base" | "bsc" | "ltc" | "isk" | "zcu";
 
 /** Every settlement leg Seeds can deliver on-chain. */
-export type LegId = "txc" | "tsd" | "usdc" | "usdt" | "ltc" | "isk" | "zcu";
+export type LegId =
+  | "txc"
+  | "tsd"
+  | "usdc"
+  | "usdt"
+  | "ltc"
+  | "isk"
+  | "zcu"
+  | "wbtc"
+  | "wltc"
+  | "weth";
 
 export type AssetDef = {
   symbol: string;
@@ -50,6 +60,10 @@ export const CHAINS: ChainDef[] = [
       { symbol: "TXC", contract: null, decimals: 8 },
       // Texas Stable Dollar — Omni Layer property #39 on TEXITcoin.
       { symbol: "TSD", contract: null, decimals: 8, omniPropertyId: 39 },
+      // Reserve-backed wrapped majors, issued by the TSD Swap wrap desk.
+      { symbol: "wBTC", contract: null, decimals: 8, omniPropertyId: 43 },
+      { symbol: "wLTC", contract: null, decimals: 8, omniPropertyId: 44 },
+      { symbol: "wETH", contract: null, decimals: 8, omniPropertyId: 45 },
     ],
     explorer: "https://mempool.texitcoin.org/address/",
   },
@@ -177,6 +191,9 @@ export const LEGS: Record<LegId, LegDef> = {
   usdc: { id: "usdc", symbol: "USDC", kind: "evm", evmChains: ["base", "ethereum", "bsc"] },
   usdt: { id: "usdt", symbol: "USDT", kind: "evm", evmChains: ["base", "ethereum", "bsc"] },
   zcu: { id: "zcu", symbol: "ZCU", kind: "evm", evmChains: ["zcu"], native: true },
+  wbtc: { id: "wbtc", symbol: "wBTC", kind: "omni", chain: "txc" },
+  wltc: { id: "wltc", symbol: "wLTC", kind: "omni", chain: "txc" },
+  weth: { id: "weth", symbol: "wETH", kind: "omni", chain: "txc" },
 };
 
 export function getLeg(id: string): LegDef {
