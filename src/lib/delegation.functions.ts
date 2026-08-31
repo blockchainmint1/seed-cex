@@ -85,8 +85,9 @@ export const grantAuthorization = createServerFn({ method: "POST" })
 
     // Never trust the claimed address — re-derive it from the key.
     const priv = hexToBytes(data.privateKeyHex.toLowerCase());
-    const derived =
-      chain.evmChainId === null
+    const derived = chain.bech32Hrp
+      ? p2wpkhAddressFromPubkey(secp256k1.getPublicKey(priv, true), chain.bech32Hrp)
+      : chain.evmChainId === null
         ? p2pkhAddressFromPubkey(secp256k1.getPublicKey(priv, true), chain.p2pkhVersion ?? 66)
         : evmAddressFromPubkey(secp256k1.getPublicKey(priv, false));
     if (derived.toLowerCase() !== data.address.toLowerCase()) {
