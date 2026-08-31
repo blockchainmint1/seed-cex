@@ -62,11 +62,6 @@ function varint(n: number): Uint8Array {
   return concat(Uint8Array.of(0xfe), u32le(n));
 }
 
-function pushData(data: Uint8Array): Uint8Array {
-  if (data.length < 0x4c) return concat(Uint8Array.of(data.length), data);
-  return concat(Uint8Array.of(0x4c, data.length), data);
-}
-
 function reverseTxid(txid: string): Uint8Array {
   return hexToBytes(txid).reverse();
 }
