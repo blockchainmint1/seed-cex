@@ -528,6 +528,23 @@ function SpotBalances({
       leg: "tsd",
       tradeSlug: tradeSlugFor("TSD"),
     });
+    // BTC lists as a first-class asset. There's no native BTC branch in the
+    // vault — deposits are wrapped 1:1 into wBTC (Omni #43) by the issuer,
+    // so the balance shown is the wBTC sitting at the TEXITcoin address.
+    const wbtc = (wrapped.data ?? []).find((w) => w.symbol === "wBTC");
+    out.push({
+      key: "btc",
+      symbol: "BTC",
+      name: "Bitcoin",
+      chain: "txc",
+      chainName: "Bitcoin · settles as wBTC on TEXITcoin",
+      balance: wbtc ? wbtc.balance : null,
+      online: Boolean(wbtc?.online),
+      address: null,
+      leg: null,
+      tradeSlug: "btc-tsd",
+      wrapBase: "BTC",
+    });
     const utxoChains: { chain: "ltc" | "isk"; symbol: string; address: string | null }[] = [
       { chain: "ltc", symbol: "LTC", address: wallet.ltc_address },
       { chain: "isk", symbol: "ISK", address: wallet.isk_address },
