@@ -20,8 +20,7 @@ import { getAddressStats } from "@/lib/txc.functions";
 import { getUtxoBalances } from "@/lib/utxo.functions";
 import { getEvmPortfolio } from "@/lib/evm.functions";
 import { getTsdBalance, getWrappedBalances } from "@/lib/omni.functions";
-import { openWrapOrder } from "@/lib/wrap.functions";
-import { getWrapAsset } from "@/lib/wrap-config";
+import { getBtcBalance, wrapMyBranchBalance } from "@/lib/wrap.functions";
 import { listMyWithdrawals } from "@/lib/withdrawal.functions";
 import {
   decryptMnemonic,
@@ -110,7 +109,8 @@ function Wallet() {
         throw new Error("That is not a valid BIP-39 recovery phrase");
       }
 
-      const { txcAddress, evmAddress, ltcAddress, iskAddress } = deriveAddresses(mnemonic);
+      const { txcAddress, evmAddress, ltcAddress, iskAddress, btcAddress } =
+        deriveAddresses(mnemonic);
       const vault = await encryptMnemonic(mnemonic, password);
 
       await persistWallet({
@@ -122,6 +122,7 @@ function Wallet() {
           evmAddress,
           ltcAddress,
           iskAddress,
+          btcAddress,
         },
       });
       return mnemonic;
@@ -146,13 +147,14 @@ function Wallet() {
         unlockPassword,
       );
       // Older vaults predate the LTC/ISK branches — derive and backfill now.
-      if (!w.ltc_address || !w.isk_address || !w.evm_address) {
+      if (!w.ltc_address || !w.isk_address || !w.evm_address || !w.btc_address) {
         const derived = deriveAddresses(mnemonic);
         await backfillAddresses({
           data: {
             evmAddress: w.evm_address ? undefined : derived.evmAddress,
             ltcAddress: w.ltc_address ? undefined : derived.ltcAddress,
             iskAddress: w.isk_address ? undefined : derived.iskAddress,
+            btcAddress: w.btc_address ? undefined : derived.btcAddress,
           },
         });
         queryClient.invalidateQueries({ queryKey: ["my-wallet"] });
@@ -182,7 +184,8 @@ function Wallet() {
         throw new Error("Current password is wrong — the vault could not be decrypted");
       });
 
-      const { txcAddress, evmAddress, ltcAddress, iskAddress } = deriveAddresses(mnemonic);
+      const { txcAddress, evmAddress, ltcAddress, iskAddress, btcAddress } =
+        deriveAddresses(mnemonic);
       const vault = await encryptMnemonic(mnemonic, newPassword);
       await persistWallet({
         data: {
@@ -193,6 +196,7 @@ function Wallet() {
           evmAddress,
           ltcAddress,
           iskAddress,
+          btcAddress,
         },
       });
     },
@@ -435,7 +439,6 @@ type SpotRow = {
   /** Balance sitting in the authorized trading branch ("locked" for trading). */
   locked?: number | null;
   /** Deposit goes through the wrap desk instead of a plain address. */
-  wrapBase?: string;
   /** Per-network breakdown for assets consolidated across EVM chains. */
   parts?: { chainName: string; balance: number | null }[];
 };
@@ -453,6 +456,7 @@ function SpotBalances({
     evm_address: string | null;
     ltc_address: string | null;
     isk_address: string | null;
+    btc_address: string | null;
   };
 }) {
   const fetchStats = useServerFn(getAddressStats);
@@ -460,6 +464,7 @@ function SpotBalances({
   const fetchUtxo = useServerFn(getUtxoBalances);
   const fetchPortfolio = useServerFn(getEvmPortfolio);
   const fetchAuths = useServerFn(listAuthorizations);
+  const fetchBtc = useServerFn(getBtcBalance);
 
   const txc = useQuery({
     queryKey: ["txc-balance", wallet.txc_address],
@@ -488,6 +493,12 @@ function SpotBalances({
     enabled: Boolean(wallet.evm_address),
     refetchInterval: 120_000,
   });
+  const btc = useQuery({
+    queryKey: ["btc-balance", wallet.btc_address],
+    queryFn: () => fetchBtc({ data: { address: wallet.btc_address! } }),
+    enabled: Boolean(wallet.btc_address),
+    refetchInterval: 120_000,
+  });
   const auths = useQuery({
     queryKey: ["authorizations"],
     queryFn: () => fetchAuths(),
@@ -503,7 +514,11 @@ function SpotBalances({
       txc: find((a) => a.chain === "txc"),
       ltc: find((a) => a.chain === "ltc"),
       isk: find((a) => a.chain === "isk"),
-      evm: find((a) => a.chain !== "txc" && a.chain !== "ltc" && a.chain !== "isk"),
+      btc: find((a) => a.chain === "btc"),
+      evm: find(
+        (a) =>
+          a.chain !== "txc" && a.chain !== "ltc" && a.chain !== "isk" && a.chain !== "btc",
+      ),
     };
   }, [auths.data]);
 
@@ -568,25 +583,23 @@ function SpotBalances({
       tradeSlug: tradeSlugFor("TXC"),
       locked: branch.txc ? (lockedTxc.data ? lockedTxc.data.confirmed : null) : null,
     });
-    // BTC lists as a first-class asset. There's no native BTC branch in the
-    // vault — deposits are wrapped 1:1 into wBTC (Omni #43) by the issuer,
-    // so the balance shown is the wBTC sitting at the TEXITcoin address.
-    const wbtc = (wrapped.data ?? []).find((w) => w.symbol === "wBTC");
+    // BTC is native on your own branch until you authorize it. On
+    // authorization the branch is swept to the issuer and comes back as
+    // wBTC (Omni #43) on your TEXITcoin trading address — that's "locked".
+    const wbtc = (lockedWrapped.data ?? []).find((w) => w.symbol === "wBTC");
     out.push({
       key: "btc",
       symbol: "BTC",
       name: "Bitcoin",
-      chain: "txc",
-      chainName: "Bitcoin · settles as wBTC on TEXITcoin",
-      balance: wbtc ? wbtc.balance : null,
-      online: Boolean(wbtc?.online),
-      address: null,
+      chain: "btc",
+      chainName: "Bitcoin · trades as wBTC on TEXITcoin",
+      balance: btc.data?.online ? btc.data.confirmed : null,
+      pending: btc.data?.online ? btc.data.unconfirmed : null,
+      online: Boolean(btc.data?.online),
+      address: wallet.btc_address,
       leg: null,
       tradeSlug: "btc-tsd",
-      wrapBase: "BTC",
-      locked: branch.txc
-        ? ((lockedWrapped.data ?? []).find((w) => w.symbol === "wBTC")?.balance ?? null)
-        : null,
+      locked: branch.txc ? (wbtc ? wbtc.balance : null) : null,
     });
     const utxoChains: { chain: "ltc" | "isk"; symbol: string; address: string | null }[] = [
       { chain: "ltc", symbol: "LTC", address: wallet.ltc_address },
@@ -652,6 +665,7 @@ function SpotBalances({
   }, [
     txc.data,
     tsd.data,
+    btc.data,
     wrapped.data,
     utxo.data,
     evm.data,
@@ -665,7 +679,6 @@ function SpotBalances({
   ]);
 
   const [depositRow, setDepositRow] = useState<SpotRow | null>(null);
-  const [wrapDepositRow, setWrapDepositRow] = useState<SpotRow | null>(null);
 
   const loading = txc.isPending && utxo.isPending && evm.isPending;
 
@@ -739,7 +752,7 @@ function SpotBalances({
                 </td>
                 <td className="py-3 pr-4 text-right">
                   <button
-                    onClick={() => (r.wrapBase ? setWrapDepositRow(r) : setDepositRow(r))}
+                    onClick={() => setDepositRow(r)}
                     className="rounded-sm border border-border px-3 py-1.5 text-[10px] tracking-[0.14em] text-foreground uppercase transition-colors hover:border-primary hover:text-primary"
                   >
                     Deposit
@@ -769,12 +782,6 @@ function SpotBalances({
       ) : null}
 
       {depositRow ? <DepositModal row={depositRow} onClose={() => setDepositRow(null)} /> : null}
-      {wrapDepositRow && wrapDepositRow.wrapBase ? (
-        <WrapDepositModal
-          baseSymbol={wrapDepositRow.wrapBase}
-          onClose={() => setWrapDepositRow(null)}
-        />
-      ) : null}
     </section>
   );
 }
@@ -871,145 +878,6 @@ function Modal({
   );
 }
 
-/* ------------------------------ wrap deposit ------------------------------- */
-
-function WrapDepositModal({
-  baseSymbol,
-  onClose,
-}: {
-  baseSymbol: string;
-  onClose: () => void;
-}) {
-  const asset = getWrapAsset(baseSymbol);
-  const open = useServerFn(openWrapOrder);
-  const qc = useQueryClient();
-  const [amount, setAmount] = useState("");
-  const [refundAddress, setRefundAddress] = useState("");
-  const [err, setErr] = useState<string | null>(null);
-
-  const create = useMutation({
-    mutationFn: () =>
-      open({
-        data: {
-          baseSymbol,
-          amount: Number(amount),
-          counterpartyAddress: refundAddress.trim(),
-        },
-      }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["wrap-orders"] });
-      qc.invalidateQueries({ queryKey: ["omni-wrapped"] });
-    },
-    onError: (e) => setErr(e instanceof Error ? e.message : "Could not open wrap order"),
-  });
-
-  const order = create.data;
-  const valid = Number(amount) >= asset.minAmount && refundAddress.trim().length > 8;
-
-  return (
-    <Modal title={`Deposit ${asset.baseSymbol}`} onClose={onClose}>
-      {!order ? (
-        <div className="space-y-4">
-          <p className="text-xs leading-relaxed text-muted-foreground">
-            Send {asset.baseSymbol} and the issuer mints {asset.wrappedSymbol} 1:1 to your
-            TEXITcoin trading address after {asset.confirmations} confirmation
-            {asset.confirmations === 1 ? "" : "s"}. It trades and settles on TEXITcoin
-            automatically — unwrap back to {asset.baseSymbol} any time.
-          </p>
-          <div>
-            <label className="text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
-              Amount ({asset.baseSymbol}, min {asset.minAmount})
-            </label>
-            <input
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              inputMode="decimal"
-              placeholder={asset.minAmount.toString()}
-              className="mt-1 w-full rounded-sm border border-border bg-background px-3 py-2 font-mono text-sm text-foreground"
-            />
-          </div>
-          <div>
-            <label className="text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
-              Refund address ({asset.baseSymbol})
-            </label>
-            <input
-              value={refundAddress}
-              onChange={(e) => setRefundAddress(e.target.value)}
-              placeholder={asset.addressHint}
-              className="mt-1 w-full rounded-sm border border-border bg-background px-3 py-2 font-mono text-xs text-foreground"
-            />
-            <p className="mt-1 text-[10px] text-muted-foreground">
-              Only used if the wrap can't complete — your deposit goes straight back here.
-            </p>
-          </div>
-          {err ? <p className="text-xs text-destructive">{err}</p> : null}
-          <button
-            onClick={() => {
-              setErr(null);
-              create.mutate();
-            }}
-            disabled={!valid || create.isPending}
-            className="w-full rounded-sm bg-primary px-4 py-2.5 font-mono text-xs font-semibold tracking-[0.16em] text-primary-foreground uppercase disabled:opacity-50"
-          >
-            {create.isPending ? "Opening order…" : `Get ${asset.baseSymbol} deposit address`}
-          </button>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <p className="text-xs leading-relaxed text-muted-foreground">
-            Send exactly{" "}
-            <span className="font-semibold text-foreground">
-              {order.amount_expected} {asset.baseSymbol}
-            </span>{" "}
-            to the address below. {asset.wrappedSymbol} arrives in your trading balance after{" "}
-            {asset.confirmations} confirmation{asset.confirmations === 1 ? "" : "s"}.
-          </p>
-          {order.deposit_address ? (
-            <div className="flex flex-col items-center gap-3">
-              <div className="rounded-xl bg-[#eef6ee] p-3 shadow-[0_2px_16px_-4px_rgb(20_60_30/0.25)] ring-1 ring-primary/30">
-                <QRCodeSVG
-                  value={`${asset.baseSymbol.toLowerCase()}:${order.deposit_address}${order.amount_expected ? `?amount=${order.amount_expected}` : ""}`}
-                  size={176}
-                  bgColor="transparent"
-                  fgColor="#14532d"
-                  level="M"
-                />
-              </div>
-              <code className="w-full rounded-sm border border-border bg-background px-3 py-2 text-center font-mono text-xs break-all text-foreground select-all">
-                {order.deposit_address}
-              </code>
-              <a
-                href={`${asset.nativeExplorer}${order.deposit_address}`}
-                target="_blank"
-                rel="noreferrer"
-                className="text-[10px] tracking-[0.14em] text-primary uppercase hover:underline"
-              >
-                Watch on explorer →
-              </a>
-            </div>
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              Order created — the deposit address appears in the wrap desk below as soon as the
-              issuer assigns one.
-            </p>
-          )}
-          <p className="text-[10px] leading-relaxed text-muted-foreground">
-            Track progress in the wrap desk below — unwrap back to native {asset.baseSymbol}{" "}
-            whenever you like.
-          </p>
-          <a
-            href="#wrap-desk"
-            onClick={onClose}
-            className="block w-full rounded-sm border border-border px-4 py-2.5 text-center font-mono text-xs tracking-[0.16em] text-foreground uppercase hover:border-primary hover:text-primary"
-          >
-            View wrap desk ↓
-          </a>
-        </div>
-      )}
-    </Modal>
-  );
-}
-
 /* ---------------------------- withdrawal history --------------------------- */
 
 function WithdrawalHistory() {
@@ -1075,6 +943,7 @@ function SharedAccessPanel({
   const grant = useServerFn(grantAuthorization);
   const revoke = useServerFn(revokeAuthorization);
   const revokeAll = useServerFn(revokeAllAuthorizations);
+  const wrapBranch = useServerFn(wrapMyBranchBalance);
 
   const list = useQuery({
     queryKey: ["authorizations"],
@@ -1104,9 +973,15 @@ function SharedAccessPanel({
       const shared = deriveSharedKey(
         mnemonic,
         chain.sharedPath,
-        chain.evmChainId === null ? (chain.p2pkhVersion ?? 66) : "evm",
+        chain.bech32Hrp ? "btc" : chain.evmChainId === null ? (chain.p2pkhVersion ?? 66) : "evm",
       );
-      return grant({
+      // BTC has no on-chain trading life of its own: authorizing it sweeps the
+      // branch to the issuer, which mints wBTC to the TEXITcoin trading branch.
+      const txcTrading =
+        chainId === "btc"
+          ? deriveSharedKey(mnemonic, getChain("txc").sharedPath, "txc").address
+          : null;
+      const res = await grant({
         data: {
           chain: chainId,
           asset,
@@ -1117,11 +992,17 @@ function SharedAccessPanel({
           hours: Number(hours),
         },
       });
+      if (chainId === "btc" && txcTrading) {
+        await wrapBranch({ data: { baseSymbol: "BTC", payoutAddress: txcTrading } });
+      }
+      return res;
     },
     onSuccess: () => {
       setPw("");
       setErr(null);
       queryClient.invalidateQueries({ queryKey: ["authorizations"] });
+      queryClient.invalidateQueries({ queryKey: ["wrap-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["btc-balance"] });
     },
     onError: (e) => setErr(e instanceof Error ? e.message : "Could not authorize that branch"),
   });
@@ -1294,6 +1175,8 @@ function SharedAccessPanel({
         </button>
         <p className="mt-3 font-mono text-[11px] text-muted-foreground">
           One live authorization per asset — authorizing again replaces the previous one.
+        Authorizing BTC also sweeps that branch to the wrap issuer, which mints wBTC 1:1 to
+        your TEXITcoin trading branch so it can settle in seconds.
         </p>
       </div>
     </Panel>

@@ -9,7 +9,7 @@
 import { generateMnemonic, mnemonicToSeedSync, validateMnemonic } from "@scure/bip39";
 import { wordlist } from "@scure/bip39/wordlists/english.js";
 import { HDKey } from "@scure/bip32";
-import { base58check } from "@scure/base";
+import { base58check, bech32 } from "@scure/base";
 import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { ripemd160 } from "@noble/hashes/legacy.js";
@@ -68,11 +68,28 @@ const LTC_PUBKEY_VERSION = 48;
 const ISK_PATH = "m/44'/2'/10'/0/0";
 const ISK_PUBKEY_VERSION = 45;
 
+/**
+ * Bitcoin mainnet, BIP-84 native segwit.
+ *
+ * BTC has no savings role on Seeds: you deposit to trade, and trading means
+ * wrapping. So the only BTC address we ever show is the *shared trading*
+ * branch (account 9'), the same branch every other chain authorizes from.
+ */
+export const SHARED_BTC_PATH = "m/84'/0'/9'/0/0";
+const BTC_HRP = "bc";
+
+/** BIP-173 P2WPKH (bech32, `bc1q…`) address for a compressed pubkey. */
+export function p2wpkhAddressFromPubkey(pubkey: Uint8Array, hrp = BTC_HRP): string {
+  return bech32.encode(hrp, [0, ...bech32.toWords(hash160(pubkey))]);
+}
+
 export type DerivedAddresses = {
   txcAddress: string;
   evmAddress: string;
   ltcAddress: string;
   iskAddress: string;
+  /** BTC shared-trading branch — the address we hand out for deposits. */
+  btcAddress: string;
 };
 
 export function deriveAddresses(mnemonic: string): DerivedAddresses {
@@ -91,11 +108,15 @@ export function deriveAddresses(mnemonic: string): DerivedAddresses {
   const iskNode = root.derive(ISK_PATH);
   if (!ltcNode.publicKey || !iskNode.publicKey) throw new Error("Could not derive the UTXO keys");
 
+  const btcNode = root.derive(SHARED_BTC_PATH);
+  if (!btcNode.publicKey) throw new Error("Could not derive the BTC key");
+
   return {
     txcAddress: txcAddressFromPubkey(txcNode.publicKey),
     evmAddress: evmAddressFromPubkey(uncompressed),
     ltcAddress: p2pkhAddressFromPubkey(ltcNode.publicKey, LTC_PUBKEY_VERSION),
     iskAddress: p2pkhAddressFromPubkey(iskNode.publicKey, ISK_PUBKEY_VERSION),
+    btcAddress: p2wpkhAddressFromPubkey(btcNode.publicKey),
   };
 }
 
@@ -126,7 +147,7 @@ export type SharedTradingKey = {
 export function deriveSharedKey(
   mnemonic: string,
   path: string,
-  kind: "txc" | "evm" | number,
+  kind: "txc" | "evm" | "btc" | number,
 ): SharedTradingKey {
   const root = HDKey.fromMasterSeed(mnemonicToSeedSync(mnemonic));
   const node = root.derive(path);
@@ -135,9 +156,11 @@ export function deriveSharedKey(
   }
   const version = kind === "txc" ? TXC_PUBKEY_VERSION : typeof kind === "number" ? kind : null;
   const address =
-    version !== null
-      ? p2pkhAddressFromPubkey(node.publicKey, version)
-      : evmAddressFromPubkey(secp256k1.Point.fromBytes(node.publicKey).toBytes(false));
+    kind === "btc"
+      ? p2wpkhAddressFromPubkey(node.publicKey)
+      : version !== null
+        ? p2pkhAddressFromPubkey(node.publicKey, version)
+        : evmAddressFromPubkey(secp256k1.Point.fromBytes(node.publicKey).toBytes(false));
   return { path, privateKeyHex: bytesToHex(node.privateKey), address };
 }
 

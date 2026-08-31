@@ -465,6 +465,7 @@ export type Database = {
       wallets: {
         Row: {
           backed_up: boolean
+          btc_address: string | null
           created_at: string
           evm_address: string | null
           id: string
@@ -479,6 +480,7 @@ export type Database = {
         }
         Insert: {
           backed_up?: boolean
+          btc_address?: string | null
           created_at?: string
           evm_address?: string | null
           id?: string
@@ -493,6 +495,7 @@ export type Database = {
         }
         Update: {
           backed_up?: boolean
+          btc_address?: string | null
           created_at?: string
           evm_address?: string | null
           id?: string

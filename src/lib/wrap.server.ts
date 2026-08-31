@@ -212,6 +212,132 @@ export async function createWrapOrder(
 }
 
 /**
+ * Wrap whatever the user already holds on their own Bitcoin trading branch.
+ *
+ * This is the flow the wallet uses: you deposit BTC to *your* address
+ * (`m/84'/0'/9'/0/0`), and when you authorize BTC we sweep the authorized
+ * amount from that branch to the issuer's deposit address. No amount and no
+ * refund address to type — the refund address is your own branch.
+ */
+export async function wrapBranchBalance(
+  userId: string,
+  baseSymbol: string,
+  payoutAddressInput?: string,
+): Promise<WrapOrderRow> {
+  const asset = getWrapAsset(baseSymbol);
+  if (asset.baseSymbol !== "BTC") {
+    throw new Error(`Automatic branch wrapping is only available for BTC today.`);
+  }
+
+  const { fetchBtcUtxos, fetchBtcFeeRate, broadcastBtcTx } = await import("./btc/io.server");
+  const { buildAndSignBtcTransfer, estimateVBytes, SATS } = await import("./btc/tx.server");
+  const { decryptDelegatedKey } = await import("./delegation.server");
+  const { isValidTxcAddress } = await import("./txc/tx.server");
+
+  await supabaseAdmin.rpc("purge_expired_delegations");
+  const { data: del, error: delErr } = await supabaseAdmin
+    .from("wallet_delegations")
+    .select("trading_address, max_amount, expires_at, key_ciphertext")
+    .eq("user_id", userId)
+    .eq("chain", "btc")
+    .eq("asset", "BTC")
+    .is("revoked_at", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (delErr) throw new Error(delErr.message);
+  if (!del) throw new Error("No live BTC authorization. Authorize BTC first, then retry.");
+  if (new Date(del.expires_at).getTime() <= Date.now()) {
+    throw new Error("The BTC authorization has expired.");
+  }
+
+  const utxos = await fetchBtcUtxos(del.trading_address);
+  const total = utxos.reduce((s, u) => s + u.amount, 0);
+  if (total <= 0) {
+    throw new Error(
+      "No confirmed BTC at your trading branch yet. Deposit BTC to that address first.",
+    );
+  }
+
+  const feeRate = await fetchBtcFeeRate();
+  const cap = Number(del.max_amount);
+  const sweep = total <= cap;
+  const fee = (estimateVBytes(utxos.length, sweep ? 1 : 2) * feeRate) / SATS;
+  const amount = Number((sweep ? Math.max(0, total - fee) : cap).toFixed(8));
+  if (amount < asset.minAmount) {
+    throw new Error(
+      `Minimum wrap is ${asset.minAmount} BTC — the branch holds ${total.toFixed(8)} BTC.`,
+    );
+  }
+
+  const payoutAddress =
+    payoutAddressInput && isValidTxcAddress(payoutAddressInput)
+      ? payoutAddressInput
+      : await txcTradingAddress(userId);
+
+  const { data: created, error: insErr } = await supabaseAdmin
+    .from("wrap_orders")
+    .insert({
+      user_id: userId,
+      direction: "wrap",
+      base_symbol: asset.baseSymbol,
+      wrapped_symbol: asset.wrappedSymbol,
+      payout_address: payoutAddress,
+      amount_expected: amount,
+      status: "created",
+    })
+    .select("*")
+    .single();
+  if (insErr) throw new Error(insErr.message);
+  const row = created as WrapOrderRow;
+
+  try {
+    const issued = await issuerFetch<IssuerOrder>("/api/public/v1/wrap/orders", {
+      method: "POST",
+      body: {
+        direction: "wrap",
+        asset: asset.baseSymbol,
+        amount,
+        payoutAddress,
+        refundAddress: del.trading_address,
+        reference: row.id,
+      },
+    });
+    const opened = await applyIssuerOrder(row.id, issued);
+    if (!opened.deposit_address) {
+      throw new Error("The issuer did not return a Bitcoin deposit address.");
+    }
+
+    const signed = buildAndSignBtcTransfer({
+      privateKeyHex: decryptDelegatedKey(del.key_ciphertext),
+      fromAddress: del.trading_address,
+      toAddress: opened.deposit_address,
+      amount,
+      utxos,
+      feeRate,
+      sweep,
+    });
+    const txid = await broadcastBtcTx(signed.hex);
+
+    const { data: sentRow, error: upErr } = await supabaseAdmin
+      .from("wrap_orders")
+      .update({ deposit_txid: txid, status: "deposit_detected" })
+      .eq("id", row.id)
+      .select("*")
+      .single();
+    if (upErr) throw new Error(upErr.message);
+    return sentRow as WrapOrderRow;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Wrap failed";
+    await supabaseAdmin
+      .from("wrap_orders")
+      .update({ status: "failed", error: message })
+      .eq("id", row.id);
+    throw new Error(message);
+  }
+}
+
+/**
  * Send the user's wrapped tokens from their authorized trading branch to the
  * issuer's deposit address. Same gates as any settlement leg: live
  * authorization for that asset, cap, expiry, balance — decrypt last.

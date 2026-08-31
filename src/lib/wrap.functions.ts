@@ -46,6 +46,35 @@ export const openUnwrapOrder = createServerFn({ method: "POST" })
     );
   });
 
+/**
+ * Wrap the balance already sitting on the caller's own trading branch.
+ * No amount, no refund address — the branch is the refund address.
+ */
+export const wrapMyBranchBalance = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        baseSymbol: z.string().trim().min(2).max(12),
+        payoutAddress: z.string().trim().min(20).max(120).optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { wrapBranchBalance } = await import("./wrap.server");
+    return wrapBranchBalance(context.userId, data.baseSymbol, data.payoutAddress);
+  });
+
+/** Native BTC balance at an address (deposit branch). */
+export const getBtcBalance = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) =>
+    z.object({ address: z.string().trim().min(20).max(120) }).parse(input),
+  )
+  .handler(async ({ data }) => {
+    const { fetchBtcBalance } = await import("./btc/io.server");
+    return fetchBtcBalance(data.address);
+  });
+
 /** Re-poll a single order against the issuer. */
 export const syncWrapOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

@@ -6,7 +6,7 @@
  * directly.
  */
 
-export type ChainId = "txc" | "ethereum" | "base" | "bsc" | "ltc" | "isk" | "zcu";
+export type ChainId = "txc" | "ethereum" | "base" | "bsc" | "ltc" | "isk" | "zcu" | "btc";
 
 /** Every settlement leg Seeds can deliver on-chain. */
 export type LegId =
@@ -36,8 +36,10 @@ export type ChainDef = {
   /** EVM numeric chain id; null for UTXO chains */
   evmChainId: number | null;
   nativeSymbol: string;
-  /** base58 P2PKH version byte — UTXO chains only */
+  /** base58 P2PKH version byte — legacy UTXO chains only */
   p2pkhVersion?: number;
+  /** bech32 HRP — native-segwit UTXO chains only (BTC) */
+  bech32Hrp?: string;
   /** BIP-44 branch used for the *shared* trading account on this chain. */
   sharedPath: string;
   assets: AssetDef[];
@@ -125,6 +127,18 @@ export const CHAINS: ChainDef[] = [
     sharedPath: `m/44'/${LTC_COIN_TYPE}'/19'/0/0`,
     assets: [{ symbol: "ISK", contract: null, decimals: 8 }],
     explorer: "https://explorer.iskandercoin.com/address/",
+  },
+  {
+    // Bitcoin mainnet, BIP-84 native segwit. BTC is deposit-to-trade only:
+    // the branch balance is swept to the wrap issuer when you authorize.
+    id: "btc",
+    name: "Bitcoin",
+    evmChainId: null,
+    nativeSymbol: "BTC",
+    bech32Hrp: "bc",
+    sharedPath: "m/84'/0'/9'/0/0",
+    assets: [{ symbol: "BTC", contract: null, decimals: 8 }],
+    explorer: "https://mempool.space/address/",
   },
   {
     id: "zcu",

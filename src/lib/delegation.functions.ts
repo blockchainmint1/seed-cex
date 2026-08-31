@@ -2,7 +2,11 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { hexToBytes } from "@noble/hashes/utils.js";
-import { p2pkhAddressFromPubkey, evmAddressFromPubkey } from "@/lib/wallet/vault";
+import {
+  p2pkhAddressFromPubkey,
+  p2wpkhAddressFromPubkey,
+  evmAddressFromPubkey,
+} from "@/lib/wallet/vault";
 import { CHAIN_IDS, getChain, type ChainId } from "@/lib/chains";
 import { z } from "zod";
 
@@ -85,8 +89,9 @@ export const grantAuthorization = createServerFn({ method: "POST" })
 
     // Never trust the claimed address — re-derive it from the key.
     const priv = hexToBytes(data.privateKeyHex.toLowerCase());
-    const derived =
-      chain.evmChainId === null
+    const derived = chain.bech32Hrp
+      ? p2wpkhAddressFromPubkey(secp256k1.getPublicKey(priv, true), chain.bech32Hrp)
+      : chain.evmChainId === null
         ? p2pkhAddressFromPubkey(secp256k1.getPublicKey(priv, true), chain.p2pkhVersion ?? 66)
         : evmAddressFromPubkey(secp256k1.getPublicKey(priv, false));
     if (derived.toLowerCase() !== data.address.toLowerCase()) {
