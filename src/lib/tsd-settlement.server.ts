@@ -11,7 +11,7 @@
  * broadcast → watch confirmations. Every gate lives in `loadTsdDelegation`.
  */
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { TSD_PROPERTY_ID } from "@/lib/chains";
+import { omniLegAsset, type OmniLegId } from "@/lib/chains";
 import { decryptDelegatedKey } from "./delegation.server";
 import { fetchOmniBalance, fetchOmniTx, omniSimpleSend } from "./omni.server";
 import { rpcConfigured } from "./rpc.server";
@@ -25,13 +25,13 @@ const CARRIER_FEE_TXC = 0.001;
 
 type TradeParties = TradeShape;
 
-/** Whoever delivers the TSD leg of this pair. */
-function senderOf(t: TradeParties): string {
-  return delivererOf(t, legRole(t.pair, "tsd")) as string;
+/** Whoever delivers this Omni leg of the pair. */
+function senderOf(t: TradeParties, leg: OmniLegId): string {
+  return delivererOf(t, legRole(t.pair, leg)) as string;
 }
 
-function receiverOf(t: TradeParties): string {
-  return receiverFor(t, legRole(t.pair, "tsd")) as string;
+function receiverOf(t: TradeParties, leg: OmniLegId): string {
+  return receiverFor(t, legRole(t.pair, leg)) as string;
 }
 
 async function loadTrade(userId: string, tradeId: string): Promise<TradeParties> {
@@ -56,15 +56,15 @@ type TsdDelegation = {
   ciphertext: string;
 };
 
-/** The sender's live TSD authorization. Expired rows are destroyed first. */
-async function loadTsdDelegation(userId: string): Promise<TsdDelegation | null> {
+/** The sender's live authorization for this asset. Expired rows die first. */
+async function loadTsdDelegation(userId: string, assetSymbol: string): Promise<TsdDelegation | null> {
   await supabaseAdmin.rpc("purge_expired_delegations");
   const { data, error } = await supabaseAdmin
     .from("wallet_delegations")
     .select("trading_address, max_amount, expires_at, key_ciphertext")
     .eq("user_id", userId)
     .eq("chain", "txc")
-    .eq("asset", "TSD")
+    .eq("asset", assetSymbol)
     .is("revoked_at", null)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -79,8 +79,8 @@ async function loadTsdDelegation(userId: string): Promise<TsdDelegation | null> 
   };
 }
 
-function tsdAmountOf(t: TradeParties, expected?: number | null): number {
-  return legAmount(t, legRole(t.pair, "tsd"), expected);
+function tsdAmountOf(t: TradeParties, leg: OmniLegId, expected?: number | null): number {
+  return legAmount(t, legRole(t.pair, leg), expected);
 }
 
 /* --------------------------------- preview -------------------------------- */
@@ -98,19 +98,24 @@ export type TsdPreview = {
   nodeOnline: boolean;
 };
 
-export async function previewTsdSettlement(userId: string, tradeId: string): Promise<TsdPreview> {
+export async function previewTsdSettlement(
+  userId: string,
+  tradeId: string,
+  leg: OmniLegId = "tsd",
+): Promise<TsdPreview> {
+  const { symbol, propertyId } = omniLegAsset(leg);
   const t = await loadTrade(userId, tradeId);
-  const sender = senderOf(t);
-  const receiver = receiverOf(t);
+  const sender = senderOf(t, leg);
+  const receiver = receiverOf(t, leg);
 
-  const { data: leg } = await supabaseAdmin
+  const { data: escrowLeg } = await supabaseAdmin
     .from("escrows")
     .select("expected_amount")
     .eq("trade_id", t.id)
-    .eq("leg", "tsd")
+    .eq("leg", leg)
     .maybeSingle();
 
-  const amount = tsdAmountOf(t, leg?.expected_amount);
+  const amount = tsdAmountOf(t, leg, escrowLeg?.expected_amount);
   const base: TsdPreview = {
     ready: false,
     reason: null,
@@ -119,33 +124,33 @@ export async function previewTsdSettlement(userId: string, tradeId: string): Pro
     balance: null,
     feeBalance: null,
     amount,
-    propertyId: TSD_PROPERTY_ID,
+    propertyId,
     nodeOnline: rpcConfigured("txc"),
   };
 
   if (!base.nodeOnline) return { ...base, reason: "The TEXITcoin node is not reachable" };
 
   const [del, { data: wallet }] = await Promise.all([
-    loadTsdDelegation(sender),
+    loadTsdDelegation(sender, symbol),
     supabaseAdmin.from("wallets").select("txc_address").eq("user_id", receiver ?? "").maybeSingle(),
   ]);
 
   const toAddress = wallet?.txc_address ?? null;
-  if (!del) return { ...base, toAddress, reason: "The buyer has no live TSD authorization" };
+  if (!del) return { ...base, toAddress, reason: `The seller has no live ${symbol} authorization` };
 
   const ctx = { ...base, fromAddress: del.address, toAddress };
   if (new Date(del.expiresAt).getTime() <= Date.now()) {
-    return { ...ctx, reason: "The TSD authorization has expired" };
+    return { ...ctx, reason: `The ${symbol} authorization has expired` };
   }
   if (amount > del.maxAmount + 1e-8) {
-    return { ...ctx, reason: `Trade size exceeds the authorized cap of ${del.maxAmount} TSD` };
+    return { ...ctx, reason: `Trade size exceeds the authorized cap of ${del.maxAmount} ${symbol}` };
   }
   if (!toAddress || !isValidTxcAddress(toAddress)) {
     return { ...ctx, reason: "The seller has no valid TEXITcoin receiving address" };
   }
 
   const [omni, utxos] = await Promise.all([
-    fetchOmniBalance(del.address),
+    fetchOmniBalance(del.address, propertyId),
     loadUtxos(del.address).catch(() => []),
   ]);
   const feeBalance = utxos.reduce((sum, u) => sum + u.amount, 0);
@@ -155,7 +160,7 @@ export async function previewTsdSettlement(userId: string, tradeId: string): Pro
       ...ctx,
       balance: omni.balance,
       feeBalance,
-      reason: `The authorized branch holds ${omni.balance.toFixed(2)} TSD, needs ${amount.toFixed(2)}`,
+      reason: `The authorized branch holds ${omni.balance.toFixed(8)} ${symbol}, needs ${amount.toFixed(8)}`,
     };
   }
   if (feeBalance < CARRIER_FEE_TXC) {
@@ -174,35 +179,40 @@ export async function previewTsdSettlement(userId: string, tradeId: string): Pro
 
 export type TsdSettleResult = { txid: string; amount: number; to: string; propertyId: number };
 
-export async function settleTsdLeg(userId: string, tradeId: string): Promise<TsdSettleResult> {
+export async function settleTsdLeg(
+  userId: string,
+  tradeId: string,
+  leg: OmniLegId = "tsd",
+): Promise<TsdSettleResult> {
+  const { symbol, propertyId } = omniLegAsset(leg);
   const t = await loadTrade(userId, tradeId);
   if (t.status === "settled") throw new Error("This trade is already settled");
   if (t.status === "disputed") throw new Error("This trade is in dispute");
 
-  const sender = senderOf(t);
-  const receiver = receiverOf(t);
+  const sender = senderOf(t, leg);
+  const receiver = receiverOf(t, leg);
   if (!sender || !receiver) throw new Error("This trade has no counterparty yet");
 
-  const { data: leg } = await supabaseAdmin
+  const { data: escrowLeg } = await supabaseAdmin
     .from("escrows")
     .select("id, status, release_txid, expected_amount")
     .eq("trade_id", t.id)
-    .eq("leg", "tsd")
+    .eq("leg", leg)
     .maybeSingle();
-  if (!leg) throw new Error("TSD escrow leg not found");
-  if (leg.release_txid && !leg.release_txid.startsWith("sim-")) {
-    throw new Error("The TSD leg has already been broadcast");
+  if (!escrowLeg) throw new Error(`${symbol} escrow leg not found`);
+  if (escrowLeg.release_txid && !escrowLeg.release_txid.startsWith("sim-")) {
+    throw new Error(`The ${symbol} leg has already been broadcast`);
   }
 
-  const del = await loadTsdDelegation(sender);
-  if (!del) throw new Error("No live TSD authorization — the buyer must authorize the branch");
+  const del = await loadTsdDelegation(sender, symbol);
+  if (!del) throw new Error(`No live ${symbol} authorization — the seller must authorize the branch`);
   if (new Date(del.expiresAt).getTime() <= Date.now()) {
-    throw new Error("The TSD authorization has expired");
+    throw new Error(`The ${symbol} authorization has expired`);
   }
 
-  const amount = tsdAmountOf(t, leg.expected_amount);
+  const amount = tsdAmountOf(t, leg, escrowLeg.expected_amount);
   if (amount > del.maxAmount + 1e-8) {
-    throw new Error(`Trade size ${amount} TSD exceeds the authorized cap of ${del.maxAmount}`);
+    throw new Error(`Trade size ${amount} ${symbol} exceeds the authorized cap of ${del.maxAmount}`);
   }
 
   const { data: wallet } = await supabaseAdmin
@@ -215,11 +225,11 @@ export async function settleTsdLeg(userId: string, tradeId: string): Promise<Tsd
     throw new Error("The seller has no valid TEXITcoin receiving address");
   }
 
-  const omni = await fetchOmniBalance(del.address);
+  const omni = await fetchOmniBalance(del.address, propertyId);
   if (!omni.online) throw new Error("The TEXITcoin node is not reachable");
   if (omni.balance < amount) {
     throw new Error(
-      `The authorized branch holds ${omni.balance.toFixed(2)} TSD, needs ${amount.toFixed(2)}`,
+      `The authorized branch holds ${omni.balance.toFixed(8)} ${symbol}, needs ${amount.toFixed(8)}`,
     );
   }
 
@@ -231,31 +241,31 @@ export async function settleTsdLeg(userId: string, tradeId: string): Promise<Tsd
     fromAddress: del.address,
     toAddress: to,
     amount,
-    propertyId: TSD_PROPERTY_ID,
+    propertyId,
   });
 
   await supabaseAdmin
     .from("escrows")
     .update({ status: "released", release_txid: sent.txid, funded_amount: amount, confirmations: 0 })
-    .eq("id", leg.id);
+    .eq("id", escrowLeg.id);
 
   await supabaseAdmin.from("trade_events").insert({
     trade_id: t.id,
     actor_id: userId,
-    event: "tsd_broadcast",
+    event: `${leg}_broadcast`,
     detail: {
       txid: sent.txid,
       amount,
       to,
       from: del.address,
-      property_id: TSD_PROPERTY_ID,
+      property_id: propertyId,
       simulated: false,
     },
   });
 
   await refreshTradeStatus(t.id);
 
-  return { txid: sent.txid, amount, to, propertyId: TSD_PROPERTY_ID };
+  return { txid: sent.txid, amount, to, propertyId };
 }
 
 /* ------------------------------- confirmations ---------------------------- */
@@ -268,25 +278,32 @@ export type TsdWatchResult = {
   invalidReason: string | null;
 };
 
-export async function watchTsdLeg(userId: string, tradeId: string): Promise<TsdWatchResult> {
+export async function watchTsdLeg(
+  userId: string,
+  tradeId: string,
+  leg: OmniLegId = "tsd",
+): Promise<TsdWatchResult> {
   const t = await loadTrade(userId, tradeId);
 
-  const { data: leg } = await supabaseAdmin
+  const { data: escrowLeg } = await supabaseAdmin
     .from("escrows")
     .select("id, release_txid, confirmations")
     .eq("trade_id", t.id)
-    .eq("leg", "tsd")
+    .eq("leg", leg)
     .maybeSingle();
-  if (!leg) throw new Error("TSD escrow leg not found");
+  if (!escrowLeg) throw new Error(`${leg.toUpperCase()} escrow leg not found`);
 
-  const txid = leg.release_txid;
+  const txid = escrowLeg.release_txid;
   if (!txid || txid.startsWith("sim-")) {
     return { tradeId, txid: null, confirmations: null, valid: null, invalidReason: null };
   }
 
   const status = await fetchOmniTx(txid);
   if (status.confirmations !== null) {
-    await supabaseAdmin.from("escrows").update({ confirmations: status.confirmations }).eq("id", leg.id);
+    await supabaseAdmin
+      .from("escrows")
+      .update({ confirmations: status.confirmations })
+      .eq("id", escrowLeg.id);
     if (status.confirmations >= CONFIRMATIONS_REQUIRED) await refreshTradeStatus(t.id);
   }
 

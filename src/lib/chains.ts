@@ -9,7 +9,17 @@
 export type ChainId = "txc" | "ethereum" | "base" | "bsc" | "ltc" | "isk" | "zcu";
 
 /** Every settlement leg Seeds can deliver on-chain. */
-export type LegId = "txc" | "tsd" | "usdc" | "usdt" | "ltc" | "isk" | "zcu";
+export type LegId =
+  | "txc"
+  | "tsd"
+  | "usdc"
+  | "usdt"
+  | "ltc"
+  | "isk"
+  | "zcu"
+  | "wbtc"
+  | "wltc"
+  | "weth";
 
 export type AssetDef = {
   symbol: string;
@@ -181,7 +191,26 @@ export const LEGS: Record<LegId, LegDef> = {
   usdc: { id: "usdc", symbol: "USDC", kind: "evm", evmChains: ["base", "ethereum", "bsc"] },
   usdt: { id: "usdt", symbol: "USDT", kind: "evm", evmChains: ["base", "ethereum", "bsc"] },
   zcu: { id: "zcu", symbol: "ZCU", kind: "evm", evmChains: ["zcu"], native: true },
+  wbtc: { id: "wbtc", symbol: "wBTC", kind: "omni", chain: "txc" },
+  wltc: { id: "wltc", symbol: "wLTC", kind: "omni", chain: "txc" },
+  weth: { id: "weth", symbol: "wETH", kind: "omni", chain: "txc" },
 };
+
+/** Every leg that settles as an Omni property on TEXITcoin. */
+export const OMNI_LEG_IDS = ["tsd", "wbtc", "wltc", "weth"] as const;
+export type OmniLegId = (typeof OMNI_LEG_IDS)[number];
+
+export function isOmniLeg(id: string): id is OmniLegId {
+  return (OMNI_LEG_IDS as readonly string[]).includes(id);
+}
+
+/** Symbol + Omni property id for a leg that lives on the TEXITcoin L2. */
+export function omniLegAsset(leg: OmniLegId): { symbol: string; propertyId: number } {
+  const symbol = LEGS[leg].symbol;
+  const asset = getChain("txc").assets.find((a) => a.symbol === symbol);
+  if (!asset?.omniPropertyId) throw new Error(`No Omni property configured for ${symbol}`);
+  return { symbol, propertyId: asset.omniPropertyId };
+}
 
 export function getLeg(id: string): LegDef {
   const leg = LEGS[id as LegId];
@@ -199,7 +228,9 @@ export type PairId =
   | "TSD_USDC"
   | "LTC_TSD"
   | "ISK_TSD"
-  | "ZCU_TSD";
+  | "ZCU_TSD"
+  | "BTC_TSD"
+  | "ETH_TSD";
 
 export type PairDef = {
   id: PairId;
@@ -274,6 +305,28 @@ export const PAIRS: PairDef[] = [
     baseLeg: "zcu",
     quoteLeg: "tsd",
     blurb: "ZeroChill priced in Texas Stable Dollars — native ZCU transfers on the ZeroChill network.",
+    native: false,
+  },
+  {
+    id: "BTC_TSD",
+    slug: "btc-tsd",
+    label: "BTC / TSD",
+    base: "BTC",
+    quote: "TSD",
+    baseLeg: "wbtc",
+    quoteLeg: "tsd",
+    blurb: "Bitcoin priced in Texas Stable Dollars. Deposit native BTC — it settles on the TEXITcoin chain instantly.",
+    native: false,
+  },
+  {
+    id: "ETH_TSD",
+    slug: "eth-tsd",
+    label: "ETH / TSD",
+    base: "ETH",
+    quote: "TSD",
+    baseLeg: "weth",
+    quoteLeg: "tsd",
+    blurb: "Ether priced in Texas Stable Dollars. Deposit native ETH — it settles on the TEXITcoin chain instantly.",
     native: false,
   },
 ];

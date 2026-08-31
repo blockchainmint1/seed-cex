@@ -25,6 +25,8 @@ import { Route as TradeTsdUsdcRouteImport } from './routes/trade.tsd-usdc'
 import { Route as TradeTsdTxcRouteImport } from './routes/trade.tsd-txc'
 import { Route as TradeLtcTsdRouteImport } from './routes/trade.ltc-tsd'
 import { Route as TradeIskTsdRouteImport } from './routes/trade.isk-tsd'
+import { Route as TradeEthTsdRouteImport } from './routes/trade.eth-tsd'
+import { Route as TradeBtcTsdRouteImport } from './routes/trade.btc-tsd'
 import { Route as ProofCodeRouteImport } from './routes/proof.code'
 import { Route as AuthenticatedWalletRouteImport } from './routes/_authenticated/wallet'
 import { Route as AuthenticatedTradesRouteImport } from './routes/_authenticated/trades'
@@ -131,6 +133,16 @@ const TradeLtcTsdRoute = TradeLtcTsdRouteImport.update({
 const TradeIskTsdRoute = TradeIskTsdRouteImport.update({
   id: '/trade/isk-tsd',
   path: '/trade/isk-tsd',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TradeEthTsdRoute = TradeEthTsdRouteImport.update({
+  id: '/trade/eth-tsd',
+  path: '/trade/eth-tsd',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TradeBtcTsdRoute = TradeBtcTsdRouteImport.update({
+  id: '/trade/btc-tsd',
+  path: '/trade/btc-tsd',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProofCodeRoute = ProofCodeRouteImport.update({
@@ -293,6 +305,8 @@ export interface FileRoutesByFullPath {
   '/trades': typeof AuthenticatedTradesRoute
   '/wallet': typeof AuthenticatedWalletRoute
   '/proof/code': typeof ProofCodeRoute
+  '/trade/btc-tsd': typeof TradeBtcTsdRoute
+  '/trade/eth-tsd': typeof TradeEthTsdRoute
   '/trade/isk-tsd': typeof TradeIskTsdRoute
   '/trade/ltc-tsd': typeof TradeLtcTsdRoute
   '/trade/tsd-txc': typeof TradeTsdTxcRoute
@@ -338,6 +352,8 @@ export interface FileRoutesByTo {
   '/trades': typeof AuthenticatedTradesRoute
   '/wallet': typeof AuthenticatedWalletRoute
   '/proof/code': typeof ProofCodeRoute
+  '/trade/btc-tsd': typeof TradeBtcTsdRoute
+  '/trade/eth-tsd': typeof TradeEthTsdRoute
   '/trade/isk-tsd': typeof TradeIskTsdRoute
   '/trade/ltc-tsd': typeof TradeLtcTsdRoute
   '/trade/tsd-txc': typeof TradeTsdTxcRoute
@@ -385,6 +401,8 @@ export interface FileRoutesById {
   '/_authenticated/trades': typeof AuthenticatedTradesRoute
   '/_authenticated/wallet': typeof AuthenticatedWalletRoute
   '/proof/code': typeof ProofCodeRoute
+  '/trade/btc-tsd': typeof TradeBtcTsdRoute
+  '/trade/eth-tsd': typeof TradeEthTsdRoute
   '/trade/isk-tsd': typeof TradeIskTsdRoute
   '/trade/ltc-tsd': typeof TradeLtcTsdRoute
   '/trade/tsd-txc': typeof TradeTsdTxcRoute
@@ -432,6 +450,8 @@ export interface FileRouteTypes {
     | '/trades'
     | '/wallet'
     | '/proof/code'
+    | '/trade/btc-tsd'
+    | '/trade/eth-tsd'
     | '/trade/isk-tsd'
     | '/trade/ltc-tsd'
     | '/trade/tsd-txc'
@@ -477,6 +497,8 @@ export interface FileRouteTypes {
     | '/trades'
     | '/wallet'
     | '/proof/code'
+    | '/trade/btc-tsd'
+    | '/trade/eth-tsd'
     | '/trade/isk-tsd'
     | '/trade/ltc-tsd'
     | '/trade/tsd-txc'
@@ -523,6 +545,8 @@ export interface FileRouteTypes {
     | '/_authenticated/trades'
     | '/_authenticated/wallet'
     | '/proof/code'
+    | '/trade/btc-tsd'
+    | '/trade/eth-tsd'
     | '/trade/isk-tsd'
     | '/trade/ltc-tsd'
     | '/trade/tsd-txc'
@@ -565,6 +589,8 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   TsdRoute: typeof TsdRoute
   ProofCodeRoute: typeof ProofCodeRoute
+  TradeBtcTsdRoute: typeof TradeBtcTsdRoute
+  TradeEthTsdRoute: typeof TradeEthTsdRoute
   TradeIskTsdRoute: typeof TradeIskTsdRoute
   TradeLtcTsdRoute: typeof TradeLtcTsdRoute
   TradeTsdTxcRoute: typeof TradeTsdTxcRoute
@@ -706,6 +732,20 @@ declare module '@tanstack/react-router' {
       path: '/trade/isk-tsd'
       fullPath: '/trade/isk-tsd'
       preLoaderRoute: typeof TradeIskTsdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/trade/eth-tsd': {
+      id: '/trade/eth-tsd'
+      path: '/trade/eth-tsd'
+      fullPath: '/trade/eth-tsd'
+      preLoaderRoute: typeof TradeEthTsdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/trade/btc-tsd': {
+      id: '/trade/btc-tsd'
+      path: '/trade/btc-tsd'
+      fullPath: '/trade/btc-tsd'
+      preLoaderRoute: typeof TradeBtcTsdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/proof/code': {
@@ -939,6 +979,8 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   TsdRoute: TsdRoute,
   ProofCodeRoute: ProofCodeRoute,
+  TradeBtcTsdRoute: TradeBtcTsdRoute,
+  TradeEthTsdRoute: TradeEthTsdRoute,
   TradeIskTsdRoute: TradeIskTsdRoute,
   TradeLtcTsdRoute: TradeLtcTsdRoute,
   TradeTsdTxcRoute: TradeTsdTxcRoute,

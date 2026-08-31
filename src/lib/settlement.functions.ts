@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { isOmniLeg } from "@/lib/chains";
 
 const tradeIdInput = (input: unknown) => z.object({ tradeId: z.string().uuid() }).parse(input);
 
@@ -96,7 +97,7 @@ const legInput = (input: unknown) =>
   z
     .object({
       tradeId: z.string().uuid(),
-      leg: z.enum(["txc", "tsd", "usdc", "usdt", "ltc", "isk", "zcu"]),
+      leg: z.enum(["txc", "tsd", "usdc", "usdt", "ltc", "isk", "zcu", "wbtc", "wltc", "weth"]),
     })
     .parse(input);
 
@@ -105,9 +106,9 @@ export const previewLeg = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(legInput)
   .handler(async ({ data, context }) => {
-    if (data.leg === "tsd") {
+    if (isOmniLeg(data.leg)) {
       const { previewTsdSettlement } = await import("./tsd-settlement.server");
-      const p = await previewTsdSettlement(context.userId, data.tradeId);
+      const p = await previewTsdSettlement(context.userId, data.tradeId, data.leg);
       return { kind: "omni" as const, ...p };
     }
     if (data.leg === "txc" || data.leg === "ltc" || data.leg === "isk") {
@@ -125,9 +126,9 @@ export const settleLeg = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(legInput)
   .handler(async ({ data, context }) => {
-    if (data.leg === "tsd") {
+    if (isOmniLeg(data.leg)) {
       const { settleTsdLeg } = await import("./tsd-settlement.server");
-      const r = await settleTsdLeg(context.userId, data.tradeId);
+      const r = await settleTsdLeg(context.userId, data.tradeId, data.leg);
       return { id: r.txid, amount: r.amount, to: r.to };
     }
     if (data.leg === "txc" || data.leg === "ltc" || data.leg === "isk") {
@@ -145,9 +146,9 @@ export const watchLeg = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(legInput)
   .handler(async ({ data, context }) => {
-    if (data.leg === "tsd") {
+    if (isOmniLeg(data.leg)) {
       const { watchTsdLeg } = await import("./tsd-settlement.server");
-      const r = await watchTsdLeg(context.userId, data.tradeId);
+      const r = await watchTsdLeg(context.userId, data.tradeId, data.leg);
       return { id: r.txid, confirmations: r.confirmations };
     }
     if (data.leg === "txc" || data.leg === "ltc" || data.leg === "isk") {
