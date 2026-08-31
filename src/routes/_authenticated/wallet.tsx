@@ -625,6 +625,11 @@ function SpotBalances({
       const online = list.some((b) => b.online);
       const total = list.reduce((sum, b) => sum + (b.online ? b.balance : 0), 0);
       const single = list.length === 1;
+      const lockedTotal = branch.evm
+        ? (lockedEvm.data ?? [])
+            .filter((b) => b.symbol === symbol)
+            .reduce((sum, b) => sum + (b.online ? b.balance : 0), 0)
+        : null;
       out.push({
         key: `evm-${symbol}`,
         symbol,
@@ -636,13 +641,28 @@ function SpotBalances({
         address: wallet.evm_address,
         leg,
         tradeSlug: tradeSlugFor(symbol),
+        locked: lockedTotal,
         parts: single
           ? undefined
           : list.map((b) => ({ chainName: b.chainName, balance: b.online ? b.balance : null })),
       });
     }
     return out;
-  }, [txc.data, tsd.data, wrapped.data, utxo.data, evm.data, wallet]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    txc.data,
+    tsd.data,
+    wrapped.data,
+    utxo.data,
+    evm.data,
+    wallet,
+    branch,
+    lockedTxc.data,
+    lockedTsd.data,
+    lockedWrapped.data,
+    lockedUtxo.data,
+    lockedEvm.data,
+  ]);
 
   const [depositRow, setDepositRow] = useState<SpotRow | null>(null);
   const [withdrawRow, setWithdrawRow] = useState<SpotRow | null>(null);
