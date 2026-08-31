@@ -693,9 +693,11 @@ function SpotBalances({
               <th className="px-5 py-2.5 font-normal">Asset</th>
               <th className="py-2.5 pr-4 font-normal">Network</th>
               <th className="py-2.5 pr-4 font-normal text-right">Available</th>
+              <th className="py-2.5 pr-4 font-normal text-right" title="Balance in the authorized trading branch">
+                Locked (trading)
+              </th>
               <th className="py-2.5 pr-4 font-normal text-right">Deposit</th>
-              <th className="py-2.5 pr-4 font-normal text-right">Withdraw</th>
-              <th className="px-5 py-2.5 font-normal text-right">Trade</th>
+              <th className="px-5 py-3.5 font-normal text-right">Trade</th>
             </tr>
           </thead>
           <tbody>
@@ -727,6 +729,15 @@ function SpotBalances({
                     </>
                   )}
                 </td>
+                <td className="py-3 pr-4 text-right tabular-nums">
+                  {r.locked === null || r.locked === undefined ? (
+                    <span className="text-[10px] text-muted-foreground">—</span>
+                  ) : r.locked > 0 ? (
+                    <span className="text-primary">{fmtAmount(r.locked, r.locked >= 1000 ? 2 : 6)}</span>
+                  ) : (
+                    <span className="text-muted-foreground">0</span>
+                  )}
+                </td>
                 <td className="py-3 pr-4 text-right">
                   <button
                     onClick={() => (r.wrapBase ? setWrapDepositRow(r) : setDepositRow(r))}
@@ -734,22 +745,6 @@ function SpotBalances({
                   >
                     Deposit
                   </button>
-                </td>
-                <td className="py-3 pr-4 text-right">
-                  {r.leg ? (
-                    <button
-                      onClick={() => setWithdrawRow(r)}
-                      className={`rounded-sm border px-3 py-1.5 text-[10px] tracking-[0.14em] uppercase transition-colors ${
-                        authorizedAssets.has(r.symbol)
-                          ? "border-border text-foreground hover:border-primary hover:text-primary"
-                          : "border-border/50 text-muted-foreground"
-                      }`}
-                    >
-                      Withdraw
-                    </button>
-                  ) : (
-                    <span className="text-[10px] text-muted-foreground">gas only</span>
-                  )}
                 </td>
                 <td className="px-5 py-3 text-right">
                   {r.tradeSlug ? (
