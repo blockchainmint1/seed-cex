@@ -22,11 +22,7 @@ import { getEvmPortfolio } from "@/lib/evm.functions";
 import { getTsdBalance, getWrappedBalances } from "@/lib/omni.functions";
 import { openWrapOrder } from "@/lib/wrap.functions";
 import { getWrapAsset } from "@/lib/wrap-config";
-import {
-  listMyWithdrawals,
-  previewWithdrawalFn,
-  requestWithdrawal,
-} from "@/lib/withdrawal.functions";
+import { listMyWithdrawals } from "@/lib/withdrawal.functions";
 import {
   decryptMnemonic,
   deriveAddresses,
@@ -436,6 +432,8 @@ type SpotRow = {
   address: string | null;
   leg: LegId | null;
   tradeSlug: string | null;
+  /** Balance sitting in the authorized trading branch ("locked" for trading). */
+  locked?: number | null;
   /** Deposit goes through the wrap desk instead of a plain address. */
   wrapBase?: string;
   /** Per-network breakdown for assets consolidated across EVM chains. */
