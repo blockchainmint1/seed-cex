@@ -542,6 +542,19 @@ function SpotBalances({
   const rows: SpotRow[] = useMemo(() => {
     const out: SpotRow[] = [];
     out.push({
+      key: "tsd",
+      symbol: "TSD",
+      name: "Texas Stable Dollar",
+      chain: "txc",
+      chainName: "TEXITcoin · Omni #39",
+      balance: tsd.data ? tsd.data.balance : null,
+      online: Boolean(tsd.data?.online),
+      address: wallet.txc_address,
+      leg: "tsd",
+      tradeSlug: tradeSlugFor("TSD"),
+      locked: branch.txc ? (lockedTsd.data ? lockedTsd.data.balance : null) : null,
+    });
+    out.push({
       key: "txc",
       symbol: "TXC",
       name: "TEXITcoin",
@@ -554,19 +567,6 @@ function SpotBalances({
       leg: "txc",
       tradeSlug: tradeSlugFor("TXC"),
       locked: branch.txc ? (lockedTxc.data ? lockedTxc.data.confirmed : null) : null,
-    });
-    out.push({
-      key: "tsd",
-      symbol: "TSD",
-      name: "Texas Stable Dollar",
-      chain: "txc",
-      chainName: "TEXITcoin · Omni #39",
-      balance: tsd.data ? tsd.data.balance : null,
-      online: Boolean(tsd.data?.online),
-      address: wallet.txc_address,
-      leg: "tsd",
-      tradeSlug: tradeSlugFor("TSD"),
-      locked: branch.txc ? (lockedTsd.data ? lockedTsd.data.balance : null) : null,
     });
     // BTC lists as a first-class asset. There's no native BTC branch in the
     // vault — deposits are wrapped 1:1 into wBTC (Omni #43) by the issuer,
