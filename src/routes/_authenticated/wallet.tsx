@@ -19,7 +19,9 @@ import { CHAINS, EXPIRY_PRESETS, PAIRS, getChain, type ChainId, type LegId } fro
 import { getAddressStats } from "@/lib/txc.functions";
 import { getUtxoBalances } from "@/lib/utxo.functions";
 import { getEvmPortfolio } from "@/lib/evm.functions";
-import { getTsdBalance } from "@/lib/omni.functions";
+import { getTsdBalance, getWrappedBalances } from "@/lib/omni.functions";
+import { openWrapOrder } from "@/lib/wrap.functions";
+import { getWrapAsset } from "@/lib/wrap-config";
 import {
   listMyWithdrawals,
   previewWithdrawalFn,
@@ -434,6 +436,8 @@ type SpotRow = {
   address: string | null;
   leg: LegId | null;
   tradeSlug: string | null;
+  /** Deposit goes through the wrap desk instead of a plain address. */
+  wrapBase?: string;
   /** Per-network breakdown for assets consolidated across EVM chains. */
   parts?: { chainName: string; balance: number | null }[];
 };
@@ -467,6 +471,12 @@ function SpotBalances({
   const tsd = useQuery({
     queryKey: ["tsd-balance", wallet.txc_address],
     queryFn: () => fetchTsd({ data: { address: wallet.txc_address } }),
+    refetchInterval: 90_000,
+  });
+  const fetchWrapped = useServerFn(getWrappedBalances);
+  const wrapped = useQuery({
+    queryKey: ["wrapped-balances", wallet.txc_address],
+    queryFn: () => fetchWrapped({ data: { address: wallet.txc_address } }),
     refetchInterval: 90_000,
   });
   const utxo = useQuery({
