@@ -212,6 +212,75 @@ export async function createWrapOrder(
 }
 
 /**
+ * Send the user's wrapped tokens from their authorized trading branch to the
+ * issuer's deposit address. Same gates as any settlement leg: live
+ * authorization for that asset, cap, expiry, balance — decrypt last.
+ */
+async function sendWrappedToIssuer(
+  userId: string,
+  wrappedSymbol: string,
+  amount: number,
+  depositAddress: string,
+): Promise<string> {
+  const { omniLegAsset, LEGS, type OmniLegId } = await import("./chains");
+  const legEntry = Object.values(LEGS).find((l) => l.symbol === wrappedSymbol);
+  if (!legEntry) throw new Error(`No settlement leg for ${wrappedSymbol}`);
+  const { propertyId } = omniLegAsset(legEntry.id as OmniLegId);
+
+  const { decryptDelegatedKey } = await import("./delegation.server");
+  const { fetchOmniBalance, omniSimpleSend } = await import("./omni.server");
+  const { isValidTxcAddress } = await import("./txc/tx.server");
+
+  if (!isValidTxcAddress(depositAddress)) {
+    throw new Error("The issuer returned an invalid TEXITcoin deposit address.");
+  }
+
+  await supabaseAdmin.rpc("purge_expired_delegations");
+  const { data: del, error } = await supabaseAdmin
+    .from("wallet_delegations")
+    .select("trading_address, max_amount, expires_at, key_ciphertext")
+    .eq("user_id", userId)
+    .eq("chain", "txc")
+    .eq("asset", wrappedSymbol)
+    .is("revoked_at", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!del) {
+    throw new Error(
+      `No live ${wrappedSymbol} authorization. Authorize ${wrappedSymbol} on the Wallet page, then retry.`,
+    );
+  }
+  if (new Date(del.expires_at).getTime() <= Date.now()) {
+    throw new Error(`The ${wrappedSymbol} authorization has expired.`);
+  }
+  if (amount > Number(del.max_amount) + 1e-8) {
+    throw new Error(
+      `Unwrap size exceeds the authorized cap of ${del.max_amount} ${wrappedSymbol}.`,
+    );
+  }
+
+  const bal = await fetchOmniBalance(del.trading_address, propertyId);
+  if (!bal.online) throw new Error("The TEXITcoin node is not reachable.");
+  if (bal.balance < amount) {
+    throw new Error(
+      `The authorized branch holds ${bal.balance.toFixed(8)} ${wrappedSymbol}, needs ${amount.toFixed(8)}.`,
+    );
+  }
+
+  const privateKeyHex = decryptDelegatedKey(del.key_ciphertext);
+  const sent = await omniSimpleSend({
+    privateKeyHex,
+    fromAddress: del.trading_address,
+    toAddress: depositAddress,
+    amount,
+    propertyId,
+  });
+  return sent.txid;
+}
+
+/**
  * Open an unwrap order: user sends the wrapped asset back to the issuer,
  * issuer burns it and releases native coin to `payoutAddress`.
  */
@@ -253,7 +322,26 @@ export async function createUnwrapOrder(
         reference: row.id,
       },
     });
-    return await applyIssuerOrder(row.id, issued);
+    const opened = await applyIssuerOrder(row.id, issued);
+
+    // Now actually deliver the wrapped tokens the issuer will burn.
+    if (!opened.deposit_address) {
+      throw new Error("The issuer did not return a deposit address for the burn.");
+    }
+    const txid = await sendWrappedToIssuer(
+      userId,
+      asset.wrappedSymbol,
+      amount,
+      opened.deposit_address,
+    );
+    const { data: sentRow, error: upErr } = await supabaseAdmin
+      .from("wrap_orders")
+      .update({ deposit_txid: txid, status: "deposit_detected" })
+      .eq("id", row.id)
+      .select("*")
+      .single();
+    if (upErr) throw new Error(upErr.message);
+    return sentRow as WrapOrderRow;
   } catch (err) {
     const message = err instanceof Error ? err.message : "Issuer call failed";
     await supabaseAdmin
