@@ -434,6 +434,8 @@ type SpotRow = {
   address: string | null;
   leg: LegId | null;
   tradeSlug: string | null;
+  /** Per-network breakdown for assets consolidated across EVM chains. */
+  parts?: { chainName: string; balance: number | null }[];
 };
 
 function tradeSlugFor(symbol: string): string | null {
@@ -536,20 +538,35 @@ function SpotBalances({
       });
     }
 
+    // Consolidate EVM assets: one row per symbol across Ethereum, Base and
+    // BNB Chain — same address everywhere, so the per-chain split is detail.
+    const bySymbol = new Map<string, typeof evm.data>();
     for (const b of evm.data ?? []) {
+      const list = bySymbol.get(b.symbol) ?? [];
+      list.push(b);
+      bySymbol.set(b.symbol, list as typeof evm.data);
+    }
+    for (const [symbol, entries] of bySymbol) {
+      const list = entries ?? [];
       const leg =
-        b.symbol === "USDC" ? "usdc" : b.symbol === "USDT" ? "usdt" : b.symbol === "ZCU" ? "zcu" : null;
+        symbol === "USDC" ? "usdc" : symbol === "USDT" ? "usdt" : symbol === "ZCU" ? "zcu" : null;
+      const online = list.some((b) => b.online);
+      const total = list.reduce((sum, b) => sum + (b.online ? b.balance : 0), 0);
+      const single = list.length === 1;
       out.push({
-        key: `${b.chain}-${b.symbol}`,
-        symbol: b.symbol,
-        name: b.chainName,
-        chain: b.chain as ChainId,
-        chainName: b.chainName,
-        balance: b.online ? b.balance : null,
-        online: b.online,
+        key: `evm-${symbol}`,
+        symbol,
+        name: single ? (list[0]?.chainName ?? "EVM") : "EVM networks",
+        chain: (list[0]?.chain ?? "base") as ChainId,
+        chainName: single ? (list[0]?.chainName ?? "EVM") : "EVM",
+        balance: online ? total : null,
+        online,
         address: wallet.evm_address,
         leg,
-        tradeSlug: tradeSlugFor(b.symbol),
+        tradeSlug: tradeSlugFor(symbol),
+        parts: single
+          ? undefined
+          : list.map((b) => ({ chainName: b.chainName, balance: b.online ? b.balance : null })),
       });
     }
     return out;
@@ -595,7 +612,14 @@ function SpotBalances({
                   <p className="font-semibold text-foreground">{r.symbol}</p>
                   <p className="mt-0.5 text-[10px] text-muted-foreground">{r.name}</p>
                 </td>
-                <td className="py-3 pr-4 text-muted-foreground">{r.chainName}</td>
+                <td className="py-3 pr-4 text-muted-foreground">
+                  {r.chainName}
+                  {r.parts ? (
+                    <span className="mt-0.5 block text-[10px] text-muted-foreground/70">
+                      {r.parts.map((p) => p.chainName).join(" · ")}
+                    </span>
+                  ) : null}
+                </td>
                 <td className="py-3 pr-4 text-right tabular-nums text-foreground">
                   {r.balance === null ? (
                     <span className="text-muted-foreground">{r.online ? "…" : "unavailable"}</span>
