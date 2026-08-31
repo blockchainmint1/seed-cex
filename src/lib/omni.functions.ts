@@ -18,6 +18,21 @@ export const getTsdBalance = createServerFn({ method: "POST" })
     return fetchOmniBalance(data.address);
   });
 
+/** Wrapped-asset balances (wBTC/wLTC/wETH) for a TEXITcoin address. */
+export const getWrappedBalances = createServerFn({ method: "POST" })
+  .inputValidator(addressInput)
+  .handler(async ({ data }) => {
+    const { fetchOmniBalance } = await import("./omni.server");
+    const { OMNI_LEG_IDS, omniLegAsset } = await import("@/lib/chains");
+    return Promise.all(
+      OMNI_LEG_IDS.filter((id) => id !== "tsd").map(async (id) => {
+        const { symbol, propertyId } = omniLegAsset(id);
+        const res = await fetchOmniBalance(data.address, propertyId);
+        return { symbol, balance: res.balance, online: res.online };
+      }),
+    );
+  });
+
 /** TSD balances for several addresses at once (savings + trading branch). */
 export const getTsdBalances = createServerFn({ method: "POST" })
   .inputValidator((input) =>

@@ -19,12 +19,10 @@ import { CHAINS, EXPIRY_PRESETS, PAIRS, getChain, type ChainId, type LegId } fro
 import { getAddressStats } from "@/lib/txc.functions";
 import { getUtxoBalances } from "@/lib/utxo.functions";
 import { getEvmPortfolio } from "@/lib/evm.functions";
-import { getTsdBalance } from "@/lib/omni.functions";
-import {
-  listMyWithdrawals,
-  previewWithdrawalFn,
-  requestWithdrawal,
-} from "@/lib/withdrawal.functions";
+import { getTsdBalance, getWrappedBalances } from "@/lib/omni.functions";
+import { openWrapOrder } from "@/lib/wrap.functions";
+import { getWrapAsset } from "@/lib/wrap-config";
+import { listMyWithdrawals } from "@/lib/withdrawal.functions";
 import {
   decryptMnemonic,
   deriveAddresses,
@@ -434,6 +432,10 @@ type SpotRow = {
   address: string | null;
   leg: LegId | null;
   tradeSlug: string | null;
+  /** Balance sitting in the authorized trading branch ("locked" for trading). */
+  locked?: number | null;
+  /** Deposit goes through the wrap desk instead of a plain address. */
+  wrapBase?: string;
   /** Per-network breakdown for assets consolidated across EVM chains. */
   parts?: { chainName: string; balance: number | null }[];
 };
@@ -469,6 +471,12 @@ function SpotBalances({
     queryFn: () => fetchTsd({ data: { address: wallet.txc_address } }),
     refetchInterval: 90_000,
   });
+  const fetchWrapped = useServerFn(getWrappedBalances);
+  const wrapped = useQuery({
+    queryKey: ["wrapped-balances", wallet.txc_address],
+    queryFn: () => fetchWrapped({ data: { address: wallet.txc_address } }),
+    refetchInterval: 90_000,
+  });
   const utxo = useQuery({
     queryKey: ["utxo-balances", wallet.ltc_address, wallet.isk_address],
     queryFn: () => fetchUtxo({ data: { ltcAddress: wallet.ltc_address, iskAddress: wallet.isk_address } }),
@@ -486,10 +494,50 @@ function SpotBalances({
     refetchInterval: 60_000,
   });
 
-  const authorizedAssets = useMemo(
-    () => new Set((auths.data ?? []).map((a) => a.asset)),
-    [auths.data],
-  );
+  // Trading-branch addresses per chain family, from live authorizations.
+  // "Locked" = the balance sitting in a branch the exchange may settle from.
+  const branch = useMemo(() => {
+    const live = auths.data ?? [];
+    const find = (pred: (a: { chain: string }) => boolean) => live.find(pred)?.address ?? null;
+    return {
+      txc: find((a) => a.chain === "txc"),
+      ltc: find((a) => a.chain === "ltc"),
+      isk: find((a) => a.chain === "isk"),
+      evm: find((a) => a.chain !== "txc" && a.chain !== "ltc" && a.chain !== "isk"),
+    };
+  }, [auths.data]);
+
+  const lockedTxc = useQuery({
+    queryKey: ["locked-txc", branch.txc],
+    queryFn: () => fetchStats({ data: { address: branch.txc! } }),
+    enabled: Boolean(branch.txc),
+    refetchInterval: 90_000,
+  });
+  const lockedTsd = useQuery({
+    queryKey: ["locked-tsd", branch.txc],
+    queryFn: () => fetchTsd({ data: { address: branch.txc! } }),
+    enabled: Boolean(branch.txc),
+    refetchInterval: 90_000,
+  });
+  const lockedWrapped = useQuery({
+    queryKey: ["locked-wrapped", branch.txc],
+    queryFn: () => fetchWrapped({ data: { address: branch.txc! } }),
+    enabled: Boolean(branch.txc),
+    refetchInterval: 90_000,
+  });
+  const lockedUtxo = useQuery({
+    queryKey: ["locked-utxo", branch.ltc, branch.isk],
+    queryFn: () =>
+      fetchUtxo({ data: { ltcAddress: branch.ltc, iskAddress: branch.isk } }),
+    enabled: Boolean(branch.ltc || branch.isk),
+    refetchInterval: 120_000,
+  });
+  const lockedEvm = useQuery({
+    queryKey: ["locked-evm", branch.evm],
+    queryFn: () => fetchPortfolio({ data: { address: branch.evm! } }),
+    enabled: Boolean(branch.evm),
+    refetchInterval: 120_000,
+  });
 
   const rows: SpotRow[] = useMemo(() => {
     const out: SpotRow[] = [];
@@ -505,6 +553,7 @@ function SpotBalances({
       address: wallet.txc_address,
       leg: "txc",
       tradeSlug: tradeSlugFor("TXC"),
+      locked: branch.txc ? (lockedTxc.data ? lockedTxc.data.confirmed : null) : null,
     });
     out.push({
       key: "tsd",
@@ -517,6 +566,27 @@ function SpotBalances({
       address: wallet.txc_address,
       leg: "tsd",
       tradeSlug: tradeSlugFor("TSD"),
+      locked: branch.txc ? (lockedTsd.data ? lockedTsd.data.balance : null) : null,
+    });
+    // BTC lists as a first-class asset. There's no native BTC branch in the
+    // vault — deposits are wrapped 1:1 into wBTC (Omni #43) by the issuer,
+    // so the balance shown is the wBTC sitting at the TEXITcoin address.
+    const wbtc = (wrapped.data ?? []).find((w) => w.symbol === "wBTC");
+    out.push({
+      key: "btc",
+      symbol: "BTC",
+      name: "Bitcoin",
+      chain: "txc",
+      chainName: "Bitcoin · settles as wBTC on TEXITcoin",
+      balance: wbtc ? wbtc.balance : null,
+      online: Boolean(wbtc?.online),
+      address: null,
+      leg: null,
+      tradeSlug: "btc-tsd",
+      wrapBase: "BTC",
+      locked: branch.txc
+        ? ((lockedWrapped.data ?? []).find((w) => w.symbol === "wBTC")?.balance ?? null)
+        : null,
     });
     const utxoChains: { chain: "ltc" | "isk"; symbol: string; address: string | null }[] = [
       { chain: "ltc", symbol: "LTC", address: wallet.ltc_address },
@@ -524,6 +594,7 @@ function SpotBalances({
     ];
     for (const c of utxoChains) {
       const b = (utxo.data ?? []).find((x) => x.chain === c.chain);
+      const lb = (lockedUtxo.data ?? []).find((x) => x.chain === c.chain);
       out.push({
         key: c.chain,
         symbol: c.symbol,
@@ -535,6 +606,7 @@ function SpotBalances({
         address: c.address,
         leg: c.chain as LegId,
         tradeSlug: tradeSlugFor(c.symbol),
+        locked: branch[c.chain] ? (lb?.online ? lb.balance : null) : null,
       });
     }
 
@@ -553,6 +625,11 @@ function SpotBalances({
       const online = list.some((b) => b.online);
       const total = list.reduce((sum, b) => sum + (b.online ? b.balance : 0), 0);
       const single = list.length === 1;
+      const lockedTotal = branch.evm
+        ? (lockedEvm.data ?? [])
+            .filter((b) => b.symbol === symbol)
+            .reduce((sum, b) => sum + (b.online ? b.balance : 0), 0)
+        : null;
       out.push({
         key: `evm-${symbol}`,
         symbol,
@@ -564,16 +641,31 @@ function SpotBalances({
         address: wallet.evm_address,
         leg,
         tradeSlug: tradeSlugFor(symbol),
+        locked: lockedTotal,
         parts: single
           ? undefined
           : list.map((b) => ({ chainName: b.chainName, balance: b.online ? b.balance : null })),
       });
     }
     return out;
-  }, [txc.data, tsd.data, utxo.data, evm.data, wallet]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    txc.data,
+    tsd.data,
+    wrapped.data,
+    utxo.data,
+    evm.data,
+    wallet,
+    branch,
+    lockedTxc.data,
+    lockedTsd.data,
+    lockedWrapped.data,
+    lockedUtxo.data,
+    lockedEvm.data,
+  ]);
 
   const [depositRow, setDepositRow] = useState<SpotRow | null>(null);
-  const [withdrawRow, setWithdrawRow] = useState<SpotRow | null>(null);
+  const [wrapDepositRow, setWrapDepositRow] = useState<SpotRow | null>(null);
 
   const loading = txc.isPending && utxo.isPending && evm.isPending;
 
@@ -600,9 +692,11 @@ function SpotBalances({
               <th className="px-5 py-2.5 font-normal">Asset</th>
               <th className="py-2.5 pr-4 font-normal">Network</th>
               <th className="py-2.5 pr-4 font-normal text-right">Available</th>
+              <th className="py-2.5 pr-4 font-normal text-right" title="Balance in the authorized trading branch">
+                Locked (trading)
+              </th>
               <th className="py-2.5 pr-4 font-normal text-right">Deposit</th>
-              <th className="py-2.5 pr-4 font-normal text-right">Withdraw</th>
-              <th className="px-5 py-2.5 font-normal text-right">Trade</th>
+              <th className="px-5 py-3.5 font-normal text-right">Trade</th>
             </tr>
           </thead>
           <tbody>
@@ -634,29 +728,22 @@ function SpotBalances({
                     </>
                   )}
                 </td>
+                <td className="py-3 pr-4 text-right tabular-nums">
+                  {r.locked === null || r.locked === undefined ? (
+                    <span className="text-[10px] text-muted-foreground">—</span>
+                  ) : r.locked > 0 ? (
+                    <span className="text-primary">{fmtAmount(r.locked, r.locked >= 1000 ? 2 : 6)}</span>
+                  ) : (
+                    <span className="text-muted-foreground">0</span>
+                  )}
+                </td>
                 <td className="py-3 pr-4 text-right">
                   <button
-                    onClick={() => setDepositRow(r)}
+                    onClick={() => (r.wrapBase ? setWrapDepositRow(r) : setDepositRow(r))}
                     className="rounded-sm border border-border px-3 py-1.5 text-[10px] tracking-[0.14em] text-foreground uppercase transition-colors hover:border-primary hover:text-primary"
                   >
                     Deposit
                   </button>
-                </td>
-                <td className="py-3 pr-4 text-right">
-                  {r.leg ? (
-                    <button
-                      onClick={() => setWithdrawRow(r)}
-                      className={`rounded-sm border px-3 py-1.5 text-[10px] tracking-[0.14em] uppercase transition-colors ${
-                        authorizedAssets.has(r.symbol)
-                          ? "border-border text-foreground hover:border-primary hover:text-primary"
-                          : "border-border/50 text-muted-foreground"
-                      }`}
-                    >
-                      Withdraw
-                    </button>
-                  ) : (
-                    <span className="text-[10px] text-muted-foreground">gas only</span>
-                  )}
                 </td>
                 <td className="px-5 py-3 text-right">
                   {r.tradeSlug ? (
@@ -682,11 +769,10 @@ function SpotBalances({
       ) : null}
 
       {depositRow ? <DepositModal row={depositRow} onClose={() => setDepositRow(null)} /> : null}
-      {withdrawRow ? (
-        <WithdrawModal
-          row={withdrawRow}
-          authorized={authorizedAssets.has(withdrawRow.symbol)}
-          onClose={() => setWithdrawRow(null)}
+      {wrapDepositRow && wrapDepositRow.wrapBase ? (
+        <WrapDepositModal
+          baseSymbol={wrapDepositRow.wrapBase}
+          onClose={() => setWrapDepositRow(null)}
         />
       ) : null}
     </section>
@@ -750,137 +836,6 @@ function DepositModal({ row, onClose }: { row: SpotRow; onClose: () => void }) {
   );
 }
 
-/* -------------------------------- withdraw -------------------------------- */
-
-function WithdrawModal({
-  row,
-  authorized,
-  onClose,
-}: {
-  row: SpotRow;
-  authorized: boolean;
-  onClose: () => void;
-}) {
-  const queryClient = useQueryClient();
-  const preview = useServerFn(previewWithdrawalFn);
-  const withdraw = useServerFn(requestWithdrawal);
-
-  const [to, setTo] = useState("");
-  const [amount, setAmount] = useState("");
-  const [result, setResult] = useState<{ txid: string } | null>(null);
-  const [err, setErr] = useState<string | null>(null);
-
-  const leg = row.leg as LegId;
-  const parsedAmount = Number(amount);
-
-  const dryRun = useMutation({
-    mutationFn: () =>
-      preview({ data: { leg, to: to.trim(), amount: parsedAmount } }),
-    onError: (e) => setErr(e instanceof Error ? e.message : "Preview failed"),
-  });
-
-  const send = useMutation({
-    mutationFn: () => withdraw({ data: { leg, to: to.trim(), amount: parsedAmount } }),
-    onSuccess: (r) => {
-      setResult({ txid: r.txid });
-      setErr(null);
-      queryClient.invalidateQueries({ queryKey: ["my-withdrawals"] });
-    },
-    onError: (e) => setErr(e instanceof Error ? e.message : "Withdrawal failed"),
-  });
-
-  return (
-    <Modal onClose={onClose} title={`Withdraw ${row.symbol}`}>
-      {!authorized ? (
-        <p className="font-mono text-[11px] leading-relaxed text-muted-foreground">
-          Withdrawals are signed by your authorized trading branch — Seeds never holds your savings
-          key. Scroll down to <span className="text-foreground">Trading authorizations</span> and
-          authorize <span className="text-foreground">{row.symbol}</span> with a cap and expiry
-          first, then come back.
-        </p>
-      ) : result ? (
-        <div>
-          <p className="font-mono text-xs text-bid uppercase tracking-[0.14em]">Broadcast</p>
-          <p className="mt-2 break-all font-mono text-sm text-foreground">{result.txid}</p>
-          <a
-            href={`${getChain(row.chain).explorer.replace("/address/", "/tx/")}${result.txid}`}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-3 inline-block rounded-sm border border-border px-4 py-2.5 font-mono text-xs tracking-[0.16em] text-foreground uppercase hover:border-primary hover:text-primary"
-          >
-            View on explorer
-          </a>
-        </div>
-      ) : (
-        <div>
-          <p className="font-mono text-[11px] leading-relaxed text-muted-foreground">
-            Sends from your capped trading branch on{" "}
-            <span className="text-foreground">{row.chainName}</span>. Available there is limited by
-            your authorization cap — the server checks cap, expiry, and balance before signing.
-          </p>
-          <label className="mt-4 block font-mono text-[11px] text-muted-foreground">
-            Destination address
-            <input
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
-              placeholder={`${row.symbol} address on ${row.chainName}`}
-              maxLength={120}
-              className="mt-1 w-full rounded-sm border border-input bg-background px-3 py-2.5 font-mono text-sm text-foreground outline-none focus:border-primary"
-            />
-          </label>
-          <label className="mt-3 block font-mono text-[11px] text-muted-foreground">
-            Amount ({row.symbol})
-            <input
-              type="number"
-              min={0}
-              step="any"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              className="mt-1 w-full rounded-sm border border-input bg-background px-3 py-2.5 font-mono text-sm text-foreground outline-none focus:border-primary"
-            />
-          </label>
-
-          {dryRun.data ? (
-            <p
-              className={`mt-3 rounded-sm border px-3 py-2 font-mono text-[11px] ${
-                dryRun.data.ready
-                  ? "border-bid/40 bg-bid/10 text-bid"
-                  : "border-warn/40 bg-warn/10 text-warn"
-              }`}
-            >
-              {dryRun.data.ready
-                ? `Ready — branch holds ${fmtAmount(dryRun.data.balance ?? 0, 6)} ${row.symbol} on ${dryRun.data.chainName}`
-                : dryRun.data.reason}
-            </p>
-          ) : null}
-          {err ? (
-            <p className="mt-3 rounded-sm border border-destructive/40 bg-destructive/10 px-3 py-2 font-mono text-[11px] text-destructive">
-              {err}
-            </p>
-          ) : null}
-
-          <div className="mt-4 flex gap-3">
-            <button
-              onClick={() => dryRun.mutate()}
-              disabled={dryRun.isPending || !to.trim() || !(parsedAmount > 0)}
-              className="flex-1 rounded-sm border border-border px-4 py-2.5 font-mono text-xs tracking-[0.16em] text-foreground uppercase disabled:opacity-50"
-            >
-              {dryRun.isPending ? "Checking…" : "Dry run"}
-            </button>
-            <button
-              onClick={() => send.mutate()}
-              disabled={send.isPending || !(dryRun.data?.ready)}
-              className="flex-1 rounded-sm bg-primary px-4 py-2.5 font-mono text-xs font-semibold tracking-[0.16em] text-primary-foreground uppercase disabled:opacity-50"
-            >
-              {send.isPending ? "Broadcasting…" : "Send on-chain"}
-            </button>
-          </div>
-        </div>
-      )}
-    </Modal>
-  );
-}
-
 function Modal({
   title,
   onClose,
@@ -913,6 +868,145 @@ function Modal({
         <div className="mt-4">{children}</div>
       </div>
     </div>
+  );
+}
+
+/* ------------------------------ wrap deposit ------------------------------- */
+
+function WrapDepositModal({
+  baseSymbol,
+  onClose,
+}: {
+  baseSymbol: string;
+  onClose: () => void;
+}) {
+  const asset = getWrapAsset(baseSymbol);
+  const open = useServerFn(openWrapOrder);
+  const qc = useQueryClient();
+  const [amount, setAmount] = useState("");
+  const [refundAddress, setRefundAddress] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+
+  const create = useMutation({
+    mutationFn: () =>
+      open({
+        data: {
+          baseSymbol,
+          amount: Number(amount),
+          counterpartyAddress: refundAddress.trim(),
+        },
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["wrap-orders"] });
+      qc.invalidateQueries({ queryKey: ["omni-wrapped"] });
+    },
+    onError: (e) => setErr(e instanceof Error ? e.message : "Could not open wrap order"),
+  });
+
+  const order = create.data;
+  const valid = Number(amount) >= asset.minAmount && refundAddress.trim().length > 8;
+
+  return (
+    <Modal title={`Deposit ${asset.baseSymbol}`} onClose={onClose}>
+      {!order ? (
+        <div className="space-y-4">
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            Send {asset.baseSymbol} and the issuer mints {asset.wrappedSymbol} 1:1 to your
+            TEXITcoin trading address after {asset.confirmations} confirmation
+            {asset.confirmations === 1 ? "" : "s"}. It trades and settles on TEXITcoin
+            automatically — unwrap back to {asset.baseSymbol} any time.
+          </p>
+          <div>
+            <label className="text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
+              Amount ({asset.baseSymbol}, min {asset.minAmount})
+            </label>
+            <input
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              inputMode="decimal"
+              placeholder={asset.minAmount.toString()}
+              className="mt-1 w-full rounded-sm border border-border bg-background px-3 py-2 font-mono text-sm text-foreground"
+            />
+          </div>
+          <div>
+            <label className="text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
+              Refund address ({asset.baseSymbol})
+            </label>
+            <input
+              value={refundAddress}
+              onChange={(e) => setRefundAddress(e.target.value)}
+              placeholder={asset.addressHint}
+              className="mt-1 w-full rounded-sm border border-border bg-background px-3 py-2 font-mono text-xs text-foreground"
+            />
+            <p className="mt-1 text-[10px] text-muted-foreground">
+              Only used if the wrap can't complete — your deposit goes straight back here.
+            </p>
+          </div>
+          {err ? <p className="text-xs text-destructive">{err}</p> : null}
+          <button
+            onClick={() => {
+              setErr(null);
+              create.mutate();
+            }}
+            disabled={!valid || create.isPending}
+            className="w-full rounded-sm bg-primary px-4 py-2.5 font-mono text-xs font-semibold tracking-[0.16em] text-primary-foreground uppercase disabled:opacity-50"
+          >
+            {create.isPending ? "Opening order…" : `Get ${asset.baseSymbol} deposit address`}
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            Send exactly{" "}
+            <span className="font-semibold text-foreground">
+              {order.amount_expected} {asset.baseSymbol}
+            </span>{" "}
+            to the address below. {asset.wrappedSymbol} arrives in your trading balance after{" "}
+            {asset.confirmations} confirmation{asset.confirmations === 1 ? "" : "s"}.
+          </p>
+          {order.deposit_address ? (
+            <div className="flex flex-col items-center gap-3">
+              <div className="rounded-xl bg-[#eef6ee] p-3 shadow-[0_2px_16px_-4px_rgb(20_60_30/0.25)] ring-1 ring-primary/30">
+                <QRCodeSVG
+                  value={`${asset.baseSymbol.toLowerCase()}:${order.deposit_address}${order.amount_expected ? `?amount=${order.amount_expected}` : ""}`}
+                  size={176}
+                  bgColor="transparent"
+                  fgColor="#14532d"
+                  level="M"
+                />
+              </div>
+              <code className="w-full rounded-sm border border-border bg-background px-3 py-2 text-center font-mono text-xs break-all text-foreground select-all">
+                {order.deposit_address}
+              </code>
+              <a
+                href={`${asset.nativeExplorer}${order.deposit_address}`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-[10px] tracking-[0.14em] text-primary uppercase hover:underline"
+              >
+                Watch on explorer →
+              </a>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Order created — the deposit address appears in the wrap desk below as soon as the
+              issuer assigns one.
+            </p>
+          )}
+          <p className="text-[10px] leading-relaxed text-muted-foreground">
+            Track progress in the wrap desk below — unwrap back to native {asset.baseSymbol}{" "}
+            whenever you like.
+          </p>
+          <a
+            href="#wrap-desk"
+            onClick={onClose}
+            className="block w-full rounded-sm border border-border px-4 py-2.5 text-center font-mono text-xs tracking-[0.16em] text-foreground uppercase hover:border-primary hover:text-primary"
+          >
+            View wrap desk ↓
+          </a>
+        </div>
+      )}
+    </Modal>
   );
 }
 

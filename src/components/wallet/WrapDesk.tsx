@@ -93,7 +93,7 @@ export function WrapDesk() {
   const deskOffline = desk.data ? !desk.data.online : false;
 
   return (
-    <section className="rounded-sm border border-border bg-surface">
+    <section id="wrap-desk" className="rounded-sm border border-border bg-surface">
       <header className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border px-5 py-3">
         <div>
           <p className="font-mono text-[10px] tracking-[0.2em] text-primary uppercase">
