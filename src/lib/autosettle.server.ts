@@ -12,7 +12,7 @@
  * trade panel — the other leg is not blocked by it.
  */
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import type { LegId } from "@/lib/chains";
+import { isOmniLeg, type LegId } from "@/lib/chains";
 
 export type AutoLegResult = {
   leg: LegId;
@@ -24,9 +24,9 @@ export type AutoLegResult = {
 };
 
 async function settleOne(actorId: string, tradeId: string, leg: LegId): Promise<AutoLegResult> {
-  if (leg === "tsd") {
+  if (isOmniLeg(leg)) {
     const { settleTsdLeg } = await import("./tsd-settlement.server");
-    const r = await settleTsdLeg(actorId, tradeId);
+    const r = await settleTsdLeg(actorId, tradeId, leg);
     return { leg, ok: true, txid: r.txid, amount: r.amount, to: r.to };
   }
   if (leg === "txc" || leg === "ltc" || leg === "isk") {
