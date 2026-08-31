@@ -580,7 +580,7 @@ function SpotBalances({
       });
     }
     return out;
-  }, [txc.data, tsd.data, utxo.data, evm.data, wallet]);
+  }, [txc.data, tsd.data, wrapped.data, utxo.data, evm.data, wallet]);
 
   const [depositRow, setDepositRow] = useState<SpotRow | null>(null);
   const [withdrawRow, setWithdrawRow] = useState<SpotRow | null>(null);
