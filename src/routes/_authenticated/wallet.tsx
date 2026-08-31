@@ -594,11 +594,12 @@ function SpotBalances({
       symbol: "BTC",
       name: "Bitcoin",
       chain: "btc",
-      chainName: "Bitcoin · trades as wBTC on TEXITcoin",
+      chainName: "Bitcoin",
       balance: btc.data?.online ? btc.data.confirmed : null,
       pending: btc.data?.online ? btc.data.unconfirmed : null,
       online: Boolean(btc.data?.online),
       address: wallet.btc_address,
+      needsUnlock: !wallet.btc_address,
       leg: null,
       tradeSlug: "btc-tsd",
       locked: branch.txc ? (wbtc ? wbtc.balance : null) : null,
@@ -731,7 +732,9 @@ function SpotBalances({
                 </td>
                 <td className="py-3 pr-4 text-right tabular-nums text-foreground">
                   {r.balance === null ? (
-                    <span className="text-muted-foreground">{r.online ? "…" : "unavailable"}</span>
+                    <span className="text-muted-foreground">
+                      {r.needsUnlock ? "unlock once" : r.online ? "…" : "unavailable"}
+                    </span>
                   ) : (
                     <>
                       {fmtAmount(r.balance, r.balance >= 1000 ? 2 : 6)}
