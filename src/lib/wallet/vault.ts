@@ -108,11 +108,15 @@ export function deriveAddresses(mnemonic: string): DerivedAddresses {
   const iskNode = root.derive(ISK_PATH);
   if (!ltcNode.publicKey || !iskNode.publicKey) throw new Error("Could not derive the UTXO keys");
 
+  const btcNode = root.derive(SHARED_BTC_PATH);
+  if (!btcNode.publicKey) throw new Error("Could not derive the BTC key");
+
   return {
     txcAddress: txcAddressFromPubkey(txcNode.publicKey),
     evmAddress: evmAddressFromPubkey(uncompressed),
     ltcAddress: p2pkhAddressFromPubkey(ltcNode.publicKey, LTC_PUBKEY_VERSION),
     iskAddress: p2pkhAddressFromPubkey(iskNode.publicKey, ISK_PUBKEY_VERSION),
+    btcAddress: p2wpkhAddressFromPubkey(btcNode.publicKey),
   };
 }
 
