@@ -1180,8 +1180,7 @@ function SharedAccessPanel({
         </button>
         <p className="mt-3 font-mono text-[11px] text-muted-foreground">
           One live authorization per asset — authorizing again replaces the previous one.
-        Authorizing BTC also sweeps that branch to the wrap issuer, which mints wBTC 1:1 to
-        your TEXITcoin trading branch so it can settle in seconds.
+          Authorizing BTC also moves that branch into settlement so trades clear in seconds.
         </p>
       </div>
     </Panel>
