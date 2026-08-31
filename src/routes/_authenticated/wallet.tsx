@@ -438,6 +438,8 @@ type SpotRow = {
   tradeSlug: string | null;
   /** Balance sitting in the authorized trading branch ("locked" for trading). */
   locked?: number | null;
+  /** Address not derived yet — the vault has to be unlocked once. */
+  needsUnlock?: boolean;
   /** Deposit goes through the wrap desk instead of a plain address. */
   /** Per-network breakdown for assets consolidated across EVM chains. */
   parts?: { chainName: string; balance: number | null }[];
