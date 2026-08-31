@@ -20,7 +20,7 @@ import { getAddressStats } from "@/lib/txc.functions";
 import { getUtxoBalances } from "@/lib/utxo.functions";
 import { getEvmPortfolio } from "@/lib/evm.functions";
 import { getTsdBalance, getWrappedBalances } from "@/lib/omni.functions";
-import { getBtcBalance } from "@/lib/wrap.functions";
+import { getBtcBalance, wrapMyBranchBalance } from "@/lib/wrap.functions";
 import { listMyWithdrawals } from "@/lib/withdrawal.functions";
 import {
   decryptMnemonic,
@@ -943,6 +943,7 @@ function SharedAccessPanel({
   const grant = useServerFn(grantAuthorization);
   const revoke = useServerFn(revokeAuthorization);
   const revokeAll = useServerFn(revokeAllAuthorizations);
+  const wrapBranch = useServerFn(wrapMyBranchBalance);
 
   const list = useQuery({
     queryKey: ["authorizations"],
@@ -972,9 +973,15 @@ function SharedAccessPanel({
       const shared = deriveSharedKey(
         mnemonic,
         chain.sharedPath,
-        chain.evmChainId === null ? (chain.p2pkhVersion ?? 66) : "evm",
+        chain.bech32Hrp ? "btc" : chain.evmChainId === null ? (chain.p2pkhVersion ?? 66) : "evm",
       );
-      return grant({
+      // BTC has no on-chain trading life of its own: authorizing it sweeps the
+      // branch to the issuer, which mints wBTC to the TEXITcoin trading branch.
+      const txcTrading =
+        chainId === "btc"
+          ? deriveSharedKey(mnemonic, getChain("txc").sharedPath, "txc").address
+          : null;
+      const res = await grant({
         data: {
           chain: chainId,
           asset,
@@ -985,11 +992,17 @@ function SharedAccessPanel({
           hours: Number(hours),
         },
       });
+      if (chainId === "btc" && txcTrading) {
+        await wrapBranch({ data: { baseSymbol: "BTC", payoutAddress: txcTrading } });
+      }
+      return res;
     },
     onSuccess: () => {
       setPw("");
       setErr(null);
       queryClient.invalidateQueries({ queryKey: ["authorizations"] });
+      queryClient.invalidateQueries({ queryKey: ["wrap-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["btc-balance"] });
     },
     onError: (e) => setErr(e instanceof Error ? e.message : "Could not authorize that branch"),
   });
@@ -1162,6 +1175,8 @@ function SharedAccessPanel({
         </button>
         <p className="mt-3 font-mono text-[11px] text-muted-foreground">
           One live authorization per asset — authorizing again replaces the previous one.
+        Authorizing BTC also sweeps that branch to the wrap issuer, which mints wBTC 1:1 to
+        your TEXITcoin trading branch so it can settle in seconds.
         </p>
       </div>
     </Panel>
