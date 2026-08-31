@@ -91,10 +91,7 @@ export function btcAddressToScript(address: string): Uint8Array {
     let version: number;
     let program: Uint8Array;
     try {
-      const decoded =
-        lower[3] === "q" || lower[3] === "p"
-          ? bech32.decode(lower as `bc1${string}`)
-          : bech32.decode(lower as `bc1${string}`);
+      const decoded = bech32.decode(lower as `bc1${string}`);
       version = decoded.words[0];
       program = Uint8Array.from(bech32.fromWords(decoded.words.slice(1)));
     } catch {
