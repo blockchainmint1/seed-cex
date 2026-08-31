@@ -438,6 +438,8 @@ type SpotRow = {
   tradeSlug: string | null;
   /** Balance sitting in the authorized trading branch ("locked" for trading). */
   locked?: number | null;
+  /** Address not derived yet — the vault has to be unlocked once. */
+  needsUnlock?: boolean;
   /** Deposit goes through the wrap desk instead of a plain address. */
   /** Per-network breakdown for assets consolidated across EVM chains. */
   parts?: { chainName: string; balance: number | null }[];
@@ -592,11 +594,12 @@ function SpotBalances({
       symbol: "BTC",
       name: "Bitcoin",
       chain: "btc",
-      chainName: "Bitcoin · trades as wBTC on TEXITcoin",
+      chainName: "Bitcoin",
       balance: btc.data?.online ? btc.data.confirmed : null,
       pending: btc.data?.online ? btc.data.unconfirmed : null,
       online: Boolean(btc.data?.online),
       address: wallet.btc_address,
+      needsUnlock: !wallet.btc_address,
       leg: null,
       tradeSlug: "btc-tsd",
       locked: branch.txc ? (wbtc ? wbtc.balance : null) : null,
@@ -729,7 +732,9 @@ function SpotBalances({
                 </td>
                 <td className="py-3 pr-4 text-right tabular-nums text-foreground">
                   {r.balance === null ? (
-                    <span className="text-muted-foreground">{r.online ? "…" : "unavailable"}</span>
+                    <span className="text-muted-foreground">
+                      {r.needsUnlock ? "unlock once" : r.online ? "…" : "unavailable"}
+                    </span>
                   ) : (
                     <>
                       {fmtAmount(r.balance, r.balance >= 1000 ? 2 : 6)}
@@ -1175,8 +1180,7 @@ function SharedAccessPanel({
         </button>
         <p className="mt-3 font-mono text-[11px] text-muted-foreground">
           One live authorization per asset — authorizing again replaces the previous one.
-        Authorizing BTC also sweeps that branch to the wrap issuer, which mints wBTC 1:1 to
-        your TEXITcoin trading branch so it can settle in seconds.
+          Authorizing BTC also moves that branch into settlement so trades clear in seconds.
         </p>
       </div>
     </Panel>
