@@ -772,7 +772,6 @@ function SpotBalances({
       {wrapDepositRow && wrapDepositRow.wrapBase ? (
         <WrapDepositModal
           baseSymbol={wrapDepositRow.wrapBase}
-          refundAddress={wrapDepositRow.chain === "txc" ? undefined : (wrapDepositRow.address ?? undefined)}
           onClose={() => setWrapDepositRow(null)}
         />
       ) : null}
