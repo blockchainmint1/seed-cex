@@ -110,7 +110,8 @@ function Wallet() {
         throw new Error("That is not a valid BIP-39 recovery phrase");
       }
 
-      const { txcAddress, evmAddress, ltcAddress, iskAddress } = deriveAddresses(mnemonic);
+      const { txcAddress, evmAddress, ltcAddress, iskAddress, btcAddress } =
+        deriveAddresses(mnemonic);
       const vault = await encryptMnemonic(mnemonic, password);
 
       await persistWallet({
@@ -122,6 +123,7 @@ function Wallet() {
           evmAddress,
           ltcAddress,
           iskAddress,
+          btcAddress,
         },
       });
       return mnemonic;
@@ -146,13 +148,14 @@ function Wallet() {
         unlockPassword,
       );
       // Older vaults predate the LTC/ISK branches — derive and backfill now.
-      if (!w.ltc_address || !w.isk_address || !w.evm_address) {
+      if (!w.ltc_address || !w.isk_address || !w.evm_address || !w.btc_address) {
         const derived = deriveAddresses(mnemonic);
         await backfillAddresses({
           data: {
             evmAddress: w.evm_address ? undefined : derived.evmAddress,
             ltcAddress: w.ltc_address ? undefined : derived.ltcAddress,
             iskAddress: w.isk_address ? undefined : derived.iskAddress,
+            btcAddress: w.btc_address ? undefined : derived.btcAddress,
           },
         });
         queryClient.invalidateQueries({ queryKey: ["my-wallet"] });
@@ -182,7 +185,8 @@ function Wallet() {
         throw new Error("Current password is wrong — the vault could not be decrypted");
       });
 
-      const { txcAddress, evmAddress, ltcAddress, iskAddress } = deriveAddresses(mnemonic);
+      const { txcAddress, evmAddress, ltcAddress, iskAddress, btcAddress } =
+        deriveAddresses(mnemonic);
       const vault = await encryptMnemonic(mnemonic, newPassword);
       await persistWallet({
         data: {
@@ -193,6 +197,7 @@ function Wallet() {
           evmAddress,
           ltcAddress,
           iskAddress,
+          btcAddress,
         },
       });
     },
