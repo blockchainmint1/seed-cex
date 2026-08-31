@@ -222,10 +222,12 @@ async function sendWrappedToIssuer(
   amount: number,
   depositAddress: string,
 ): Promise<string> {
-  const { omniLegAsset, LEGS, type OmniLegId } = await import("./chains");
+  const { omniLegAsset, LEGS, isOmniLeg } = await import("./chains");
   const legEntry = Object.values(LEGS).find((l) => l.symbol === wrappedSymbol);
-  if (!legEntry) throw new Error(`No settlement leg for ${wrappedSymbol}`);
-  const { propertyId } = omniLegAsset(legEntry.id as OmniLegId);
+  if (!legEntry || !isOmniLeg(legEntry.id)) {
+    throw new Error(`No settlement leg for ${wrappedSymbol}`);
+  }
+  const { propertyId } = omniLegAsset(legEntry.id);
 
   const { decryptDelegatedKey } = await import("./delegation.server");
   const { fetchOmniBalance, omniSimpleSend } = await import("./omni.server");
