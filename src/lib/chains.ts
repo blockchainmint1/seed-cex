@@ -36,8 +36,10 @@ export type ChainDef = {
   /** EVM numeric chain id; null for UTXO chains */
   evmChainId: number | null;
   nativeSymbol: string;
-  /** base58 P2PKH version byte — UTXO chains only */
+  /** base58 P2PKH version byte — legacy UTXO chains only */
   p2pkhVersion?: number;
+  /** bech32 HRP — native-segwit UTXO chains only (BTC) */
+  bech32Hrp?: string;
   /** BIP-44 branch used for the *shared* trading account on this chain. */
   sharedPath: string;
   assets: AssetDef[];
