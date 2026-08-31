@@ -9,17 +9,7 @@
 export type ChainId = "txc" | "ethereum" | "base" | "bsc" | "ltc" | "isk" | "zcu";
 
 /** Every settlement leg Seeds can deliver on-chain. */
-export type LegId =
-  | "txc"
-  | "tsd"
-  | "usdc"
-  | "usdt"
-  | "ltc"
-  | "isk"
-  | "zcu"
-  | "wbtc"
-  | "wltc"
-  | "weth";
+export type LegId = "txc" | "tsd" | "usdc" | "usdt" | "ltc" | "isk" | "zcu";
 
 export type AssetDef = {
   symbol: string;
@@ -191,9 +181,6 @@ export const LEGS: Record<LegId, LegDef> = {
   usdc: { id: "usdc", symbol: "USDC", kind: "evm", evmChains: ["base", "ethereum", "bsc"] },
   usdt: { id: "usdt", symbol: "USDT", kind: "evm", evmChains: ["base", "ethereum", "bsc"] },
   zcu: { id: "zcu", symbol: "ZCU", kind: "evm", evmChains: ["zcu"], native: true },
-  wbtc: { id: "wbtc", symbol: "wBTC", kind: "omni", chain: "txc" },
-  wltc: { id: "wltc", symbol: "wLTC", kind: "omni", chain: "txc" },
-  weth: { id: "weth", symbol: "wETH", kind: "omni", chain: "txc" },
 };
 
 export function getLeg(id: string): LegDef {
