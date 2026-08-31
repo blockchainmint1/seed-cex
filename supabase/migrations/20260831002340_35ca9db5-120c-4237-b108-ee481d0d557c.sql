@@ -1,0 +1,3 @@
+ALTER TYPE escrow_leg ADD VALUE IF NOT EXISTS 'wbtc';
+ALTER TYPE escrow_leg ADD VALUE IF NOT EXISTS 'wltc';
+ALTER TYPE escrow_leg ADD VALUE IF NOT EXISTS 'weth';
