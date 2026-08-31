@@ -284,7 +284,7 @@ export function buildAndSignBtcTransfer(params: BuildBtcParams): BuiltBtcTx {
 
   const witnessBytes = concat(
     ...witnesses.map((items) =>
-      concat(varint(items.length), ...items.map((i) => pushData(i).slice(0, 1).length ? concat(varint(i.length), i) : i)),
+      concat(varint(items.length), ...items.map((i) => concat(varint(i.length), i))),
     ),
   );
 
