@@ -601,6 +601,7 @@ function SpotBalances({
 
   const [depositRow, setDepositRow] = useState<SpotRow | null>(null);
   const [withdrawRow, setWithdrawRow] = useState<SpotRow | null>(null);
+  const [wrapDepositRow, setWrapDepositRow] = useState<SpotRow | null>(null);
 
   const loading = txc.isPending && utxo.isPending && evm.isPending;
 
@@ -663,7 +664,7 @@ function SpotBalances({
                 </td>
                 <td className="py-3 pr-4 text-right">
                   <button
-                    onClick={() => setDepositRow(r)}
+                    onClick={() => (r.wrapBase ? setWrapDepositRow(r) : setDepositRow(r))}
                     className="rounded-sm border border-border px-3 py-1.5 text-[10px] tracking-[0.14em] text-foreground uppercase transition-colors hover:border-primary hover:text-primary"
                   >
                     Deposit
