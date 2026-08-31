@@ -147,7 +147,7 @@ export type SharedTradingKey = {
 export function deriveSharedKey(
   mnemonic: string,
   path: string,
-  kind: "txc" | "evm" | number,
+  kind: "txc" | "evm" | "btc" | number,
 ): SharedTradingKey {
   const root = HDKey.fromMasterSeed(mnemonicToSeedSync(mnemonic));
   const node = root.derive(path);
@@ -156,9 +156,11 @@ export function deriveSharedKey(
   }
   const version = kind === "txc" ? TXC_PUBKEY_VERSION : typeof kind === "number" ? kind : null;
   const address =
-    version !== null
-      ? p2pkhAddressFromPubkey(node.publicKey, version)
-      : evmAddressFromPubkey(secp256k1.Point.fromBytes(node.publicKey).toBytes(false));
+    kind === "btc"
+      ? p2wpkhAddressFromPubkey(node.publicKey)
+      : version !== null
+        ? p2pkhAddressFromPubkey(node.publicKey, version)
+        : evmAddressFromPubkey(secp256k1.Point.fromBytes(node.publicKey).toBytes(false));
   return { path, privateKeyHex: bytesToHex(node.privateKey), address };
 }
 
