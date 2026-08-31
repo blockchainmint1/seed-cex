@@ -129,6 +129,18 @@ export const CHAINS: ChainDef[] = [
     explorer: "https://explorer.iskandercoin.com/address/",
   },
   {
+    // Bitcoin mainnet, BIP-84 native segwit. BTC is deposit-to-trade only:
+    // the branch balance is swept to the wrap issuer when you authorize.
+    id: "btc",
+    name: "Bitcoin",
+    evmChainId: null,
+    nativeSymbol: "BTC",
+    bech32Hrp: "bc",
+    sharedPath: "m/84'/0'/9'/0/0",
+    assets: [{ symbol: "BTC", contract: null, decimals: 8 }],
+    explorer: "https://mempool.space/address/",
+  },
+  {
     id: "zcu",
     name: "ZeroChill",
     evmChainId: 90031273,
