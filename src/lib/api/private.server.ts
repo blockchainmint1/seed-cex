@@ -27,7 +27,7 @@ export async function apiAccount(userId: string) {
   const [{ data: wallet }, { data: auths }] = await Promise.all([
     supabaseAdmin
       .from("wallets")
-      .select("txc_address, evm_address, ltc_address, isk_address")
+      .select("txc_address, evm_address, ltc_address, isk_address, btc_address")
       .eq("user_id", userId)
       .maybeSingle(),
     supabaseAdmin
@@ -53,6 +53,7 @@ export async function apiAccount(userId: string) {
       evm: wallet?.evm_address ?? null,
       ltc: wallet?.ltc_address ?? null,
       isk: wallet?.isk_address ?? null,
+      btc: wallet?.btc_address ?? null,
     },
     authorizations: live.map((a) => ({
       chain: a.chain,

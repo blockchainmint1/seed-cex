@@ -21,7 +21,7 @@ export const getMyWallet = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("wallets")
-      .select("vault_ciphertext, kdf_salt, kdf_iterations, txc_address, evm_address, ltc_address, isk_address, backed_up, created_at")
+      .select("vault_ciphertext, kdf_salt, kdf_iterations, txc_address, evm_address, ltc_address, isk_address, btc_address, backed_up, created_at")
       .eq("user_id", context.userId)
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -40,6 +40,7 @@ export const saveMyWallet = createServerFn({ method: "POST" })
         evmAddress: z.string().trim().max(120).optional(),
         ltcAddress: z.string().trim().max(120).optional(),
         iskAddress: z.string().trim().max(120).optional(),
+        btcAddress: z.string().trim().max(120).optional(),
       })
       .parse(input),
   )
@@ -54,6 +55,7 @@ export const saveMyWallet = createServerFn({ method: "POST" })
         evm_address: data.evmAddress ?? null,
         ltc_address: data.ltcAddress ?? null,
         isk_address: data.iskAddress ?? null,
+        btc_address: data.btcAddress ?? null,
       },
       { onConflict: "user_id" },
     );
@@ -73,6 +75,7 @@ export const updateMyWalletAddresses = createServerFn({ method: "POST" })
         evmAddress: z.string().trim().max(120).optional(),
         ltcAddress: z.string().trim().max(120).optional(),
         iskAddress: z.string().trim().max(120).optional(),
+        btcAddress: z.string().trim().max(120).optional(),
       })
       .parse(input),
   )
@@ -81,10 +84,12 @@ export const updateMyWalletAddresses = createServerFn({ method: "POST" })
       evm_address?: string;
       ltc_address?: string;
       isk_address?: string;
+      btc_address?: string;
     } = {};
     if (data.evmAddress) patch.evm_address = data.evmAddress;
     if (data.ltcAddress) patch.ltc_address = data.ltcAddress;
     if (data.iskAddress) patch.isk_address = data.iskAddress;
+    if (data.btcAddress) patch.btc_address = data.btcAddress;
     if (Object.keys(patch).length === 0) return { ok: true, updated: false };
     const { error } = await context.supabase
       .from("wallets")
