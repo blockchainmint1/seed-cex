@@ -665,7 +665,6 @@ function SpotBalances({
   ]);
 
   const [depositRow, setDepositRow] = useState<SpotRow | null>(null);
-  const [withdrawRow, setWithdrawRow] = useState<SpotRow | null>(null);
   const [wrapDepositRow, setWrapDepositRow] = useState<SpotRow | null>(null);
 
   const loading = txc.isPending && utxo.isPending && evm.isPending;
@@ -770,11 +769,11 @@ function SpotBalances({
       ) : null}
 
       {depositRow ? <DepositModal row={depositRow} onClose={() => setDepositRow(null)} /> : null}
-      {withdrawRow ? (
-        <WithdrawModal
-          row={withdrawRow}
-          authorized={authorizedAssets.has(withdrawRow.symbol)}
-          onClose={() => setWithdrawRow(null)}
+      {wrapDepositRow && wrapDepositRow.wrapBase ? (
+        <WrapDepositModal
+          baseSymbol={wrapDepositRow.wrapBase}
+          refundAddress={wrapDepositRow.chain === "txc" ? undefined : (wrapDepositRow.address ?? undefined)}
+          onClose={() => setWrapDepositRow(null)}
         />
       ) : null}
     </section>
