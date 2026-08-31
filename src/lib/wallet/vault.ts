@@ -68,11 +68,28 @@ const LTC_PUBKEY_VERSION = 48;
 const ISK_PATH = "m/44'/2'/10'/0/0";
 const ISK_PUBKEY_VERSION = 45;
 
+/**
+ * Bitcoin mainnet, BIP-84 native segwit.
+ *
+ * BTC has no savings role on Seeds: you deposit to trade, and trading means
+ * wrapping. So the only BTC address we ever show is the *shared trading*
+ * branch (account 9'), the same branch every other chain authorizes from.
+ */
+export const SHARED_BTC_PATH = "m/84'/0'/9'/0/0";
+const BTC_HRP = "bc";
+
+/** BIP-173 P2WPKH (bech32, `bc1q…`) address for a compressed pubkey. */
+export function p2wpkhAddressFromPubkey(pubkey: Uint8Array, hrp = BTC_HRP): string {
+  return bech32.encode(hrp, [0, ...bech32.toWords(hash160(pubkey))]);
+}
+
 export type DerivedAddresses = {
   txcAddress: string;
   evmAddress: string;
   ltcAddress: string;
   iskAddress: string;
+  /** BTC shared-trading branch — the address we hand out for deposits. */
+  btcAddress: string;
 };
 
 export function deriveAddresses(mnemonic: string): DerivedAddresses {
