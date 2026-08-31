@@ -2,7 +2,11 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { hexToBytes } from "@noble/hashes/utils.js";
-import { p2pkhAddressFromPubkey, evmAddressFromPubkey } from "@/lib/wallet/vault";
+import {
+  p2pkhAddressFromPubkey,
+  p2wpkhAddressFromPubkey,
+  evmAddressFromPubkey,
+} from "@/lib/wallet/vault";
 import { CHAIN_IDS, getChain, type ChainId } from "@/lib/chains";
 import { z } from "zod";
 
