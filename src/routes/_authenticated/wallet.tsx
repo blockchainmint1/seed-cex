@@ -872,6 +872,145 @@ function Modal({
   );
 }
 
+/* ------------------------------ wrap deposit ------------------------------- */
+
+function WrapDepositModal({
+  baseSymbol,
+  onClose,
+}: {
+  baseSymbol: string;
+  onClose: () => void;
+}) {
+  const asset = getWrapAsset(baseSymbol);
+  const open = useServerFn(openWrapOrder);
+  const qc = useQueryClient();
+  const [amount, setAmount] = useState("");
+  const [refundAddress, setRefundAddress] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+
+  const create = useMutation({
+    mutationFn: () =>
+      open({
+        data: {
+          baseSymbol,
+          amount: Number(amount),
+          counterpartyAddress: refundAddress.trim(),
+        },
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["wrap-orders"] });
+      qc.invalidateQueries({ queryKey: ["omni-wrapped"] });
+    },
+    onError: (e) => setErr(e instanceof Error ? e.message : "Could not open wrap order"),
+  });
+
+  const order = create.data;
+  const valid = Number(amount) >= asset.minAmount && refundAddress.trim().length > 8;
+
+  return (
+    <Modal title={`Deposit ${asset.baseSymbol}`} onClose={onClose}>
+      {!order ? (
+        <div className="space-y-4">
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            Send {asset.baseSymbol} and the issuer mints {asset.wrappedSymbol} 1:1 to your
+            TEXITcoin trading address after {asset.confirmations} confirmation
+            {asset.confirmations === 1 ? "" : "s"}. It trades and settles on TEXITcoin
+            automatically — unwrap back to {asset.baseSymbol} any time.
+          </p>
+          <div>
+            <label className="text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
+              Amount ({asset.baseSymbol}, min {asset.minAmount})
+            </label>
+            <input
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              inputMode="decimal"
+              placeholder={asset.minAmount.toString()}
+              className="mt-1 w-full rounded-sm border border-border bg-background px-3 py-2 font-mono text-sm text-foreground"
+            />
+          </div>
+          <div>
+            <label className="text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
+              Refund address ({asset.baseSymbol})
+            </label>
+            <input
+              value={refundAddress}
+              onChange={(e) => setRefundAddress(e.target.value)}
+              placeholder={asset.addressHint}
+              className="mt-1 w-full rounded-sm border border-border bg-background px-3 py-2 font-mono text-xs text-foreground"
+            />
+            <p className="mt-1 text-[10px] text-muted-foreground">
+              Only used if the wrap can't complete — your deposit goes straight back here.
+            </p>
+          </div>
+          {err ? <p className="text-xs text-destructive">{err}</p> : null}
+          <button
+            onClick={() => {
+              setErr(null);
+              create.mutate();
+            }}
+            disabled={!valid || create.isPending}
+            className="w-full rounded-sm bg-primary px-4 py-2.5 font-mono text-xs font-semibold tracking-[0.16em] text-primary-foreground uppercase disabled:opacity-50"
+          >
+            {create.isPending ? "Opening order…" : `Get ${asset.baseSymbol} deposit address`}
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            Send exactly{" "}
+            <span className="font-semibold text-foreground">
+              {order.amount_expected} {asset.baseSymbol}
+            </span>{" "}
+            to the address below. {asset.wrappedSymbol} arrives in your trading balance after{" "}
+            {asset.confirmations} confirmation{asset.confirmations === 1 ? "" : "s"}.
+          </p>
+          {order.deposit_address ? (
+            <div className="flex flex-col items-center gap-3">
+              <div className="rounded-xl bg-[#eef6ee] p-3 shadow-[0_2px_16px_-4px_rgb(20_60_30/0.25)] ring-1 ring-primary/30">
+                <QRCodeSVG
+                  value={`${asset.baseSymbol.toLowerCase()}:${order.deposit_address}${order.amount_expected ? `?amount=${order.amount_expected}` : ""}`}
+                  size={176}
+                  bgColor="transparent"
+                  fgColor="#14532d"
+                  level="M"
+                />
+              </div>
+              <code className="w-full rounded-sm border border-border bg-background px-3 py-2 text-center font-mono text-xs break-all text-foreground select-all">
+                {order.deposit_address}
+              </code>
+              <a
+                href={`${asset.nativeExplorer}${order.deposit_address}`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-[10px] tracking-[0.14em] text-primary uppercase hover:underline"
+              >
+                Watch on explorer →
+              </a>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Order created — the deposit address appears in the wrap desk below as soon as the
+              issuer assigns one.
+            </p>
+          )}
+          <p className="text-[10px] leading-relaxed text-muted-foreground">
+            Track progress in the wrap desk below — unwrap back to native {asset.baseSymbol}{" "}
+            whenever you like.
+          </p>
+          <a
+            href="#wrap-desk"
+            onClick={onClose}
+            className="block w-full rounded-sm border border-border px-4 py-2.5 text-center font-mono text-xs tracking-[0.16em] text-foreground uppercase hover:border-primary hover:text-primary"
+          >
+            View wrap desk ↓
+          </a>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
 /* ---------------------------- withdrawal history --------------------------- */
 
 function WithdrawalHistory() {
