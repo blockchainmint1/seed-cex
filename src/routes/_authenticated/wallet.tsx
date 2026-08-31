@@ -494,10 +494,50 @@ function SpotBalances({
     refetchInterval: 60_000,
   });
 
-  const authorizedAssets = useMemo(
-    () => new Set((auths.data ?? []).map((a) => a.asset)),
-    [auths.data],
-  );
+  // Trading-branch addresses per chain family, from live authorizations.
+  // "Locked" = the balance sitting in a branch the exchange may settle from.
+  const branch = useMemo(() => {
+    const live = auths.data ?? [];
+    const find = (pred: (a: { chain: string }) => boolean) => live.find(pred)?.address ?? null;
+    return {
+      txc: find((a) => a.chain === "txc"),
+      ltc: find((a) => a.chain === "ltc"),
+      isk: find((a) => a.chain === "isk"),
+      evm: find((a) => a.chain !== "txc" && a.chain !== "ltc" && a.chain !== "isk"),
+    };
+  }, [auths.data]);
+
+  const lockedTxc = useQuery({
+    queryKey: ["locked-txc", branch.txc],
+    queryFn: () => fetchStats({ data: { address: branch.txc! } }),
+    enabled: Boolean(branch.txc),
+    refetchInterval: 90_000,
+  });
+  const lockedTsd = useQuery({
+    queryKey: ["locked-tsd", branch.txc],
+    queryFn: () => fetchTsd({ data: { address: branch.txc! } }),
+    enabled: Boolean(branch.txc),
+    refetchInterval: 90_000,
+  });
+  const lockedWrapped = useQuery({
+    queryKey: ["locked-wrapped", branch.txc],
+    queryFn: () => fetchWrapped({ data: { address: branch.txc! } }),
+    enabled: Boolean(branch.txc),
+    refetchInterval: 90_000,
+  });
+  const lockedUtxo = useQuery({
+    queryKey: ["locked-utxo", branch.ltc, branch.isk],
+    queryFn: () =>
+      fetchUtxo({ data: { ltcAddress: branch.ltc, iskAddress: branch.isk } }),
+    enabled: Boolean(branch.ltc || branch.isk),
+    refetchInterval: 120_000,
+  });
+  const lockedEvm = useQuery({
+    queryKey: ["locked-evm", branch.evm],
+    queryFn: () => fetchPortfolio({ data: { address: branch.evm! } }),
+    enabled: Boolean(branch.evm),
+    refetchInterval: 120_000,
+  });
 
   const rows: SpotRow[] = useMemo(() => {
     const out: SpotRow[] = [];
