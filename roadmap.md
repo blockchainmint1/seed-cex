@@ -10,3 +10,6 @@
 - [x] Unwrap flow: send user's wrapped asset to issuer deposit address
 - [x] Consolidate wallet balance rows — one row per asset across EVM networks
 - [ ] Issuer-side go-live checklist (on TSD Swap): flip Live per asset, fund BTC/LTC vaults for unwrap liquidity
+- [x] BTC listed in wallet balances with wrap-deposit flow (WRAP_ISSUER_API_KEY fixed by user)
+- [ ] Remove Withdraw UI from spot balances (reads as custodial); keep withdrawals server-side + history
+- [ ] "Locked" column: balance sitting in the authorized trading branch per asset
