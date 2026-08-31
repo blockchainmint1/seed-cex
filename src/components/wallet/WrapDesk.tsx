@@ -204,7 +204,7 @@ export function WrapDesk() {
             <input
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              placeholder={`Your ${asset.baseSymbol} address`}
+              placeholder={asset.addressHint}
               maxLength={120}
               className="mb-2 w-full rounded-sm border border-input bg-background px-3 py-2.5 font-mono text-sm outline-none focus:border-primary"
             />
@@ -278,9 +278,9 @@ export function WrapDesk() {
                           />
                         </div>
                         <div className="min-w-0">
-                          <p className="font-mono text-[10px] tracking-[0.16em] text-muted-foreground uppercase">
-                            Send {o.base_symbol} here
-                          </p>
+                           <p className="font-mono text-[10px] tracking-[0.16em] text-muted-foreground uppercase">
+                             Send {o.direction === "wrap" ? o.base_symbol : o.wrapped_symbol} here
+                           </p>
                           <p className="mt-1 font-mono text-[11px] break-all text-foreground">
                             {o.deposit_address}
                           </p>

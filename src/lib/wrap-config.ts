@@ -18,6 +18,8 @@ export type WrapAssetDef = {
   wrappedSymbol: string;
   name: string;
   decimals: number;
+  /** Omni property id of the wrapped asset on TEXITcoin. */
+  omniPropertyId: number;
   /** Human note on where the native coin sits while wrapped. */
   custodyNote: string;
   /** Block explorer for the *native* chain, address view. */
@@ -26,6 +28,8 @@ export type WrapAssetDef = {
   confirmations: number;
   /** Smallest wrap the desk accepts, in native units. */
   minAmount: number;
+  /** Address format hint for the native-chain payout/refund field. */
+  addressHint: string;
 };
 
 export const WRAP_ASSETS: WrapAssetDef[] = [
@@ -34,11 +38,39 @@ export const WRAP_ASSETS: WrapAssetDef[] = [
     wrappedSymbol: "wBTC",
     name: "Bitcoin",
     decimals: 8,
+    omniPropertyId: 43,
     custodyNote:
       "Native BTC is held in the issuer's cold reserve while wBTC circulates. Redeemable 1:1 at any time.",
     nativeExplorer: "https://mempool.space/address/",
     confirmations: 2,
     minAmount: 0.0005,
+    addressHint: "Bitcoin mainnet address (bech32 bc1… or legacy 1…/3…)",
+  },
+  {
+    baseSymbol: "LTC",
+    wrappedSymbol: "wLTC",
+    name: "Litecoin",
+    decimals: 8,
+    omniPropertyId: 44,
+    custodyNote:
+      "Native LTC is held in the issuer's cold reserve while wLTC circulates. Redeemable 1:1 at any time.",
+    nativeExplorer: "https://litecoinspace.org/address/",
+    confirmations: 6,
+    minAmount: 0.05,
+    addressHint: "Litecoin mainnet address (bech32 ltc1… or legacy L…/M…)",
+  },
+  {
+    baseSymbol: "ETH",
+    wrappedSymbol: "wETH",
+    name: "Ethereum",
+    decimals: 18,
+    omniPropertyId: 45,
+    custodyNote:
+      "Native ETH is held in the issuer's reserve while wETH circulates. Redeemable 1:1 at any time.",
+    nativeExplorer: "https://etherscan.io/address/",
+    confirmations: 15,
+    minAmount: 0.005,
+    addressHint: "Ethereum mainnet address (0x…)",
   },
 ];
 

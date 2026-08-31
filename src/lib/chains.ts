@@ -50,6 +50,10 @@ export const CHAINS: ChainDef[] = [
       { symbol: "TXC", contract: null, decimals: 8 },
       // Texas Stable Dollar — Omni Layer property #39 on TEXITcoin.
       { symbol: "TSD", contract: null, decimals: 8, omniPropertyId: 39 },
+      // Reserve-backed wrapped majors, issued by the TSD Swap wrap desk.
+      { symbol: "wBTC", contract: null, decimals: 8, omniPropertyId: 43 },
+      { symbol: "wLTC", contract: null, decimals: 8, omniPropertyId: 44 },
+      { symbol: "wETH", contract: null, decimals: 8, omniPropertyId: 45 },
     ],
     explorer: "https://mempool.texitcoin.org/address/",
   },

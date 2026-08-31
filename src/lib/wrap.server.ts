@@ -57,15 +57,25 @@ async function issuerFetch<T>(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
-    const res = await fetch(`${cfg.baseUrl}${path}`, {
-      method: init?.method ?? "GET",
-      headers: {
-        "content-type": "application/json",
-        "x-api-key": cfg.apiKey,
-      },
-      body: init?.body ? JSON.stringify(init.body) : undefined,
-      signal: controller.signal,
-    });
+    const doFetch = (url: string) =>
+      fetch(url, {
+        method: init?.method ?? "GET",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": cfg.apiKey,
+        },
+        body: init?.body ? JSON.stringify(init.body) : undefined,
+        // Manual redirect handling: a 302 would rewrite POST to GET.
+        redirect: "manual",
+        signal: controller.signal,
+      });
+    let res = await doFetch(`${cfg.baseUrl}${path}`);
+    // The issuer's app domain redirects to its custom domain; follow one hop
+    // preserving method and body.
+    if ([301, 302, 303, 307, 308].includes(res.status)) {
+      const location = res.headers.get("location");
+      if (location) res = await doFetch(new URL(location, cfg.baseUrl).toString());
+    }
     const text = await res.text();
     let parsed: unknown = null;
     try {
@@ -347,18 +357,29 @@ export async function getWrapDeskStatus(): Promise<WrapDeskStatus> {
       assets?: {
         asset?: string;
         symbol?: string;
+        wrappedSymbol?: string;
+        live?: boolean;
         reserve?: number;
-        supply?: number;
-        collateralization?: number;
+        reserves?: number;
+        supply?: number | null;
+        collateralization?: number | null;
       }[];
     }>("/api/public/v1/wrap/assets");
     const reserves = (res.assets ?? []).map((a) => ({
       asset: a.asset ?? a.symbol ?? "?",
-      reserve: a.reserve ?? 0,
+      reserve: a.reserve ?? a.reserves ?? 0,
       supply: a.supply ?? 0,
       collateralization: a.collateralization ?? 0,
     }));
-    return { configured: true, online: true, reserves, message: null };
+    const anyLive = (res.assets ?? []).some((a) => a.live);
+    return {
+      configured: true,
+      online: true,
+      reserves,
+      message: anyLive
+        ? null
+        : "Connected to the issuer. Desks go live once the issuer enables each asset.",
+    };
   } catch (err) {
     return {
       configured: true,
