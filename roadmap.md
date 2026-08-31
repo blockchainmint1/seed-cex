@@ -8,5 +8,5 @@
 - [x] Generalize Omni settlement to any property (TSD + wrapped assets)
 - [x] Add BTC/TSD and ETH/TSD markets (wrapped under the hood, shown as native)
 - [x] Unwrap flow: send user's wrapped asset to issuer deposit address
-- [ ] Consolidate wallet balance rows — show "ETH on EVM", "USDC on EVM", "USDT on EVM" instead of one row per chain
+- [x] Consolidate wallet balance rows — one row per asset across EVM networks
 - [ ] Issuer-side go-live checklist (on TSD Swap): flip Live per asset, fund BTC/LTC vaults for unwrap liquidity
