@@ -584,6 +584,9 @@ function SpotBalances({
       leg: null,
       tradeSlug: "btc-tsd",
       wrapBase: "BTC",
+      locked: branch.txc
+        ? ((lockedWrapped.data ?? []).find((w) => w.symbol === "wBTC")?.balance ?? null)
+        : null,
     });
     const utxoChains: { chain: "ltc" | "isk"; symbol: string; address: string | null }[] = [
       { chain: "ltc", symbol: "LTC", address: wallet.ltc_address },
@@ -591,6 +594,7 @@ function SpotBalances({
     ];
     for (const c of utxoChains) {
       const b = (utxo.data ?? []).find((x) => x.chain === c.chain);
+      const lb = (lockedUtxo.data ?? []).find((x) => x.chain === c.chain);
       out.push({
         key: c.chain,
         symbol: c.symbol,
@@ -602,6 +606,7 @@ function SpotBalances({
         address: c.address,
         leg: c.chain as LegId,
         tradeSlug: tradeSlugFor(c.symbol),
+        locked: branch[c.chain] ? (lb?.online ? lb.balance : null) : null,
       });
     }
 
