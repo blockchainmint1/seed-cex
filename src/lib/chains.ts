@@ -6,7 +6,7 @@
  * directly.
  */
 
-export type ChainId = "txc" | "ethereum" | "base" | "bsc" | "ltc" | "isk" | "zcu";
+export type ChainId = "txc" | "ethereum" | "base" | "bsc" | "ltc" | "isk" | "zcu" | "btc";
 
 /** Every settlement leg Seeds can deliver on-chain. */
 export type LegId =
