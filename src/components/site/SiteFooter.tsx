@@ -4,6 +4,7 @@ const links = [
   { label: "How it works", to: "/how-it-works" },
   { label: "TSD", to: "/tsd" },
   { label: "Manifesto", to: "/manifesto" },
+  { label: "LocalBitcoins report", to: "/lbtc" },
   { label: "API", to: "/api-docs" },
   { label: "Our code", to: "/proof/code" },
   { label: "Custody Ledger", to: "/custody" },
