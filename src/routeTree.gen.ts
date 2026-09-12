@@ -14,6 +14,7 @@ import { Route as TermsRouteImport } from './routes/terms'
 import { Route as StatsRouteImport } from './routes/stats'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ManifestoRouteImport } from './routes/manifesto'
+import { Route as LbtcRouteImport } from './routes/lbtc'
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
 import { Route as CustodyRouteImport } from './routes/custody'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -79,6 +80,11 @@ const PrivacyRoute = PrivacyRouteImport.update({
 const ManifestoRoute = ManifestoRouteImport.update({
   id: '/manifesto',
   path: '/manifesto',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LbtcRoute = LbtcRouteImport.update({
+  id: '/lbtc',
+  path: '/lbtc',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HowItWorksRoute = HowItWorksRouteImport.update({
@@ -294,6 +300,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/custody': typeof CustodyRoute
   '/how-it-works': typeof HowItWorksRoute
+  '/lbtc': typeof LbtcRoute
   '/manifesto': typeof ManifestoRoute
   '/privacy': typeof PrivacyRoute
   '/stats': typeof StatsRoute
@@ -341,6 +348,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/custody': typeof CustodyRoute
   '/how-it-works': typeof HowItWorksRoute
+  '/lbtc': typeof LbtcRoute
   '/manifesto': typeof ManifestoRoute
   '/privacy': typeof PrivacyRoute
   '/stats': typeof StatsRoute
@@ -390,6 +398,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/custody': typeof CustodyRoute
   '/how-it-works': typeof HowItWorksRoute
+  '/lbtc': typeof LbtcRoute
   '/manifesto': typeof ManifestoRoute
   '/privacy': typeof PrivacyRoute
   '/stats': typeof StatsRoute
@@ -439,6 +448,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/custody'
     | '/how-it-works'
+    | '/lbtc'
     | '/manifesto'
     | '/privacy'
     | '/stats'
@@ -486,6 +496,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/custody'
     | '/how-it-works'
+    | '/lbtc'
     | '/manifesto'
     | '/privacy'
     | '/stats'
@@ -534,6 +545,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/custody'
     | '/how-it-works'
+    | '/lbtc'
     | '/manifesto'
     | '/privacy'
     | '/stats'
@@ -583,6 +595,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   CustodyRoute: typeof CustodyRoute
   HowItWorksRoute: typeof HowItWorksRoute
+  LbtcRoute: typeof LbtcRoute
   ManifestoRoute: typeof ManifestoRoute
   PrivacyRoute: typeof PrivacyRoute
   StatsRoute: typeof StatsRoute
@@ -655,6 +668,13 @@ declare module '@tanstack/react-router' {
       path: '/manifesto'
       fullPath: '/manifesto'
       preLoaderRoute: typeof ManifestoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lbtc': {
+      id: '/lbtc'
+      path: '/lbtc'
+      fullPath: '/lbtc'
+      preLoaderRoute: typeof LbtcRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/how-it-works': {
@@ -973,6 +993,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   CustodyRoute: CustodyRoute,
   HowItWorksRoute: HowItWorksRoute,
+  LbtcRoute: LbtcRoute,
   ManifestoRoute: ManifestoRoute,
   PrivacyRoute: PrivacyRoute,
   StatsRoute: StatsRoute,
