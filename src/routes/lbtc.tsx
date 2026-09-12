@@ -19,7 +19,7 @@ export const Route = createFileRoute("/lbtc")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  component: LbtcReport;
+  component: LbtcReport,
 });
 
 type Src = { n: number; label: string; url: string };
