@@ -262,6 +262,21 @@ export type Database = {
         }
         Relationships: []
       }
+      sso_nonces: {
+        Row: {
+          nonce: string
+          used_at: string
+        }
+        Insert: {
+          nonce: string
+          used_at?: string
+        }
+        Update: {
+          nonce?: string
+          used_at?: string
+        }
+        Relationships: []
+      }
       trade_events: {
         Row: {
           actor_id: string | null
