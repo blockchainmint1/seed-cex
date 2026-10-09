@@ -118,6 +118,23 @@ function Auth() {
     }
   }
 
+  function honestMoney() {
+    setError(null);
+    const returnTo = `${window.location.origin}/sso`;
+    const url = `https://honest.money/sso-login?popup=1&return_to=${encodeURIComponent(returnTo)}`;
+    const w = window.open(url, "hm-sso", "width=440,height=720");
+    if (!w) {
+      window.location.href = url.replace("popup=1&", "");
+      return;
+    }
+    const onMsg = (ev: MessageEvent) => {
+      if (ev.origin !== window.location.origin || ev.data?.type !== "seeds-sso-done") return;
+      window.removeEventListener("message", onMsg);
+      navigate({ to: "/wallet" });
+    };
+    window.addEventListener("message", onMsg);
+  }
+
   async function google() {
     setError(null);
     setBusy("google");
@@ -163,6 +180,17 @@ function Auth() {
           {notice}
         </p>
       ) : null}
+
+      <button
+        onClick={honestMoney}
+        disabled={busy !== null}
+        className="mt-8 w-full rounded-sm border border-primary px-4 py-3 font-mono text-xs font-semibold tracking-[0.16em] text-primary uppercase transition-colors hover:bg-primary/10 disabled:opacity-50"
+      >
+        Sign in with Honest.Money
+      </button>
+      <p className="mt-2 font-mono text-[11px] text-muted-foreground">
+        One member login across the Honest.Money ecosystem.
+      </p>
 
       <button
         onClick={signInWithWallet}
