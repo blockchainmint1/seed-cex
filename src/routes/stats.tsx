@@ -22,7 +22,7 @@ export const Route = createFileRoute("/stats")({
   loader: async () => ({ stats: await getPublicStats() }),
   errorComponent: ({ error }) => (
     <div role="alert" className="mx-auto max-w-3xl px-5 py-16 font-mono text-sm text-destructive">
-      {error.message}
+      {(error as Error).message}
     </div>
   ),
   notFoundComponent: () => (
