@@ -71,7 +71,13 @@ function Auth() {
     try {
       const { error: err } = await supabase.auth.signInWithOtp({
         email: parsed.data,
-        options: { emailRedirectTo: `${window.location.origin}/wallet` },
+        options: {
+          emailRedirectTo: `${window.location.origin}/wallet`,
+          data: (() => {
+            const ref = (window as unknown as { honestMoney?: { ref: () => string } }).honestMoney?.ref();
+            return ref ? { hm_ref: ref } : undefined;
+          })(),
+        },
       });
       if (err) throw err;
       setNotice("Check your inbox — the link signs you straight in. No password to remember.");
