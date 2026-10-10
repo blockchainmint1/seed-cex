@@ -111,6 +111,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
     ],
     scripts: [
+      { src: "https://honest.money/hm.js", async: true },
       {
         children:
           "try{if(localStorage.getItem('seeds-theme')==='light')document.documentElement.classList.remove('dark')}catch(e){}",
