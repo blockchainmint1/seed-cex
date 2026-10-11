@@ -37,7 +37,8 @@ function Sso() {
     if (!token) return setError("Missing sign-in ticket.");
     (async () => {
       try {
-        const { tokenHash } = await redeem({ data: { token } });
+        const ref = (window as unknown as { honestMoney?: { ref: () => string } }).honestMoney?.ref?.() || undefined;
+        const { tokenHash } = await redeem({ data: { token, ref } });
         const { error: err } = await supabase.auth.verifyOtp({ type: "magiclink", token_hash: tokenHash });
         if (err) throw err;
         if (popup === "1" && window.opener) {

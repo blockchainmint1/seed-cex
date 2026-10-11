@@ -50,6 +50,7 @@ import { Route as ApiPublicV1ExchangeInfoRouteImport } from './routes/api/public
 import { Route as ApiPublicV1DepthRouteImport } from './routes/api/public/v1/depth'
 import { Route as ApiPublicV1AllOrdersRouteImport } from './routes/api/public/v1/allOrders'
 import { Route as ApiPublicV1AccountRouteImport } from './routes/api/public/v1/account'
+import { Route as ApiPublicMinehmeProfileUpdateRouteImport } from './routes/api/public/minehme/profile-update'
 import { Route as ApiPublicCmcTickerRouteImport } from './routes/api/public/cmc/ticker'
 import { Route as ApiPublicCmcSummaryRouteImport } from './routes/api/public/cmc/summary'
 import { Route as ApiPublicCmcAssetsRouteImport } from './routes/api/public/cmc/assets'
@@ -263,6 +264,12 @@ const ApiPublicV1AccountRoute = ApiPublicV1AccountRouteImport.update({
   path: '/api/public/v1/account',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicMinehmeProfileUpdateRoute =
+  ApiPublicMinehmeProfileUpdateRouteImport.update({
+    id: '/api/public/minehme/profile-update',
+    path: '/api/public/minehme/profile-update',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicCmcTickerRoute = ApiPublicCmcTickerRouteImport.update({
   id: '/api/public/cmc/ticker',
   path: '/api/public/cmc/ticker',
@@ -329,6 +336,7 @@ export interface FileRoutesByFullPath {
   '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
   '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
   '/api/public/cmc/ticker': typeof ApiPublicCmcTickerRoute
+  '/api/public/minehme/profile-update': typeof ApiPublicMinehmeProfileUpdateRoute
   '/api/public/v1/account': typeof ApiPublicV1AccountRoute
   '/api/public/v1/allOrders': typeof ApiPublicV1AllOrdersRoute
   '/api/public/v1/depth': typeof ApiPublicV1DepthRoute
@@ -378,6 +386,7 @@ export interface FileRoutesByTo {
   '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
   '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
   '/api/public/cmc/ticker': typeof ApiPublicCmcTickerRoute
+  '/api/public/minehme/profile-update': typeof ApiPublicMinehmeProfileUpdateRoute
   '/api/public/v1/account': typeof ApiPublicV1AccountRoute
   '/api/public/v1/allOrders': typeof ApiPublicV1AllOrdersRoute
   '/api/public/v1/depth': typeof ApiPublicV1DepthRoute
@@ -429,6 +438,7 @@ export interface FileRoutesById {
   '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
   '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
   '/api/public/cmc/ticker': typeof ApiPublicCmcTickerRoute
+  '/api/public/minehme/profile-update': typeof ApiPublicMinehmeProfileUpdateRoute
   '/api/public/v1/account': typeof ApiPublicV1AccountRoute
   '/api/public/v1/allOrders': typeof ApiPublicV1AllOrdersRoute
   '/api/public/v1/depth': typeof ApiPublicV1DepthRoute
@@ -480,6 +490,7 @@ export interface FileRouteTypes {
     | '/api/public/cmc/assets'
     | '/api/public/cmc/summary'
     | '/api/public/cmc/ticker'
+    | '/api/public/minehme/profile-update'
     | '/api/public/v1/account'
     | '/api/public/v1/allOrders'
     | '/api/public/v1/depth'
@@ -529,6 +540,7 @@ export interface FileRouteTypes {
     | '/api/public/cmc/assets'
     | '/api/public/cmc/summary'
     | '/api/public/cmc/ticker'
+    | '/api/public/minehme/profile-update'
     | '/api/public/v1/account'
     | '/api/public/v1/allOrders'
     | '/api/public/v1/depth'
@@ -579,6 +591,7 @@ export interface FileRouteTypes {
     | '/api/public/cmc/assets'
     | '/api/public/cmc/summary'
     | '/api/public/cmc/ticker'
+    | '/api/public/minehme/profile-update'
     | '/api/public/v1/account'
     | '/api/public/v1/allOrders'
     | '/api/public/v1/depth'
@@ -625,6 +638,7 @@ export interface RootRouteChildren {
   ApiPublicCmcAssetsRoute: typeof ApiPublicCmcAssetsRoute
   ApiPublicCmcSummaryRoute: typeof ApiPublicCmcSummaryRoute
   ApiPublicCmcTickerRoute: typeof ApiPublicCmcTickerRoute
+  ApiPublicMinehmeProfileUpdateRoute: typeof ApiPublicMinehmeProfileUpdateRoute
   ApiPublicV1AccountRoute: typeof ApiPublicV1AccountRoute
   ApiPublicV1AllOrdersRoute: typeof ApiPublicV1AllOrdersRoute
   ApiPublicV1DepthRoute: typeof ApiPublicV1DepthRoute
@@ -935,6 +949,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicV1AccountRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/minehme/profile-update': {
+      id: '/api/public/minehme/profile-update'
+      path: '/api/public/minehme/profile-update'
+      fullPath: '/api/public/minehme/profile-update'
+      preLoaderRoute: typeof ApiPublicMinehmeProfileUpdateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/cmc/ticker': {
       id: '/api/public/cmc/ticker'
       path: '/api/public/cmc/ticker'
@@ -1031,6 +1052,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCmcAssetsRoute: ApiPublicCmcAssetsRoute,
   ApiPublicCmcSummaryRoute: ApiPublicCmcSummaryRoute,
   ApiPublicCmcTickerRoute: ApiPublicCmcTickerRoute,
+  ApiPublicMinehmeProfileUpdateRoute: ApiPublicMinehmeProfileUpdateRoute,
   ApiPublicV1AccountRoute: ApiPublicV1AccountRoute,
   ApiPublicV1AllOrdersRoute: ApiPublicV1AllOrdersRoute,
   ApiPublicV1DepthRoute: ApiPublicV1DepthRoute,

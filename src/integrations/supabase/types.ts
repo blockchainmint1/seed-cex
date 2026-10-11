@@ -195,6 +195,8 @@ export type Database = {
           default_auth_hours: number
           default_pair: string | null
           display_name: string
+          hm_member_id: string | null
+          hm_status: string
           id: string
           notify_auth_expiring: boolean
           notify_deposit: boolean
@@ -219,6 +221,8 @@ export type Database = {
           default_auth_hours?: number
           default_pair?: string | null
           display_name?: string
+          hm_member_id?: string | null
+          hm_status?: string
           id: string
           notify_auth_expiring?: boolean
           notify_deposit?: boolean
@@ -243,6 +247,8 @@ export type Database = {
           default_auth_hours?: number
           default_pair?: string | null
           display_name?: string
+          hm_member_id?: string | null
+          hm_status?: string
           id?: string
           notify_auth_expiring?: boolean
           notify_deposit?: boolean
