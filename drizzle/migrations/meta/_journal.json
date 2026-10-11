@@ -8,6 +8,13 @@
       "when": 1791581437093,
       "tag": "0000_sso_nonces",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791719646770,
+      "tag": "0001_hme_member_link",
+      "breakpoints": true
     }
   ]
 }

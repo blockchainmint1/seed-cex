@@ -1,0 +1,2 @@
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS hm_member_id text, ADD COLUMN IF NOT EXISTS hm_status text NOT NULL DEFAULT 'active';
+CREATE UNIQUE INDEX IF NOT EXISTS profiles_hm_member_id_uidx ON public.profiles(hm_member_id) WHERE hm_member_id IS NOT NULL;
