@@ -2,14 +2,14 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 /**
- * Honest.Money single sign-on. honest.money redirects back to /sso with
- * `token=<b64url(json)>.<hex HMAC-SHA256>` signed with HME_HMAC_SECRET.
- * We verify it, burn the nonce, and hand back a one-time token hash the
- * browser exchanges for a session (same trick as wallet sign-in).
+ * Honest.Money single sign-on (honest.money/api §1). Ticket =
+ * `<b64url(json)>.<hex HMAC-SHA256>` keyed with HME_HMAC_SECRET, 120s expiry,
+ * one-time nonce. Members are matched by their permanent minerId first, email second.
  */
 export const redeemHonestMoneyToken = createServerFn({ method: "POST" })
-  .inputValidator((d) => z.object({ token: z.string().min(10).max(4000) }).parse(d))
+  .inputValidator((d) => z.object({ token: z.string().min(10).max(4000), ref: z.string().max(64).optional() }).parse(d))
   .handler(async ({ data }) => {
+    const { sendHubEvent, safeEqual } = await import("./hme-hub.server");
     const secret = process.env.HME_HMAC_SECRET;
     if (!secret) throw new Error("Honest.Money sign-in isn't configured yet.");
     const [enc, sig] = data.token.split(".");
@@ -18,33 +18,52 @@ export const redeemHonestMoneyToken = createServerFn({ method: "POST" })
     const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
     const mac = new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(enc)));
     const hex = [...mac].map((b) => b.toString(16).padStart(2, "0")).join("");
-    let diff = 0;
-    const s = sig.toLowerCase();
-    for (let i = 0; i < 64; i++) diff |= hex.charCodeAt(i) ^ s.charCodeAt(i);
-    if (diff !== 0) throw new Error("Sign-in ticket signature is invalid.");
+    if (!safeEqual(hex, sig.toLowerCase())) throw new Error("Sign-in ticket signature is invalid.");
 
-    const json = new TextDecoder().decode(
-      Uint8Array.from(atob(enc.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0)),
-    );
+    const b64 = enc.replace(/-/g, "+").replace(/_/g, "/");
+    const json = new TextDecoder().decode(Uint8Array.from(atob(b64 + "===".slice((b64.length + 3) % 4)), (c) => c.charCodeAt(0)));
     const p = z
-      .object({ email: z.string().email().max(255), nonce: z.string().min(8).max(100), exp: z.number(), iss: z.string(), minerId: z.string().optional() })
+      .object({
+        minerId: z.string().min(1).max(100),
+        email: z.string().email().max(255),
+        nonce: z.string().min(8).max(200),
+        exp: z.number(),
+        redirect: z.string().optional(),
+      })
       .parse(JSON.parse(json));
-    if (p.iss !== "honest.money") throw new Error("Unknown ticket issuer.");
-    if (p.exp < Math.floor(Date.now() / 1000)) throw new Error("That sign-in ticket expired. Try again.");
+    if (p.exp * 1000 < Date.now()) throw new Error("That sign-in ticket expired. Try again.");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error: nonceErr } = await supabaseAdmin.from("sso_nonces").insert({ nonce: p.nonce });
     if (nonceErr) throw new Error("That sign-in ticket was already used.");
 
-    const email = p.email.toLowerCase();
-    const created = await supabaseAdmin.auth.admin.createUser({
-      email,
-      email_confirm: true,
-      user_metadata: { hm_member_id: p.minerId ?? null, sso: "honest.money" },
-    });
-    if (created.error && !/already/i.test(created.error.message)) throw new Error(created.error.message);
+    const ticketEmail = p.email.toLowerCase();
+    // 1) Existing Seeds account linked to this member? Use its email (member may have changed theirs).
+    const { data: linked } = await supabaseAdmin.from("profiles").select("id, hm_status").eq("hm_member_id", p.minerId).maybeSingle();
+    if (linked && linked.hm_status !== "active" && linked.hm_status !== "oceanfront")
+      throw new Error("This Honest.Money membership is not active. Contact support@honest.money.");
+
+    let userId = linked?.id ?? null;
+    let email = ticketEmail;
+    let isNew = false;
+    if (userId) {
+      const u = await supabaseAdmin.auth.admin.getUserById(userId);
+      if (u.data.user?.email) email = u.data.user.email;
+    } else {
+      const created = await supabaseAdmin.auth.admin.createUser({
+        email,
+        email_confirm: true,
+        user_metadata: { hm_member_id: p.minerId, sso: "honest.money" },
+      });
+      if (created.error && !/already/i.test(created.error.message)) throw new Error(created.error.message);
+      isNew = !!created.data.user;
+    }
 
     const link = await supabaseAdmin.auth.admin.generateLink({ type: "magiclink", email });
     if (link.error || !link.data.properties?.hashed_token) throw new Error("Could not start a session.");
+    userId = userId ?? link.data.user?.id ?? null;
+    if (userId && !linked) await supabaseAdmin.from("profiles").update({ hm_member_id: p.minerId }).eq("id", userId);
+
+    await sendHubEvent({ event: isNew ? "signup" : "service_used", member_id: p.minerId, ref: data.ref, metadata: { via: "sso" } });
     return { tokenHash: link.data.properties.hashed_token };
   });
