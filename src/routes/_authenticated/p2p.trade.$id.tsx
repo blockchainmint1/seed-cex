@@ -1,10 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useState } from "react";
-import { AlertTriangle, Copy } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { AlertTriangle, Copy, FileText, Paperclip } from "lucide-react";
 import { toast } from "sonner";
-import { getP2pTrade, leaveFeedback, p2pAction, resolveDispute, sendP2pMessage } from "@/lib/p2p.functions";
+import { getP2pTrade, leaveFeedback, p2pAction, resolveDispute, sendP2pMessage, uploadP2pReceipt } from "@/lib/p2p.functions";
 import { STATUS_LABEL } from "@/lib/p2p-config";
 import { SellerBadge } from "@/components/p2p/SellerBadge";
 import { Button } from "@/components/ui/button";
@@ -49,6 +49,19 @@ function TradeRoom() {
   });
   const [msg, setMsg] = useState("");
   const chat = useMutation({ mutationFn: () => send({ data: { id, body: msg } }), onSuccess: () => { setMsg(""); refresh(); }, onError: err });
+  const upload = useServerFn(uploadP2pReceipt);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const attach = useMutation({
+    mutationFn: async (file: File) => {
+      if (file.size > 8 * 1024 * 1024) throw new Error("File is over 8 MB");
+      const buf = new Uint8Array(await file.arrayBuffer());
+      let bin = "";
+      for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+      return upload({ data: { id, name: file.name, type: file.type, base64: btoa(bin), note: msg.trim() || undefined } });
+    },
+    onSuccess: () => { setMsg(""); toast.success("Uploaded"); refresh(); },
+    onError: err,
+  });
   const [comment, setComment] = useState("");
   const feedback = useMutation({ mutationFn: (positive: boolean) => fb({ data: { id, positive, comment } }), onSuccess: refresh, onError: err });
   const rule = useMutation({ mutationFn: (outcome: "release" | "refund") => resolve({ data: { id, outcome } }), onSuccess: refresh, onError: err });
@@ -100,7 +113,7 @@ function TradeRoom() {
             </div>
             <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
               <li>Send exactly <b className="text-foreground">${t.fiat.toFixed(2)}</b> by {t.method} from an account in your own name.</li>
-              <li>Tap "I've paid" before the timer runs out.</li>
+              <li>Upload a screenshot of your receipt in the chat (📎), then tap "I've paid" before the timer runs out.</li>
               <li>The seller checks their account and releases {t.asset} to your wallet.</li>
             </ol>
           </section>
@@ -169,6 +182,13 @@ function TradeRoom() {
               {m.system ? m.body : (
                 <span className={`inline-block max-w-[85%] rounded-sm px-3 py-2 text-left text-sm ${m.mine ? "bg-primary text-primary-foreground" : "bg-background"}`}>
                   <span className="block font-mono text-[10px] opacity-70">{m.who}</span>{m.body}
+                  {m.file?.url ? (
+                    m.file.image ? (
+                      <a href={m.file.url} target="_blank" rel="noreferrer" className="mt-2 block"><img src={m.file.url} alt={m.file.name} className="max-h-56 rounded-sm border border-border" /></a>
+                    ) : (
+                      <a href={m.file.url} target="_blank" rel="noreferrer" className="mt-2 flex items-center gap-1 underline"><FileText className="h-3.5 w-3.5" />{m.file.name}</a>
+                    )
+                  ) : null}
                 </span>
               )}
             </div>
@@ -176,6 +196,10 @@ function TradeRoom() {
         </div>
         {!ended ? (
           <form className="flex gap-2 border-t border-border p-3" onSubmit={(e) => { e.preventDefault(); if (msg.trim()) chat.mutate(); }}>
+            <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) attach.mutate(f); e.target.value = ""; }} />
+            <Button type="button" variant="outline" aria-label="Attach receipt" disabled={attach.isPending} onClick={() => fileRef.current?.click()}>
+              <Paperclip className="h-4 w-4" />
+            </Button>
             <Textarea rows={1} className="min-h-9" value={msg} onChange={(e) => setMsg(e.target.value)} placeholder="Message…" />
             <Button type="submit" disabled={chat.isPending}>Send</Button>
           </form>

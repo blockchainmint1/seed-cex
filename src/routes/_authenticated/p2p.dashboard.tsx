@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { BadgeCheck } from "lucide-react";
 import { toast } from "sonner";
-import { getMyP2p, saveOffer, saveP2pProfile } from "@/lib/p2p.functions";
+import { getMyP2p, getP2pMarketPrices, saveOffer, saveP2pProfile } from "@/lib/p2p.functions";
 import { P2P_ASSET_IDS, PAYMENT_METHODS, STATUS_LABEL, type P2pAsset } from "@/lib/p2p-config";
 import { ScorePill, mins } from "@/components/p2p/SellerBadge";
 import { Button } from "@/components/ui/button";

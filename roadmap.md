@@ -15,4 +15,6 @@
 - [x] "Locked (trading)" column: balance sitting in the authorized trading branch per asset
 - [x] Nav: dropped Admin link, ABOUT/PROOF uppercase
 - [x] P2P marketplace (/p2p): seller profiles, verified-fund offers, trade room + chat, feedback, ranking, community jury + admin rulings
-- [ ] P2P: Telegram alerts for new trade / paid / released
+- [x] P2P: Telegram alerts (new buyer, paid, released, cancelled, expired, flagged, disputes, chat, uploads)
+- [x] P2P: receipt / screenshot uploads in trade chat (private, 8 MB, images + PDF)
+- [x] P2P: market-following prices (market ± margin, CMC feed, TSD = $1)
