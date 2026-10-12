@@ -226,16 +226,17 @@ function AccountPage() {
             placeholder="America/Chicago"
           />
         </label>
-        <button
-          onClick={() =>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
             mutate.mutate({
-              timezone: form.timezone?.trim() || "UTC",
-            })
-          }
-          className="rounded-sm bg-primary px-4 py-2 font-mono text-xs font-semibold tracking-wider text-primary-foreground uppercase hover:opacity-90"
+              section: "profile",
+              data: { timezone: form.timezone?.trim() || "UTC" },
+            });
+          }}
         >
-          Save profile
-        </button>
+          {saveBtn("profile", "Save profile")}
+        </form>
       </Section>
 
       <Section
@@ -317,14 +318,17 @@ function AccountPage() {
             </label>
           ))}
         </div>
-        <button
-          onClick={() =>
-            mutate.mutate(Object.fromEntries(NOTIFS.map(([k]) => [k, Boolean(form[k])])))
-          }
-          className="rounded-sm bg-primary px-4 py-2 font-mono text-xs font-semibold tracking-wider text-primary-foreground uppercase hover:opacity-90"
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            mutate.mutate({
+              section: "alerts",
+              data: Object.fromEntries(NOTIFS.map(([k]) => [k, Boolean(form[k])])),
+            });
+          }}
         >
-          Save alerts
-        </button>
+          {saveBtn("alerts", "Save alerts")}
+        </form>
       </Section>
 
       <Section
