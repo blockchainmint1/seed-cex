@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import {
   getMyWallet,
@@ -21,6 +21,7 @@ import { getUtxoBalances } from "@/lib/utxo.functions";
 import { getEvmPortfolio } from "@/lib/evm.functions";
 import { getTsdBalance, getWrappedBalances } from "@/lib/omni.functions";
 import { getBtcBalance, wrapMyBranchBalance } from "@/lib/wrap.functions";
+import { runWalletAlerts } from "@/lib/alerts.functions";
 import { listMyWithdrawals } from "@/lib/withdrawal.functions";
 import {
   decryptMnemonic,
@@ -512,6 +513,14 @@ function SpotBalances({
     queryFn: () => fetchAuths(),
     refetchInterval: 60_000,
   });
+
+  // One Telegram pass per page open: deposits that arrived since the last
+  // look, plus authorizations about to be wiped. Fire-and-forget — a failed
+  // alert must never break the wallet.
+  const runAlerts = useServerFn(runWalletAlerts);
+  useEffect(() => {
+    runAlerts().catch(() => {});
+  }, [runAlerts]);
 
   // Trading-branch addresses per chain family, from live authorizations.
   // "Locked" = the balance sitting in a branch the exchange may settle from.
