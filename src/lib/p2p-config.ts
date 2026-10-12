@@ -34,3 +34,19 @@ export function scoreTone(score: number) {
   if (score >= 55) return "text-foreground";
   return "text-destructive";
 }
+
+/** Anti-scam tips shown in the trade room for each payment method. */
+export const METHOD_TIPS: Record<string, string[]> = {
+  Zelle: ["Zelle can't be reversed by the sender, but check the name matches the trader.", "Never accept 'Zelle pending' emails — check your actual bank app."],
+  Venmo: ["Venmo payments can be charged back. Use 'Friends & Family' and confirm the money is in your balance.", "Ignore screenshots — open the Venmo app."],
+  "Cash App": ["Confirm the payment in the Cash App activity tab, not a screenshot.", "Watch for fake 'pending' emails from look-alike addresses."],
+  PayPal: ["PayPal Goods & Services can be reversed for months. Friends & Family only.", "Check the payment shows 'Completed' in your PayPal account."],
+  "Bank transfer (ACH)": ["ACH can bounce for days. Wait until the money is no longer 'pending'.", "The sender's name should match the trader's."],
+  "Wire transfer": ["Wires are final once received. Confirm with your bank, not an email."],
+  "Cash in person": ["Meet in a public place — bank lobbies or police-station safe-trade zones are best.", "Count the cash and check bills before releasing."],
+};
+export const GENERAL_TIPS = [
+  "Seeds will never ask you to pay or release outside this trade room.",
+  "Keep every message here — the jury can only see this chat.",
+  "Seller: never release until the money is actually in your account.",
+];
