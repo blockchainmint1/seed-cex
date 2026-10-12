@@ -12,7 +12,8 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
   getChain,
   getLeg,
-  TSD_PROPERTY_ID,
+  isOmniLeg,
+  omniLegAsset,
   type ChainId,
   type LegId,
   type UtxoChainId,
@@ -41,6 +42,11 @@ const GAS_FALLBACK = 90_000n;
 const NATIVE_GAS_FALLBACK = 21_000n;
 /** Whole TXC the branch needs on hand to pay an Omni carrier's miner fee. */
 const CARRIER_FEE_TXC = 0.001;
+
+function omniPropertyFor(leg: LegId): number {
+  if (!isOmniLeg(leg)) throw new Error(`${leg} is not an Omni asset`);
+  return omniLegAsset(leg).propertyId;
+}
 
 type Delegation = {
   chain: ChainId;
@@ -162,13 +168,13 @@ export async function previewWithdrawal(
   if (def.kind === "omni") {
     if (!isValidTxcAddress(to)) return { ...ctx, reason: "That is not a valid TEXITcoin address" };
     const [omni, utxos] = await Promise.all([
-      fetchOmniBalance(del.address),
+      fetchOmniBalance(del.address, omniPropertyFor(leg)),
       loadUtxosFor("txc", del.address).catch(() => []),
     ]);
     if (!omni.online) return { ...ctx, reason: "The TEXITcoin node is not reachable" };
     const feeBalance = utxos.reduce((s, u) => s + u.amount, 0);
     if (omni.balance < amount) {
-      return { ...ctx, balance: omni.balance, reason: `The branch holds ${omni.balance.toFixed(2)} TSD` };
+      return { ...ctx, balance: omni.balance, reason: `The branch holds ${omni.balance.toFixed(2)} ${def.symbol}` };
     }
     if (feeBalance < CARRIER_FEE_TXC) {
       return {
@@ -231,7 +237,7 @@ export async function withdrawAsset(
       fromAddress: del.address,
       toAddress: to,
       amount,
-      propertyId: TSD_PROPERTY_ID,
+      propertyId: omniPropertyFor(leg),
     });
     txid = sent.txid;
   } else {

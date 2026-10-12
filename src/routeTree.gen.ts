@@ -22,6 +22,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ApiDocsRouteImport } from './routes/api-docs'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as P2pIndexRouteImport } from './routes/p2p.index'
 import { Route as TradeZcuTsdRouteImport } from './routes/trade.zcu-tsd'
 import { Route as TradeTsdUsdcRouteImport } from './routes/trade.tsd-usdc'
 import { Route as TradeTsdTxcRouteImport } from './routes/trade.tsd-txc'
@@ -35,6 +36,9 @@ import { Route as AuthenticatedTradesRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedApiKeysRouteImport } from './routes/_authenticated/api-keys'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticated/account'
+import { Route as P2pSellerHandleRouteImport } from './routes/p2p.seller.$handle'
+import { Route as AuthenticatedP2pJuryRouteImport } from './routes/_authenticated/p2p.jury'
+import { Route as AuthenticatedP2pDashboardRouteImport } from './routes/_authenticated/p2p.dashboard'
 import { Route as ApiPublicV1IndexRouteImport } from './routes/api/public/v1/index'
 import { Route as ApiPublicCmcIndexRouteImport } from './routes/api/public/cmc/index'
 import { Route as ApiPublicV1TradesRouteImport } from './routes/api/public/v1/trades'
@@ -57,6 +61,7 @@ import { Route as ApiPublicHmeLinkRevokeRouteImport } from './routes/api/public/
 import { Route as ApiPublicCmcTickerRouteImport } from './routes/api/public/cmc/ticker'
 import { Route as ApiPublicCmcSummaryRouteImport } from './routes/api/public/cmc/summary'
 import { Route as ApiPublicCmcAssetsRouteImport } from './routes/api/public/cmc/assets'
+import { Route as AuthenticatedP2pTradeIdRouteImport } from './routes/_authenticated/p2p.trade.$id'
 import { Route as ApiPublicV1TickerPriceRouteImport } from './routes/api/public/v1/ticker/price'
 import { Route as ApiPublicV1Ticker24hrRouteImport } from './routes/api/public/v1/ticker/24hr'
 import { Route as ApiPublicHmeLinkTradesRespondRouteImport } from './routes/api/public/hme-link/trades.respond'
@@ -128,6 +133,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const P2pIndexRoute = P2pIndexRouteImport.update({
+  id: '/p2p/',
+  path: '/p2p/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TradeZcuTsdRoute = TradeZcuTsdRouteImport.update({
   id: '/trade/zcu-tsd',
   path: '/trade/zcu-tsd',
@@ -193,6 +203,22 @@ const AuthenticatedAccountRoute = AuthenticatedAccountRouteImport.update({
   path: '/account',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const P2pSellerHandleRoute = P2pSellerHandleRouteImport.update({
+  id: '/p2p/seller/$handle',
+  path: '/p2p/seller/$handle',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedP2pJuryRoute = AuthenticatedP2pJuryRouteImport.update({
+  id: '/p2p/jury',
+  path: '/p2p/jury',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedP2pDashboardRoute =
+  AuthenticatedP2pDashboardRouteImport.update({
+    id: '/p2p/dashboard',
+    path: '/p2p/dashboard',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const ApiPublicV1IndexRoute = ApiPublicV1IndexRouteImport.update({
   id: '/api/public/v1/',
   path: '/api/public/v1/',
@@ -305,6 +331,11 @@ const ApiPublicCmcAssetsRoute = ApiPublicCmcAssetsRouteImport.update({
   path: '/api/public/cmc/assets',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedP2pTradeIdRoute = AuthenticatedP2pTradeIdRouteImport.update({
+  id: '/p2p/trade/$id',
+  path: '/p2p/trade/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const ApiPublicV1TickerPriceRoute = ApiPublicV1TickerPriceRouteImport.update({
   id: '/api/public/v1/ticker/price',
   path: '/api/public/v1/ticker/price',
@@ -365,6 +396,11 @@ export interface FileRoutesByFullPath {
   '/trade/tsd-txc': typeof TradeTsdTxcRoute
   '/trade/tsd-usdc': typeof TradeTsdUsdcRoute
   '/trade/zcu-tsd': typeof TradeZcuTsdRoute
+  '/p2p/': typeof P2pIndexRoute
+  '/p2p/dashboard': typeof AuthenticatedP2pDashboardRoute
+  '/p2p/jury': typeof AuthenticatedP2pJuryRoute
+  '/p2p/seller/$handle': typeof P2pSellerHandleRoute
+  '/p2p/trade/$id': typeof AuthenticatedP2pTradeIdRoute
   '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
   '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
   '/api/public/cmc/ticker': typeof ApiPublicCmcTickerRoute
@@ -420,6 +456,11 @@ export interface FileRoutesByTo {
   '/trade/tsd-txc': typeof TradeTsdTxcRoute
   '/trade/tsd-usdc': typeof TradeTsdUsdcRoute
   '/trade/zcu-tsd': typeof TradeZcuTsdRoute
+  '/p2p': typeof P2pIndexRoute
+  '/p2p/dashboard': typeof AuthenticatedP2pDashboardRoute
+  '/p2p/jury': typeof AuthenticatedP2pJuryRoute
+  '/p2p/seller/$handle': typeof P2pSellerHandleRoute
+  '/p2p/trade/$id': typeof AuthenticatedP2pTradeIdRoute
   '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
   '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
   '/api/public/cmc/ticker': typeof ApiPublicCmcTickerRoute
@@ -477,6 +518,11 @@ export interface FileRoutesById {
   '/trade/tsd-txc': typeof TradeTsdTxcRoute
   '/trade/tsd-usdc': typeof TradeTsdUsdcRoute
   '/trade/zcu-tsd': typeof TradeZcuTsdRoute
+  '/p2p/': typeof P2pIndexRoute
+  '/_authenticated/p2p/dashboard': typeof AuthenticatedP2pDashboardRoute
+  '/_authenticated/p2p/jury': typeof AuthenticatedP2pJuryRoute
+  '/p2p/seller/$handle': typeof P2pSellerHandleRoute
+  '/_authenticated/p2p/trade/$id': typeof AuthenticatedP2pTradeIdRoute
   '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
   '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
   '/api/public/cmc/ticker': typeof ApiPublicCmcTickerRoute
@@ -534,6 +580,11 @@ export interface FileRouteTypes {
     | '/trade/tsd-txc'
     | '/trade/tsd-usdc'
     | '/trade/zcu-tsd'
+    | '/p2p/'
+    | '/p2p/dashboard'
+    | '/p2p/jury'
+    | '/p2p/seller/$handle'
+    | '/p2p/trade/$id'
     | '/api/public/cmc/assets'
     | '/api/public/cmc/summary'
     | '/api/public/cmc/ticker'
@@ -589,6 +640,11 @@ export interface FileRouteTypes {
     | '/trade/tsd-txc'
     | '/trade/tsd-usdc'
     | '/trade/zcu-tsd'
+    | '/p2p'
+    | '/p2p/dashboard'
+    | '/p2p/jury'
+    | '/p2p/seller/$handle'
+    | '/p2p/trade/$id'
     | '/api/public/cmc/assets'
     | '/api/public/cmc/summary'
     | '/api/public/cmc/ticker'
@@ -645,6 +701,11 @@ export interface FileRouteTypes {
     | '/trade/tsd-txc'
     | '/trade/tsd-usdc'
     | '/trade/zcu-tsd'
+    | '/p2p/'
+    | '/_authenticated/p2p/dashboard'
+    | '/_authenticated/p2p/jury'
+    | '/p2p/seller/$handle'
+    | '/_authenticated/p2p/trade/$id'
     | '/api/public/cmc/assets'
     | '/api/public/cmc/summary'
     | '/api/public/cmc/ticker'
@@ -697,6 +758,8 @@ export interface RootRouteChildren {
   TradeTsdTxcRoute: typeof TradeTsdTxcRoute
   TradeTsdUsdcRoute: typeof TradeTsdUsdcRoute
   TradeZcuTsdRoute: typeof TradeZcuTsdRoute
+  P2pIndexRoute: typeof P2pIndexRoute
+  P2pSellerHandleRoute: typeof P2pSellerHandleRoute
   ApiPublicCmcAssetsRoute: typeof ApiPublicCmcAssetsRoute
   ApiPublicCmcSummaryRoute: typeof ApiPublicCmcSummaryRoute
   ApiPublicCmcTickerRoute: typeof ApiPublicCmcTickerRoute
@@ -819,6 +882,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/p2p/': {
+      id: '/p2p/'
+      path: '/p2p'
+      fullPath: '/p2p/'
+      preLoaderRoute: typeof P2pIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/trade/zcu-tsd': {
       id: '/trade/zcu-tsd'
       path: '/trade/zcu-tsd'
@@ -908,6 +978,27 @@ declare module '@tanstack/react-router' {
       path: '/account'
       fullPath: '/account'
       preLoaderRoute: typeof AuthenticatedAccountRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/p2p/seller/$handle': {
+      id: '/p2p/seller/$handle'
+      path: '/p2p/seller/$handle'
+      fullPath: '/p2p/seller/$handle'
+      preLoaderRoute: typeof P2pSellerHandleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/p2p/jury': {
+      id: '/_authenticated/p2p/jury'
+      path: '/p2p/jury'
+      fullPath: '/p2p/jury'
+      preLoaderRoute: typeof AuthenticatedP2pJuryRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/p2p/dashboard': {
+      id: '/_authenticated/p2p/dashboard'
+      path: '/p2p/dashboard'
+      fullPath: '/p2p/dashboard'
+      preLoaderRoute: typeof AuthenticatedP2pDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/api/public/v1/': {
@@ -1064,6 +1155,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCmcAssetsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/p2p/trade/$id': {
+      id: '/_authenticated/p2p/trade/$id'
+      path: '/p2p/trade/$id'
+      fullPath: '/p2p/trade/$id'
+      preLoaderRoute: typeof AuthenticatedP2pTradeIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/api/public/v1/ticker/price': {
       id: '/api/public/v1/ticker/price'
       path: '/api/public/v1/ticker/price'
@@ -1115,6 +1213,9 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedApiKeysRoute: typeof AuthenticatedApiKeysRoute
   AuthenticatedTradesRoute: typeof AuthenticatedTradesRoute
   AuthenticatedWalletRoute: typeof AuthenticatedWalletRoute
+  AuthenticatedP2pDashboardRoute: typeof AuthenticatedP2pDashboardRoute
+  AuthenticatedP2pJuryRoute: typeof AuthenticatedP2pJuryRoute
+  AuthenticatedP2pTradeIdRoute: typeof AuthenticatedP2pTradeIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -1123,6 +1224,9 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedApiKeysRoute: AuthenticatedApiKeysRoute,
   AuthenticatedTradesRoute: AuthenticatedTradesRoute,
   AuthenticatedWalletRoute: AuthenticatedWalletRoute,
+  AuthenticatedP2pDashboardRoute: AuthenticatedP2pDashboardRoute,
+  AuthenticatedP2pJuryRoute: AuthenticatedP2pJuryRoute,
+  AuthenticatedP2pTradeIdRoute: AuthenticatedP2pTradeIdRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -1164,6 +1268,8 @@ const rootRouteChildren: RootRouteChildren = {
   TradeTsdTxcRoute: TradeTsdTxcRoute,
   TradeTsdUsdcRoute: TradeTsdUsdcRoute,
   TradeZcuTsdRoute: TradeZcuTsdRoute,
+  P2pIndexRoute: P2pIndexRoute,
+  P2pSellerHandleRoute: P2pSellerHandleRoute,
   ApiPublicCmcAssetsRoute: ApiPublicCmcAssetsRoute,
   ApiPublicCmcSummaryRoute: ApiPublicCmcSummaryRoute,
   ApiPublicCmcTickerRoute: ApiPublicCmcTickerRoute,

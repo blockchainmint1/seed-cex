@@ -318,6 +318,316 @@ export type Database = {
         }
         Relationships: []
       }
+      p2p_dispute_votes: {
+        Row: {
+          created_at: string
+          id: string
+          note: string
+          trade_id: string
+          vote: string
+          voter_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          note?: string
+          trade_id: string
+          vote: string
+          voter_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          note?: string
+          trade_id?: string
+          vote?: string
+          voter_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "p2p_dispute_votes_trade_id_fkey"
+            columns: ["trade_id"]
+            isOneToOne: false
+            referencedRelation: "p2p_trades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      p2p_feedback: {
+        Row: {
+          comment: string
+          created_at: string
+          from_id: string
+          id: string
+          positive: boolean
+          to_id: string
+          trade_id: string
+        }
+        Insert: {
+          comment?: string
+          created_at?: string
+          from_id: string
+          id?: string
+          positive: boolean
+          to_id: string
+          trade_id: string
+        }
+        Update: {
+          comment?: string
+          created_at?: string
+          from_id?: string
+          id?: string
+          positive?: boolean
+          to_id?: string
+          trade_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "p2p_feedback_trade_id_fkey"
+            columns: ["trade_id"]
+            isOneToOne: false
+            referencedRelation: "p2p_trades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      p2p_messages: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          sender_id: string | null
+          trade_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          sender_id?: string | null
+          trade_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          sender_id?: string | null
+          trade_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "p2p_messages_trade_id_fkey"
+            columns: ["trade_id"]
+            isOneToOne: false
+            referencedRelation: "p2p_trades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      p2p_offer_instructions: {
+        Row: {
+          instructions: string
+          offer_id: string
+        }
+        Insert: {
+          instructions?: string
+          offer_id: string
+        }
+        Update: {
+          instructions?: string
+          offer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "p2p_offer_instructions_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: true
+            referencedRelation: "p2p_offers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      p2p_offers: {
+        Row: {
+          active: boolean
+          asset: string
+          created_at: string
+          fee_pct: number
+          id: string
+          max_fiat: number
+          min_fiat: number
+          payment_methods: string[]
+          price: number
+          seller_id: string
+          terms: string
+          updated_at: string
+          verified_at: string | null
+          verified_balance: number
+          window_minutes: number
+        }
+        Insert: {
+          active?: boolean
+          asset: string
+          created_at?: string
+          fee_pct?: number
+          id?: string
+          max_fiat?: number
+          min_fiat?: number
+          payment_methods?: string[]
+          price: number
+          seller_id: string
+          terms?: string
+          updated_at?: string
+          verified_at?: string | null
+          verified_balance?: number
+          window_minutes?: number
+        }
+        Update: {
+          active?: boolean
+          asset?: string
+          created_at?: string
+          fee_pct?: number
+          id?: string
+          max_fiat?: number
+          min_fiat?: number
+          payment_methods?: string[]
+          price?: number
+          seller_id?: string
+          terms?: string
+          updated_at?: string
+          verified_at?: string | null
+          verified_balance?: number
+          window_minutes?: number
+        }
+        Relationships: []
+      }
+      p2p_profiles: {
+        Row: {
+          bio: string
+          created_at: string
+          handle: string
+          hours: string
+          languages: string[]
+          location: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bio?: string
+          created_at?: string
+          handle: string
+          hours?: string
+          languages?: string[]
+          location?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bio?: string
+          created_at?: string
+          handle?: string
+          hours?: string
+          languages?: string[]
+          location?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      p2p_trades: {
+        Row: {
+          asset: string
+          buyer_address: string
+          buyer_id: string
+          cancelled_at: string | null
+          created_at: string
+          crypto_amount: number
+          dispute_reason: string | null
+          disputed_by: string | null
+          expires_at: string
+          fee_fiat: number
+          fee_pct: number
+          fiat_amount: number
+          flagged_reason: string | null
+          id: string
+          instructions: string
+          offer_id: string
+          paid_at: string | null
+          payment_method: string
+          price: number
+          release_txid: string | null
+          released_at: string | null
+          resolution: string | null
+          resolved_by: string | null
+          seller_id: string
+          seller_seen_at: string | null
+          status: string
+        }
+        Insert: {
+          asset: string
+          buyer_address: string
+          buyer_id: string
+          cancelled_at?: string | null
+          created_at?: string
+          crypto_amount: number
+          dispute_reason?: string | null
+          disputed_by?: string | null
+          expires_at: string
+          fee_fiat?: number
+          fee_pct?: number
+          fiat_amount: number
+          flagged_reason?: string | null
+          id?: string
+          instructions?: string
+          offer_id: string
+          paid_at?: string | null
+          payment_method: string
+          price: number
+          release_txid?: string | null
+          released_at?: string | null
+          resolution?: string | null
+          resolved_by?: string | null
+          seller_id: string
+          seller_seen_at?: string | null
+          status?: string
+        }
+        Update: {
+          asset?: string
+          buyer_address?: string
+          buyer_id?: string
+          cancelled_at?: string | null
+          created_at?: string
+          crypto_amount?: number
+          dispute_reason?: string | null
+          disputed_by?: string | null
+          expires_at?: string
+          fee_fiat?: number
+          fee_pct?: number
+          fiat_amount?: number
+          flagged_reason?: string | null
+          id?: string
+          instructions?: string
+          offer_id?: string
+          paid_at?: string | null
+          payment_method?: string
+          price?: number
+          release_txid?: string | null
+          released_at?: string | null
+          resolution?: string | null
+          resolved_by?: string | null
+          seller_id?: string
+          seller_seen_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "p2p_trades_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "p2p_offers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           confirm_before_order: boolean
