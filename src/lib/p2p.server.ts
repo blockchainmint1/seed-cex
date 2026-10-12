@@ -150,7 +150,7 @@ export async function statsFor(userIds: string[]): Promise<Record<string, Seller
   for (const id of userIds) {
     const mine = (trades ?? []).filter((t) => t.seller_id === id);
     const done = mine.filter((t) => t.status === "released");
-    const lost = mine.filter((t) => t.resolution === "refund_by_arbitration").length;
+    const lost = mine.filter((t) => t.resolution === "release_by_arbitration").length;
     const sellerFault = mine.filter((t) => t.resolution === "seller_cancelled").length + lost;
     const finished = done.length + sellerFault;
     const rel = done
