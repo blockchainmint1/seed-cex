@@ -20,11 +20,13 @@ export type Profile = {
   default_auth_hours: number;
   confirm_before_order: boolean;
   default_pair: string | null;
+  hm_member_id: string | null;
+  hm_status: string;
   created_at: string;
 };
 
 const COLS =
-  "id, display_name, timezone, telegram_chat_id, telegram_verified, notify_order_filled, notify_settlement, notify_settlement_failed, notify_auth_expiring, notify_deposit, notify_login, notify_weekly_digest, notify_p2p, default_auth_cap, default_auth_hours, confirm_before_order, default_pair, created_at";
+  "id, display_name, timezone, telegram_chat_id, telegram_verified, notify_order_filled, notify_settlement, notify_settlement_failed, notify_auth_expiring, notify_deposit, notify_login, notify_weekly_digest, notify_p2p, default_auth_cap, default_auth_hours, confirm_before_order, default_pair, hm_member_id, hm_status, created_at";
 
 export const getMyProfile = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
