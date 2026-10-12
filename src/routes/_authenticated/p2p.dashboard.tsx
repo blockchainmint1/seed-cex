@@ -10,7 +10,17 @@ import { ScorePill, mins } from "@/components/p2p/SellerBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { COUNTRIES, timeZones } from "@/lib/countries";
 import { fmtAgo } from "@/lib/format";
+
+function Select({ className = "", ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) {
+  return (
+    <select
+      className={`w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary ${className}`}
+      {...props}
+    />
+  );
+}
 
 export const Route = createFileRoute("/_authenticated/p2p/dashboard")({
   head: () => ({
