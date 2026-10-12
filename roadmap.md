@@ -18,3 +18,5 @@
 - [x] P2P: Telegram alerts (new buyer, paid, released, cancelled, expired, flagged, disputes, chat, uploads)
 - [x] P2P: receipt / screenshot uploads in trade chat (private, 8 MB, images + PDF)
 - [x] P2P: market-following prices (market ± margin, CMC feed, TSD = $1)
+- [x] Exchange Telegram alerts: order fills, settlement failures, settled trades, sign-ins, deposits (wallet-page sweep), expiring authorizations
+- [ ] Admin report/queue UI for P2P user reports (APIs exist, no page yet)
