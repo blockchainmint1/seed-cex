@@ -35,7 +35,18 @@ function Auth() {
   function honestMoney() {
     setError(null);
     const returnTo = `${window.location.origin}/sso`;
-    const url = `https://honest.money/sso-login?popup=1&return_to=${encodeURIComponent(returnTo)}`;
+    // After a deliberate sign-out, force the sign-in box even if an
+    // honest.money session somehow survives (HME sign-out rule #2).
+    let prompt = "";
+    try {
+      if (sessionStorage.getItem("seeds-signed-out")) {
+        prompt = "&prompt=login";
+        sessionStorage.removeItem("seeds-signed-out");
+      }
+    } catch {
+      /* private mode — best effort */
+    }
+    const url = `https://honest.money/sso-login?popup=1${prompt}&return_to=${encodeURIComponent(returnTo)}`;
     const w = window.open(url, "hm-sso", "width=440,height=720");
     if (!w) {
       window.location.href = url.replace("popup=1&", "");
