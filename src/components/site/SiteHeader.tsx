@@ -1,4 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, Moon, Sun } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
@@ -47,6 +48,7 @@ export function SiteHeader() {
   const { user, loading } = useSession();
   const { theme, toggle } = useTheme();
   const navigate = useNavigate();
+  const qc = useQueryClient();
 
   async function signOut() {
     await qc.cancelQueries();
