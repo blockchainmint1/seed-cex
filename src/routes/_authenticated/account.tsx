@@ -92,11 +92,15 @@ function AccountPage() {
 
   const patch = (v: Partial<Profile>) => setForm((f) => ({ ...f, ...v }));
 
+  const [savedFor, setSavedFor] = useState<string | null>(null);
+
   const mutate = useMutation({
-    mutationFn: (data: Record<string, unknown>) => save({ data }),
-    onSuccess: () => {
+    mutationFn: (vars: { section: string; data: Record<string, unknown> }) =>
+      save({ data: vars.data }),
+    onSuccess: (_r, vars) => {
       setErr(null);
-      setMsg("Saved.");
+      setMsg(null);
+      setSavedFor(vars.section);
       qc.invalidateQueries({ queryKey: ["my-profile"] });
     },
     onError: (e: Error) => {
@@ -104,6 +108,23 @@ function AccountPage() {
       setErr(e.message);
     },
   });
+
+  const saveBtn = (section: string, label: string) => (
+    <span className="inline-flex items-center gap-3">
+      <button
+        type="submit"
+        disabled={mutate.isPending}
+        className="rounded-sm bg-primary px-4 py-2 font-mono text-xs font-semibold tracking-wider text-primary-foreground uppercase hover:opacity-90 disabled:opacity-50"
+      >
+        {mutate.isPending ? "Saving…" : label}
+      </button>
+      {savedFor === section && !mutate.isPending ? (
+        <span className="inline-flex items-center gap-1 font-mono text-xs text-primary">
+          <Check className="h-3.5 w-3.5" /> Saved
+        </span>
+      ) : null}
+    </span>
+  );
 
   const tg = useMutation({
     mutationFn: async (action: "start" | "confirm" | "unlink" | "test") => {
@@ -205,16 +226,17 @@ function AccountPage() {
             placeholder="America/Chicago"
           />
         </label>
-        <button
-          onClick={() =>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
             mutate.mutate({
-              timezone: form.timezone?.trim() || "UTC",
-            })
-          }
-          className="rounded-sm bg-primary px-4 py-2 font-mono text-xs font-semibold tracking-wider text-primary-foreground uppercase hover:opacity-90"
+              section: "profile",
+              data: { timezone: form.timezone?.trim() || "UTC" },
+            });
+          }}
         >
-          Save profile
-        </button>
+          {saveBtn("profile", "Save profile")}
+        </form>
       </Section>
 
       <Section
@@ -296,14 +318,17 @@ function AccountPage() {
             </label>
           ))}
         </div>
-        <button
-          onClick={() =>
-            mutate.mutate(Object.fromEntries(NOTIFS.map(([k]) => [k, Boolean(form[k])])))
-          }
-          className="rounded-sm bg-primary px-4 py-2 font-mono text-xs font-semibold tracking-wider text-primary-foreground uppercase hover:opacity-90"
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            mutate.mutate({
+              section: "alerts",
+              data: Object.fromEntries(NOTIFS.map(([k]) => [k, Boolean(form[k])])),
+            });
+          }}
         >
-          Save alerts
-        </button>
+          {saveBtn("alerts", "Save alerts")}
+        </form>
       </Section>
 
       <Section
@@ -369,19 +394,22 @@ function AccountPage() {
             </span>
           </span>
         </label>
-        <button
-          onClick={() =>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
             mutate.mutate({
-              default_auth_cap: form.default_auth_cap ?? null,
-              default_auth_hours: form.default_auth_hours ?? 24,
-              default_pair: form.default_pair ?? null,
-              confirm_before_order: Boolean(form.confirm_before_order),
-            })
-          }
-          className="rounded-sm bg-primary px-4 py-2 font-mono text-xs font-semibold tracking-wider text-primary-foreground uppercase hover:opacity-90"
+              section: "defaults",
+              data: {
+                default_auth_cap: form.default_auth_cap ?? null,
+                default_auth_hours: form.default_auth_hours ?? 24,
+                default_pair: form.default_pair ?? null,
+                confirm_before_order: Boolean(form.confirm_before_order),
+              },
+            });
+          }}
         >
-          Save defaults
-        </button>
+          {saveBtn("defaults", "Save defaults")}
+        </form>
       </Section>
 
       <Section
