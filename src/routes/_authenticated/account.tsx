@@ -42,6 +42,7 @@ const NOTIFS = [
   ["notify_auth_expiring", "Authorization expiring", "A trading key is about to be wiped."],
   ["notify_deposit", "Deposit detected", "Funds landed in your trading branch."],
   ["notify_login", "New sign-in", "Someone signed into your account."],
+  ["notify_p2p", "P2P trades", "New buyer, payment sent, coins released, disputes, new chat messages."],
   ["notify_weekly_digest", "Weekly digest", "A Sunday summary of your trading."],
 ] as const;
 
