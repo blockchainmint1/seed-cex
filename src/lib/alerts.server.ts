@@ -114,7 +114,7 @@ async function remember(userId: string, s: Sighting): Promise<void> {
 
 /** Confirmed balance at every address this wallet controls, best-effort. */
 async function collectSightings(wallet: WalletRow): Promise<Sighting[]> {
-  const jobs: Array<Promise<Sighting | null>> = [];
+  const jobs: Array<Promise<Sighting | Sighting[] | null>> = [];
 
   // TEXITcoin and the Omni tokens that ride on it (TSD, wBTC, wLTC, wETH).
   if (wallet.txc_address) {
