@@ -49,8 +49,19 @@ export function SiteHeader() {
   const navigate = useNavigate();
 
   async function signOut() {
+    await qc.cancelQueries();
+    qc.clear();
+    // Remember this was a deliberate sign-out so the next SSO run forces the
+    // login box (prompt=login) instead of silently re-signing the member in.
+    try {
+      sessionStorage.setItem("seeds-signed-out", "1");
+    } catch {
+      /* private mode — best effort */
+    }
     await supabase.auth.signOut();
-    navigate({ to: "/" });
+    // HME rule: our sign-out only ends the Seeds session — also end the
+    // honest.money one, or the member gets signed right back in.
+    window.location.href = `https://honest.money/logout?return_to=${encodeURIComponent(window.location.origin + "/")}`;
   }
 
   return (
