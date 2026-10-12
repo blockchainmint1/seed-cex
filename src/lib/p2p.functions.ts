@@ -100,18 +100,26 @@ export const listOffers = createServerFn({ method: "GET" })
     return list;
   });
 
+/** Live reference prices so sellers can set "market ± margin". */
+export const getP2pMarketPrices = createServerFn({ method: "GET" }).handler(async () => {
+  const { marketPrice } = await engine();
+  const out: Record<string, number | null> = {};
+  await Promise.all(P2P_ASSET_IDS.map(async (a) => { out[a] = await marketPrice(a); }));
+  return out;
+});
+
 export const getSellerProfile = createServerFn({ method: "GET" })
   .inputValidator((i) => z.object({ handle: z.string().min(1).max(40) }).parse(i))
   .handler(async ({ data }) => {
     const db = await admin();
     const { data: p } = await db.from("p2p_profiles").select("*").ilike("handle", data.handle).maybeSingle();
     if (!p) return null;
-    const { statsFor } = await engine();
+    const { statsFor, effectivePrice } = await engine();
     const [stats, { data: offers }, { data: fb }, { data: history }] = await Promise.all([
       statsFor([p.user_id]),
       db
         .from("p2p_offers")
-        .select("id, asset, price, fee_pct, min_fiat, max_fiat, payment_methods, verified_balance, window_minutes")
+        .select("id, asset, price, price_mode, margin_pct, fee_pct, min_fiat, max_fiat, payment_methods, verified_balance, window_minutes")
         .eq("seller_id", p.user_id)
         .eq("active", true),
       db.from("p2p_feedback").select("from_id, positive, comment, created_at").eq("to_id", p.user_id).order("created_at", { ascending: false }).limit(50),
@@ -132,7 +140,9 @@ export const getSellerProfile = createServerFn({ method: "GET" })
       hours: p.hours,
       since: p.created_at,
       stats: stats[p.user_id],
-      offers: (offers ?? []).map((o) => ({ ...o, price: Number(o.price), verified_balance: Number(o.verified_balance) })),
+      offers: await Promise.all(
+        (offers ?? []).map(async (o) => ({ ...o, price: await effectivePrice(o), verified_balance: Number(o.verified_balance) })),
+      ),
       feedback: (fb ?? []).map((f) => ({ by: names[f.from_id], positive: f.positive, comment: f.comment, at: f.created_at })),
       history: (history ?? []).map((h) => ({
         asset: h.asset,
@@ -176,6 +186,8 @@ export const getMyP2p = createServerFn({ method: "GET" })
         id: o.id,
         asset: o.asset as P2pAsset,
         price: Number(o.price),
+        priceMode: (o.price_mode === "market" ? "market" : "fixed") as "fixed" | "market",
+        marginPct: Number(o.margin_pct),
         feePct: Number(o.fee_pct),
         minFiat: Number(o.min_fiat),
         maxFiat: Number(o.max_fiat),

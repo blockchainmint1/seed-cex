@@ -73,7 +73,7 @@ function Desk() {
             {d.offers.map((o) => (
               <li key={o.id} className="flex items-center justify-between gap-3 rounded-sm border border-border p-3">
                 <div>
-                  <div className="font-mono">{o.asset} @ ${o.price} <span className="text-xs text-muted-foreground">fee {o.feePct}% · ${o.minFiat}–${o.maxFiat}</span></div>
+                  <div className="font-mono">{o.asset} @ {o.priceMode === "market" ? `market ${o.marginPct >= 0 ? "+" : ""}${o.marginPct}%` : `$${o.price}`} <span className="text-xs text-muted-foreground">fee {o.feePct}% · ${o.minFiat}–${o.maxFiat}</span></div>
                   <div className={`flex items-center gap-1 font-mono text-[11px] ${o.verified > 0 ? "text-primary" : "text-destructive"}`}>
                     <BadgeCheck className="h-3 w-3" />
                     {o.verified > 0 ? `${o.verified} ${o.asset} verified & available` : `No verified ${o.asset} — authorize and fund your trading pocket on the Wallet page`}
@@ -155,9 +155,13 @@ function ProfileForm({ data }: { data: Data }) {
 function OfferForm({ offer, onDone }: { offer: OfferRow | null; onDone: () => void }) {
   const qc = useQueryClient();
   const save = useServerFn(saveOffer);
+  const fetchMarket = useServerFn(getP2pMarketPrices);
+  const market = useQuery({ queryKey: ["p2p-market-prices"], queryFn: () => fetchMarket(), refetchInterval: 60_000 });
   const [f, setF] = useState({
     asset: (offer?.asset ?? "TSD") as P2pAsset,
     price: String(offer?.price ?? "1"),
+    priceMode: (offer?.priceMode ?? "market") as "fixed" | "market",
+    marginPct: String(offer?.marginPct ?? "2"),
     feePct: String(offer?.feePct ?? "1"),
     minFiat: String(offer?.minFiat ?? "20"),
     maxFiat: String(offer?.maxFiat ?? "1000"),
@@ -176,7 +180,9 @@ function OfferForm({ offer, onDone }: { offer: OfferRow | null; onDone: () => vo
         data: {
           id: offer?.id,
           asset: f.asset,
-          price: Number(f.price),
+          price: f.priceMode === "market" && market.data?.[f.asset] ? +(market.data[f.asset]! * (1 + Number(f.marginPct) / 100)).toFixed(8) : Number(f.price),
+          priceMode: f.priceMode,
+          marginPct: Number(f.marginPct) || 0,
           feePct: Number(f.feePct),
           minFiat: Number(f.minFiat),
           maxFiat: Number(f.maxFiat),
@@ -205,7 +211,28 @@ function OfferForm({ offer, onDone }: { offer: OfferRow | null; onDone: () => vo
             </select>
           </label>
           <div className="grid grid-cols-2 gap-2">
-            <label><span className={lbl}>Price per coin (USD)</span><Input value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} /></label>
+            <div className="col-span-2">
+              <span className={lbl}>Price</span>
+              <div className="mt-1 flex rounded-sm border border-border text-xs">
+                {(["market", "fixed"] as const).map((m) => (
+                  <button key={m} type="button" onClick={() => setF({ ...f, priceMode: m })} className={`flex-1 px-2 py-1.5 ${f.priceMode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>
+                    {m === "market" ? "Follow the market" : "Fixed price"}
+                  </button>
+                ))}
+              </div>
+              {f.priceMode === "market" ? (
+                <div className="mt-2 grid grid-cols-2 items-end gap-2">
+                  <label><span className={lbl}>Above / below market %</span><Input value={f.marginPct} onChange={(e) => setF({ ...f, marginPct: e.target.value })} /></label>
+                  <p className="pb-2 font-mono text-xs text-muted-foreground">
+                    {market.data?.[f.asset]
+                      ? <>Market ${market.data[f.asset]!.toLocaleString(undefined, { maximumFractionDigits: 6 })} → you sell at <b className="text-foreground">${(market.data[f.asset]! * (1 + (Number(f.marginPct) || 0) / 100)).toLocaleString(undefined, { maximumFractionDigits: 6 })}</b></>
+                      : "Market price unavailable right now"}
+                  </p>
+                </div>
+              ) : (
+                <label className="mt-2 block"><span className={lbl}>Price per coin (USD)</span><Input value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} /></label>
+              )}
+            </div>
             <label><span className={lbl}>Your fee %</span><Input value={f.feePct} onChange={(e) => setF({ ...f, feePct: e.target.value })} /></label>
             <label><span className={lbl}>Min trade $</span><Input value={f.minFiat} onChange={(e) => setF({ ...f, minFiat: e.target.value })} /></label>
             <label><span className={lbl}>Max trade $</span><Input value={f.maxFiat} onChange={(e) => setF({ ...f, maxFiat: e.target.value })} /></label>
