@@ -131,9 +131,18 @@ function ProfileForm({ data }: { data: Data }) {
   const qc = useQueryClient();
   const save = useServerFn(saveP2pProfile);
   const p = data.profile;
-  const [f, setF] = useState({ handle: "", bio: "", location: "", languages: "", hours: "", quick: "" });
+  const [f, setF] = useState({ handle: "", bio: "", country: "", languages: "", hoursFrom: "", hoursTo: "", tz: "", quick: "" });
   useEffect(() => {
-    if (p) setF({ handle: p.handle, bio: p.bio, location: p.location, languages: p.languages.join(", "), hours: p.hours, quick: (p.quick_replies ?? []).join("\n") });
+    if (p) setF({
+      handle: p.handle,
+      bio: p.bio,
+      country: p.country ?? "",
+      languages: p.languages.join(", "),
+      hoursFrom: p.hours_from != null ? String(p.hours_from) : "",
+      hoursTo: p.hours_to != null ? String(p.hours_to) : "",
+      tz: p.tz ?? "",
+      quick: (p.quick_replies ?? []).join("\n"),
+    });
   }, [p]);
   useEffect(() => {
     if (!p && data.displayName) {
@@ -143,7 +152,7 @@ function ProfileForm({ data }: { data: Data }) {
   }, [p, data.displayName]);
   const m = useMutation({
     mutationFn: () =>
-      save({ data: { handle: f.handle, bio: f.bio, location: f.location, hours: f.hours, languages: f.languages.split(",").map((s) => s.trim()).filter(Boolean), quickReplies: f.quick.split("\n").map((s) => s.trim()).filter(Boolean).slice(0, 10) } }),
+      save({ data: { handle: f.handle, bio: f.bio, country: f.country, hoursFrom: f.hoursFrom === "" ? null : Number(f.hoursFrom), hoursTo: f.hoursTo === "" ? null : Number(f.hoursTo), tz: f.tz, languages: f.languages.split(",").map((s) => s.trim()).filter(Boolean), quickReplies: f.quick.split("\n").map((s) => s.trim()).filter(Boolean).slice(0, 10) } }),
     onSuccess: () => { toast.success("Profile saved"); qc.invalidateQueries({ queryKey: ["p2p-me"] }); },
     onError: (e) => toast.error((e as Error).message),
   });
@@ -161,9 +170,31 @@ function ProfileForm({ data }: { data: Data }) {
           <Input placeholder="Handle (public name)" value={f.handle} onChange={(e) => setF({ ...f, handle: e.target.value })} />
         </label>
         <Textarea placeholder="About you — why buyers should trust you" value={f.bio} onChange={(e) => setF({ ...f, bio: e.target.value })} />
-        <Input placeholder="Location (e.g. Austin, TX)" value={f.location} onChange={(e) => setF({ ...f, location: e.target.value })} />
+        <label className="block space-y-1">
+          <span className="font-mono text-[11px] text-muted-foreground uppercase">Country</span>
+          <Select value={f.country} onChange={(e) => setF({ ...f, country: e.target.value })}>
+            <option value="">Choose a country…</option>
+            {COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </Select>
+        </label>
         <Input placeholder="Languages (comma separated)" value={f.languages} onChange={(e) => setF({ ...f, languages: e.target.value })} />
-        <Input placeholder="Hours you're online (e.g. 9am–9pm CT)" value={f.hours} onChange={(e) => setF({ ...f, hours: e.target.value })} />
+        <div className="space-y-1">
+          <span className="font-mono text-[11px] text-muted-foreground uppercase">Hours you're online</span>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <Select value={f.hoursFrom} onChange={(e) => setF({ ...f, hoursFrom: e.target.value })}>
+              <option value="">From…</option>
+              {Array.from({ length: 24 }, (_, h) => <option key={h} value={h}>{String(h).padStart(2, "0")}:00</option>)}
+            </Select>
+            <Select value={f.hoursTo} onChange={(e) => setF({ ...f, hoursTo: e.target.value })}>
+              <option value="">To…</option>
+              {Array.from({ length: 24 }, (_, h) => <option key={h} value={h}>{String(h).padStart(2, "0")}:00</option>)}
+            </Select>
+            <Select value={f.tz} onChange={(e) => setF({ ...f, tz: e.target.value })} className="col-span-2 sm:col-span-1">
+              <option value="">Time zone…</option>
+              {timeZones().map((z) => <option key={z} value={z}>{z.replace(/_/g, " ")}</option>)}
+            </Select>
+          </div>
+        </div>
         <label className="block"><span className="font-mono text-[11px] text-muted-foreground uppercase">Quick replies (one per line — tap to send in chat)</span>
           <Textarea rows={3} placeholder={"Payment received, releasing now.\nPlease include the memo code."} value={f.quick} onChange={(e) => setF({ ...f, quick: e.target.value })} />
         </label>
