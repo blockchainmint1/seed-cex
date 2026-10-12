@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { BadgeCheck } from "lucide-react";
 import { toast } from "sonner";
-import { getMyP2p, getP2pMarketPrices, saveOffer, saveP2pProfile } from "@/lib/p2p.functions";
+import { blockTrader, getMyP2p, getP2pMarketPrices, saveOffer, saveP2pProfile, setP2pAway } from "@/lib/p2p.functions";
 import { P2P_ASSET_IDS, PAYMENT_METHODS, STATUS_LABEL, type P2pAsset } from "@/lib/p2p-config";
 import { ScorePill, mins } from "@/components/p2p/SellerBadge";
 import { Button } from "@/components/ui/button";
@@ -55,7 +55,10 @@ function Desk() {
           <h1 className="font-display text-3xl font-extrabold">My P2P desk</h1>
           <p className="text-sm text-muted-foreground">Sell from your own trading pocket. Buyers pay you directly.</p>
         </div>
-        <Link to="/p2p"><Button variant="outline">Marketplace</Button></Link>
+        <div className="flex gap-2">
+          {d.profile ? <AwayToggle away={d.profile.away} /> : null}
+          <Link to="/p2p"><Button variant="outline">Marketplace</Button></Link>
+        </div>
       </div>
 
       {live.length ? (
@@ -73,11 +76,11 @@ function Desk() {
             {d.offers.map((o) => (
               <li key={o.id} className="flex items-center justify-between gap-3 rounded-sm border border-border p-3">
                 <div>
-                  <div className="font-mono">{o.asset} @ {o.priceMode === "market" ? `market ${o.marginPct >= 0 ? "+" : ""}${o.marginPct}%` : `$${o.price}`} <span className="text-xs text-muted-foreground">fee {o.feePct}% · ${o.minFiat}–${o.maxFiat}</span></div>
-                  <div className={`flex items-center gap-1 font-mono text-[11px] ${o.verified > 0 ? "text-primary" : "text-destructive"}`}>
+                  <div className="font-mono"><span className={o.side === "buy" ? "text-primary" : "text-destructive"}>{o.side === "buy" ? "BUY" : "SELL"}</span> {o.asset} @ {o.priceMode === "market" ? `market ${o.marginPct >= 0 ? "+" : ""}${o.marginPct}%` : `$${o.price}`} <span className="text-xs text-muted-foreground">fee {o.feePct}% · ${o.minFiat}–${o.maxFiat}</span></div>
+                  {o.side === "sell" ? <div className={`flex items-center gap-1 font-mono text-[11px] ${o.verified > 0 ? "text-primary" : "text-destructive"}`}>
                     <BadgeCheck className="h-3 w-3" />
                     {o.verified > 0 ? `${o.verified} ${o.asset} verified & available` : `No verified ${o.asset} — authorize and fund your trading pocket on the Wallet page`}
-                  </div>
+                  </div> : null}
                   <div className="text-xs text-muted-foreground">{o.methods.join(", ")} · {o.active ? "Live" : "Paused"}</div>
                 </div>
                 <Button size="sm" variant="outline" onClick={() => setEditing(o)}>Edit</Button>
@@ -90,6 +93,12 @@ function Desk() {
         </Panel>
       </div>
       {editing ? <OfferForm offer={editing === "new" ? null : editing} onDone={() => setEditing(null)} /> : null}
+
+      {d.blocked.length ? (
+        <Panel title={`Blocked traders (${d.blocked.length})`}>
+          <ul className="flex flex-wrap gap-2">{d.blocked.map((b) => <BlockedChip key={b.id} id={b.id} handle={b.handle} />)}</ul>
+        </Panel>
+      ) : null}
 
       <Panel title="All my P2P trades">
         {d.trades.length ? <TradeList trades={d.trades} /> : <p className="text-sm text-muted-foreground">No trades yet.</p>}
@@ -122,13 +131,13 @@ function ProfileForm({ data }: { data: Data }) {
   const qc = useQueryClient();
   const save = useServerFn(saveP2pProfile);
   const p = data.profile;
-  const [f, setF] = useState({ handle: "", bio: "", location: "", languages: "", hours: "" });
+  const [f, setF] = useState({ handle: "", bio: "", location: "", languages: "", hours: "", quick: "" });
   useEffect(() => {
-    if (p) setF({ handle: p.handle, bio: p.bio, location: p.location, languages: p.languages.join(", "), hours: p.hours });
+    if (p) setF({ handle: p.handle, bio: p.bio, location: p.location, languages: p.languages.join(", "), hours: p.hours, quick: (p.quick_replies ?? []).join("\n") });
   }, [p]);
   const m = useMutation({
     mutationFn: () =>
-      save({ data: { ...f, languages: f.languages.split(",").map((s) => s.trim()).filter(Boolean) } }),
+      save({ data: { handle: f.handle, bio: f.bio, location: f.location, hours: f.hours, languages: f.languages.split(",").map((s) => s.trim()).filter(Boolean), quickReplies: f.quick.split("\n").map((s) => s.trim()).filter(Boolean).slice(0, 10) } }),
     onSuccess: () => { toast.success("Profile saved"); qc.invalidateQueries({ queryKey: ["p2p-me"] }); },
     onError: (e) => toast.error((e as Error).message),
   });
@@ -146,7 +155,10 @@ function ProfileForm({ data }: { data: Data }) {
         <Input placeholder="Location (e.g. Austin, TX)" value={f.location} onChange={(e) => setF({ ...f, location: e.target.value })} />
         <Input placeholder="Languages (comma separated)" value={f.languages} onChange={(e) => setF({ ...f, languages: e.target.value })} />
         <Input placeholder="Hours you're online (e.g. 9am–9pm CT)" value={f.hours} onChange={(e) => setF({ ...f, hours: e.target.value })} />
-        <Button onClick={() => m.mutate()} disabled={m.isPending}>{p ? "Save profile" : "Create seller profile"}</Button>
+        <label className="block"><span className="font-mono text-[11px] text-muted-foreground uppercase">Quick replies (one per line — tap to send in chat)</span>
+          <Textarea rows={3} placeholder={"Payment received, releasing now.\nPlease include the memo code."} value={f.quick} onChange={(e) => setF({ ...f, quick: e.target.value })} />
+        </label>
+        <Button onClick={() => m.mutate()} disabled={m.isPending}>{p ? "Save profile" : "Create trader profile"}</Button>
       </div>
     </Panel>
   );
@@ -171,6 +183,10 @@ function OfferForm({ offer, onDone }: { offer: OfferRow | null; onDone: () => vo
     terms: offer?.terms ?? "",
     windowMinutes: String(offer?.windowMinutes ?? 30),
     active: offer?.active ?? true,
+    side: (offer?.side ?? "sell") as "sell" | "buy",
+    autoReply: offer?.autoReply ?? "",
+    newBuyerMax: String(offer?.newBuyerMax ?? 0),
+    minTrades: String(offer?.minTrades ?? 0),
   });
   const toggle = (m: string) =>
     setF({ ...f, methods: f.methods.includes(m) ? f.methods.filter((x) => x !== m) : [...f.methods, m] });
@@ -191,10 +207,14 @@ function OfferForm({ offer, onDone }: { offer: OfferRow | null; onDone: () => vo
           terms: f.terms,
           windowMinutes: Number(f.windowMinutes),
           active: f.active,
+          side: f.side,
+          autoReply: f.autoReply,
+          newBuyerMax: Number(f.newBuyerMax) || 0,
+          minTrades: Number(f.minTrades) || 0,
         },
       }),
     onSuccess: (r) => {
-      toast.success(r.verified ? `Saved — ${r.verified} ${f.asset} verified` : "Saved, but no verified funds yet");
+      toast.success(f.side === "buy" ? "Buy ad saved" : r.verified ? `Saved — ${r.verified} ${f.asset} verified` : "Saved, but no verified funds yet");
       qc.invalidateQueries({ queryKey: ["p2p-me"] });
       onDone();
     },
@@ -205,7 +225,14 @@ function OfferForm({ offer, onDone }: { offer: OfferRow | null; onDone: () => vo
     <Panel title={offer ? "Edit offer" : "New offer"} right={<button onClick={onDone} className="font-mono text-xs text-muted-foreground">Close</button>}>
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-3">
-          <label className="block"><span className={lbl}>Coin you're selling</span>
+          <div className="flex rounded-sm border border-border text-xs">
+            {(["sell", "buy"] as const).map((x) => (
+              <button key={x} type="button" disabled={Boolean(offer)} onClick={() => setF({ ...f, side: x })} className={`flex-1 px-2 py-1.5 ${f.side === x ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>
+                {x === "sell" ? "I want to sell" : "I want to buy"}
+              </button>
+            ))}
+          </div>
+          <label className="block"><span className={lbl}>{f.side === "sell" ? "Coin you're selling" : "Coin you want to buy"}</span>
             <select value={f.asset} onChange={(e) => setF({ ...f, asset: e.target.value as P2pAsset })} className="mt-1 h-9 w-full rounded-sm border border-border bg-background px-2">
               {P2P_ASSET_IDS.map((a) => <option key={a}>{a}</option>)}
             </select>
@@ -250,9 +277,23 @@ function OfferForm({ offer, onDone }: { offer: OfferRow | null; onDone: () => vo
           </div>
         </div>
         <div className="space-y-3">
+          {f.side === "buy" ? (
+            <p className="rounded-sm border border-border p-2 text-xs text-muted-foreground">Sellers who answer your ad send you their own payment details. Coins are reserved in their pocket before you pay.</p>
+          ) : null}
+          {f.side === "sell" ? <>
           <label className="block"><span className={lbl}>Payment instructions (only shown to your buyer)</span>
             <Textarea rows={6} placeholder={"Zelle: you@email.com (Jane D.)\nPut the trade code in the memo. No crypto words in the memo."} value={f.instructions} onChange={(e) => setF({ ...f, instructions: e.target.value })} />
           </label>
+          <label className="block"><span className={lbl}>Auto-reply (sent the moment a trade opens)</span>
+            <Textarea rows={2} placeholder="Hi! I'm online — send payment and upload the receipt, I'll release fast." value={f.autoReply} onChange={(e) => setF({ ...f, autoReply: e.target.value })} />
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <label><span className={lbl}>New buyer max $ (0 = no limit)</span><Input value={f.newBuyerMax} onChange={(e) => setF({ ...f, newBuyerMax: e.target.value })} /></label>
+            <label><span className={lbl}>Min trades required</span><Input value={f.minTrades} onChange={(e) => setF({ ...f, minTrades: e.target.value })} /></label>
+          </div>
+          </> : (
+            <label className="block"><span className={lbl}>Min trades a seller needs</span><Input value={f.minTrades} onChange={(e) => setF({ ...f, minTrades: e.target.value })} /></label>
+          )}
           <label className="block"><span className={lbl}>Public terms</span>
             <Textarea rows={3} placeholder="First-time buyers max $200. Same-name accounts only." value={f.terms} onChange={(e) => setF({ ...f, terms: e.target.value })} />
           </label>
@@ -260,5 +301,32 @@ function OfferForm({ offer, onDone }: { offer: OfferRow | null; onDone: () => vo
         </div>
       </div>
     </Panel>
+  );
+}
+
+function AwayToggle({ away }: { away: boolean }) {
+  const qc = useQueryClient();
+  const set = useServerFn(setP2pAway);
+  const m = useMutation({
+    mutationFn: () => set({ data: { away: !away } }),
+    onSuccess: () => { toast.success(away ? "You're online — ads are live" : "Away — your ads are hidden"); qc.invalidateQueries({ queryKey: ["p2p-me"] }); },
+    onError: (e) => toast.error((e as Error).message),
+  });
+  return (
+    <Button variant={away ? "outline" : "default"} disabled={m.isPending} onClick={() => m.mutate()}>
+      <span className={`mr-2 inline-block h-2 w-2 rounded-full ${away ? "bg-muted-foreground" : "bg-primary-foreground"}`} />
+      {away ? "Away (ads hidden)" : "Online"}
+    </Button>
+  );
+}
+
+function BlockedChip({ id, handle }: { id: string; handle: string }) {
+  const qc = useQueryClient();
+  const block = useServerFn(blockTrader);
+  const m = useMutation({ mutationFn: () => block({ data: { userId: id, unblock: true } }), onSuccess: () => qc.invalidateQueries({ queryKey: ["p2p-me"] }) });
+  return (
+    <li className="flex items-center gap-2 rounded-sm border border-border px-2 py-1 text-xs">
+      {handle} <button className="text-primary" onClick={() => m.mutate()}>Unblock</button>
+    </li>
   );
 }

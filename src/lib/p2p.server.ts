@@ -54,10 +54,11 @@ export async function lockedAmount(sellerId: string, asset: string, excludeTrade
 export async function refreshOffer(offerId: string) {
   const { data: offer } = await supabaseAdmin
     .from("p2p_offers")
-    .select("id, seller_id, asset")
+    .select("id, seller_id, asset, side")
     .eq("id", offerId)
     .maybeSingle();
   if (!offer) return null;
+  if (offer.side === "buy") return 0; // buy ads have no coins to verify
   const bal = await pocketBalance(offer.seller_id, offer.asset as P2pAsset);
   const locked = await lockedAmount(offer.seller_id, offer.asset);
   const available = Math.max(0, (bal ?? 0) - locked);

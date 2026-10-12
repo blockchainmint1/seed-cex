@@ -318,6 +318,24 @@ export type Database = {
         }
         Relationships: []
       }
+      p2p_blocks: {
+        Row: {
+          blocked_id: string
+          blocker_id: string
+          created_at: string
+        }
+        Insert: {
+          blocked_id: string
+          blocker_id: string
+          created_at?: string
+        }
+        Update: {
+          blocked_id?: string
+          blocker_id?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
       p2p_dispute_votes: {
         Row: {
           created_at: string
@@ -456,16 +474,20 @@ export type Database = {
         Row: {
           active: boolean
           asset: string
+          auto_reply: string
           created_at: string
           fee_pct: number
           id: string
           margin_pct: number
           max_fiat: number
+          min_counterparty_trades: number
           min_fiat: number
+          new_buyer_max_fiat: number
           payment_methods: string[]
           price: number
           price_mode: string
           seller_id: string
+          side: string
           terms: string
           updated_at: string
           verified_at: string | null
@@ -475,16 +497,20 @@ export type Database = {
         Insert: {
           active?: boolean
           asset: string
+          auto_reply?: string
           created_at?: string
           fee_pct?: number
           id?: string
           margin_pct?: number
           max_fiat?: number
+          min_counterparty_trades?: number
           min_fiat?: number
+          new_buyer_max_fiat?: number
           payment_methods?: string[]
           price: number
           price_mode?: string
           seller_id: string
+          side?: string
           terms?: string
           updated_at?: string
           verified_at?: string | null
@@ -494,16 +520,20 @@ export type Database = {
         Update: {
           active?: boolean
           asset?: string
+          auto_reply?: string
           created_at?: string
           fee_pct?: number
           id?: string
           margin_pct?: number
           max_fiat?: number
+          min_counterparty_trades?: number
           min_fiat?: number
+          new_buyer_max_fiat?: number
           payment_methods?: string[]
           price?: number
           price_mode?: string
           seller_id?: string
+          side?: string
           terms?: string
           updated_at?: string
           verified_at?: string | null
@@ -514,34 +544,76 @@ export type Database = {
       }
       p2p_profiles: {
         Row: {
+          away: boolean
           bio: string
           created_at: string
           handle: string
           hours: string
           languages: string[]
+          last_seen_at: string | null
           location: string
+          payment_details: Json
+          quick_replies: string[]
           updated_at: string
           user_id: string
         }
         Insert: {
+          away?: boolean
           bio?: string
           created_at?: string
           handle: string
           hours?: string
           languages?: string[]
+          last_seen_at?: string | null
           location?: string
+          payment_details?: Json
+          quick_replies?: string[]
           updated_at?: string
           user_id: string
         }
         Update: {
+          away?: boolean
           bio?: string
           created_at?: string
           handle?: string
           hours?: string
           languages?: string[]
+          last_seen_at?: string | null
           location?: string
+          payment_details?: Json
+          quick_replies?: string[]
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      p2p_reports: {
+        Row: {
+          created_at: string
+          id: string
+          reason: string
+          reported_id: string
+          reporter_id: string
+          status: string
+          trade_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          reason: string
+          reported_id: string
+          reporter_id: string
+          status?: string
+          trade_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          reason?: string
+          reported_id?: string
+          reporter_id?: string
+          status?: string
+          trade_id?: string | null
         }
         Relationships: []
       }

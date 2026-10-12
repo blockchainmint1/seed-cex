@@ -4,8 +4,9 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, Copy, FileText, Paperclip } from "lucide-react";
 import { toast } from "sonner";
-import { getP2pTrade, leaveFeedback, p2pAction, resolveDispute, sendP2pMessage, uploadP2pReceipt } from "@/lib/p2p.functions";
-import { STATUS_LABEL } from "@/lib/p2p-config";
+import { blockTrader, reportTrader, getP2pTrade, leaveFeedback, p2pAction, resolveDispute, sendP2pMessage, uploadP2pReceipt } from "@/lib/p2p.functions";
+import { GENERAL_TIPS, METHOD_TIPS, STATUS_LABEL } from "@/lib/p2p-config";
+import { ShieldAlert } from "lucide-react";
 import { SellerBadge } from "@/components/p2p/SellerBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,6 +63,10 @@ function TradeRoom() {
     onSuccess: () => { setMsg(""); toast.success("Uploaded"); refresh(); },
     onError: err,
   });
+  const block = useServerFn(blockTrader);
+  const report = useServerFn(reportTrader);
+  const blockM = useMutation({ mutationFn: (unblock: boolean) => block({ data: { tradeId: id, unblock } }), onSuccess: () => { toast.success("Updated"); refresh(); }, onError: err });
+  const reportM = useMutation({ mutationFn: (reason: string) => report({ data: { tradeId: id, reason } }), onSuccess: () => toast.success("Report sent to Seeds admins"), onError: err });
   const [comment, setComment] = useState("");
   const feedback = useMutation({ mutationFn: (positive: boolean) => fb({ data: { id, positive, comment } }), onSuccess: refresh, onError: err });
   const rule = useMutation({ mutationFn: (outcome: "release" | "refund") => resolve({ data: { id, outcome } }), onSuccess: refresh, onError: err });
@@ -83,6 +88,31 @@ function TradeRoom() {
           </h1>
           <span className="rounded-sm border border-primary px-2 py-1 font-mono text-xs text-primary uppercase">{STATUS_LABEL[t.status] ?? t.status}</span>
         </div>
+
+        {t.role !== "admin" ? (
+          <section className="space-y-2 rounded-sm border border-border bg-surface p-4 text-sm">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="flex items-center gap-2 font-display text-sm font-bold tracking-widest uppercase"><ShieldAlert className="h-4 w-4 text-primary" /> Stay safe</h2>
+              <span className="font-mono text-[11px] text-muted-foreground">
+                {buyer ? t.seller.handle : t.buyer} is {t.safety.counterpartyOnline ? <b className="text-primary">online</b> : "offline"}
+                {t.safety.counterpartyHme ? " · HME member" : ""}
+              </span>
+            </div>
+            {t.safety.firstTradeTogether ? (
+              <p className="rounded-sm border border-primary/40 bg-primary/5 p-2">First trade between you two. Go slow and keep everything in this chat.</p>
+            ) : null}
+            {seller && t.safety.buyerCompleted < 3 ? (
+              <p className="rounded-sm border border-destructive/40 bg-destructive/5 p-2 text-destructive">New buyer — {t.safety.buyerCompleted} completed trades. Double-check the payment really landed before releasing.</p>
+            ) : null}
+            <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
+              {[...(METHOD_TIPS[t.method] ?? []), ...GENERAL_TIPS].map((x) => <li key={x}>{x}</li>)}
+            </ul>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <Button size="sm" variant="outline" disabled={blockM.isPending} onClick={() => blockM.mutate(t.safety.blocked)}>{t.safety.blocked ? "Unblock" : "Block"} this trader</Button>
+              <Button size="sm" variant="outline" disabled={reportM.isPending} onClick={() => { const r = window.prompt("What happened? Seeds admins will review."); if (r && r.trim().length >= 5) reportM.mutate(r.trim()); }}>Report</Button>
+            </div>
+          </section>
+        ) : null}
 
         {t.flagged ? (
           <div className="flex gap-2 rounded-sm border border-destructive bg-destructive/10 p-3 text-sm text-destructive">
@@ -194,6 +224,13 @@ function TradeRoom() {
             </div>
           ))}
         </div>
+        {!ended && t.quickReplies.length ? (
+          <div className="flex flex-wrap gap-1 border-t border-border px-3 pt-3">
+            {t.quickReplies.map((r) => (
+              <button key={r} type="button" onClick={() => setMsg(r)} className="rounded-sm border border-border px-2 py-0.5 text-[11px] text-muted-foreground hover:text-foreground">{r}</button>
+            ))}
+          </div>
+        ) : null}
         {!ended ? (
           <form className="flex gap-2 border-t border-border p-3" onSubmit={(e) => { e.preventDefault(); if (msg.trim()) chat.mutate(); }}>
             <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) attach.mutate(f); e.target.value = ""; }} />
