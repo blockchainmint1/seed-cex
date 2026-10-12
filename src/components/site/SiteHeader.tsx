@@ -76,6 +76,13 @@ export function SiteHeader() {
             Markets
           </Link>
           <Link
+            to="/p2p"
+            className="text-muted-foreground transition-colors hover:text-foreground"
+            activeProps={{ className: "text-primary" }}
+          >
+            P2P
+          </Link>
+          <Link
             to="/wallet"
             className="text-muted-foreground transition-colors hover:text-foreground"
             activeProps={{ className: "text-primary" }}

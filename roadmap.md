@@ -14,3 +14,5 @@
 - [x] Removed Withdraw column from spot balances (reads as custodial); withdrawal history panel retained
 - [x] "Locked (trading)" column: balance sitting in the authorized trading branch per asset
 - [x] Nav: dropped Admin link, ABOUT/PROOF uppercase
+- [x] P2P marketplace (/p2p): seller profiles, verified-fund offers, trade room + chat, feedback, ranking, community jury + admin rulings
+- [ ] P2P: Telegram alerts for new trade / paid / released
