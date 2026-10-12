@@ -156,6 +156,5 @@ export function json(body: unknown, status = 200): Response {
 }
 
 export function linkDomainFor(request: Request): string {
-  const host = new URL(request.url).host;
-  return host === LINK_DOMAIN || host.endsWith(".lovable.app") || host.startsWith("localhost") ? LINK_DOMAIN : host;
+  return new URL(request.url).host;
 }
