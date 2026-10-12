@@ -394,19 +394,22 @@ function AccountPage() {
             </span>
           </span>
         </label>
-        <button
-          onClick={() =>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
             mutate.mutate({
-              default_auth_cap: form.default_auth_cap ?? null,
-              default_auth_hours: form.default_auth_hours ?? 24,
-              default_pair: form.default_pair ?? null,
-              confirm_before_order: Boolean(form.confirm_before_order),
-            })
-          }
-          className="rounded-sm bg-primary px-4 py-2 font-mono text-xs font-semibold tracking-wider text-primary-foreground uppercase hover:opacity-90"
+              section: "defaults",
+              data: {
+                default_auth_cap: form.default_auth_cap ?? null,
+                default_auth_hours: form.default_auth_hours ?? 24,
+                default_pair: form.default_pair ?? null,
+                confirm_before_order: Boolean(form.confirm_before_order),
+              },
+            });
+          }}
         >
-          Save defaults
-        </button>
+          {saveBtn("defaults", "Save defaults")}
+        </form>
       </Section>
 
       <Section
