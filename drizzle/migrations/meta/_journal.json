@@ -50,6 +50,13 @@
       "when": 1791822198112,
       "tag": "0006_alert_state",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791835873691,
+      "tag": "0007_p2p_profile_country_tz",
+      "breakpoints": true
     }
   ]
 }
