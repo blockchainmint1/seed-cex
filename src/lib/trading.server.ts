@@ -123,7 +123,7 @@ export async function matchOrder(userId: string, pair: string, input: PlaceOrder
 
     remaining -= fillAmount;
     tradeIds.push(trade.id);
-    fills.push({ makerId: maker.user_id, amount: fillAmount, price: fillPrice });
+    if (maker.user_id) fills.push({ makerId: maker.user_id, amount: fillAmount, price: fillPrice });
   }
 
   const takerFilled = input.amount - remaining;

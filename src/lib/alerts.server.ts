@@ -151,12 +151,13 @@ async function collectSightings(wallet: WalletRow): Promise<Sighting[]> {
   }
 
   // Bitcoin mainnet (the native side of the wrap desk).
-  if (wallet.btc_address) {
+  const btcAddress = wallet.btc_address;
+  if (btcAddress) {
     jobs.push(
       (async () => {
         try {
           const { fetchBtcBalance } = await import("./btc/io.server");
-          const bal = await fetchBtcBalance(wallet.btc_address);
+          const bal = await fetchBtcBalance(btcAddress);
           return bal.online ? { asset: "BTC", label: "BTC", amount: bal.confirmed } : null;
         } catch {
           return null;
