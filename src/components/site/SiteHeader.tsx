@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, Moon, Sun } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,7 +47,6 @@ function NavMenu({ label, items }: { label: string; items: { label: string; to: 
 export function SiteHeader() {
   const { user, loading } = useSession();
   const { theme, toggle } = useTheme();
-  const navigate = useNavigate();
   const qc = useQueryClient();
 
   async function signOut() {
