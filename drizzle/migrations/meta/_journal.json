@@ -29,6 +29,13 @@
       "when": 1791813304554,
       "tag": "0003_p2p_marketplace",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791814778532,
+      "tag": "0004_p2p_alerts_uploads_market_price",
+      "breakpoints": true
     }
   ]
 }

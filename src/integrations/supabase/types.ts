@@ -393,6 +393,8 @@ export type Database = {
       }
       p2p_messages: {
         Row: {
+          attachment_name: string | null
+          attachment_path: string | null
           body: string
           created_at: string
           id: string
@@ -400,6 +402,8 @@ export type Database = {
           trade_id: string
         }
         Insert: {
+          attachment_name?: string | null
+          attachment_path?: string | null
           body: string
           created_at?: string
           id?: string
@@ -407,6 +411,8 @@ export type Database = {
           trade_id: string
         }
         Update: {
+          attachment_name?: string | null
+          attachment_path?: string | null
           body?: string
           created_at?: string
           id?: string
@@ -453,10 +459,12 @@ export type Database = {
           created_at: string
           fee_pct: number
           id: string
+          margin_pct: number
           max_fiat: number
           min_fiat: number
           payment_methods: string[]
           price: number
+          price_mode: string
           seller_id: string
           terms: string
           updated_at: string
@@ -470,10 +478,12 @@ export type Database = {
           created_at?: string
           fee_pct?: number
           id?: string
+          margin_pct?: number
           max_fiat?: number
           min_fiat?: number
           payment_methods?: string[]
           price: number
+          price_mode?: string
           seller_id: string
           terms?: string
           updated_at?: string
@@ -487,10 +497,12 @@ export type Database = {
           created_at?: string
           fee_pct?: number
           id?: string
+          margin_pct?: number
           max_fiat?: number
           min_fiat?: number
           payment_methods?: string[]
           price?: number
+          price_mode?: string
           seller_id?: string
           terms?: string
           updated_at?: string
@@ -643,6 +655,7 @@ export type Database = {
           notify_deposit: boolean
           notify_login: boolean
           notify_order_filled: boolean
+          notify_p2p: boolean
           notify_settlement: boolean
           notify_settlement_failed: boolean
           notify_weekly_digest: boolean
@@ -669,6 +682,7 @@ export type Database = {
           notify_deposit?: boolean
           notify_login?: boolean
           notify_order_filled?: boolean
+          notify_p2p?: boolean
           notify_settlement?: boolean
           notify_settlement_failed?: boolean
           notify_weekly_digest?: boolean
@@ -695,6 +709,7 @@ export type Database = {
           notify_deposit?: boolean
           notify_login?: boolean
           notify_order_filled?: boolean
+          notify_p2p?: boolean
           notify_settlement?: boolean
           notify_settlement_failed?: boolean
           notify_weekly_digest?: boolean
