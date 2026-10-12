@@ -308,8 +308,9 @@ function AccountPage() {
 
       <Section
         title="Trading defaults"
-        desc="Pre-fills the authorization form and the order ticket. It never raises a cap on its own."
+        desc="Pre-fills the authorization form and the order ticket. Caps and expiry apply to vault authorizations — a linked HME Wallet pocket runs until you revoke."
       >
+
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block space-y-1">
             <span className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
@@ -383,14 +384,18 @@ function AccountPage() {
         </button>
       </Section>
 
-      <Section title="Keys & access" desc="Your vault password and bot keys live behind their own screens.">
+      <Section
+        title="Keys & access"
+        desc="Your HME Wallet trading pocket, vault password and bot keys live behind their own screens."
+      >
         <div className="flex flex-wrap gap-3">
           <Link
             to="/wallet"
             className="inline-flex items-center gap-2 rounded-sm border border-border px-4 py-2 font-mono text-xs uppercase hover:border-primary hover:text-primary"
           >
-            <Wallet className="h-3.5 w-3.5" /> Vault, authorizations & password
+            <Wallet className="h-3.5 w-3.5" /> Wallet link, authorizations & password
           </Link>
+
           <Link
             to="/api-keys"
             className="inline-flex items-center gap-2 rounded-sm border border-border px-4 py-2 font-mono text-xs uppercase hover:border-primary hover:text-primary"
