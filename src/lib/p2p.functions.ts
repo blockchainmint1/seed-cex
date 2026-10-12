@@ -35,10 +35,11 @@ export const listOffers = createServerFn({ method: "GET" })
   .inputValidator((i) =>
     z
       .object({
+        side: z.enum(["sell", "buy"]).default("sell"),
         asset: z.enum(P2P_ASSET_IDS).optional(),
         method: z.string().max(60).optional(),
         amount: z.number().positive().optional(),
-        protectedOnly: z.boolean().optional(),
+        onlineOnly: z.boolean().optional(),
       })
       .parse(i ?? {}),
   )
@@ -46,38 +47,57 @@ export const listOffers = createServerFn({ method: "GET" })
     const db = await admin();
     let q = db
       .from("p2p_offers")
-      .select("id, seller_id, asset, price, price_mode, margin_pct, fee_pct, min_fiat, max_fiat, payment_methods, terms, window_minutes, verified_balance, verified_at")
+      .select("id, seller_id, side, asset, price, price_mode, margin_pct, fee_pct, min_fiat, max_fiat, payment_methods, terms, window_minutes, verified_balance, verified_at, new_buyer_max_fiat, min_counterparty_trades")
       .eq("active", true)
+      .eq("side", data.side)
       .limit(200);
     if (data.asset) q = q.eq("asset", data.asset);
     if (data.method) q = q.contains("payment_methods", [data.method]);
     const { data: offers } = await q;
     let rows = offers ?? [];
 
-    // Refresh stale verified balances (bounded so the page stays fast).
+    const owners = [...new Set(rows.map((o) => o.seller_id))];
+    const { data: profs } = owners.length
+      ? await db.from("p2p_profiles").select("user_id, away, last_seen_at").in("user_id", owners)
+      : { data: [] as { user_id: string; away: boolean; last_seen_at: string | null }[] };
+    const { data: hme } = owners.length
+      ? await db.from("profiles").select("id, hm_member_id, hm_status").in("id", owners)
+      : { data: [] as { id: string; hm_member_id: string | null; hm_status: string }[] };
+    const presence = (id: string) => {
+      const p = profs?.find((x) => x.user_id === id);
+      return { away: Boolean(p?.away), lastSeen: p?.last_seen_at ?? null, online: onlineNow(p?.last_seen_at) && !p?.away };
+    };
+    // Seller tool: ads auto-pause while the owner is set to Away.
+    rows = rows.filter((o) => !presence(o.seller_id).away);
+
     const { refreshOffer, statsFor, rankOf, effectivePrice } = await engine();
     const livePrice: Record<string, number> = {};
     await Promise.all(rows.map(async (o) => { livePrice[o.id] = await effectivePrice(o); }));
-    const stale = rows
-      .filter((o) => !o.verified_at || Date.now() - new Date(o.verified_at).getTime() > 5 * 60_000)
-      .slice(0, 8);
-    await Promise.all(
-      stale.map(async (o) => {
-        const v = await refreshOffer(o.id).catch(() => null);
-        if (v !== null) o.verified_balance = v;
-      }),
-    );
+    if (data.side === "sell") {
+      const stale = rows
+        .filter((o) => !o.verified_at || Date.now() - new Date(o.verified_at).getTime() > 5 * 60_000)
+        .slice(0, 8);
+      await Promise.all(
+        stale.map(async (o) => {
+          const v = await refreshOffer(o.id).catch(() => null);
+          if (v !== null) o.verified_balance = v;
+        }),
+      );
+    }
 
-    const stats = await statsFor([...new Set(rows.map((o) => o.seller_id))]);
-    const names = await namesFor(rows.map((o) => o.seller_id));
+    const stats = await statsFor(owners);
+    const names = await namesFor(owners);
     let list = rows.map((o) => {
       const price = livePrice[o.id];
       const verified = Number(o.verified_balance);
-      const availableUsd = verified * price;
+      const availableUsd = data.side === "sell" ? verified * price : Number(o.max_fiat);
       const maxFiat = Math.min(Number(o.max_fiat), availableUsd);
       const s = stats[o.seller_id];
+      const pr = presence(o.seller_id);
+      const h = hme?.find((x) => x.id === o.seller_id);
       return {
         id: o.id,
+        side: o.side as "sell" | "buy",
         asset: o.asset as P2pAsset,
         price,
         priceMode: o.price_mode as "fixed" | "market",
@@ -90,17 +110,54 @@ export const listOffers = createServerFn({ method: "GET" })
         windowMinutes: o.window_minutes,
         verified,
         availableUsd,
-        seller: { handle: names[o.seller_id], stats: s },
-        rank: rankOf(s, availableUsd),
+        newBuyerMax: Number(o.new_buyer_max_fiat),
+        minTrades: o.min_counterparty_trades,
+        seller: {
+          handle: names[o.seller_id],
+          stats: s,
+          online: pr.online,
+          lastSeen: pr.lastSeen,
+          hmeMember: Boolean(h?.hm_member_id) && h?.hm_status === "active",
+        },
+        rank: rankOf(s, availableUsd) + (pr.online ? 8 : 0),
       };
     });
     list = list.filter((o) => o.availableUsd >= o.minFiat);
+    if (data.onlineOnly) list = list.filter((o) => o.seller.online);
     if (data.amount) list = list.filter((o) => data.amount! >= o.minFiat && data.amount! <= o.maxFiat);
     list.sort((a, b) => b.rank - a.rank);
     return list;
   });
 
-/** Live reference prices so sellers can set "market ± margin". */
+function onlineNow(lastSeen?: string | null) {
+  return Boolean(lastSeen && Date.now() - new Date(lastSeen).getTime() < 10 * 60_000);
+}
+
+async function touchSeen(userId: string) {
+  const db = await admin();
+  await db.from("p2p_profiles").update({ last_seen_at: new Date().toISOString() }).eq("user_id", userId);
+}
+
+/** Completed P2P trades (either side) — used for new-buyer limits and first-trade warnings. */
+async function completedCount(userId: string) {
+  const db = await admin();
+  const { count } = await db
+    .from("p2p_trades")
+    .select("id", { count: "exact", head: true })
+    .or(`seller_id.eq.${userId},buyer_id.eq.${userId}`)
+    .eq("status", "released");
+  return count ?? 0;
+}
+
+async function isBlockedPair(a: string, b: string) {
+  const db = await admin();
+  const { data } = await db
+    .from("p2p_blocks")
+    .select("blocker_id")
+    .or(`and(blocker_id.eq.${a},blocked_id.eq.${b}),and(blocker_id.eq.${b},blocked_id.eq.${a})`)
+    .limit(1);
+  return Boolean(data?.length);
+}
 export const getP2pMarketPrices = createServerFn({ method: "GET" }).handler(async () => {
   const { marketPrice } = await engine();
   const out: Record<string, number | null> = {};
@@ -304,49 +361,76 @@ export const openTrade = createServerFn({ method: "POST" })
         fiat: z.number().positive(),
         method: z.string().min(1).max(60),
         buyerAddress: z.string().trim().max(120).optional(),
+        /** Only when answering a buy ad: the responding seller's payment instructions. */
+        instructions: z.string().trim().max(2000).optional(),
       })
       .parse(i),
   )
   .handler(async ({ data, context }) => {
     const db = await admin();
+    const me = context.userId;
     const { data: o } = await db
       .from("p2p_offers")
       .select("*, p2p_offer_instructions(instructions)")
       .eq("id", data.offerId)
       .eq("active", true)
       .maybeSingle();
-    if (!o) throw new Error("Offer is no longer available");
-    if (o.seller_id === context.userId) throw new Error("You can't buy from yourself");
-    if (!o.payment_methods.includes(data.method)) throw new Error("Seller doesn't accept that method");
+    if (!o) throw new Error("Ad is no longer available");
+    if (o.seller_id === me) throw new Error("You can't trade with your own ad");
+    if (!o.payment_methods.includes(data.method)) throw new Error("That payment method isn't on this ad");
     if (data.fiat < Number(o.min_fiat) || data.fiat > Number(o.max_fiat))
       throw new Error(`Amount must be between $${o.min_fiat} and $${o.max_fiat}`);
+    if (await isBlockedPair(me, o.seller_id)) throw new Error("You can't trade with this user");
+
+    const buyAd = o.side === "buy";
+    const sellerId = buyAd ? me : o.seller_id;
+    const buyerId = buyAd ? o.seller_id : me;
+
+    // Trust & safety: ad owner's requirements for the person responding.
+    const myCount = await completedCount(me);
+    if (myCount < o.min_counterparty_trades)
+      throw new Error(`This trader only works with people who have ${o.min_counterparty_trades}+ completed trades (you have ${myCount})`);
+    const newBuyerMax = Number(o.new_buyer_max_fiat);
+    if (!buyAd && newBuyerMax > 0 && myCount < 3 && data.fiat > newBuyerMax)
+      throw new Error(`New buyers can spend up to $${newBuyerMax} with this seller until they finish 3 trades`);
 
     const asset = o.asset as P2pAsset;
-    let to = data.buyerAddress;
+    let to = buyAd ? undefined : data.buyerAddress;
     if (!to) {
-      const { data: w } = await db.from("wallets").select("txc_address, evm_address").eq("user_id", context.userId).maybeSingle();
+      const { data: w } = await db.from("wallets").select("txc_address, evm_address").eq("user_id", buyerId).maybeSingle();
       to = (P2P_ASSETS[asset].family === "evm" ? w?.evm_address : w?.txc_address) ?? undefined;
     }
-    if (!to) throw new Error("Set up your wallet first so we know where to send your coins");
+    if (!to) throw new Error(buyAd ? "The buyer hasn't set up a wallet yet" : "Set up your wallet first so we know where to send your coins");
+
+    let instructions = (o.p2p_offer_instructions as { instructions: string } | null)?.instructions ?? "";
+    if (buyAd) {
+      const { data: prof } = await db.from("p2p_profiles").select("payment_details").eq("user_id", me).maybeSingle();
+      const saved = (prof?.payment_details as Record<string, string> | null)?.[data.method] ?? "";
+      instructions = (data.instructions || saved).trim();
+      if (instructions.length < 5) throw new Error("Add your payment instructions so the buyer knows how to pay you");
+      if (data.instructions) {
+        const next = { ...((prof?.payment_details as Record<string, string>) ?? {}), [data.method]: data.instructions };
+        await db.from("p2p_profiles").update({ payment_details: next }).eq("user_id", me);
+      }
+    }
 
     const feePct = Number(o.fee_pct);
-    const { effectivePrice, p2pAlert } = await engine();
+    const { effectivePrice, p2pAlert, pocketBalance, lockedAmount, systemMessage } = await engine();
     const price = await effectivePrice(o);
     const feeFiat = +(data.fiat * (feePct / 100)).toFixed(2);
     const crypto = +((data.fiat - feeFiat) / price).toFixed(P2P_ASSETS[asset].decimals);
 
-    // Lock: the pocket must cover this trade on top of everything already reserved.
-    const { pocketBalance, lockedAmount, systemMessage } = await engine();
-    const [bal, locked] = await Promise.all([pocketBalance(o.seller_id, asset), lockedAmount(o.seller_id, asset)]);
-    if (bal === null) throw new Error("We couldn't verify the seller's funds right now — try another seller");
-    if (bal - locked + 1e-8 < crypto) throw new Error("The seller doesn't have enough verified funds for that amount");
+    // Lock: the seller's pocket must cover this trade on top of everything already reserved.
+    const [bal, locked] = await Promise.all([pocketBalance(sellerId, asset), lockedAmount(sellerId, asset)]);
+    if (bal === null) throw new Error(buyAd ? "We couldn't read your trading pocket — authorize it on the Wallet page first" : "We couldn't verify the seller's funds right now — try another seller");
+    if (bal - locked + 1e-8 < crypto) throw new Error(buyAd ? "Your trading pocket doesn't have enough for that amount" : "The seller doesn't have enough verified funds for that amount");
 
     const { data: t, error } = await db
       .from("p2p_trades")
       .insert({
         offer_id: o.id,
-        seller_id: o.seller_id,
-        buyer_id: context.userId,
+        seller_id: sellerId,
+        buyer_id: buyerId,
         asset,
         price,
         fee_pct: feePct,
@@ -354,7 +438,7 @@ export const openTrade = createServerFn({ method: "POST" })
         fiat_amount: data.fiat,
         fee_fiat: feeFiat,
         payment_method: data.method,
-        instructions: (o.p2p_offer_instructions as { instructions: string } | null)?.instructions ?? "",
+        instructions,
         buyer_address: to,
         expires_at: new Date(Date.now() + o.window_minutes * 60_000).toISOString(),
       })
@@ -363,9 +447,17 @@ export const openTrade = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     await systemMessage(
       t.id,
-      `Trade opened. ${crypto} ${asset} is reserved in the seller's trading pocket. Pay $${data.fiat.toFixed(2)} by ${data.method} within ${o.window_minutes} minutes, then tap "I've paid".`,
+      `Trade opened. ${crypto} ${asset} is reserved in the seller's trading pocket. Buyer: pay $${data.fiat.toFixed(2)} by ${data.method} within ${o.window_minutes} minutes, then tap "I've paid".`,
     );
-    await p2pAlert(o.seller_id, t.id, `🛒 New buyer! They want ${crypto} ${asset} for $${data.fiat.toFixed(2)} by ${data.method}. ${crypto} ${asset} is reserved in your pocket — keep an eye on your account.`);
+    if (!buyAd && o.auto_reply?.trim()) {
+      await db.from("p2p_messages").insert({ trade_id: t.id, sender_id: o.seller_id, body: o.auto_reply.trim() });
+    }
+    await touchSeen(me);
+    if (buyAd) {
+      await p2pAlert(buyerId, t.id, `🤝 A seller answered your buy ad: ${crypto} ${asset} for $${data.fiat.toFixed(2)} by ${data.method}. Coins are reserved — open the trade to see how to pay.`);
+    } else {
+      await p2pAlert(sellerId, t.id, `🛒 New buyer! They want ${crypto} ${asset} for $${data.fiat.toFixed(2)} by ${data.method}. ${crypto} ${asset} is reserved in your pocket — keep an eye on your account.`);
+    }
     return { id: t.id };
   });
 
