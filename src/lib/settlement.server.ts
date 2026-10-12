@@ -288,7 +288,24 @@ export async function refreshTradeStatus(tradeId: string) {
       : null;
   if (!next) return;
 
+  const { data: trade } = await supabaseAdmin
+    .from("trades")
+    .select("pair, maker_id, taker_id, status")
+    .eq("id", tradeId)
+    .maybeSingle();
+  // Nothing moved: skip the write so a repeated poll can't send the alert twice.
+  if (trade?.status === next) return;
+
   await supabaseAdmin.from("trades").update({ status: next }).eq("id", tradeId);
+
+  if (next === "settled") {
+    const { alertTradeSettled } = await import("./alerts.server");
+    await alertTradeSettled({
+      makerId: trade?.maker_id ?? null,
+      takerId: trade?.taker_id ?? null,
+      pair: trade?.pair ?? "",
+    });
+  }
 }
 
 /* --------------------------------- preview -------------------------------- */

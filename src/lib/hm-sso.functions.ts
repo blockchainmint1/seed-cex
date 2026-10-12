@@ -64,6 +64,11 @@ export const redeemHonestMoneyToken = createServerFn({ method: "POST" })
     userId = userId ?? link.data.user?.id ?? null;
     if (userId && !linked) await supabaseAdmin.from("profiles").update({ hm_member_id: p.minerId }).eq("id", userId);
 
+    if (userId) {
+      const { alertSignIn } = await import("./alerts.server");
+      await alertSignIn({ userId, email });
+    }
+
     await sendHubEvent({ event: isNew ? "signup" : "service_used", member_id: p.minerId, ref: data.ref, metadata: { via: "sso" } });
     return { tokenHash: link.data.properties.hashed_token };
   });

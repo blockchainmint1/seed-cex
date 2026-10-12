@@ -63,6 +63,7 @@ export async function matchOrder(userId: string, pair: string, input: PlaceOrder
 
   let remaining = input.amount;
   const tradeIds: string[] = [];
+  const fills: Array<{ makerId: string; amount: number; price: number }> = [];
 
   for (const maker of candidates) {
     if (remaining <= 1e-8) break;
@@ -122,6 +123,7 @@ export async function matchOrder(userId: string, pair: string, input: PlaceOrder
 
     remaining -= fillAmount;
     tradeIds.push(trade.id);
+    fills.push({ makerId: maker.user_id, amount: fillAmount, price: fillPrice });
   }
 
   const takerFilled = input.amount - remaining;
@@ -132,6 +134,21 @@ export async function matchOrder(userId: string, pair: string, input: PlaceOrder
       status: remaining <= 1e-8 ? "filled" : takerFilled > 0 ? "partial" : "open",
     })
     .eq("id", taker.id);
+
+  // Both sides hear about the fill; alerts never break the order path.
+  const { alertOrderFilled } = await import("./alerts.server");
+  const baseSymbol = getLeg(baseLeg).symbol;
+  const quoteSymbol = getLeg(quoteLeg).symbol;
+  for (const f of fills) {
+    await alertOrderFilled({
+      makerId: f.makerId,
+      takerId: userId,
+      baseSymbol,
+      quoteSymbol,
+      amount: f.amount,
+      price: f.price,
+    });
+  }
 
   return {
     orderId: taker.id,

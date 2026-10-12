@@ -12,7 +12,7 @@
  * trade panel — the other leg is not blocked by it.
  */
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { isOmniLeg, type LegId } from "@/lib/chains";
+import { getLeg, isOmniLeg, type LegId } from "@/lib/chains";
 
 export type AutoLegResult = {
   leg: LegId;
@@ -43,7 +43,7 @@ async function settleOne(actorId: string, tradeId: string, leg: LegId): Promise<
 export async function autoSettleTrade(tradeId: string): Promise<AutoLegResult[]> {
   const { data: trade } = await supabaseAdmin
     .from("trades")
-    .select("id, maker_id, status")
+    .select("id, maker_id, taker_id, pair, status")
     .eq("id", tradeId)
     .maybeSingle();
   if (!trade) return [];
@@ -71,6 +71,13 @@ export async function autoSettleTrade(tradeId: string): Promise<AutoLegResult[]>
         actor_id: actor,
         event: `${leg}_autosettle_failed`,
         detail: { error: message },
+      });
+      const { alertSettlementFailed } = await import("./alerts.server");
+      await alertSettlementFailed({
+        userIds: [trade.maker_id, trade.taker_id],
+        pair: trade.pair ?? tradeId,
+        legSymbol: getLeg(leg).symbol,
+        error: message,
       });
     }
   }
