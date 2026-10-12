@@ -192,9 +192,12 @@ export const getSellerProfile = createServerFn({ method: "GET" })
     return {
       handle: p.handle,
       bio: p.bio,
-      location: p.location,
+      location: p.country ?? p.location,
       languages: p.languages,
-      hours: p.hours,
+      hours:
+        p.hours_from != null && p.hours_to != null
+          ? `${String(p.hours_from).padStart(2, "0")}:00–${String(p.hours_to).padStart(2, "0")}:00${p.tz ? ` ${p.tz}` : ""}`
+          : p.hours,
       since: p.created_at,
       stats: stats[p.user_id],
       offers: await Promise.all(
@@ -287,9 +290,13 @@ export const saveP2pProfile = createServerFn({ method: "POST" })
       .object({
         handle: z.string().trim().regex(/^[a-zA-Z0-9_-]{3,24}$/, "3–24 letters, numbers, - or _"),
         bio: z.string().max(600),
-        location: z.string().max(80),
+        location: z.string().max(80).optional(),
+        country: z.string().trim().max(60).optional(),
         languages: z.array(z.string().max(30)).max(8),
-        hours: z.string().max(80),
+        hours: z.string().max(80).optional(),
+        hoursFrom: z.number().int().min(0).max(23).nullable().optional(),
+        hoursTo: z.number().int().min(0).max(23).nullable().optional(),
+        tz: z.string().trim().max(64).optional(),
         away: z.boolean().optional(),
         quickReplies: z.array(z.string().trim().min(1).max(200)).max(10).optional(),
         paymentDetails: z.record(z.string().max(60), z.string().max(2000)).optional(),
@@ -300,13 +307,17 @@ export const saveP2pProfile = createServerFn({ method: "POST" })
     const db = await admin();
     const { data: taken } = await db.from("p2p_profiles").select("user_id").ilike("handle", data.handle).maybeSingle();
     if (taken && taken.user_id !== context.userId) throw new Error("That handle is taken");
-    const { away, quickReplies, paymentDetails, ...base } = data;
+    const { away, quickReplies, paymentDetails, hoursFrom, hoursTo, tz, country, ...base } = data;
     const { error } = await db
       .from("p2p_profiles")
       .upsert(
         {
           user_id: context.userId,
           ...base,
+          ...(country !== undefined ? { country } : {}),
+          ...(hoursFrom !== undefined ? { hours_from: hoursFrom } : {}),
+          ...(hoursTo !== undefined ? { hours_to: hoursTo } : {}),
+          ...(tz !== undefined ? { tz } : {}),
           ...(away !== undefined ? { away } : {}),
           ...(quickReplies ? { quick_replies: quickReplies } : {}),
           ...(paymentDetails ? { payment_details: paymentDetails } : {}),

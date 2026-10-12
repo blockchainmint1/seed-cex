@@ -588,42 +588,54 @@ export type Database = {
         Row: {
           away: boolean
           bio: string
+          country: string | null
           created_at: string
           handle: string
           hours: string
+          hours_from: number | null
+          hours_to: number | null
           languages: string[]
           last_seen_at: string | null
           location: string
           payment_details: Json
           quick_replies: string[]
+          tz: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           away?: boolean
           bio?: string
+          country?: string | null
           created_at?: string
           handle: string
           hours?: string
+          hours_from?: number | null
+          hours_to?: number | null
           languages?: string[]
           last_seen_at?: string | null
           location?: string
           payment_details?: Json
           quick_replies?: string[]
+          tz?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           away?: boolean
           bio?: string
+          country?: string | null
           created_at?: string
           handle?: string
           hours?: string
+          hours_from?: number | null
+          hours_to?: number | null
           languages?: string[]
           last_seen_at?: string | null
           location?: string
           payment_details?: Json
           quick_replies?: string[]
+          tz?: string | null
           updated_at?: string
           user_id?: string
         }
