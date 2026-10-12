@@ -235,12 +235,20 @@ export const getMyP2p = createServerFn({ method: "GET" })
     ]);
     const { statsFor } = await engine();
     const names = await namesFor((trades ?? []).flatMap((t) => [t.seller_id, t.buyer_id]));
+    const { data: blocks } = await db.from("p2p_blocks").select("blocked_id").eq("blocker_id", me);
+    const blockedNames = await namesFor((blocks ?? []).map((b) => b.blocked_id));
+    await touchSeen(me);
     return {
       profile,
+      blocked: (blocks ?? []).map((b) => ({ id: b.blocked_id, handle: blockedNames[b.blocked_id] })),
       stats: (await statsFor([me]))[me],
       hasWallet: Boolean(wallet?.txc_address),
       offers: (offers ?? []).map((o) => ({
         id: o.id,
+        side: (o.side === "buy" ? "buy" : "sell") as "sell" | "buy",
+        autoReply: o.auto_reply,
+        newBuyerMax: Number(o.new_buyer_max_fiat),
+        minTrades: o.min_counterparty_trades,
         asset: o.asset as P2pAsset,
         price: Number(o.price),
         priceMode: (o.price_mode === "market" ? "market" : "fixed") as "fixed" | "market",
@@ -280,6 +288,9 @@ export const saveP2pProfile = createServerFn({ method: "POST" })
         location: z.string().max(80),
         languages: z.array(z.string().max(30)).max(8),
         hours: z.string().max(80),
+        away: z.boolean().optional(),
+        quickReplies: z.array(z.string().trim().min(1).max(200)).max(10).optional(),
+        paymentDetails: z.record(z.string().max(60), z.string().max(2000)).optional(),
       })
       .parse(i),
   )
@@ -287,9 +298,35 @@ export const saveP2pProfile = createServerFn({ method: "POST" })
     const db = await admin();
     const { data: taken } = await db.from("p2p_profiles").select("user_id").ilike("handle", data.handle).maybeSingle();
     if (taken && taken.user_id !== context.userId) throw new Error("That handle is taken");
+    const { away, quickReplies, paymentDetails, ...base } = data;
     const { error } = await db
       .from("p2p_profiles")
-      .upsert({ user_id: context.userId, ...data, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+      .upsert(
+        {
+          user_id: context.userId,
+          ...base,
+          ...(away !== undefined ? { away } : {}),
+          ...(quickReplies ? { quick_replies: quickReplies } : {}),
+          ...(paymentDetails ? { payment_details: paymentDetails } : {}),
+          last_seen_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id" },
+      );
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/** Quick toggle: Online / Away. Away hides every ad you own. */
+export const setP2pAway = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({ away: z.boolean() }).parse(i))
+  .handler(async ({ data, context }) => {
+    const db = await admin();
+    const { error } = await db
+      .from("p2p_profiles")
+      .update({ away: data.away, last_seen_at: new Date().toISOString() })
+      .eq("user_id", context.userId);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -300,6 +337,7 @@ export const saveOffer = createServerFn({ method: "POST" })
     z
       .object({
         id: z.string().uuid().optional(),
+        side: z.enum(["sell", "buy"]).default("sell"),
         asset: z.enum(P2P_ASSET_IDS),
         price: z.number().positive().max(10_000_000),
         priceMode: z.enum(["fixed", "market"]).default("fixed"),
@@ -308,20 +346,28 @@ export const saveOffer = createServerFn({ method: "POST" })
         minFiat: z.number().min(1),
         maxFiat: z.number().min(1).max(1_000_000),
         methods: z.array(z.string().trim().min(1).max(60)).min(1).max(10),
-        instructions: z.string().trim().min(5).max(2000),
+        instructions: z.string().trim().max(2000).default(""),
         terms: z.string().max(1000),
         windowMinutes: z.number().int().min(10).max(240),
         active: z.boolean(),
+        autoReply: z.string().trim().max(600).default(""),
+        newBuyerMax: z.number().min(0).max(1_000_000).default(0),
+        minTrades: z.number().int().min(0).max(500).default(0),
       })
       .refine((d) => d.maxFiat >= d.minFiat, "Max must be at least the min")
+      .refine((d) => d.side === "buy" || d.instructions.length >= 5, "Add payment instructions for buyers")
       .parse(i),
   )
   .handler(async ({ data, context }) => {
     const db = await admin();
     const { data: prof } = await db.from("p2p_profiles").select("user_id").eq("user_id", context.userId).maybeSingle();
-    if (!prof) throw new Error("Create your seller profile first");
+    if (!prof) throw new Error("Create your trader profile first");
     const row = {
       seller_id: context.userId,
+      side: data.side,
+      auto_reply: data.autoReply,
+      new_buyer_max_fiat: data.newBuyerMax,
+      min_counterparty_trades: data.minTrades,
       asset: data.asset,
       price: data.price,
       price_mode: data.priceMode,
@@ -494,8 +540,32 @@ export const getP2pTrade = createServerFn({ method: "GET" })
       for (const u of urls ?? []) if (u.path && u.signedUrl) signed[u.path] = u.signedUrl;
     }
     const { statsFor } = await engine();
-    const st = await statsFor([t.seller_id]);
+    const other = me === t.seller_id ? t.buyer_id : t.seller_id;
+    const [st, { count: together }, { data: myProf }, { data: otherProf }, blocked, buyerDone, { data: otherHme }] = await Promise.all([
+      statsFor([t.seller_id, t.buyer_id]),
+      db
+        .from("p2p_trades")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "released")
+        .or(`and(seller_id.eq.${t.seller_id},buyer_id.eq.${t.buyer_id}),and(seller_id.eq.${t.buyer_id},buyer_id.eq.${t.seller_id})`),
+      db.from("p2p_profiles").select("quick_replies").eq("user_id", me).maybeSingle(),
+      db.from("p2p_profiles").select("last_seen_at, away").eq("user_id", other).maybeSingle(),
+      db.from("p2p_blocks").select("blocked_id").eq("blocker_id", me).eq("blocked_id", other).maybeSingle(),
+      completedCount(t.buyer_id),
+      db.from("profiles").select("hm_member_id, hm_status").eq("id", other).maybeSingle(),
+    ]);
+    await touchSeen(me);
     return {
+      safety: {
+        firstTradeTogether: (together ?? 0) === 0,
+        buyerCompleted: buyerDone,
+        buyerStats: st[t.buyer_id],
+        counterpartyOnline: onlineNow(otherProf?.last_seen_at) && !otherProf?.away,
+        counterpartyLastSeen: otherProf?.last_seen_at ?? null,
+        counterpartyHme: Boolean(otherHme?.hm_member_id) && otherHme?.hm_status === "active",
+        blocked: Boolean(blocked.data),
+      },
+      quickReplies: (myProf?.quick_replies as string[] | undefined) ?? [],
       id: t.id,
       role: me === t.seller_id ? "seller" : me === t.buyer_id ? "buyer" : "admin",
       isAdmin: isAdm,
