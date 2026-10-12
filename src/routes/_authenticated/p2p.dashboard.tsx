@@ -135,6 +135,12 @@ function ProfileForm({ data }: { data: Data }) {
   useEffect(() => {
     if (p) setF({ handle: p.handle, bio: p.bio, location: p.location, languages: p.languages.join(", "), hours: p.hours, quick: (p.quick_replies ?? []).join("\n") });
   }, [p]);
+  useEffect(() => {
+    if (!p && data.displayName) {
+      const suggested = data.displayName.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 24);
+      if (suggested.length >= 3) setF((f) => (f.handle ? f : { ...f, handle: suggested }));
+    }
+  }, [p, data.displayName]);
   const m = useMutation({
     mutationFn: () =>
       save({ data: { handle: f.handle, bio: f.bio, location: f.location, hours: f.hours, languages: f.languages.split(",").map((s) => s.trim()).filter(Boolean), quickReplies: f.quick.split("\n").map((s) => s.trim()).filter(Boolean).slice(0, 10) } }),
@@ -150,7 +156,10 @@ function ProfileForm({ data }: { data: Data }) {
         </div>
       ) : null}
       <div className="space-y-3">
-        <Input placeholder="Handle (public name)" value={f.handle} onChange={(e) => setF({ ...f, handle: e.target.value })} />
+        <label className="block space-y-1">
+          <span className="font-mono text-[11px] text-muted-foreground uppercase">Handle (public name) — from your Honest.Money profile</span>
+          <Input placeholder="Handle (public name)" value={f.handle} onChange={(e) => setF({ ...f, handle: e.target.value })} />
+        </label>
         <Textarea placeholder="About you — why buyers should trust you" value={f.bio} onChange={(e) => setF({ ...f, bio: e.target.value })} />
         <Input placeholder="Location (e.g. Austin, TX)" value={f.location} onChange={(e) => setF({ ...f, location: e.target.value })} />
         <Input placeholder="Languages (comma separated)" value={f.languages} onChange={(e) => setF({ ...f, languages: e.target.value })} />
