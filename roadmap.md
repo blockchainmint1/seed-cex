@@ -20,3 +20,6 @@
 - [x] P2P: market-following prices (market ± margin, CMC feed, TSD = $1)
 - [x] Exchange Telegram alerts: order fills, settlement failures, settled trades, sign-ins, deposits (wallet-page sweep), expiring authorizations
 - [ ] Admin report/queue UI for P2P user reports (APIs exist, no page yet)
+- [x] Authorization copy on /wallet + /account: branch 1106, HME Wallet link modes (verified in preview)
+- [ ] /how-it-works + homepage still pitch only the capped/expiring vault model — add the HME Wallet link (instant-until-revoked / approve-every-trade)
+

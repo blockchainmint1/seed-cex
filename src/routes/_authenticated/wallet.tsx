@@ -856,9 +856,10 @@ function DepositModal({ row, onClose }: { row: SpotRow; onClose: () => void }) {
         </ExplorerLink>
       </div>
       <p className="mt-4 font-mono text-[10px] leading-relaxed text-muted-foreground">
-        No deposit to Seeds is ever needed — funds land in your wallet directly. To let the
-        exchange settle trades, authorize the branch below with a cap and an expiry.
+        No deposit to Seeds is ever needed — funds land in your wallet directly. To let the exchange
+        settle trades, link your HME Wallet or authorize this asset from the authorizations panel.
       </p>
+
     </Modal>
   );
 }
@@ -1041,19 +1042,23 @@ function SharedAccessPanel({
   const active = list.data ?? [];
 
   return (
-    <Panel title="Trading authorizations" kicker="Non-custodial · capped · expiring">
+    <Panel title="Trading authorizations" kicker="Non-custodial · branch 1106 · yours to revoke">
       <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
         A centralised exchange makes you <em>deposit</em> — you hand over the coins and hold nothing
-        when they close their doors. Seeds does the opposite: you keep the seed and authorize one
-        branch of your own tree, account <span className="font-mono text-foreground">9&apos;</span>,
-        for a capped amount and a fixed window. When the clock runs out the key is{" "}
+        when they close their doors. Seeds does the opposite: your seed stays where it is and you
+        open a single pocket of your own tree, branch{" "}
+        <span className="font-mono text-foreground">1106</span>, for us to settle from. Two ways to
+        open it: link your HME Wallet with the card above and choose instant access until you revoke,
+        or approve every trade so we hold no key at all; or authorize from a vault in this browser,
+        with a spending cap and an expiry. Either way the key is{" "}
         <Link to="/custody" className="text-primary underline-offset-4 hover:underline">
           permanently wiped
-        </Link>
-        , and anyone can audit how many keys we hold. Your savings branch{" "}
-        <span className="font-mono text-foreground">0&apos;</span> is never authorized, and the seed
-        itself never leaves this tab.
+        </Link>{" "}
+        the moment you revoke, your savings branch{" "}
+        <span className="font-mono text-foreground">0&apos;</span> is never shared, and anyone can
+        audit how many keys we hold.
       </p>
+
 
       {err ? (
         <p className="mt-4 rounded-sm border border-destructive/40 bg-destructive/10 px-3 py-2 font-mono text-xs text-destructive">
@@ -1117,8 +1122,9 @@ function SharedAccessPanel({
 
       <div className="mt-6 border-t border-border pt-5">
         <p className="font-mono text-[10px] tracking-[0.2em] text-primary uppercase">
-          New authorization
+          New vault authorization
         </p>
+
         <div className="mt-3 grid gap-3 sm:grid-cols-4">
           <input
             type="password"
@@ -1194,9 +1200,11 @@ function SharedAccessPanel({
           {enable.isPending ? "Authorizing…" : `Authorize on ${chain.name}`}
         </button>
         <p className="mt-3 font-mono text-[11px] text-muted-foreground">
-          One live authorization per asset — authorizing again replaces the previous one.
-          Authorizing BTC also moves that branch into settlement so trades clear in seconds.
+          One live authorization per asset — authorizing again replaces the previous one. Authorizing
+          BTC also moves that branch into settlement so trades clear in seconds. This form is for
+          vaults made in this browser; an HME Wallet link needs neither a cap nor an expiry.
         </p>
+
       </div>
     </Panel>
   );
