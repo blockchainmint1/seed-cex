@@ -158,6 +158,8 @@ function ProfileForm({ data }: { data: Data }) {
     if (!p && data.displayName) {
       const suggested = data.displayName.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 24);
       if (suggested.length >= 3) setF((f) => (f.handle ? f : { ...f, handle: suggested }));
+      const localTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (localTz) setF((f) => (f.tz ? f : { ...f, tz: localTz }));
     }
   }, [p, data.displayName]);
   const m = useMutation({
