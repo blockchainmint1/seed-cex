@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      alert_log: {
+        Row: {
+          kind: string
+          sent_at: string
+          subject: string
+          user_id: string
+        }
+        Insert: {
+          kind: string
+          sent_at?: string
+          subject: string
+          user_id: string
+        }
+        Update: {
+          kind?: string
+          sent_at?: string
+          subject?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       api_keys: {
         Row: {
           created_at: string
@@ -89,6 +110,27 @@ export type Database = {
           keys_held?: number
           keys_wiped?: number
           taken_at?: string
+        }
+        Relationships: []
+      }
+      deposit_sightings: {
+        Row: {
+          amount: number
+          asset: string
+          seen_at: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          asset: string
+          seen_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          asset?: string
+          seen_at?: string
+          user_id?: string
         }
         Relationships: []
       }

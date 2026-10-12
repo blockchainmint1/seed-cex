@@ -43,6 +43,13 @@
       "when": 1791821653929,
       "tag": "0005_p2p_upgrades",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791822198112,
+      "tag": "0006_alert_state",
+      "breakpoints": true
     }
   ]
 }
