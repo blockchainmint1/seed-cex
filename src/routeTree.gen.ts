@@ -51,11 +51,16 @@ import { Route as ApiPublicV1DepthRouteImport } from './routes/api/public/v1/dep
 import { Route as ApiPublicV1AllOrdersRouteImport } from './routes/api/public/v1/allOrders'
 import { Route as ApiPublicV1AccountRouteImport } from './routes/api/public/v1/account'
 import { Route as ApiPublicMinehmeProfileUpdateRouteImport } from './routes/api/public/minehme/profile-update'
+import { Route as ApiPublicHmeLinkTradesRouteImport } from './routes/api/public/hme-link/trades'
+import { Route as ApiPublicHmeLinkSubmitRouteImport } from './routes/api/public/hme-link/submit'
+import { Route as ApiPublicHmeLinkRevokeRouteImport } from './routes/api/public/hme-link/revoke'
 import { Route as ApiPublicCmcTickerRouteImport } from './routes/api/public/cmc/ticker'
 import { Route as ApiPublicCmcSummaryRouteImport } from './routes/api/public/cmc/summary'
 import { Route as ApiPublicCmcAssetsRouteImport } from './routes/api/public/cmc/assets'
 import { Route as ApiPublicV1TickerPriceRouteImport } from './routes/api/public/v1/ticker/price'
 import { Route as ApiPublicV1Ticker24hrRouteImport } from './routes/api/public/v1/ticker/24hr'
+import { Route as ApiPublicHmeLinkTradesRespondRouteImport } from './routes/api/public/hme-link/trades.respond'
+import { Route as ApiPublicHmeLinkManifestIdRouteImport } from './routes/api/public/hme-link/manifest.$id'
 import { Route as ApiPublicCmcTradesPairRouteImport } from './routes/api/public/cmc/trades.$pair'
 import { Route as ApiPublicCmcOrderbookPairRouteImport } from './routes/api/public/cmc/orderbook.$pair'
 
@@ -270,6 +275,21 @@ const ApiPublicMinehmeProfileUpdateRoute =
     path: '/api/public/minehme/profile-update',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHmeLinkTradesRoute = ApiPublicHmeLinkTradesRouteImport.update({
+  id: '/api/public/hme-link/trades',
+  path: '/api/public/hme-link/trades',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicHmeLinkSubmitRoute = ApiPublicHmeLinkSubmitRouteImport.update({
+  id: '/api/public/hme-link/submit',
+  path: '/api/public/hme-link/submit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicHmeLinkRevokeRoute = ApiPublicHmeLinkRevokeRouteImport.update({
+  id: '/api/public/hme-link/revoke',
+  path: '/api/public/hme-link/revoke',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicCmcTickerRoute = ApiPublicCmcTickerRouteImport.update({
   id: '/api/public/cmc/ticker',
   path: '/api/public/cmc/ticker',
@@ -295,6 +315,18 @@ const ApiPublicV1Ticker24hrRoute = ApiPublicV1Ticker24hrRouteImport.update({
   path: '/api/public/v1/ticker/24hr',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHmeLinkTradesRespondRoute =
+  ApiPublicHmeLinkTradesRespondRouteImport.update({
+    id: '/respond',
+    path: '/respond',
+    getParentRoute: () => ApiPublicHmeLinkTradesRoute,
+  } as any)
+const ApiPublicHmeLinkManifestIdRoute =
+  ApiPublicHmeLinkManifestIdRouteImport.update({
+    id: '/api/public/hme-link/manifest/$id',
+    path: '/api/public/hme-link/manifest/$id',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicCmcTradesPairRoute = ApiPublicCmcTradesPairRouteImport.update({
   id: '/api/public/cmc/trades/$pair',
   path: '/api/public/cmc/trades/$pair',
@@ -336,6 +368,9 @@ export interface FileRoutesByFullPath {
   '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
   '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
   '/api/public/cmc/ticker': typeof ApiPublicCmcTickerRoute
+  '/api/public/hme-link/revoke': typeof ApiPublicHmeLinkRevokeRoute
+  '/api/public/hme-link/submit': typeof ApiPublicHmeLinkSubmitRoute
+  '/api/public/hme-link/trades': typeof ApiPublicHmeLinkTradesRouteWithChildren
   '/api/public/minehme/profile-update': typeof ApiPublicMinehmeProfileUpdateRoute
   '/api/public/v1/account': typeof ApiPublicV1AccountRoute
   '/api/public/v1/allOrders': typeof ApiPublicV1AllOrdersRoute
@@ -354,6 +389,8 @@ export interface FileRoutesByFullPath {
   '/api/public/v1/': typeof ApiPublicV1IndexRoute
   '/api/public/cmc/orderbook/$pair': typeof ApiPublicCmcOrderbookPairRoute
   '/api/public/cmc/trades/$pair': typeof ApiPublicCmcTradesPairRoute
+  '/api/public/hme-link/manifest/$id': typeof ApiPublicHmeLinkManifestIdRoute
+  '/api/public/hme-link/trades/respond': typeof ApiPublicHmeLinkTradesRespondRoute
   '/api/public/v1/ticker/24hr': typeof ApiPublicV1Ticker24hrRoute
   '/api/public/v1/ticker/price': typeof ApiPublicV1TickerPriceRoute
 }
@@ -386,6 +423,9 @@ export interface FileRoutesByTo {
   '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
   '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
   '/api/public/cmc/ticker': typeof ApiPublicCmcTickerRoute
+  '/api/public/hme-link/revoke': typeof ApiPublicHmeLinkRevokeRoute
+  '/api/public/hme-link/submit': typeof ApiPublicHmeLinkSubmitRoute
+  '/api/public/hme-link/trades': typeof ApiPublicHmeLinkTradesRouteWithChildren
   '/api/public/minehme/profile-update': typeof ApiPublicMinehmeProfileUpdateRoute
   '/api/public/v1/account': typeof ApiPublicV1AccountRoute
   '/api/public/v1/allOrders': typeof ApiPublicV1AllOrdersRoute
@@ -404,6 +444,8 @@ export interface FileRoutesByTo {
   '/api/public/v1': typeof ApiPublicV1IndexRoute
   '/api/public/cmc/orderbook/$pair': typeof ApiPublicCmcOrderbookPairRoute
   '/api/public/cmc/trades/$pair': typeof ApiPublicCmcTradesPairRoute
+  '/api/public/hme-link/manifest/$id': typeof ApiPublicHmeLinkManifestIdRoute
+  '/api/public/hme-link/trades/respond': typeof ApiPublicHmeLinkTradesRespondRoute
   '/api/public/v1/ticker/24hr': typeof ApiPublicV1Ticker24hrRoute
   '/api/public/v1/ticker/price': typeof ApiPublicV1TickerPriceRoute
 }
@@ -438,6 +480,9 @@ export interface FileRoutesById {
   '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
   '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
   '/api/public/cmc/ticker': typeof ApiPublicCmcTickerRoute
+  '/api/public/hme-link/revoke': typeof ApiPublicHmeLinkRevokeRoute
+  '/api/public/hme-link/submit': typeof ApiPublicHmeLinkSubmitRoute
+  '/api/public/hme-link/trades': typeof ApiPublicHmeLinkTradesRouteWithChildren
   '/api/public/minehme/profile-update': typeof ApiPublicMinehmeProfileUpdateRoute
   '/api/public/v1/account': typeof ApiPublicV1AccountRoute
   '/api/public/v1/allOrders': typeof ApiPublicV1AllOrdersRoute
@@ -456,6 +501,8 @@ export interface FileRoutesById {
   '/api/public/v1/': typeof ApiPublicV1IndexRoute
   '/api/public/cmc/orderbook/$pair': typeof ApiPublicCmcOrderbookPairRoute
   '/api/public/cmc/trades/$pair': typeof ApiPublicCmcTradesPairRoute
+  '/api/public/hme-link/manifest/$id': typeof ApiPublicHmeLinkManifestIdRoute
+  '/api/public/hme-link/trades/respond': typeof ApiPublicHmeLinkTradesRespondRoute
   '/api/public/v1/ticker/24hr': typeof ApiPublicV1Ticker24hrRoute
   '/api/public/v1/ticker/price': typeof ApiPublicV1TickerPriceRoute
 }
@@ -490,6 +537,9 @@ export interface FileRouteTypes {
     | '/api/public/cmc/assets'
     | '/api/public/cmc/summary'
     | '/api/public/cmc/ticker'
+    | '/api/public/hme-link/revoke'
+    | '/api/public/hme-link/submit'
+    | '/api/public/hme-link/trades'
     | '/api/public/minehme/profile-update'
     | '/api/public/v1/account'
     | '/api/public/v1/allOrders'
@@ -508,6 +558,8 @@ export interface FileRouteTypes {
     | '/api/public/v1/'
     | '/api/public/cmc/orderbook/$pair'
     | '/api/public/cmc/trades/$pair'
+    | '/api/public/hme-link/manifest/$id'
+    | '/api/public/hme-link/trades/respond'
     | '/api/public/v1/ticker/24hr'
     | '/api/public/v1/ticker/price'
   fileRoutesByTo: FileRoutesByTo
@@ -540,6 +592,9 @@ export interface FileRouteTypes {
     | '/api/public/cmc/assets'
     | '/api/public/cmc/summary'
     | '/api/public/cmc/ticker'
+    | '/api/public/hme-link/revoke'
+    | '/api/public/hme-link/submit'
+    | '/api/public/hme-link/trades'
     | '/api/public/minehme/profile-update'
     | '/api/public/v1/account'
     | '/api/public/v1/allOrders'
@@ -558,6 +613,8 @@ export interface FileRouteTypes {
     | '/api/public/v1'
     | '/api/public/cmc/orderbook/$pair'
     | '/api/public/cmc/trades/$pair'
+    | '/api/public/hme-link/manifest/$id'
+    | '/api/public/hme-link/trades/respond'
     | '/api/public/v1/ticker/24hr'
     | '/api/public/v1/ticker/price'
   id:
@@ -591,6 +648,9 @@ export interface FileRouteTypes {
     | '/api/public/cmc/assets'
     | '/api/public/cmc/summary'
     | '/api/public/cmc/ticker'
+    | '/api/public/hme-link/revoke'
+    | '/api/public/hme-link/submit'
+    | '/api/public/hme-link/trades'
     | '/api/public/minehme/profile-update'
     | '/api/public/v1/account'
     | '/api/public/v1/allOrders'
@@ -609,6 +669,8 @@ export interface FileRouteTypes {
     | '/api/public/v1/'
     | '/api/public/cmc/orderbook/$pair'
     | '/api/public/cmc/trades/$pair'
+    | '/api/public/hme-link/manifest/$id'
+    | '/api/public/hme-link/trades/respond'
     | '/api/public/v1/ticker/24hr'
     | '/api/public/v1/ticker/price'
   fileRoutesById: FileRoutesById
@@ -638,6 +700,9 @@ export interface RootRouteChildren {
   ApiPublicCmcAssetsRoute: typeof ApiPublicCmcAssetsRoute
   ApiPublicCmcSummaryRoute: typeof ApiPublicCmcSummaryRoute
   ApiPublicCmcTickerRoute: typeof ApiPublicCmcTickerRoute
+  ApiPublicHmeLinkRevokeRoute: typeof ApiPublicHmeLinkRevokeRoute
+  ApiPublicHmeLinkSubmitRoute: typeof ApiPublicHmeLinkSubmitRoute
+  ApiPublicHmeLinkTradesRoute: typeof ApiPublicHmeLinkTradesRouteWithChildren
   ApiPublicMinehmeProfileUpdateRoute: typeof ApiPublicMinehmeProfileUpdateRoute
   ApiPublicV1AccountRoute: typeof ApiPublicV1AccountRoute
   ApiPublicV1AllOrdersRoute: typeof ApiPublicV1AllOrdersRoute
@@ -656,6 +721,7 @@ export interface RootRouteChildren {
   ApiPublicV1IndexRoute: typeof ApiPublicV1IndexRoute
   ApiPublicCmcOrderbookPairRoute: typeof ApiPublicCmcOrderbookPairRoute
   ApiPublicCmcTradesPairRoute: typeof ApiPublicCmcTradesPairRoute
+  ApiPublicHmeLinkManifestIdRoute: typeof ApiPublicHmeLinkManifestIdRoute
   ApiPublicV1Ticker24hrRoute: typeof ApiPublicV1Ticker24hrRoute
   ApiPublicV1TickerPriceRoute: typeof ApiPublicV1TickerPriceRoute
 }
@@ -956,6 +1022,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicMinehmeProfileUpdateRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hme-link/trades': {
+      id: '/api/public/hme-link/trades'
+      path: '/api/public/hme-link/trades'
+      fullPath: '/api/public/hme-link/trades'
+      preLoaderRoute: typeof ApiPublicHmeLinkTradesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hme-link/submit': {
+      id: '/api/public/hme-link/submit'
+      path: '/api/public/hme-link/submit'
+      fullPath: '/api/public/hme-link/submit'
+      preLoaderRoute: typeof ApiPublicHmeLinkSubmitRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hme-link/revoke': {
+      id: '/api/public/hme-link/revoke'
+      path: '/api/public/hme-link/revoke'
+      fullPath: '/api/public/hme-link/revoke'
+      preLoaderRoute: typeof ApiPublicHmeLinkRevokeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/cmc/ticker': {
       id: '/api/public/cmc/ticker'
       path: '/api/public/cmc/ticker'
@@ -989,6 +1076,20 @@ declare module '@tanstack/react-router' {
       path: '/api/public/v1/ticker/24hr'
       fullPath: '/api/public/v1/ticker/24hr'
       preLoaderRoute: typeof ApiPublicV1Ticker24hrRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hme-link/trades/respond': {
+      id: '/api/public/hme-link/trades/respond'
+      path: '/respond'
+      fullPath: '/api/public/hme-link/trades/respond'
+      preLoaderRoute: typeof ApiPublicHmeLinkTradesRespondRouteImport
+      parentRoute: typeof ApiPublicHmeLinkTradesRoute
+    }
+    '/api/public/hme-link/manifest/$id': {
+      id: '/api/public/hme-link/manifest/$id'
+      path: '/api/public/hme-link/manifest/$id'
+      fullPath: '/api/public/hme-link/manifest/$id'
+      preLoaderRoute: typeof ApiPublicHmeLinkManifestIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/cmc/trades/$pair': {
@@ -1027,6 +1128,20 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface ApiPublicHmeLinkTradesRouteChildren {
+  ApiPublicHmeLinkTradesRespondRoute: typeof ApiPublicHmeLinkTradesRespondRoute
+}
+
+const ApiPublicHmeLinkTradesRouteChildren: ApiPublicHmeLinkTradesRouteChildren =
+  {
+    ApiPublicHmeLinkTradesRespondRoute: ApiPublicHmeLinkTradesRespondRoute,
+  }
+
+const ApiPublicHmeLinkTradesRouteWithChildren =
+  ApiPublicHmeLinkTradesRoute._addFileChildren(
+    ApiPublicHmeLinkTradesRouteChildren,
+  )
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
@@ -1052,6 +1167,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCmcAssetsRoute: ApiPublicCmcAssetsRoute,
   ApiPublicCmcSummaryRoute: ApiPublicCmcSummaryRoute,
   ApiPublicCmcTickerRoute: ApiPublicCmcTickerRoute,
+  ApiPublicHmeLinkRevokeRoute: ApiPublicHmeLinkRevokeRoute,
+  ApiPublicHmeLinkSubmitRoute: ApiPublicHmeLinkSubmitRoute,
+  ApiPublicHmeLinkTradesRoute: ApiPublicHmeLinkTradesRouteWithChildren,
   ApiPublicMinehmeProfileUpdateRoute: ApiPublicMinehmeProfileUpdateRoute,
   ApiPublicV1AccountRoute: ApiPublicV1AccountRoute,
   ApiPublicV1AllOrdersRoute: ApiPublicV1AllOrdersRoute,
@@ -1070,6 +1188,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicV1IndexRoute: ApiPublicV1IndexRoute,
   ApiPublicCmcOrderbookPairRoute: ApiPublicCmcOrderbookPairRoute,
   ApiPublicCmcTradesPairRoute: ApiPublicCmcTradesPairRoute,
+  ApiPublicHmeLinkManifestIdRoute: ApiPublicHmeLinkManifestIdRoute,
   ApiPublicV1Ticker24hrRoute: ApiPublicV1Ticker24hrRoute,
   ApiPublicV1TickerPriceRoute: ApiPublicV1TickerPriceRoute,
 }

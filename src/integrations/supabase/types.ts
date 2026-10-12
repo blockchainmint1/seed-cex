@@ -145,6 +145,137 @@ export type Database = {
           },
         ]
       }
+      hme_link_requests: {
+        Row: {
+          challenge: string
+          challenge_id: string
+          consumed_at: string | null
+          created_at: string
+          expires_at: string
+          recipient_priv_ciphertext: string
+          recipient_pubkey: string
+          user_id: string
+        }
+        Insert: {
+          challenge: string
+          challenge_id: string
+          consumed_at?: string | null
+          created_at?: string
+          expires_at: string
+          recipient_priv_ciphertext: string
+          recipient_pubkey: string
+          user_id: string
+        }
+        Update: {
+          challenge?: string
+          challenge_id?: string
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          recipient_priv_ciphertext?: string
+          recipient_pubkey?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      hme_links: {
+        Row: {
+          account: number
+          created_at: string
+          id: string
+          identity_address: string
+          key_ciphertext: string | null
+          mode: string
+          paths: Json
+          revoked_at: string | null
+          revoked_by: string | null
+          status: string
+          user_id: string
+          xpubs: Json
+        }
+        Insert: {
+          account: number
+          created_at?: string
+          id?: string
+          identity_address: string
+          key_ciphertext?: string | null
+          mode: string
+          paths: Json
+          revoked_at?: string | null
+          revoked_by?: string | null
+          status?: string
+          user_id: string
+          xpubs: Json
+        }
+        Update: {
+          account?: number
+          created_at?: string
+          id?: string
+          identity_address?: string
+          key_ciphertext?: string | null
+          mode?: string
+          paths?: Json
+          revoked_at?: string | null
+          revoked_by?: string | null
+          status?: string
+          user_id?: string
+          xpubs?: Json
+        }
+        Relationships: []
+      }
+      hme_trade_proposals: {
+        Row: {
+          chain: string
+          created_at: string
+          expires_at: string
+          id: string
+          link_id: string
+          psbt: string
+          responded_at: string | null
+          signed_psbt: string | null
+          status: string
+          summary: string
+          trade_id: string | null
+          user_id: string
+        }
+        Insert: {
+          chain: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          link_id: string
+          psbt: string
+          responded_at?: string | null
+          signed_psbt?: string | null
+          status?: string
+          summary: string
+          trade_id?: string | null
+          user_id: string
+        }
+        Update: {
+          chain?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          link_id?: string
+          psbt?: string
+          responded_at?: string | null
+          signed_psbt?: string | null
+          status?: string
+          summary?: string
+          trade_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hme_trade_proposals_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: false
+            referencedRelation: "hme_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           amount: number

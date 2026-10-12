@@ -33,6 +33,7 @@ import {
 import { fmtAmount, truncateMiddle } from "@/lib/format";
 import { ExplorerLink } from "@/components/site/ExplorerLink";
 import { WrapDesk } from "@/components/wallet/WrapDesk";
+import { HmeWalletLinkCard } from "@/components/wallet/HmeWalletLinkCard";
 
 
 export const Route = createFileRoute("/_authenticated/wallet")({
@@ -237,6 +238,10 @@ function Wallet() {
         decryption happen in this browser tab; the server only ever sees the encrypted blob and
         your public addresses.
       </p>
+
+      <div className="mt-6">
+        <HmeWalletLinkCard />
+      </div>
 
       {error ? (
         <p className="mt-6 rounded-sm border border-destructive/40 bg-destructive/10 px-3 py-2 font-mono text-xs text-destructive">
