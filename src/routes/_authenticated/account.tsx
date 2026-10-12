@@ -151,18 +151,49 @@ function AccountPage() {
         </p>
       ) : null}
 
-      <Section title="Profile" desc="Only you can see this. Seeds never asks for identity documents.">
-        <label className="block space-y-1">
-          <span className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
-            Display name
-          </span>
-          <input
-            className={inputCls}
-            value={form.display_name ?? ""}
-            onChange={(e) => patch({ display_name: e.target.value })}
-            placeholder="Anonymous grower"
-          />
-        </label>
+      <Section
+        title="Profile"
+        desc="Your name and details come from your Honest.Money profile — one identity across the whole ecosystem. Seeds never asks for identity documents."
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1">
+            <span className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
+              Display name
+            </span>
+            <p className="rounded-sm border border-border bg-background px-3 py-2 font-mono text-sm">
+              {p?.display_name || "—"}
+            </p>
+          </div>
+          <div className="space-y-1">
+            <span className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
+              Honest.Money member
+            </span>
+            <p className="rounded-sm border border-border bg-background px-3 py-2 font-mono text-sm">
+              {p?.hm_member_id ? (
+                <>
+                  {p.hm_member_id.slice(0, 8)}…{" "}
+                  <span className={p.hm_status === "active" || p.hm_status === "oceanfront" ? "text-primary" : "text-destructive"}>
+                    {p.hm_status}
+                  </span>
+                </>
+              ) : (
+                "—"
+              )}
+            </p>
+          </div>
+        </div>
+        <p className="font-mono text-xs text-muted-foreground">
+          To change your name, email or phone, edit your{" "}
+          <a
+            href="https://honest.money/dashboard/account"
+            target="_blank"
+            rel="noreferrer"
+            className="text-primary underline underline-offset-2"
+          >
+            Honest.Money profile
+          </a>{" "}
+          — it updates here automatically.
+        </p>
         <label className="block space-y-1">
           <span className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
             Timezone
@@ -177,7 +208,6 @@ function AccountPage() {
         <button
           onClick={() =>
             mutate.mutate({
-              display_name: form.display_name?.trim() || null,
               timezone: form.timezone?.trim() || "UTC",
             })
           }
