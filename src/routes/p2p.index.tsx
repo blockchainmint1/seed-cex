@@ -118,7 +118,7 @@ function Market() {
               <SellerBadge handle={o.seller.handle} stats={o.seller.stats} />
               <div>
                 <div className="font-mono text-lg">${o.price.toLocaleString()} <span className="text-xs text-muted-foreground">/ {o.asset}</span></div>
-                <div className="font-mono text-[11px] text-muted-foreground">fee {o.feePct}%</div>
+                <div className="font-mono text-[11px] text-muted-foreground">fee {o.feePct}%{o.priceMode === "market" ? ` · market ${o.marginPct >= 0 ? "+" : ""}${o.marginPct}%` : ""}</div>
               </div>
               <div className="font-mono text-xs">
                 ${o.minFiat.toLocaleString()} – ${Math.floor(o.maxFiat).toLocaleString()}

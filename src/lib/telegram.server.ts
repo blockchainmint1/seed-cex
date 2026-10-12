@@ -45,7 +45,8 @@ export async function notifyUser(
     | "notify_settlement_failed"
     | "notify_auth_expiring"
     | "notify_deposit"
-    | "notify_login",
+    | "notify_login"
+    | "notify_p2p",
   text: string,
 ): Promise<void> {
   try {

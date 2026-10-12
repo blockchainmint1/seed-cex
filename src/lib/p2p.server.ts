@@ -82,6 +82,10 @@ export async function watchTrade(tradeId: string) {
       .update({ status: "cancelled", cancelled_at: new Date().toISOString(), resolution: "expired" })
       .eq("id", t.id);
     await systemMessage(t.id, "Payment window ran out — trade cancelled, coins unreserved.");
+    await Promise.all([
+      p2pAlert(t.seller_id, t.id, `Trade expired — the buyer didn't pay in time. Your ${t.crypto_amount} ${t.asset} is unreserved.`),
+      p2pAlert(t.buyer_id, t.id, `Your trade for ${t.crypto_amount} ${t.asset} expired — the payment window ran out.`),
+    ]);
     return { ...t, status: "cancelled" };
   }
   if ((t.status === "open" || t.status === "paid") && !t.flagged_reason) {
@@ -91,6 +95,10 @@ export async function watchTrade(tradeId: string) {
       const reason = `Seller's trading pocket dropped to ${bal} ${t.asset} — below the reserved amount.`;
       await supabaseAdmin.from("p2p_trades").update({ flagged_reason: reason }).eq("id", t.id);
       await systemMessage(t.id, `⚠ ${reason} Do NOT send payment until this clears. If you already paid, open a dispute.`);
+      await Promise.all([
+        p2pAlert(t.buyer_id, t.id, `⚠ Trade flagged: ${reason} Don't send payment until it clears.`),
+        p2pAlert(t.seller_id, t.id, `⚠ Your trade was flagged: ${reason} Put the coins back in your trading pocket.`),
+      ]);
       return { ...t, flagged_reason: reason };
     }
   }
@@ -119,6 +127,10 @@ export async function releaseTrade(tradeId: string, actorId: string, resolution?
     })
     .eq("id", t.id);
   await systemMessage(t.id, `Released ${t.crypto_amount} ${t.asset} to the buyer. Transaction ${sent.txid}`);
+  await Promise.all([
+    p2pAlert(t.buyer_id, t.id, `✅ ${t.crypto_amount} ${t.asset} is on its way to your wallet.\nTx: <code>${sent.txid}</code>`),
+    p2pAlert(t.seller_id, t.id, `✅ You released ${t.crypto_amount} ${t.asset} for $${Number(t.fiat_amount).toFixed(2)}. Trade complete.`),
+  ]);
   return sent.txid;
 }
 
@@ -193,4 +205,33 @@ export function rankOf(stats: SellerStats, verifiedUsd: number) {
   const funds = 15 * Math.min(1, Math.log10(verifiedUsd + 1) / 5);
   const speed = stats.avgResponseMin === null ? 0 : 10 * Math.max(0, 1 - stats.avgResponseMin / 15);
   return stats.score + funds + speed;
+}
+
+/* ------------------------------ market prices ----------------------------- */
+
+/** Live USD reference price for a P2P asset. TSD is the platform dollar (1:1). */
+export async function marketPrice(asset: P2pAsset): Promise<number | null> {
+  if (asset === "TSD") return 1;
+  const { fetchQuotes, TRACKED } = await import("./cmc.server");
+  const q = await fetchQuotes(TRACKED);
+  const p = q.quotes.find((x) => x.symbol === asset)?.price ?? null;
+  if (p && p > 0) return p;
+  return asset === "USDC" || asset === "USDT" ? 1 : null;
+}
+
+/** The price an offer trades at right now: fixed, or market ± the seller's margin. */
+export async function effectivePrice(o: { asset: string; price: unknown; price_mode?: string | null; margin_pct?: unknown }) {
+  if (o.price_mode !== "market") return Number(o.price);
+  const m = await marketPrice(o.asset as P2pAsset);
+  if (!m) return Number(o.price); // feed down: fall back to the seller's last saved price
+  return +(m * (1 + Number(o.margin_pct ?? 0) / 100)).toFixed(8);
+}
+
+/* ------------------------------ telegram alerts --------------------------- */
+
+const SITE = "https://seeds.honest.money";
+
+export async function p2pAlert(userId: string, tradeId: string, text: string) {
+  const { notifyUser } = await import("./telegram.server");
+  await notifyUser(userId, "notify_p2p", `🌱 <b>Seeds P2P</b>\n${text}\n\n<a href="${SITE}/p2p/trade/${tradeId}">Open the trade</a>`);
 }

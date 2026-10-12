@@ -15,6 +15,7 @@ export type Profile = {
   notify_deposit: boolean;
   notify_login: boolean;
   notify_weekly_digest: boolean;
+  notify_p2p: boolean;
   default_auth_cap: number | null;
   default_auth_hours: number;
   confirm_before_order: boolean;
@@ -23,7 +24,7 @@ export type Profile = {
 };
 
 const COLS =
-  "id, display_name, timezone, telegram_chat_id, telegram_verified, notify_order_filled, notify_settlement, notify_settlement_failed, notify_auth_expiring, notify_deposit, notify_login, notify_weekly_digest, default_auth_cap, default_auth_hours, confirm_before_order, default_pair, created_at";
+  "id, display_name, timezone, telegram_chat_id, telegram_verified, notify_order_filled, notify_settlement, notify_settlement_failed, notify_auth_expiring, notify_deposit, notify_login, notify_weekly_digest, notify_p2p, default_auth_cap, default_auth_hours, confirm_before_order, default_pair, created_at";
 
 export const getMyProfile = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -61,6 +62,7 @@ export const updateMyProfile = createServerFn({ method: "POST" })
         notify_deposit: z.boolean().optional(),
         notify_login: z.boolean().optional(),
         notify_weekly_digest: z.boolean().optional(),
+        notify_p2p: z.boolean().optional(),
         default_auth_cap: z.number().nonnegative().nullable().optional(),
         default_auth_hours: z.number().int().min(1).max(720).optional(),
         confirm_before_order: z.boolean().optional(),

@@ -46,7 +46,7 @@ export const listOffers = createServerFn({ method: "GET" })
     const db = await admin();
     let q = db
       .from("p2p_offers")
-      .select("id, seller_id, asset, price, fee_pct, min_fiat, max_fiat, payment_methods, terms, window_minutes, verified_balance, verified_at")
+      .select("id, seller_id, asset, price, price_mode, margin_pct, fee_pct, min_fiat, max_fiat, payment_methods, terms, window_minutes, verified_balance, verified_at")
       .eq("active", true)
       .limit(200);
     if (data.asset) q = q.eq("asset", data.asset);
@@ -55,7 +55,9 @@ export const listOffers = createServerFn({ method: "GET" })
     let rows = offers ?? [];
 
     // Refresh stale verified balances (bounded so the page stays fast).
-    const { refreshOffer, statsFor, rankOf } = await engine();
+    const { refreshOffer, statsFor, rankOf, effectivePrice } = await engine();
+    const livePrice: Record<string, number> = {};
+    await Promise.all(rows.map(async (o) => { livePrice[o.id] = await effectivePrice(o); }));
     const stale = rows
       .filter((o) => !o.verified_at || Date.now() - new Date(o.verified_at).getTime() > 5 * 60_000)
       .slice(0, 8);
@@ -69,7 +71,7 @@ export const listOffers = createServerFn({ method: "GET" })
     const stats = await statsFor([...new Set(rows.map((o) => o.seller_id))]);
     const names = await namesFor(rows.map((o) => o.seller_id));
     let list = rows.map((o) => {
-      const price = Number(o.price);
+      const price = livePrice[o.id];
       const verified = Number(o.verified_balance);
       const availableUsd = verified * price;
       const maxFiat = Math.min(Number(o.max_fiat), availableUsd);
@@ -78,6 +80,8 @@ export const listOffers = createServerFn({ method: "GET" })
         id: o.id,
         asset: o.asset as P2pAsset,
         price,
+        priceMode: o.price_mode as "fixed" | "market",
+        marginPct: Number(o.margin_pct),
         feePct: Number(o.fee_pct),
         minFiat: Number(o.min_fiat),
         maxFiat,
@@ -96,18 +100,26 @@ export const listOffers = createServerFn({ method: "GET" })
     return list;
   });
 
+/** Live reference prices so sellers can set "market ± margin". */
+export const getP2pMarketPrices = createServerFn({ method: "GET" }).handler(async () => {
+  const { marketPrice } = await engine();
+  const out: Record<string, number | null> = {};
+  await Promise.all(P2P_ASSET_IDS.map(async (a) => { out[a] = await marketPrice(a); }));
+  return out;
+});
+
 export const getSellerProfile = createServerFn({ method: "GET" })
   .inputValidator((i) => z.object({ handle: z.string().min(1).max(40) }).parse(i))
   .handler(async ({ data }) => {
     const db = await admin();
     const { data: p } = await db.from("p2p_profiles").select("*").ilike("handle", data.handle).maybeSingle();
     if (!p) return null;
-    const { statsFor } = await engine();
+    const { statsFor, effectivePrice } = await engine();
     const [stats, { data: offers }, { data: fb }, { data: history }] = await Promise.all([
       statsFor([p.user_id]),
       db
         .from("p2p_offers")
-        .select("id, asset, price, fee_pct, min_fiat, max_fiat, payment_methods, verified_balance, window_minutes")
+        .select("id, asset, price, price_mode, margin_pct, fee_pct, min_fiat, max_fiat, payment_methods, verified_balance, window_minutes")
         .eq("seller_id", p.user_id)
         .eq("active", true),
       db.from("p2p_feedback").select("from_id, positive, comment, created_at").eq("to_id", p.user_id).order("created_at", { ascending: false }).limit(50),
@@ -128,7 +140,9 @@ export const getSellerProfile = createServerFn({ method: "GET" })
       hours: p.hours,
       since: p.created_at,
       stats: stats[p.user_id],
-      offers: (offers ?? []).map((o) => ({ ...o, price: Number(o.price), verified_balance: Number(o.verified_balance) })),
+      offers: await Promise.all(
+        (offers ?? []).map(async (o) => ({ ...o, price: await effectivePrice(o), verified_balance: Number(o.verified_balance) })),
+      ),
       feedback: (fb ?? []).map((f) => ({ by: names[f.from_id], positive: f.positive, comment: f.comment, at: f.created_at })),
       history: (history ?? []).map((h) => ({
         asset: h.asset,
@@ -172,6 +186,8 @@ export const getMyP2p = createServerFn({ method: "GET" })
         id: o.id,
         asset: o.asset as P2pAsset,
         price: Number(o.price),
+        priceMode: (o.price_mode === "market" ? "market" : "fixed") as "fixed" | "market",
+        marginPct: Number(o.margin_pct),
         feePct: Number(o.fee_pct),
         minFiat: Number(o.min_fiat),
         maxFiat: Number(o.max_fiat),
@@ -229,6 +245,8 @@ export const saveOffer = createServerFn({ method: "POST" })
         id: z.string().uuid().optional(),
         asset: z.enum(P2P_ASSET_IDS),
         price: z.number().positive().max(10_000_000),
+        priceMode: z.enum(["fixed", "market"]).default("fixed"),
+        marginPct: z.number().min(-50).max(50).default(0),
         feePct: z.number().min(0).max(20),
         minFiat: z.number().min(1),
         maxFiat: z.number().min(1).max(1_000_000),
@@ -249,6 +267,8 @@ export const saveOffer = createServerFn({ method: "POST" })
       seller_id: context.userId,
       asset: data.asset,
       price: data.price,
+      price_mode: data.priceMode,
+      margin_pct: data.marginPct,
       fee_pct: data.feePct,
       min_fiat: data.minFiat,
       max_fiat: data.maxFiat,
@@ -310,7 +330,8 @@ export const openTrade = createServerFn({ method: "POST" })
     if (!to) throw new Error("Set up your wallet first so we know where to send your coins");
 
     const feePct = Number(o.fee_pct);
-    const price = Number(o.price);
+    const { effectivePrice, p2pAlert } = await engine();
+    const price = await effectivePrice(o);
     const feeFiat = +(data.fiat * (feePct / 100)).toFixed(2);
     const crypto = +((data.fiat - feeFiat) / price).toFixed(P2P_ASSETS[asset].decimals);
 
@@ -344,6 +365,7 @@ export const openTrade = createServerFn({ method: "POST" })
       t.id,
       `Trade opened. ${crypto} ${asset} is reserved in the seller's trading pocket. Pay $${data.fiat.toFixed(2)} by ${data.method} within ${o.window_minutes} minutes, then tap "I've paid".`,
     );
+    await p2pAlert(o.seller_id, t.id, `🛒 New buyer! They want ${crypto} ${asset} for $${data.fiat.toFixed(2)} by ${data.method}. ${crypto} ${asset} is reserved in your pocket — keep an eye on your account.`);
     return { id: t.id };
   });
 
@@ -368,11 +390,17 @@ export const getP2pTrade = createServerFn({ method: "GET" })
       await db.from("p2p_trades").update({ seller_seen_at: new Date().toISOString() }).eq("id", t.id);
     }
     const [{ data: msgs }, { data: fb }, { data: votes }] = await Promise.all([
-      db.from("p2p_messages").select("id, sender_id, body, created_at").eq("trade_id", t.id).order("created_at"),
+      db.from("p2p_messages").select("id, sender_id, body, created_at, attachment_path, attachment_name").eq("trade_id", t.id).order("created_at"),
       db.from("p2p_feedback").select("from_id, positive, comment").eq("trade_id", t.id),
       db.from("p2p_dispute_votes").select("vote").eq("trade_id", t.id),
     ]);
     const names = await namesFor([t.seller_id, t.buyer_id, ...(msgs ?? []).map((m) => m.sender_id ?? "")]);
+    const paths = (msgs ?? []).map((m) => m.attachment_path).filter((p): p is string => Boolean(p));
+    const signed: Record<string, string> = {};
+    if (paths.length) {
+      const { data: urls } = await db.storage.from("p2p-receipts").createSignedUrls(paths, 3600);
+      for (const u of urls ?? []) if (u.path && u.signedUrl) signed[u.path] = u.signedUrl;
+    }
     const { statsFor } = await engine();
     const st = await statsFor([t.seller_id]);
     return {
@@ -405,6 +433,9 @@ export const getP2pTrade = createServerFn({ method: "GET" })
         who: m.sender_id ? names[m.sender_id] : "Seeds",
         body: m.body,
         at: m.created_at,
+        file: m.attachment_path
+          ? { name: m.attachment_name ?? "receipt", url: signed[m.attachment_path] ?? null, image: /\.(png|jpe?g|webp|gif)$/i.test(m.attachment_path) }
+          : null,
       })),
       myFeedback: (fb ?? []).find((f) => f.from_id === me) ?? null,
       votes: {
@@ -420,6 +451,58 @@ export const sendP2pMessage = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { db, t } = await loadForParty(data.id, context.userId, context.supabase);
     await db.from("p2p_messages").insert({ trade_id: t.id, sender_id: context.userId, body: data.body });
+    const { p2pAlert } = await engine();
+    const other = context.userId === t.seller_id ? t.buyer_id : t.seller_id;
+    await p2pAlert(other, t.id, `💬 New message: ${escapeHtml(data.body.slice(0, 200))}`);
+    return { ok: true };
+  });
+
+function escapeHtml(s: string) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+const UPLOAD_TYPES: Record<string, string> = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/webp": "webp",
+  "image/gif": "gif",
+  "application/pdf": "pdf",
+};
+
+/** Upload a payment receipt / screenshot into the trade chat. Only the two parties (and admins) can see it. */
+export const uploadP2pReceipt = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        name: z.string().trim().min(1).max(120),
+        type: z.string().max(60),
+        base64: z.string().min(1).max(11_500_000), // ~8 MB
+        note: z.string().trim().max(500).optional(),
+      })
+      .parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const ext = UPLOAD_TYPES[data.type];
+    if (!ext) throw new Error("Upload a photo (PNG, JPG, WebP, GIF) or a PDF");
+    const { db, t } = await loadForParty(data.id, context.userId, context.supabase);
+    if (t.status === "released" || t.status === "cancelled") throw new Error("This trade is closed");
+    const bytes = Uint8Array.from(atob(data.base64), (c) => c.charCodeAt(0));
+    if (bytes.byteLength > 8 * 1024 * 1024) throw new Error("File is over 8 MB");
+    const path = `${t.id}/${crypto.randomUUID()}.${ext}`;
+    const { error } = await db.storage.from("p2p-receipts").upload(path, bytes, { contentType: data.type });
+    if (error) throw new Error(error.message);
+    await db.from("p2p_messages").insert({
+      trade_id: t.id,
+      sender_id: context.userId,
+      body: data.note || "📎 Attached a file",
+      attachment_path: path,
+      attachment_name: data.name,
+    });
+    const { p2pAlert } = await engine();
+    const other = context.userId === t.seller_id ? t.buyer_id : t.seller_id;
+    await p2pAlert(other, t.id, `📎 ${context.userId === t.buyer_id ? "The buyer" : "The seller"} uploaded a file (${escapeHtml(data.name)}).`);
     return { ok: true };
   });
 
@@ -437,13 +520,14 @@ export const p2pAction = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { db, t } = await loadForParty(data.id, context.userId, context.supabase);
     const me = context.userId;
-    const { systemMessage, releaseTrade } = await engine();
+    const { systemMessage, releaseTrade, p2pAlert } = await engine();
     const now = new Date().toISOString();
 
     if (data.action === "paid") {
       if (me !== t.buyer_id || t.status !== "open") throw new Error("Only the buyer can mark an open trade paid");
       await db.from("p2p_trades").update({ status: "paid", paid_at: now }).eq("id", t.id);
       await systemMessage(t.id, "Buyer marked the payment as sent. Seller: check your account, then release.");
+      await p2pAlert(t.seller_id, t.id, `💵 The buyer says they sent $${Number(t.fiat_amount).toFixed(2)} by ${t.payment_method}. Check your account, then release ${t.crypto_amount} ${t.asset}.`);
     } else if (data.action === "cancel") {
       if (t.status !== "open" && !(t.status === "paid" && me === t.seller_id))
         throw new Error("This trade can't be cancelled now — open a dispute instead");
@@ -451,6 +535,7 @@ export const p2pAction = createServerFn({ method: "POST" })
       const resolution = me === t.buyer_id ? "buyer_cancelled" : "seller_cancelled";
       await db.from("p2p_trades").update({ status: "cancelled", cancelled_at: now, resolution }).eq("id", t.id);
       await systemMessage(t.id, `Trade cancelled by the ${me === t.buyer_id ? "buyer" : "seller"}. Coins unreserved.`);
+      await p2pAlert(me === t.buyer_id ? t.seller_id : t.buyer_id, t.id, `❌ The ${me === t.buyer_id ? "buyer" : "seller"} cancelled the ${t.crypto_amount} ${t.asset} trade.`);
     } else if (data.action === "release") {
       if (me !== t.seller_id) throw new Error("Only the seller can release");
       return { txid: await releaseTrade(t.id, me) };
@@ -463,8 +548,9 @@ export const p2pAction = createServerFn({ method: "POST" })
         .eq("id", t.id);
       await systemMessage(
         t.id,
-        "Dispute opened. Coins stay reserved. Post your proof (receipts, screenshots described in text) in the chat — the community jury and Seeds admins will review.",
+        "Dispute opened. Coins stay reserved. Upload your proof (receipts, screenshots) in the chat — the community jury and Seeds admins will review.",
       );
+      await p2pAlert(me === t.buyer_id ? t.seller_id : t.buyer_id, t.id, `⚖️ A dispute was opened: ${escapeHtml(data.reason || "no reason given")}. Upload your proof in the trade chat.`);
     }
     return { ok: true };
   });
@@ -594,5 +680,13 @@ export const resolveDispute = createServerFn({ method: "POST" })
       .eq("id", data.id)
       .eq("status", "disputed");
     await systemMessage(data.id, "Arbitration ruled for the seller: trade cancelled, coins stay with the seller.");
+    const { data: rt } = await db.from("p2p_trades").select("seller_id, buyer_id").eq("id", data.id).maybeSingle();
+    if (rt) {
+      const { p2pAlert } = await engine();
+      await Promise.all([
+        p2pAlert(rt.seller_id, data.id, "⚖️ Dispute ruled in your favor — trade cancelled, your coins stay with you."),
+        p2pAlert(rt.buyer_id, data.id, "⚖️ Dispute ruled for the seller — the trade was cancelled."),
+      ]);
+    }
     return { ok: true };
   });

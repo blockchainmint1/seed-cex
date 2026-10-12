@@ -28,6 +28,9 @@ export type QuoteSet = {
   fetchedAt: string;
 };
 
+/** One shared symbol set — the quote cache is not keyed by symbols. */
+export const TRACKED = ["TXC", "USDC", "USDT", "ETH", "BNB", "BTC"];
+
 let cache: { at: number; value: QuoteSet } | null = null;
 
 export async function fetchQuotes(symbols: string[]): Promise<QuoteSet> {
