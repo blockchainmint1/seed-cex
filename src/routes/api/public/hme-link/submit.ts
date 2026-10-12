@@ -48,6 +48,13 @@ export const Route = createFileRoute("/api/public/hme-link/submit")({
         if (b.message !== expected) return json({ error: "message mismatch" }, 400);
         if (!verifyTxcMessage(b.identity_address, b.message, b.signature)) return json({ error: "bad signature" }, 401);
 
+        // One wallet links to one Seeds account: refuse if this wallet identity
+        // is already actively linked to a different account.
+        const { data: clash } = await supabaseAdmin.from("hme_links")
+          .select("user_id").eq("identity_address", b.identity_address).eq("status", "active").maybeSingle();
+        if (clash && clash.user_id !== req.user_id)
+          return json({ error: "wallet already linked to another Seeds account; revoke that link first" }, 409);
+
         let keyCiphertext: string | null = null;
         if (b.mode === "access") {
           let xprvs: Record<string, string>;

@@ -62,7 +62,14 @@ export const redeemHonestMoneyToken = createServerFn({ method: "POST" })
     const link = await supabaseAdmin.auth.admin.generateLink({ type: "magiclink", email });
     if (link.error || !link.data.properties?.hashed_token) throw new Error("Could not start a session.");
     userId = userId ?? link.data.user?.id ?? null;
-    if (userId && !linked) await supabaseAdmin.from("profiles").update({ hm_member_id: p.minerId }).eq("id", userId);
+    if (userId && !linked) {
+      // One HME wallet = one Seeds account. If this email already belongs to an
+      // account linked to a different member, refuse rather than re-link it.
+      const { data: prof } = await supabaseAdmin.from("profiles").select("hm_member_id").eq("id", userId).maybeSingle();
+      if (prof?.hm_member_id && prof.hm_member_id !== p.minerId)
+        throw new Error("That email belongs to a Seeds account linked to a different Honest.Money wallet. Sign in with that wallet.");
+      await supabaseAdmin.from("profiles").update({ hm_member_id: p.minerId }).eq("id", userId);
+    }
 
     if (userId) {
       const { alertSignIn } = await import("./alerts.server");
