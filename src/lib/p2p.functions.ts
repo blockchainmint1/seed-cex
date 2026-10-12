@@ -307,13 +307,17 @@ export const saveP2pProfile = createServerFn({ method: "POST" })
     const db = await admin();
     const { data: taken } = await db.from("p2p_profiles").select("user_id").ilike("handle", data.handle).maybeSingle();
     if (taken && taken.user_id !== context.userId) throw new Error("That handle is taken");
-    const { away, quickReplies, paymentDetails, ...base } = data;
+    const { away, quickReplies, paymentDetails, hoursFrom, hoursTo, tz, country, ...base } = data;
     const { error } = await db
       .from("p2p_profiles")
       .upsert(
         {
           user_id: context.userId,
           ...base,
+          ...(country !== undefined ? { country } : {}),
+          ...(hoursFrom !== undefined ? { hours_from: hoursFrom } : {}),
+          ...(hoursTo !== undefined ? { hours_to: hoursTo } : {}),
+          ...(tz !== undefined ? { tz } : {}),
           ...(away !== undefined ? { away } : {}),
           ...(quickReplies ? { quick_replies: quickReplies } : {}),
           ...(paymentDetails ? { payment_details: paymentDetails } : {}),
