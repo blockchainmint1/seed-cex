@@ -852,3 +852,78 @@ export const resolveDispute = createServerFn({ method: "POST" })
     }
     return { ok: true };
   });
+
+/* ------------------------------ trust & safety ----------------------------- */
+
+async function userByHandle(handle: string) {
+  const db = await admin();
+  const { data } = await db.from("p2p_profiles").select("user_id").ilike("handle", handle).maybeSingle();
+  return data?.user_id ?? null;
+}
+
+/** Block (or unblock) another trader — neither of you can open trades with the other. */
+export const blockTrader = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z.object({ tradeId: z.string().uuid().optional(), userId: z.string().uuid().optional(), handle: z.string().max(40).optional(), unblock: z.boolean().optional() }).parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const db = await admin();
+    let target = data.userId ?? (data.handle ? await userByHandle(data.handle) : null);
+    if (!target && data.tradeId) {
+      const { t } = await loadForParty(data.tradeId, context.userId, context.supabase);
+      target = t.seller_id === context.userId ? t.buyer_id : t.seller_id;
+    }
+    if (!target || target === context.userId) throw new Error("Trader not found");
+    if (data.unblock) {
+      await db.from("p2p_blocks").delete().eq("blocker_id", context.userId).eq("blocked_id", target);
+    } else {
+      await db.from("p2p_blocks").upsert({ blocker_id: context.userId, blocked_id: target });
+    }
+    return { ok: true };
+  });
+
+/** Report a trader to Seeds admins. */
+export const reportTrader = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z.object({ tradeId: z.string().uuid().optional(), handle: z.string().max(40).optional(), reason: z.string().trim().min(5).max(1000) }).parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const db = await admin();
+    let target = data.handle ? await userByHandle(data.handle) : null;
+    if (data.tradeId) {
+      const { t } = await loadForParty(data.tradeId, context.userId, context.supabase);
+      target = t.seller_id === context.userId ? t.buyer_id : t.seller_id;
+    }
+    if (!target || target === context.userId) throw new Error("Trader not found");
+    const { error } = await db.from("p2p_reports").insert({
+      reporter_id: context.userId,
+      reported_id: target,
+      trade_id: data.tradeId ?? null,
+      reason: data.reason,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/** Admin queue of open reports. */
+export const listP2pReports = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    if (!(await isAdmin(context.supabase, context.userId))) throw new Error("Admins only");
+    const db = await admin();
+    const { data } = await db.from("p2p_reports").select("*").eq("status", "open").order("created_at", { ascending: false }).limit(100);
+    const names = await namesFor((data ?? []).flatMap((r) => [r.reporter_id, r.reported_id]));
+    return (data ?? []).map((r) => ({ id: r.id, by: names[r.reporter_id], against: names[r.reported_id], tradeId: r.trade_id, reason: r.reason, at: r.created_at }));
+  });
+
+export const closeP2pReport = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({ id: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => {
+    if (!(await isAdmin(context.supabase, context.userId))) throw new Error("Admins only");
+    const db = await admin();
+    await db.from("p2p_reports").update({ status: "closed" }).eq("id", data.id);
+    return { ok: true };
+  });
