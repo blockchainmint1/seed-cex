@@ -233,6 +233,7 @@ export const getMyP2p = createServerFn({ method: "GET" })
         .limit(100),
       db.from("wallets").select("txc_address, evm_address").eq("user_id", me).maybeSingle(),
     ]);
+    const { data: acct } = await db.from("profiles").select("display_name").eq("id", me).maybeSingle();
     const { statsFor } = await engine();
     const names = await namesFor((trades ?? []).flatMap((t) => [t.seller_id, t.buyer_id]));
     const { data: blocks } = await db.from("p2p_blocks").select("blocked_id").eq("blocker_id", me);
@@ -240,6 +241,7 @@ export const getMyP2p = createServerFn({ method: "GET" })
     await touchSeen(me);
     return {
       profile,
+      displayName: acct?.display_name ?? null,
       blocked: (blocks ?? []).map((b) => ({ id: b.blocked_id, handle: blockedNames[b.blocked_id] })),
       stats: (await statsFor([me]))[me],
       hasWallet: Boolean(wallet?.txc_address),
