@@ -33,15 +33,17 @@ export const Route = createFileRoute("/p2p/")({
 type Offer = Awaited<ReturnType<typeof listOffers>>[number];
 
 function Market() {
+  const [side, setSide] = useState<"sell" | "buy">("sell");
+  const [onlineOnly, setOnlineOnly] = useState(false);
   const [asset, setAsset] = useState<P2pAsset | undefined>();
   const [method, setMethod] = useState<string>("");
   const [amount, setAmount] = useState("");
   const [buying, setBuying] = useState<Offer | null>(null);
   const fetchOffers = useServerFn(listOffers);
   const offers = useQuery({
-    queryKey: ["p2p-offers", asset, method, amount],
+    queryKey: ["p2p-offers", side, onlineOnly, asset, method, amount],
     queryFn: () =>
-      fetchOffers({ data: { asset, method: method || undefined, amount: Number(amount) || undefined } }),
+      fetchOffers({ data: { side, onlineOnly, asset, method: method || undefined, amount: Number(amount) || undefined } }),
     refetchInterval: 60_000,
   });
 
@@ -79,6 +81,13 @@ function Market() {
         </div>
       </section>
 
+      <div className="mb-3 flex rounded-sm border border-border text-sm w-fit">
+        {(["sell", "buy"] as const).map((x) => (
+          <button key={x} onClick={() => setSide(x)} className={`px-4 py-2 font-display font-bold ${side === x ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+            {x === "sell" ? "Buy crypto" : "Sell to buyers"}
+          </button>
+        ))}
+      </div>
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <div className="flex rounded-sm border border-border">
           {[undefined, ...P2P_ASSET_IDS].map((a) => (
@@ -100,38 +109,49 @@ function Market() {
           {PAYMENT_METHODS.map((m) => <option key={m}>{m}</option>)}
         </select>
         <Input className="h-9 w-40" placeholder="I want to spend $" value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" />
+        <label className="flex items-center gap-1.5 text-sm text-muted-foreground"><input type="checkbox" checked={onlineOnly} onChange={(e) => setOnlineOnly(e.target.checked)} /> Online now</label>
       </div>
 
       <section className="rounded-sm border border-border bg-surface">
         <div className="hidden grid-cols-[2fr_1fr_1fr_1.4fr_auto] gap-4 border-b border-border px-4 py-2 font-mono text-[10px] tracking-widest text-muted-foreground uppercase md:grid">
-          <span>Seller</span><span>Price</span><span>Limits</span><span>Payment</span><span />
+          <span>{side === "sell" ? "Seller" : "Buyer"}</span><span>Price</span><span>Limits</span><span>Payment</span><span />
         </div>
         {offers.isLoading ? (
           <p className="p-6 text-sm text-muted-foreground">Checking seller pockets on-chain…</p>
         ) : !offers.data?.length ? (
           <p className="p-6 text-sm text-muted-foreground">
-            No verified sellers match yet. <Link to="/p2p/dashboard" className="text-primary">Be the first to list.</Link>
+            {side === "sell" ? "No verified sellers match yet." : "No buy ads match yet."} <Link to="/p2p/dashboard" className="text-primary">Be the first to post an ad.</Link>
           </p>
         ) : (
           offers.data.map((o) => (
             <div key={o.id} className="grid gap-3 border-b border-border px-4 py-4 last:border-0 md:grid-cols-[2fr_1fr_1fr_1.4fr_auto] md:items-center md:gap-4">
-              <SellerBadge handle={o.seller.handle} stats={o.seller.stats} />
+              <div>
+                <SellerBadge handle={o.seller.handle} stats={o.seller.stats} />
+                <div className="mt-1 flex flex-wrap gap-2 font-mono text-[10px] uppercase">
+                  <span className={o.seller.online ? "text-primary" : "text-muted-foreground"}>● {o.seller.online ? "Online" : "Offline"}</span>
+                  {o.seller.hmeMember ? <span className="text-primary">HME member</span> : null}
+                  {o.newBuyerMax > 0 ? <span className="text-muted-foreground">New buyers ≤ ${o.newBuyerMax}</span> : null}
+                  {o.minTrades > 0 ? <span className="text-muted-foreground">{o.minTrades}+ trades required</span> : null}
+                </div>
+              </div>
               <div>
                 <div className="font-mono text-lg">${o.price.toLocaleString()} <span className="text-xs text-muted-foreground">/ {o.asset}</span></div>
                 <div className="font-mono text-[11px] text-muted-foreground">fee {o.feePct}%{o.priceMode === "market" ? ` · market ${o.marginPct >= 0 ? "+" : ""}${o.marginPct}%` : ""}</div>
               </div>
               <div className="font-mono text-xs">
                 ${o.minFiat.toLocaleString()} – ${Math.floor(o.maxFiat).toLocaleString()}
-                <div className="flex items-center gap-1 text-[11px] text-primary">
-                  <BadgeCheck className="h-3 w-3" /> {o.verified.toLocaleString(undefined, { maximumFractionDigits: 6 })} {o.asset} verified
-                </div>
+                {o.side === "sell" ? (
+                  <div className="flex items-center gap-1 text-[11px] text-primary">
+                    <BadgeCheck className="h-3 w-3" /> {o.verified.toLocaleString(undefined, { maximumFractionDigits: 6 })} {o.asset} verified
+                  </div>
+                ) : null}
               </div>
               <div className="flex flex-wrap gap-1">
                 {o.methods.map((m) => (
                   <span key={m} className="rounded-sm border border-border px-1.5 py-0.5 text-[11px]">{m}</span>
                 ))}
               </div>
-              <Button onClick={() => setBuying(o)}>Buy {o.asset}</Button>
+              <Button onClick={() => setBuying(o)}>{o.side === "sell" ? "Buy" : "Sell"} {o.asset}</Button>
             </div>
           ))
         )}
@@ -151,18 +171,20 @@ function BuyDialog({ offer, onClose }: { offer: Offer; onClose: () => void }) {
   const [fiat, setFiat] = useState(String(offer.minFiat));
   const [method, setMethod] = useState(offer.methods[0]);
   const open = useServerFn(openTrade);
+  const sellAd = offer.side === "buy"; // I'm the seller answering a buy ad
+  const [instructions, setInstructions] = useState("");
   const n = Number(fiat) || 0;
   const fee = n * (offer.feePct / 100);
   const get = (n - fee) / offer.price;
   const m = useMutation({
-    mutationFn: () => open({ data: { offerId: offer.id, fiat: n, method } }),
+    mutationFn: () => open({ data: { offerId: offer.id, fiat: n, method, instructions: sellAd && instructions.trim() ? instructions.trim() : undefined } }),
     onSuccess: (r) => navigate({ to: "/p2p/trade/$id", params: { id: r.id } }),
     onError: (e) => toast.error((e as Error).message),
   });
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Buy {offer.asset} from {offer.seller.handle}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{sellAd ? `Sell ${offer.asset} to ${offer.seller.handle}` : `Buy ${offer.asset} from ${offer.seller.handle}`}</DialogTitle></DialogHeader>
         {!user ? (
           <div className="space-y-3 text-sm">
             <p>Sign in to start a trade.</p>
@@ -171,12 +193,12 @@ function BuyDialog({ offer, onClose }: { offer: Offer; onClose: () => void }) {
         ) : (
           <div className="space-y-4 text-sm">
             <label className="block">
-              <span className="font-mono text-[11px] text-muted-foreground uppercase">You pay (USD)</span>
+              <span className="font-mono text-[11px] text-muted-foreground uppercase">{sellAd ? "Buyer pays you (USD)" : "You pay (USD)"}</span>
               <Input value={fiat} onChange={(e) => setFiat(e.target.value)} inputMode="decimal" />
               <span className="font-mono text-[11px] text-muted-foreground">${offer.minFiat} – ${Math.floor(offer.maxFiat)}</span>
             </label>
             <label className="block">
-              <span className="font-mono text-[11px] text-muted-foreground uppercase">Pay with</span>
+              <span className="font-mono text-[11px] text-muted-foreground uppercase">{sellAd ? "Get paid with" : "Pay with"}</span>
               <select value={method} onChange={(e) => setMethod(e.target.value)} className="mt-1 h-9 w-full rounded-sm border border-border bg-background px-2">
                 {offer.methods.map((x) => <option key={x}>{x}</option>)}
               </select>
@@ -184,13 +206,21 @@ function BuyDialog({ offer, onClose }: { offer: Offer; onClose: () => void }) {
             <div className="space-y-1 rounded-sm border border-border bg-surface p-3 font-mono text-xs">
               <div className="flex justify-between"><span>Price</span><span>${offer.price.toLocaleString()} / {offer.asset}</span></div>
               <div className="flex justify-between"><span>Seller fee ({offer.feePct}%)</span><span>${fee.toFixed(2)}</span></div>
-              <div className="flex justify-between text-sm text-primary"><span>You get</span><span>{get > 0 ? get.toFixed(P2P_ASSETS[offer.asset].decimals) : "0"} {offer.asset}</span></div>
+              <div className="flex justify-between text-sm text-primary"><span>{sellAd ? "You send" : "You get"}</span><span>{get > 0 ? get.toFixed(P2P_ASSETS[offer.asset].decimals) : "0"} {offer.asset}</span></div>
               <div className="flex justify-between text-muted-foreground"><span>Time to pay</span><span>{offer.windowMinutes} min</span></div>
             </div>
             {offer.terms ? <p className="text-xs text-muted-foreground">Seller terms: {offer.terms}</p> : null}
-            <p className="text-xs text-muted-foreground">Coins go to your own Seeds wallet address. Payment instructions appear once the trade opens.</p>
+            {sellAd ? (
+              <label className="block">
+                <span className="font-mono text-[11px] text-muted-foreground uppercase">How should they pay you? (leave blank to reuse your saved details for {method})</span>
+                <textarea rows={3} value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder="Zelle: you@email.com (Jane D.)" className="mt-1 w-full rounded-sm border border-border bg-background p-2 text-sm" />
+                <span className="font-mono text-[11px] text-muted-foreground">Coins come from your authorized trading pocket and are reserved until you release.</span>
+              </label>
+            ) : (
+              <p className="text-xs text-muted-foreground">Coins go to your own Seeds wallet address. Payment instructions appear once the trade opens.</p>
+            )}
             <Button className="w-full" disabled={m.isPending || n < offer.minFiat || n > offer.maxFiat} onClick={() => m.mutate()}>
-              {m.isPending ? "Verifying seller funds…" : "Open trade"}
+              {m.isPending ? "Verifying funds…" : "Open trade"}
             </Button>
           </div>
         )}
