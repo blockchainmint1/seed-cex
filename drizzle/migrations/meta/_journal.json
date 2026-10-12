@@ -36,6 +36,13 @@
       "when": 1791814778532,
       "tag": "0004_p2p_alerts_uploads_market_price",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791821653929,
+      "tag": "0005_p2p_upgrades",
+      "breakpoints": true
     }
   ]
 }
