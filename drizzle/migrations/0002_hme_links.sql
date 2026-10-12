@@ -8,6 +8,10 @@ create table public.hme_link_requests (
   consumed_at timestamptz,
   created_at timestamptz not null default now()
 );
+grant all on public.hme_link_requests to service_role;
+alter table public.hme_link_requests enable row level security;
+create policy "service only" on public.hme_link_requests as restrictive for all to anon, authenticated using (false) with check (false);
+
 create table public.hme_links (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null,
@@ -22,7 +26,11 @@ create table public.hme_links (
   revoked_by text,
   created_at timestamptz not null default now()
 );
+grant all on public.hme_links to service_role;
+alter table public.hme_links enable row level security;
+create policy "service only" on public.hme_links as restrictive for all to anon, authenticated using (false) with check (false);
 create index hme_links_user_idx on public.hme_links(user_id) where status = 'active';
+
 create table public.hme_trade_proposals (
   id uuid primary key default gen_random_uuid(),
   link_id uuid not null references public.hme_links(id) on delete cascade,
@@ -37,11 +45,7 @@ create table public.hme_trade_proposals (
   responded_at timestamptz,
   created_at timestamptz not null default now()
 );
-create index hme_trade_proposals_link_idx on public.hme_trade_proposals(link_id, status);
-alter table public.hme_link_requests enable row level security;
-alter table public.hme_links enable row level security;
+grant all on public.hme_trade_proposals to service_role;
 alter table public.hme_trade_proposals enable row level security;
-grant all on public.hme_link_requests, public.hme_links, public.hme_trade_proposals to service_role;
-create policy "service only" on public.hme_link_requests as restrictive for all to anon, authenticated using (false) with check (false);
-create policy "service only" on public.hme_links as restrictive for all to anon, authenticated using (false) with check (false);
 create policy "service only" on public.hme_trade_proposals as restrictive for all to anon, authenticated using (false) with check (false);
+create index hme_trade_proposals_link_idx on public.hme_trade_proposals(link_id, status);
