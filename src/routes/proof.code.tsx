@@ -26,7 +26,7 @@ const facts: { k: string; v: string }[] = [
   { k: "Seed standard", v: "BIP-39, 12 or 24 words, generated or imported in your browser" },
   { k: "Vault encryption", v: "PBKDF2-SHA256 → AES-256-GCM. Ciphertext only ever leaves the browser" },
   { k: "TXC / TSD savings branch", v: "m/44'/696969'/0'/0/0 — Seeds never sees this key" },
-  { k: "Shared trading branch", v: "m/44'/696969'/9'/0/0 — the only branch you can delegate" },
+  { k: "Shared trading branch", v: "m/44'/696969'/1106'/0/0 — the only branch you can delegate" },
   { k: "TEXITcoin coin type", v: "SLIP-0044 696969, address version byte 66" },
   { k: "TSD", v: "Omni Layer property #39 on TEXITcoin, Omni Core 0.9.1" },
   { k: "EVM branch", v: "One address shared across Ethereum, Base, BNB Chain and ZeroChill" },

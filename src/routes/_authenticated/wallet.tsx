@@ -147,13 +147,14 @@ function Wallet() {
         unlockPassword,
       );
       // Older vaults predate the LTC/ISK branches — derive and backfill now.
-      if (!w.ltc_address || !w.isk_address || !w.evm_address || !w.btc_address) {
-        const derived = deriveAddresses(mnemonic);
+      const derived = deriveAddresses(mnemonic);
+      // ISK moved to its own coin type (969696) — refresh stale addresses too.
+      if (!w.ltc_address || w.isk_address !== derived.iskAddress || !w.evm_address || !w.btc_address) {
         await backfillAddresses({
           data: {
             evmAddress: w.evm_address ? undefined : derived.evmAddress,
             ltcAddress: w.ltc_address ? undefined : derived.ltcAddress,
-            iskAddress: w.isk_address ? undefined : derived.iskAddress,
+            iskAddress: w.isk_address === derived.iskAddress ? undefined : derived.iskAddress,
             btcAddress: w.btc_address ? undefined : derived.btcAddress,
           },
         });
