@@ -57,7 +57,7 @@ export const CHAINS: ChainDef[] = [
     nativeSymbol: "TXC",
     p2pkhVersion: 66,
     // SLIP-0044 coin type 696969, matching wallet.texitcoin.org
-    sharedPath: "m/44'/696969'/9'/0/0",
+    sharedPath: "m/44'/696969'/1106'/0/0",
     assets: [
       { symbol: "TXC", contract: null, decimals: 8 },
       // Texas Stable Dollar — Omni Layer property #39 on TEXITcoin.
@@ -124,7 +124,7 @@ export const CHAINS: ChainDef[] = [
     evmChainId: null,
     nativeSymbol: "ISK",
     p2pkhVersion: 45,
-    sharedPath: `m/44'/${LTC_COIN_TYPE}'/19'/0/0`,
+    sharedPath: "m/44'/969696'/1106'/0/0",
     assets: [{ symbol: "ISK", contract: null, decimals: 8 }],
     explorer: "https://explorer.iskandercoin.com/address/",
   },

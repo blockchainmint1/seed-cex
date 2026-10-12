@@ -65,7 +65,7 @@ export function evmAddressFromPubkey(uncompressed: Uint8Array): string {
 /** Litecoin + Iskandercoin savings branches (LTC coin type, forked params). */
 const LTC_PATH = "m/44'/2'/0'/0/0";
 const LTC_PUBKEY_VERSION = 48;
-const ISK_PATH = "m/44'/2'/10'/0/0";
+const ISK_PATH = "m/44'/969696'/0'/0/0";
 const ISK_PUBKEY_VERSION = 45;
 
 /**
@@ -130,7 +130,7 @@ export function deriveAddresses(mnemonic: string): DerivedAddresses {
  * keeps the identical key (they own the seed), can sweep it at any moment, and
  * can revoke.
  */
-export const SHARED_TRADING_PATH = `m/44'/${TXC_COIN_TYPE}'/9'/0/0`;
+export const SHARED_TRADING_PATH = `m/44'/${TXC_COIN_TYPE}'/1106'/0/0`;
 export const SHARED_EVM_PATH = "m/44'/60'/9'/0/0";
 
 export type SharedTradingKey = {

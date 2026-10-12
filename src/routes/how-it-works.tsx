@@ -44,7 +44,7 @@ const steps = [
   {
     icon: Wallet,
     title: "Two branches: savings and trading",
-    body: "From your phrase, keys derive down standard BIP-44 paths. Your savings branch is yours alone — we have no derivation for it, ever. A separate shared trading branch (m/44'/696969'/9'/0/0 on TEXITcoin) exists purely for exchange settlement.",
+    body: "From your phrase, keys derive down standard BIP-44 paths. Your savings branch is yours alone — we have no derivation for it, ever. A separate shared trading branch (m/44'/696969'/1106'/0/0 on TEXITcoin) exists purely for exchange settlement.",
   },
   {
     icon: KeyRound,
@@ -160,7 +160,7 @@ function HowItWorks() {
 {`your seed phrase (never leaves your browser unencrypted)
 ├── m/44'/696969'/0'/0/…   SAVINGS BRANCH
 │    └─ yours alone. Seeds has no keys here. ever.
-└── m/44'/696969'/9'/0/0   SHARED TRADING BRANCH
+└── m/44'/696969'/1106'/0/0 SHARED TRADING BRANCH
      ├─ per-asset authorization: asset + cap + expiry
      ├─ enforced in the database before any signing
      └─ key hard-deleted at expiry / revocation`}
