@@ -40,6 +40,7 @@ export function HmePocketBalances({ addresses, linkId }: { addresses: Record<str
   });
   const [receive, setReceive] = useState<{ symbol: string; network: string; address: string } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   const d = query.data;
   const rows = [
     { symbol: "TSD", network: "TEXITcoin · Omni #39", address: addresses.TXC, balance: d?.tsd?.online ? d.tsd.balance : null },
@@ -51,6 +52,7 @@ export function HmePocketBalances({ addresses, linkId }: { addresses: Record<str
     }),
     ...(d?.evm ?? []).map((r) => ({ symbol: r.symbol, network: `${r.chainName} · EVM`, address: addresses.EVM, balance: r.online ? r.balance : null })),
   ].filter((r) => Boolean(r.address));
+  const visibleRows = rows.filter((r, i) => showAll || i < 5 || r.balance === null || r.balance > 0);
 
   return <div className="mt-7">
     <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -62,13 +64,14 @@ export function HmePocketBalances({ addresses, linkId }: { addresses: Record<str
     <div className="overflow-x-auto">
       <table className="w-full text-left text-sm">
         <thead className="border-y border-border font-mono text-xs text-muted-foreground"><tr><th className="py-3 pr-3">Asset</th><th className="py-3 pr-3">Network</th><th className="py-3 text-right">In pocket</th><th className="py-3 text-right">Receive</th></tr></thead>
-        <tbody>{rows.map((r) => <tr key={`${r.symbol}-${r.network}`} className="border-b border-border/60">
+        <tbody>{visibleRows.map((r) => <tr key={`${r.symbol}-${r.network}`} className="border-b border-border/60">
           <td className="py-3 pr-3 font-semibold">{r.symbol}</td><td className="py-3 pr-3 text-muted-foreground">{r.network}</td>
           <td className="py-3 text-right font-mono text-xs tabular-nums">{r.balance === null ? (query.isFetching ? "Checking…" : "Not available") : r.balance.toLocaleString("en-US", { maximumFractionDigits: 8 })}</td>
           <td className="py-2 pl-3 text-right"><Button variant="ghost" size="icon" title={`Receive ${r.symbol} on ${r.network}`} aria-label={`Receive ${r.symbol} on ${r.network}`} onClick={() => { if (r.address) { setCopied(false); setReceive({ ...r, address: r.address }); } }}><QrCode /></Button></td>
         </tr>)}</tbody>
       </table>
     </div>
+    {rows.length > 5 ? <Button variant="ghost" size="sm" className="mt-2" onClick={() => setShowAll((v) => !v)}>{showAll ? "Hide empty EVM balances" : "Show all networks"}</Button> : null}
     <p className="mt-3 text-xs text-muted-foreground">Confirmed funds at this pocket’s receive addresses. Native BTC, LTC and ETH are separate from their exchange-settlement tokens.</p>
     {query.isError ? <p role="alert" className="mt-2 text-sm text-destructive">Balances could not be synced. Refresh to retry.</p> : null}
     <Dialog open={Boolean(receive)} onOpenChange={(open) => { if (!open) setReceive(null); }}>
