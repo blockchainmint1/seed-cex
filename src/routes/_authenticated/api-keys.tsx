@@ -20,6 +20,7 @@ export const Route = createFileRoute("/_authenticated/api-keys")({
         content: "Create and revoke HMAC API keys for trading bots. Read and trade scopes only — no withdrawals.",
       },
       { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: ApiKeysPage,

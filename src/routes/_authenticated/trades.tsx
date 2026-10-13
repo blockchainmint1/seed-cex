@@ -15,6 +15,7 @@ export const Route = createFileRoute("/_authenticated/trades")({
       { property: "og:title", content: "My Trades & Orders — Seeds" },
       { property: "og:description", content: "Manage open orders and review your settled trade history across every Seeds market." },
       { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: TradesPage,

@@ -9,6 +9,8 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Seeds — The World's Only Non-Custodial Centralized Crypto Exchange" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       {
         name: "description",
         content:
