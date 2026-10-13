@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Merge profile and wallet around required HME Wallet linking; consolidate settings and remove legacy vault onboarding from the account experience
+
 - [x] Admin console (/admin) — accounts, totals, open trades/orders
 - [x] Grant admin role to operator accounts
 - [x] Trim markets to TSD pairs only (dropped USDC_TXC, TXC_USDT)
