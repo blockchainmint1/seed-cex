@@ -95,11 +95,11 @@ export function SiteHeader() {
             P2P
           </Link>
           <Link
-            to="/wallet"
+            to="/account"
             className="text-muted-foreground transition-colors hover:text-foreground"
             activeProps={{ className: "text-primary" }}
           >
-            Wallet
+            Profile
           </Link>
           {user ? (
             <Link
@@ -128,7 +128,7 @@ export function SiteHeader() {
                 to="/account"
                 className="hidden text-muted-foreground transition-colors hover:text-primary sm:inline"
               >
-                {user.email}
+                Account
               </Link>
               <button
                 onClick={signOut}
@@ -142,7 +142,7 @@ export function SiteHeader() {
               to="/auth"
               className="rounded-sm bg-primary px-3 py-1.5 font-semibold tracking-wider text-primary-foreground uppercase transition-opacity hover:opacity-90"
             >
-              Open vault
+              Sign in
             </Link>
           )}
         </div>

@@ -10,3 +10,5 @@
 <!-- LOVABLE:END -->
 - HME Wallet trading links (hm-link-delegate) live in src/lib/hme-link.server.ts + src/routes/api/public/hme-link/*; always trust the account/paths the wallet submits (pockets rotate 1106→2105), never assume 1106. Why: wallet retires pockets on revoke.
 - P2P marketplace logic lives in src/lib/p2p.server.ts (lock + watch: reserve against the live trading-pocket balance, flag if it drops; release via withdrawAsset). Why: Seeds never takes custody, so safety comes from on-chain checks and seller score.
+- Account is the canonical HME trading-pocket and settings surface; /wallet redirects there while legacy vault code stays intact for existing data. Why: avoid presenting Seeds as a standalone wallet or deleting prior funds/access records.
+- HME pocket receive addresses derive public child 0/0 from the wallet-submitted account xpubs; display native balances separately from settlement assets. Why: pocket rotation must not reuse static legacy derivation paths or mislabel trading liquidity.

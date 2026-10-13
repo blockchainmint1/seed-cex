@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Check, KeyRound, Send, Wallet } from "lucide-react";
+import { Check, KeyRound, Send, ArrowUpRight } from "lucide-react";
 import { useSession } from "@/hooks/use-session";
 import {
   confirmTelegramLink,
@@ -14,22 +14,25 @@ import {
   type Profile,
 } from "@/lib/profile.functions";
 import { PAIRS } from "@/lib/chains";
+import { Button } from "@/components/ui/button";
+import { HmeWalletLinkCard } from "@/components/wallet/HmeWalletLinkCard";
 
 export const Route = createFileRoute("/_authenticated/account")({
   head: () => ({
     meta: [
-      { title: "Account & Settings — Seeds" },
+      { title: "Profile & Trading Pocket — Seeds" },
       {
         name: "description",
         content:
-          "Manage your Seeds profile, Telegram trade alerts, trading defaults, authorization presets and API keys.",
+          "Manage your Honest.Money identity, linked HME Wallet trading pocket, Telegram alerts and trading settings.",
       },
-      { property: "og:title", content: "Account & Settings — Seeds" },
+      { property: "og:title", content: "Profile & Trading Pocket — Seeds" },
       {
         property: "og:description",
-        content: "Telegram alerts, trading defaults and API key management for your Seeds account.",
+        content: "Your HME trading pocket and Seeds account preferences in one place.",
       },
       { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: AccountPage,
@@ -56,7 +59,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-sm border border-border bg-surface p-6">
+    <section className="py-6">
       <h2 className="font-display text-lg font-bold">{title}</h2>
       {desc ? <p className="mt-1 text-sm text-muted-foreground">{desc}</p> : null}
       <div className="mt-5 space-y-4">{children}</div>
@@ -110,14 +113,14 @@ function AccountPage() {
   });
 
   const saveBtn = (section: string, label: string) => (
-    <span className="inline-flex items-center gap-3">
-      <button
+    <span className="inline-flex flex-wrap items-center gap-3">
+      <Button
         type="submit"
         disabled={mutate.isPending}
         className="rounded-sm bg-primary px-4 py-2 font-mono text-xs font-semibold tracking-wider text-primary-foreground uppercase hover:opacity-90 disabled:opacity-50"
       >
         {mutate.isPending ? "Saving…" : label}
-      </button>
+      </Button>
       {savedFor === section && !mutate.isPending ? (
         <span className="inline-flex items-center gap-1 font-mono text-xs text-primary">
           <Check className="h-3.5 w-3.5" /> Saved
@@ -157,7 +160,7 @@ function AccountPage() {
     <div className="mx-auto max-w-7xl space-y-6 px-5 py-12">
       <header className="space-y-2">
         <p className="font-mono text-[11px] tracking-[0.28em] text-primary uppercase">Account</p>
-        <h1 className="font-display text-3xl font-extrabold tracking-tight">Profile & settings</h1>
+        <h1 className="font-display text-3xl font-extrabold">Your profile & trading pocket</h1>
         <p className="font-mono text-xs text-muted-foreground">{user?.email}</p>
       </header>
 
@@ -172,9 +175,20 @@ function AccountPage() {
         </p>
       ) : null}
 
+      <HmeWalletLinkCard />
+
+      <div className="flex flex-wrap gap-3 border-b border-border pb-6">
+        <Button asChild variant="outline"><Link to="/trades"><ArrowUpRight /> My trades</Link></Button>
+        <Button asChild variant="outline"><Link to="/p2p/dashboard"><ArrowUpRight /> My P2P desk</Link></Button>
+        <Button asChild variant="outline"><Link to="/api-keys"><KeyRound /> API keys</Link></Button>
+      </div>
+
+      {profile.isPending ? <p className="text-sm text-muted-foreground">Loading your account…</p> : null}
+      {profile.error ? <p role="alert" className="text-sm text-destructive">Could not load your settings. Refresh to retry.</p> : null}
+
       <Section
-        title="Profile"
-        desc="Your name and details come from your Honest.Money profile — one identity across the whole ecosystem. Seeds never asks for identity documents."
+        title="Identity & notifications"
+        desc="Your identity comes from Honest.Money."
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1">
@@ -219,12 +233,9 @@ function AccountPage() {
           <span className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
             Timezone
           </span>
-          <input
-            className={inputCls}
-            value={form.timezone ?? "UTC"}
-            onChange={(e) => patch({ timezone: e.target.value })}
-            placeholder="America/Chicago"
-          />
+          <select className={inputCls} value={form.timezone ?? "UTC"} onChange={(e) => patch({ timezone: e.target.value })}>
+            {Array.from(new Set([form.timezone || "UTC", "UTC", ...Intl.supportedValuesOf("timeZone")])).map((zone) => <option key={zone} value={zone}>{zone}</option>)}
+          </select>
         </label>
         <form
           onSubmit={(e) => {
@@ -237,29 +248,27 @@ function AccountPage() {
         >
           {saveBtn("profile", "Save profile")}
         </form>
-      </Section>
-
-      <Section
-        title="Telegram alerts"
-        desc="Get pinged the moment an order fills or a settlement confirms. Message our bot first, then paste your chat ID here."
-      >
+      <div className="border-t border-border pt-5">
+      <h3 className="mb-3 font-display font-bold">Telegram alerts</h3>
         {p?.telegram_verified ? (
           <div className="flex flex-wrap items-center gap-3">
-            <span className="inline-flex items-center gap-2 rounded-sm border border-primary/40 bg-primary/10 px-3 py-1.5 font-mono text-xs text-primary">
+            <span className="inline-flex items-center gap-2 font-mono text-xs text-primary">
               <Check className="h-3.5 w-3.5" /> Linked to chat {p.telegram_chat_id}
             </span>
-            <button
+            <Button
+              disabled={tg.isPending}
               onClick={() => tg.mutate("test")}
               className="inline-flex items-center gap-2 rounded-sm border border-border px-3 py-1.5 font-mono text-xs uppercase hover:border-primary hover:text-primary"
             >
               <Send className="h-3.5 w-3.5" /> Send test
-            </button>
-            <button
+            </Button>
+            <Button
+              disabled={tg.isPending}
               onClick={() => tg.mutate("unlink")}
               className="rounded-sm border border-border px-3 py-1.5 font-mono text-xs uppercase hover:border-destructive hover:text-destructive"
             >
               Unlink
-            </button>
+            </Button>
           </div>
         ) : (
           <div className="space-y-4">
@@ -270,13 +279,13 @@ function AccountPage() {
                 onChange={(e) => setChatId(e.target.value)}
                 placeholder="Telegram chat ID (e.g. 123456789)"
               />
-              <button
+              <Button
                 onClick={() => tg.mutate("start")}
                 disabled={!chatId.trim() || tg.isPending}
                 className="rounded-sm bg-primary px-4 py-2 font-mono text-xs font-semibold tracking-wider text-primary-foreground uppercase hover:opacity-90 disabled:opacity-50"
               >
                 Send code
-              </button>
+              </Button>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
               <input
@@ -285,13 +294,13 @@ function AccountPage() {
                 onChange={(e) => setCode(e.target.value)}
                 placeholder="6-digit code from Telegram"
               />
-              <button
+              <Button
                 onClick={() => tg.mutate("confirm")}
                 disabled={code.trim().length !== 6 || tg.isPending}
                 className="rounded-sm border border-border px-4 py-2 font-mono text-xs uppercase hover:border-primary hover:text-primary disabled:opacity-50"
               >
                 Verify
-              </button>
+              </Button>
             </div>
             <p className="font-mono text-[11px] text-muted-foreground">
               Find your chat ID by messaging @userinfobot on Telegram, then start a chat with the
@@ -299,10 +308,10 @@ function AccountPage() {
             </p>
           </div>
         )}
-      </Section>
-
-      <Section title="Alert preferences" desc="Which events are worth a buzz.">
-        <div className="space-y-3">
+      </div>
+      <details className="border-t border-border pt-4">
+        <summary className="cursor-pointer text-sm font-semibold">Alert preferences</summary>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
           {NOTIFS.map(([key, label, hint]) => (
             <label key={key} className="flex items-start gap-3">
               <input
@@ -327,41 +336,19 @@ function AccountPage() {
             });
           }}
         >
-          {saveBtn("alerts", "Save alerts")}
+          <div className="mt-4">{saveBtn("alerts", "Save alerts")}</div>
         </form>
+      </details>
       </Section>
 
+      <details className="border-t border-border pt-5">
+        <summary className="cursor-pointer font-display text-lg font-bold">Trading preferences</summary>
       <Section
-        title="Trading defaults"
-        desc="Pre-fills the authorization form and the order ticket. Caps and expiry apply to vault authorizations — a linked HME Wallet pocket runs until you revoke."
+        title="Order preferences"
+        desc="Your preferred market and order confirmation setting."
       >
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="block space-y-1">
-            <span className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
-              Default authorization cap
-            </span>
-            <input
-              className={inputCls}
-              inputMode="decimal"
-              value={form.default_auth_cap ?? ""}
-              onChange={(e) =>
-                patch({ default_auth_cap: e.target.value ? Number(e.target.value) : null })
-              }
-              placeholder="500"
-            />
-          </label>
-          <label className="block space-y-1">
-            <span className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
-              Default expiry (hours)
-            </span>
-            <input
-              className={inputCls}
-              inputMode="numeric"
-              value={form.default_auth_hours ?? 24}
-              onChange={(e) => patch({ default_auth_hours: Number(e.target.value) || 24 })}
-            />
-          </label>
           <label className="block space-y-1 sm:col-span-2">
             <span className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
               Default market
@@ -390,7 +377,7 @@ function AccountPage() {
           <span>
             <span className="block text-sm text-foreground">Confirm before placing an order</span>
             <span className="block font-mono text-[11px] text-muted-foreground">
-              Extra click before anything is signed on-chain.
+              Review your order before submitting it.
             </span>
           </span>
         </label>
@@ -400,8 +387,6 @@ function AccountPage() {
             mutate.mutate({
               section: "defaults",
               data: {
-                default_auth_cap: form.default_auth_cap ?? null,
-                default_auth_hours: form.default_auth_hours ?? 24,
                 default_pair: form.default_pair ?? null,
                 confirm_before_order: Boolean(form.confirm_before_order),
               },
@@ -412,30 +397,7 @@ function AccountPage() {
         </form>
       </Section>
 
-      <Section
-        title="Keys & access"
-        desc="Your HME Wallet trading pocket, vault password and bot keys live behind their own screens."
-      >
-        <div className="flex flex-wrap gap-3">
-          <Link
-            to="/wallet"
-            className="inline-flex items-center gap-2 rounded-sm border border-border px-4 py-2 font-mono text-xs uppercase hover:border-primary hover:text-primary"
-          >
-            <Wallet className="h-3.5 w-3.5" /> Wallet link, authorizations & password
-          </Link>
-
-          <Link
-            to="/api-keys"
-            className="inline-flex items-center gap-2 rounded-sm border border-border px-4 py-2 font-mono text-xs uppercase hover:border-primary hover:text-primary"
-          >
-            <KeyRound className="h-3.5 w-3.5" /> API keys
-          </Link>
-        </div>
-        <p className="font-mono text-[11px] text-muted-foreground">
-          Seeds cannot reset your vault password. It never leaves your browser — losing it means
-          restoring from your recovery phrase.
-        </p>
-      </Section>
+      </details>
     </div>
   );
 }

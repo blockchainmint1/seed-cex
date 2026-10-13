@@ -4,6 +4,8 @@ export const Route = createFileRoute("/manifesto")({
   head: () => ({
     meta: [
       { title: "The Seeds Manifesto — Custody Is the Bug" },
+      { property: "og:type", content: "article" },
+      { name: "twitter:card", content: "summary" },
       {
         name: "description",
         content:

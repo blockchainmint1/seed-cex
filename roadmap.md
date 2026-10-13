@@ -1,5 +1,8 @@
 # Roadmap
 
+- [x] Merge profile and wallet around required HME Wallet linking; consolidate settings and remove legacy vault onboarding from the account experience
+- [ ] Activate linked-pocket exchange/P2P settlement and wallet-approval transactions before enabling HME-only live trading (separate settlement integration)
+
 - [x] Admin console (/admin) — accounts, totals, open trades/orders
 - [x] Grant admin role to operator accounts
 - [x] Trim markets to TSD pairs only (dropped USDC_TXC, TXC_USDT)

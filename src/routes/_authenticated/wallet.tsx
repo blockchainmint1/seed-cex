@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
@@ -38,19 +38,22 @@ import { HmeWalletLinkCard } from "@/components/wallet/HmeWalletLinkCard";
 
 
 export const Route = createFileRoute("/_authenticated/wallet")({
+  beforeLoad: () => { throw redirect({ to: "/account" }); },
   head: () => ({
     meta: [
-      { title: "Spot Balances — Seeds" },
+      { title: "Trading Pocket — Seeds" },
       {
         name: "description",
         content:
-          "Your Seeds spot wallet: live balances across every chain, deposit addresses, withdrawals, and capped trading authorizations.",
+          "Manage your linked HME Wallet trading pocket from your Seeds profile.",
       },
-      { property: "og:title", content: "Spot Balances — Seeds" },
+      { property: "og:title", content: "Trading Pocket — Seeds" },
       {
         property: "og:description",
-        content: "Balances, deposits, and withdrawals — non-custodial, straight from your own keys.",
+        content: "Your HME Wallet trading connection and account settings in one place.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Wallet,

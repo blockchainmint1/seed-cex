@@ -20,6 +20,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
           "Operator view of Seeds accounts, authorizations, open orders, live trades and settlement health.",
       },
       { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: AdminPage,
