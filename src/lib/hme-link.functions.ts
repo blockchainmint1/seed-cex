@@ -26,16 +26,28 @@ export const getMyHmeLink = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data } = await supabaseAdmin.from("hme_links")
-      .select("id, mode, account, paths, created_at")
+    const { data, error } = await supabaseAdmin.from("hme_links")
+      .select("id, mode, account, paths, xpubs, created_at")
       .eq("user_id", context.userId).eq("status", "active").maybeSingle();
+    if (error) throw new Error("Could not read your HME Wallet link. Try again.");
+    const addresses: Record<string, string> = {};
+    if (data) {
+      const { pocketAddress } = await import("./hme-pocket");
+      const { chainForPath } = await import("./hme-link.server");
+      const xpubs = data.xpubs as Record<string, string>;
+      for (const path of data.paths as string[]) {
+        const info = chainForPath(path);
+        if (!info || info.account !== data.account || !xpubs[info.chain]) continue;
+        addresses[info.chain] = pocketAddress(info.chain, xpubs[info.chain]);
+      }
+    }
     let pending = 0;
     if (data) {
       const { count } = await supabaseAdmin.from("hme_trade_proposals").select("id", { count: "exact", head: true })
         .eq("link_id", data.id).eq("status", "pending");
       pending = count ?? 0;
     }
-    return data ? { ...data, paths: data.paths as string[], pending } : null;
+    return data ? { id: data.id, mode: data.mode, account: data.account, paths: data.paths as string[], created_at: data.created_at, addresses, pending } : null;
   });
 
 export const revokeMyHmeLink = createServerFn({ method: "POST" })
