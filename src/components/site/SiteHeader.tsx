@@ -94,13 +94,6 @@ export function SiteHeader() {
           >
             P2P
           </Link>
-          <Link
-            to="/account"
-            className="text-muted-foreground transition-colors hover:text-foreground"
-            activeProps={{ className: "text-primary" }}
-          >
-            Profile
-          </Link>
           {user ? (
             <Link
               to="/trades"
@@ -126,9 +119,9 @@ export function SiteHeader() {
             <>
               <Link
                 to="/account"
-                className="hidden text-muted-foreground transition-colors hover:text-primary sm:inline"
+                className="hidden tracking-wider text-muted-foreground uppercase transition-colors hover:text-primary sm:inline"
               >
-                Account
+                Profile
               </Link>
               <button
                 onClick={signOut}
