@@ -14,7 +14,7 @@ export const redeemHonestMoneyToken = createServerFn({ method: "POST" })
     if (nonceErr) throw new Error("That sign-in ticket was already used.");
 
     const ticketEmail = p.email.toLowerCase();
-    // 1) Existing Seeds account linked to this member? Use its email (member may have changed theirs).
+    // The permanent UUID finds the existing account even after a contact-email change.
     const { data: linked, error: lookupError } = await supabaseAdmin.from("profiles").select("id, hm_status").eq("hm_member_id", p.minerId).maybeSingle();
     if (lookupError) throw new Error("Could not check your Honest.Money account. Try again.");
     if (linked && linked.hm_status !== "active" && linked.hm_status !== "oceanfront")
