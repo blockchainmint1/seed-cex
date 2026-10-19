@@ -69,7 +69,7 @@ function Auth() {
         Sign in to Seeds
       </h1>
       <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-        Use your Honest.Money member login. New here? You can create one in the same window. Signing
+        Use your existing Honest.Money member login. New here? Join at Honest.Money first. Signing
         in moves nothing and authorizes nothing.
       </p>
 
