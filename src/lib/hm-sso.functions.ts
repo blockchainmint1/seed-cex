@@ -45,6 +45,7 @@ export const redeemHonestMoneyToken = createServerFn({ method: "POST" })
 
     const link = await supabaseAdmin.auth.admin.generateLink({ type: "magiclink", email });
     if (link.error || !link.data.properties?.hashed_token) throw new Error("Could not start a session.");
+    if (link.data.user?.id !== userId) throw new Error("Your email belongs to another Seeds account. Contact support@honest.money; accounts are never merged automatically.");
     userId = userId ?? link.data.user?.id ?? null;
     if (userId && !linked) {
       // One HME wallet = one Seeds account. If this email already belongs to an
