@@ -1,3 +1,4 @@
+/// <reference types="bun" />
 import { afterEach, describe, expect, test } from "bun:test";
 import { authorizedHmeRequest, ecosystemHeaders, verifyHmeTicket } from "./hme-auth.server";
 
