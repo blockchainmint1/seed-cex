@@ -1,3 +1,6 @@
+import { ecosystemHeaders } from "./hme-auth.server";
+export { safeEqual } from "./hme-auth.server";
+
 /** Honest.Money Hub events (honest.money/api §3). Server-only; failures never block the user. */
 export async function sendHubEvent(body: {
   event: "signup" | "service_used" | "purchase";
@@ -6,12 +9,10 @@ export async function sendHubEvent(body: {
   ref?: string | null;
   metadata?: Record<string, unknown>;
 }) {
-  const secret = process.env.HME_HMAC_SECRET;
-  if (!secret) return;
   try {
-    await fetch("https://honest.money/api/public/hub/events", {
+    const response = await fetch("https://honest.money/api/public/hub/events", {
       method: "POST",
-      headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/json" },
+      headers: ecosystemHeaders(),
       body: JSON.stringify({
         service: "seeds",
         event: body.event,
@@ -21,13 +22,8 @@ export async function sendHubEvent(body: {
       }),
       signal: AbortSignal.timeout(5000),
     });
+    if (!response.ok) console.warn("HME activity report rejected", response.status);
   } catch {
     /* best effort */
   }
-}
-
-export function safeEqual(a: string, b: string) {
-  let diff = a.length ^ b.length;
-  for (let i = 0; i < Math.max(a.length, b.length); i++) diff |= (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0);
-  return diff === 0;
 }
