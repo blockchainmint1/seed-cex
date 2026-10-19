@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Update HME SSO, profile sync and events to HME_ECOSYSTEM; retain accounts by permanent HME UUID and verify the live connections
+
 - [x] Merge profile and wallet around required HME Wallet linking; consolidate settings and remove legacy vault onboarding from the account experience
 - [ ] Activate linked-pocket exchange/P2P settlement and wallet-approval transactions before enabling HME-only live trading (separate settlement integration)
 
