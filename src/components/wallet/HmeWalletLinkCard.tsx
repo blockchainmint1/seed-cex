@@ -64,7 +64,7 @@ export function HmeWalletLinkCard() {
           >
             {stop.isPending ? "Revoking…" : "Revoke on Seeds"}
           </Button>
-          <Button asChild variant="ghost"><a href="https://wallet.honest.money" target="_blank" rel="noreferrer"><ExternalLink /> Open HME Wallet</a></Button>
+          <Button asChild variant="ghost"><a href="https://mobile.honest.money" target="_blank" rel="noreferrer"><ExternalLink /> Open HME Wallet</a></Button>
           <p className="text-xs">Move funds into this pocket in HME Wallet. Its first number is 1106; Seeds follows the new number whenever your wallet retires a pocket.</p>
           <p className="text-xs">Revoking here removes Seeds access only. Revoking in HME Wallet also retires the pocket; check TSD and USDC separately before moving on.</p>
           <p className="border-l-2 border-warn pl-3 text-sm text-foreground">Wallet linking and balance sync work. Exchange and P2P settlement from linked pockets is not connected yet—do not fund this pocket for a Seeds trade yet.</p>
