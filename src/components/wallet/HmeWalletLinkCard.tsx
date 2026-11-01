@@ -16,6 +16,7 @@ export function HmeWalletLinkCard() {
   const revoke = useServerFn(revokeMyHmeLink);
   const [manifest, setManifest] = useState<string | null>(null);
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const link = useQuery({
     queryKey: ["hme-link"],
@@ -50,6 +51,38 @@ export function HmeWalletLinkCard() {
             <span className="text-foreground">{l.mode === "access" ? "instant trades (Seeds can sign)" : "you approve every trade in your wallet"}</span>
             . Pocket #{l.account}.
           </p>
+          <div className="rounded-md bg-accent/60 px-3 py-2.5 ring-1 ring-primary/25">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Linked wallet</p>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                title="Copy wallet identity address"
+                onClick={() => { navigator.clipboard.writeText(l.identityAddress); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
+                className="font-mono text-[12px] text-foreground underline decoration-dotted underline-offset-4"
+              >
+                {l.identityAddress}
+              </button>
+              <span className="text-xs">{copied ? "✓ copied" : "tap to copy"}</span>
+            </div>
+            <p className="mt-1.5 text-xs">
+              This is the address inside your wallet that signed the link on{" "}
+              {new Date(l.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}.
+              Match it against the address shown in your wallet to confirm which wallet or app this is.
+              {" "}{l.mode === "access" && l.keyHeld
+                ? "Seeds holds the sealed spending key for this pocket until you revoke."
+                : l.mode === "access"
+                  ? "Your wallet connected without leaving a sealed key — every payment needs the wallet present."
+                  : "Seeds holds no key; your wallet signs each trade."}
+            </p>
+          </div>
+          {l.previous ? (
+            <p className="text-xs">
+              Earlier pocket #{l.previous.account} (wallet {l.previous.identityAddress.slice(0, 10)}…{l.previous.identityAddress.slice(-6)}) was linked{" "}
+              {new Date(l.previous.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })} and revoked{" "}
+              {new Date(l.previous.revokedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })} — if you funded that pocket, look in the wallet that owns{" "}
+              <span className="font-mono">{l.previous.identityAddress}</span>.
+            </p>
+          ) : null}
           <p className="font-mono text-[11px]">
             {l.paths.map((p) => CHAIN_NAME[p.split("/")[2]?.replace("'", "") ?? ""] ?? p).join(" · ")}
           </p>
