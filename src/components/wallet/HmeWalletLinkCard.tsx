@@ -66,7 +66,7 @@ export function HmeWalletLinkCard() {
             </div>
             <p className="mt-1.5 text-xs">
               This is the address inside your wallet that signed the link on{" "}
-              {new Date(l.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}.
+              {new Date(l.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}.
               Match it against the address shown in your wallet to confirm which wallet or app this is.
               {" "}{l.mode === "access" && l.keyHeld
                 ? "Seeds holds the sealed spending key for this pocket until you revoke."
