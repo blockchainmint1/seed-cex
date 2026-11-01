@@ -27,9 +27,15 @@ export const getMyHmeLink = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin.from("hme_links")
-      .select("id, mode, account, paths, xpubs, created_at")
+      .select("id, mode, account, paths, xpubs, created_at, identity_address, key_ciphertext")
       .eq("user_id", context.userId).eq("status", "active").maybeSingle();
     if (error) throw new Error("Could not read your HME Wallet link. Try again.");
+    // Most recent retired link, so the user can tell which wallet/pocket used to hold their funds.
+    const { data: prior } = await supabaseAdmin.from("hme_links")
+      .select("identity_address, account, revoked_at, created_at")
+      .eq("user_id", context.userId).eq("status", "revoked")
+      .order("revoked_at", { ascending: false, nullsFirst: false })
+      .limit(1).maybeSingle();
     const addresses: Record<string, string> = {};
     if (data) {
       const { pocketAddress } = await import("./hme-pocket");
@@ -47,7 +53,17 @@ export const getMyHmeLink = createServerFn({ method: "GET" })
         .eq("link_id", data.id).eq("status", "pending");
       pending = count ?? 0;
     }
-    return data ? { id: data.id, mode: data.mode, account: data.account, paths: data.paths as string[], created_at: data.created_at, addresses, pending } : null;
+    return data
+      ? {
+          id: data.id, mode: data.mode, account: data.account, paths: data.paths as string[],
+          created_at: data.created_at, addresses, pending,
+          identityAddress: data.identity_address as string,
+          keyHeld: Boolean(data.key_ciphertext),
+          previous: prior && prior.identity_address !== data.identity_address
+            ? { identityAddress: prior.identity_address as string, account: prior.account, revokedAt: prior.revoked_at as string, createdAt: prior.created_at as string }
+            : null,
+        }
+      : null;
   });
 
 export const revokeMyHmeLink = createServerFn({ method: "POST" })
