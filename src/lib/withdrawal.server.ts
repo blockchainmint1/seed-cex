@@ -19,6 +19,7 @@ import {
   type UtxoChainId,
 } from "@/lib/chains";
 import { decryptDelegatedKey } from "./delegation.server";
+import { spendWithin } from "./settle-guard.server";
 import {
   broadcastFor,
   feeRateFor,
@@ -215,6 +216,7 @@ export async function withdrawAsset(
   if (!preview.ready) throw new Error(preview.reason ?? "Withdrawal is not ready");
   const del = (await loadDelegation(userId, leg)) as Delegation;
 
+  const txid = await spendWithin(userId, del.chain, def.symbol, amount, async (): Promise<string> => {
   let txid: string;
   if (def.kind === "utxo") {
     const c = del.chain as UtxoChainId;
@@ -274,6 +276,8 @@ export async function withdrawAsset(
     }
     txid = await sendRawTransaction(del.chain, signed.raw);
   }
+  return txid;
+  });
 
   const { data: row, error } = await supabaseAdmin
     .from("withdrawals")

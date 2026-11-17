@@ -73,6 +73,21 @@ export async function matchOrder(userId: string, pair: string, input: PlaceOrder
     const fillAmount = Math.min(remaining, makerRemaining);
     const fillPrice = Number(maker.price); // price improvement goes to the taker
 
+    // Compare-and-set on the maker's fill (security audit H5): if another taker
+    // got there first, the row no longer matches and we skip this maker.
+    const makerFilled = Number(maker.filled) + fillAmount;
+    const { data: claimed } = await supabaseAdmin
+      .from("orders")
+      .update({
+        filled: makerFilled,
+        status: makerFilled >= Number(maker.amount) - 1e-8 ? "filled" : "partial",
+      })
+      .eq("id", maker.id)
+      .eq("filled", maker.filled)
+      .in("status", ["open", "partial"])
+      .select("id");
+    if (!claimed || claimed.length === 0) continue;
+
     const { data: trade, error: tradeError } = await supabaseAdmin
       .from("trades")
       .insert({
@@ -111,15 +126,6 @@ export async function matchOrder(userId: string, pair: string, input: PlaceOrder
       event: "matched",
       detail: { price: fillPrice, amount: fillAmount, pair },
     });
-
-    const makerFilled = Number(maker.filled) + fillAmount;
-    await supabaseAdmin
-      .from("orders")
-      .update({
-        filled: makerFilled,
-        status: makerFilled >= Number(maker.amount) - 1e-8 ? "filled" : "partial",
-      })
-      .eq("id", maker.id);
 
     remaining -= fillAmount;
     tradeIds.push(trade.id);
@@ -210,81 +216,4 @@ export async function loadMyTrades(userId: string): Promise<TradeRow[]> {
       confirmations: Number(e.confirmations ?? 0),
     })),
   }));
-}
-
-export type AdvanceInput = {
-  tradeId: string;
-  action: "fund" | "release" | "dispute";
-  leg: Leg;
-};
-
-export async function advance(userId: string, input: AdvanceInput) {
-  const { data: trade, error } = await supabaseAdmin
-    .from("trades")
-    .select("id, maker_id, taker_id, status")
-    .eq("id", input.tradeId)
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!trade) throw new Error("Trade not found");
-  if (trade.maker_id !== userId && trade.taker_id !== userId) {
-    throw new Error("Forbidden: you are not a party to this trade");
-  }
-
-  if (input.action === "dispute") {
-    await supabaseAdmin.from("trades").update({ status: "disputed" }).eq("id", trade.id);
-    await supabaseAdmin
-      .from("trade_events")
-      .insert({ trade_id: trade.id, actor_id: userId, event: "disputed", detail: {} });
-    return { ok: true, status: "disputed" };
-  }
-
-  const { data: legs } = await supabaseAdmin
-    .from("escrows")
-    .select("id, leg, expected_amount, status")
-    .eq("trade_id", trade.id);
-
-  const target = (legs ?? []).find((l) => l.leg === input.leg);
-  if (!target) throw new Error("Escrow leg not found");
-
-  if (input.action === "fund") {
-    await supabaseAdmin
-      .from("escrows")
-      .update({
-        status: "confirmed",
-        funded_amount: target.expected_amount,
-        confirmations: 6,
-        funding_txid: `sim-${crypto.randomUUID().slice(0, 16)}`,
-      })
-      .eq("id", target.id);
-  } else {
-    await supabaseAdmin
-      .from("escrows")
-      .update({ status: "released", release_txid: `sim-${crypto.randomUUID().slice(0, 16)}` })
-      .eq("id", target.id);
-  }
-
-  await supabaseAdmin.from("trade_events").insert({
-    trade_id: trade.id,
-    actor_id: userId,
-    event: `${input.leg}_${input.action}`,
-    detail: { simulated: true },
-  });
-
-  const { data: after } = await supabaseAdmin
-    .from("escrows")
-    .select("status")
-    .eq("trade_id", trade.id);
-  const statuses = (after ?? []).map((l) => l.status);
-
-  let next: typeof trade.status = trade.status;
-  if (statuses.length === 2 && statuses.every((s) => s === "released")) next = "settled";
-  else if (statuses.filter((s) => s === "confirmed" || s === "released").length === 2)
-    next = "both_funded";
-  else if (statuses.some((s) => s === "confirmed")) next = "maker_funded";
-
-  if (next !== trade.status) {
-    await supabaseAdmin.from("trades").update({ status: next }).eq("id", trade.id);
-  }
-
-  return { ok: true, status: next };
 }

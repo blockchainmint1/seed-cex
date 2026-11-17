@@ -11,6 +11,7 @@
  * broadcast → watch confirmations. Every gate lives in `loadTsdDelegation`.
  */
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { assertDeliverer, claimLeg, spendWithin } from "./settle-guard.server";
 import { omniLegAsset, type OmniLegId } from "@/lib/chains";
 import { decryptDelegatedKey } from "./delegation.server";
 import { fetchOmniBalance, fetchOmniTx, omniSimpleSend } from "./omni.server";
@@ -192,6 +193,7 @@ export async function settleTsdLeg(
   const sender = senderOf(t, leg);
   const receiver = receiverOf(t, leg);
   if (!sender || !receiver) throw new Error("This trade has no counterparty yet");
+  assertDeliverer(userId, sender, symbol);
 
   const { data: escrowLeg } = await supabaseAdmin
     .from("escrows")
@@ -233,16 +235,23 @@ export async function settleTsdLeg(
     );
   }
 
-  // Decrypt last: everything above can fail without touching key material.
-  const privateKeyHex = decryptDelegatedKey(del.ciphertext);
-
-  const sent = await omniSimpleSend({
-    privateKeyHex,
-    fromAddress: del.address,
-    toAddress: to,
-    amount,
-    propertyId,
-  });
+  const unclaim = await claimLeg(escrowLeg.id);
+  let sent: Awaited<ReturnType<typeof omniSimpleSend>>;
+  try {
+    sent = await spendWithin(sender, "txc", symbol, amount, () =>
+      // Decrypt last: everything above can fail without touching key material.
+      omniSimpleSend({
+        privateKeyHex: decryptDelegatedKey(del.ciphertext),
+        fromAddress: del.address,
+        toAddress: to,
+        amount,
+        propertyId,
+      }),
+    );
+  } catch (e) {
+    await unclaim();
+    throw e;
+  }
 
   await supabaseAdmin
     .from("escrows")

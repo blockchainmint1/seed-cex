@@ -397,14 +397,16 @@ async function sendWrappedToIssuer(
     );
   }
 
-  const privateKeyHex = decryptDelegatedKey(del.key_ciphertext);
-  const sent = await omniSimpleSend({
-    privateKeyHex,
-    fromAddress: del.trading_address,
-    toAddress: depositAddress,
-    amount,
-    propertyId,
-  });
+  const { spendWithin } = await import("./settle-guard.server");
+  const sent = await spendWithin(userId, "txc", wrappedSymbol, amount, () =>
+    omniSimpleSend({
+      privateKeyHex: decryptDelegatedKey(del.key_ciphertext),
+      fromAddress: del.trading_address,
+      toAddress: depositAddress,
+      amount,
+      propertyId,
+    }),
+  );
   return sent.txid;
 }
 

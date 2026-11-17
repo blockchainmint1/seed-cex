@@ -149,7 +149,9 @@ export const cancelOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
+    // Orders are server-written only (security audit C1).
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
       .from("orders")
       .update({ status: "cancelled" })
       .eq("id", data.id)
@@ -166,20 +168,4 @@ export const getMyTrades = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { loadMyTrades } = await import("./trading.server");
     return loadMyTrades(context.userId);
-  });
-
-export const advanceEscrow = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input) =>
-    z
-      .object({
-        tradeId: z.string().uuid(),
-        action: z.enum(["fund", "release", "dispute"]),
-        leg: z.enum(["txc", "usdc", "tsd"]),
-      })
-      .parse(input),
-  )
-  .handler(async ({ data, context }) => {
-    const { advance } = await import("./trading.server");
-    return advance(context.userId, data);
   });

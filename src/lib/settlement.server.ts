@@ -10,6 +10,7 @@
  * always authenticated and authorized before we get here.
  */
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { assertDeliverer, claimLeg, spendWithin } from "./settle-guard.server";
 import { getChain, type UtxoChainId } from "@/lib/chains";
 import { decryptDelegatedKey } from "./delegation.server";
 import {
@@ -144,6 +145,7 @@ export async function settleUtxoLeg(
   const seller = sellerOf(t, chain);
   const buyer = buyerOf(t, chain);
   if (!seller || !buyer) throw new Error("This trade has no counterparty yet");
+  assertDeliverer(userId, seller, symbol);
 
   const { data: leg } = await supabaseAdmin
     .from("escrows")
@@ -168,25 +170,33 @@ export async function settleUtxoLeg(
   }
 
   const amount = legAmount(t, legRole(t.pair, chain), leg.expected_amount);
-  const auth = await openAuthorization(seller, chain, amount);
-
-  const [utxos, feeRate] = await Promise.all([
-    loadUtxosFor(chain, auth.address),
-    feeRateFor(chain),
-  ]);
-
-  const built = buildAndSignTransfer({
-    privateKeyHex: auth.privateKeyHex,
-    fromAddress: auth.address,
-    toAddress: destination,
-    amount,
-    utxos,
-    feeRate,
-    p2pkhVersion: p2pkhVersionOf(chain),
-    symbol,
-  });
-
-  const txid = await broadcastFor(chain, built.hex);
+  const unclaim = await claimLeg(leg.id);
+  let auth!: AuthorizedKey;
+  let built!: ReturnType<typeof buildAndSignTransfer>;
+  let txid: string;
+  try {
+    txid = await spendWithin(seller, chain, symbol, amount, async () => {
+      auth = await openAuthorization(seller, chain, amount);
+      const [utxos, feeRate] = await Promise.all([
+        loadUtxosFor(chain, auth.address),
+        feeRateFor(chain),
+      ]);
+      built = buildAndSignTransfer({
+        privateKeyHex: auth.privateKeyHex,
+        fromAddress: auth.address,
+        toAddress: destination,
+        amount,
+        utxos,
+        feeRate,
+        p2pkhVersion: p2pkhVersionOf(chain),
+        symbol,
+      });
+      return broadcastFor(chain, built.hex);
+    });
+  } catch (e) {
+    await unclaim();
+    throw e;
+  }
 
   await supabaseAdmin
     .from("escrows")

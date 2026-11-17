@@ -57,6 +57,13 @@
       "when": 1791835873691,
       "tag": "0007_p2p_profile_country_tz",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794930982126,
+      "tag": "0008_audit_day0_week1_hardening",
+      "breakpoints": true
     }
   ]
 }

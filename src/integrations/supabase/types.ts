@@ -136,6 +136,7 @@ export type Database = {
       }
       escrows: {
         Row: {
+          claimed_at: string | null
           confirmations: number
           created_at: string
           expected_amount: number
@@ -150,6 +151,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          claimed_at?: string | null
           confirmations?: number
           created_at?: string
           expected_amount: number
@@ -164,6 +166,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          claimed_at?: string | null
           confirmations?: number
           created_at?: string
           expected_amount?: number
@@ -1028,6 +1031,7 @@ export type Database = {
           label: string | null
           max_amount: number
           revoked_at: string | null
+          spent: number
           trading_address: string
           trading_path: string
           updated_at: string
@@ -1043,6 +1047,7 @@ export type Database = {
           label?: string | null
           max_amount?: number
           revoked_at?: string | null
+          spent?: number
           trading_address: string
           trading_path: string
           updated_at?: string
@@ -1058,6 +1063,7 @@ export type Database = {
           label?: string | null
           max_amount?: number
           revoked_at?: string | null
+          spent?: number
           trading_address?: string
           trading_path?: string
           updated_at?: string
@@ -1252,6 +1258,19 @@ export type Database = {
       }
       purge_expired_delegations: { Args: never; Returns: number }
       purge_expired_wallet_challenges: { Args: never; Returns: number }
+      release_delegation_spend: {
+        Args: { _amount: number; _id: string }
+        Returns: undefined
+      }
+      reserve_delegation_spend: {
+        Args: {
+          _amount: number
+          _asset: string
+          _chain: string
+          _user_id: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       app_role: "user" | "arbitrator" | "admin"

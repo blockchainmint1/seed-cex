@@ -7,6 +7,7 @@
  * path can reach `decryptDelegatedKey`.
  */
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { assertDeliverer, claimLeg, spendWithin } from "./settle-guard.server";
 import { getChain, getLeg, type ChainId, type LegId } from "@/lib/chains";
 import { decryptDelegatedKey } from "./delegation.server";
 import {
@@ -212,6 +213,7 @@ export async function settleEvmLeg(
   const sender = delivererOf(t, role);
   const receiver = receiverOf(t, role);
   if (!sender || !receiver) throw new Error("This trade has no counterparty yet");
+  assertDeliverer(userId, sender, def.symbol);
 
   const { data: escrow } = await supabaseAdmin
     .from("escrows")
@@ -262,6 +264,10 @@ export async function settleEvmLeg(
   const data = isNative ? "0x" : erc20TransferData(to, toBaseUnits(amount, asset.decimals));
   const target = isNative ? to : (asset.contract as string);
 
+  const unclaim = await claimLeg(escrow.id);
+  let hash: string;
+  try {
+  hash = await spendWithin(sender, del.chain, def.symbol, amount, async () => {
   const [nonce, fees, gas] = await Promise.all([
     fetchNonce(del.chain, del.address),
     suggestFees(del.chain),
@@ -293,7 +299,12 @@ export async function settleEvmLeg(
     throw new Error("The authorized key does not control the funding address");
   }
 
-  const hash = await sendRawTransaction(del.chain, signed.raw);
+  return sendRawTransaction(del.chain, signed.raw);
+  });
+  } catch (e) {
+    await unclaim();
+    throw e;
+  }
 
   await supabaseAdmin
     .from("escrows")

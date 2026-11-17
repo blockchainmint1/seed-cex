@@ -47,8 +47,16 @@ export function receiverOf(trade: TradeShape, role: LegRole): string | null {
 export function legAmount(
   trade: TradeShape,
   role: LegRole,
-  expected?: number | string | null,
+  _expected?: number | string | null,
 ): number {
-  if (expected !== null && expected !== undefined) return Number(expected);
+  // Always derived from the immutable trade terms, never from a stored row
+  // (security audit C1).
   return role === "base" ? Number(trade.amount) : Number(trade.amount) * Number(trade.price);
+}
+
+/** Only the party who pays a leg may send it (security audit C2). */
+export function assertDeliverer(callerId: string, deliverer: string | null, symbol: string) {
+  if (!deliverer || callerId !== deliverer) {
+    throw new Error(`Only the party paying the ${symbol} leg can send it`);
+  }
 }

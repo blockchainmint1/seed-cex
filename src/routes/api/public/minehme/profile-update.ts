@@ -35,11 +35,9 @@ export const Route = createFileRoute("/api/public/minehme/profile-update")({
           if (error) return Response.json({ ok: false, error: "profile update failed" }, { status: 500 });
         }
 
-        if (b.newEmail) {
-          const { error } = await supabaseAdmin.auth.admin.updateUserById(prof.id, { email: b.newEmail, email_confirm: true });
-          if (error) return Response.json({ ok: false, error: "email update requires review" }, { status: 409 });
-          updated.newEmail = b.newEmail;
-        }
+        // Security audit M5: this partner channel never changes login email.
+        // The member's new email is picked up on their next signed HME sign-in.
+        if (b.newEmail) updated.newEmailIgnored = true;
         if (b.status) {
           const blocked = b.status === "blocked" || b.status === "ban";
           // Ban immediately cuts off sign-in and token refresh; also revoke trading authorizations.
