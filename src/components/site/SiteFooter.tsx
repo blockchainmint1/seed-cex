@@ -23,7 +23,7 @@ export function SiteFooter() {
             Seeds
           </p>
           <p className="max-w-md text-sm text-muted-foreground">
-            Non-custodial USDC/TXC settlement. Your keys never leave your browser unencrypted.
+            Non-custodial crypto trading. Trades settle directly between traders' own wallets.
           </p>
           <p className="text-sm text-muted-foreground">
             Part of the{" "}
