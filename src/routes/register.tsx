@@ -46,7 +46,7 @@ function Index() {
             Meet Seeds, our new non-custodial crypto exchange powered by the Honest Money Ecosystem. Join Ignite, our new crypto trading class, and reserve one of just 100 seats.
           </p>
           <ul className="mt-8 flex flex-wrap gap-2">
-            {["100-seat inaugural class", "$400 USD reservation deposit", "Card or crypto"].map((b) => (
+            {["100-seat inaugural class", "$400 USD reservation deposit", "Crypto or Peer Pay"].map((b) => (
               <li key={b} className="rounded-full border border-primary/40 px-4 py-2 text-sm font-semibold">{b}</li>
             ))}
           </ul>
