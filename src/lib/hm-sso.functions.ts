@@ -32,6 +32,16 @@ export const redeemHonestMoneyToken = createServerFn({ method: "POST" })
         if (changed.error) throw new Error("Your new email conflicts with another Seeds account. Contact support@honest.money; your existing account is unchanged.");
       }
     } else {
+      // A Seeds account from before HME sign-in may already use this email.
+      // Never merge on email alone: email that inbox a one-time link instead.
+      const { data: legacyId, error: legacyErr } = await supabaseAdmin.rpc("legacy_user_for_email", { _email: email });
+      if (legacyErr) throw new Error("Could not check for an older Seeds account. Try again.");
+      if (legacyId) {
+        const { offerLegacyLink } = await import("./legacy-claim.server");
+        const { maskEmail } = await import("./legacy-claim");
+        const legacy = await offerLegacyLink({ legacyUserId: legacyId, hmMemberId: p.minerId, email });
+        return { legacy, to: maskEmail(email) };
+      }
       const created = await supabaseAdmin.auth.admin.createUser({
         email,
         email_confirm: true,

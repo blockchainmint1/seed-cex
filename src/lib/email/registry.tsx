@@ -11,6 +11,7 @@ import { WeeklyUpdateEmail, type WeeklyUpdateProps } from "./templates/weekly-up
 import { PeerPayRequestEmail, type PeerPayRequestProps } from "./templates/peer-pay-request";
 import { PeerPayPaidEmail, type PeerPayPaidProps } from "./templates/peer-pay-paid";
 import { IgniteSeatConfirmedEmail, type IgniteSeatConfirmedProps } from "./templates/ignite-seat-confirmed";
+import { LegacyLinkEmail, type LegacyLinkProps } from "./templates/legacy-link";
 import { fmt, usd } from "./components";
 
 export type TemplateProps = {
@@ -22,6 +23,7 @@ export type TemplateProps = {
   "peer-pay-request": PeerPayRequestProps;
   "peer-pay-paid": PeerPayPaidProps;
   "ignite-seat-confirmed": IgniteSeatConfirmedProps;
+  "legacy-link": LegacyLinkProps;
 };
 export type TemplateName = keyof TemplateProps;
 /** security = always sent; trades = email_trade_confirmations; weekly = email_weekly_update; welcome = once; receipt = always (payment receipts); invite = to a non-member, sent by direct delivery. */
@@ -113,6 +115,13 @@ export const TEMPLATES: { [K in TemplateName]: Def<K> } = {
     subject: () => "Your Ignite seat is reserved",
     render: (p) => <IgniteSeatConfirmedEmail {...p} />,
     sample: { name: "Alex", amount: 400, paidBy: null, paidWith: "TSD on TXC", confirmedAt: "2026-11-18T15:10:00Z", timezone: "America/Chicago", referralUrl: "https://honest.money/r/alex?to=https%3A%2F%2Fseeds.honest.money%2Fregister" },
+  },
+  "legacy-link": {
+    label: "Link your older account",
+    category: "security",
+    subject: () => "Confirm your older Seeds account",
+    render: (p) => <LegacyLinkEmail {...p} />,
+    sample: { name: "Alex", linkUrl: "https://seeds.honest.money/link-account?token=sample", expiresAt: "2026-11-18T15:40:00Z", timezone: "America/Chicago" },
   },
 };
 

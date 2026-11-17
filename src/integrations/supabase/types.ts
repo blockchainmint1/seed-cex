@@ -490,6 +490,66 @@ export type Database = {
         }
         Relationships: []
       }
+      legacy_account_backups: {
+        Row: {
+          backed_up_at: string
+          email: string | null
+          id: string
+          legacy_user_id: string
+          reason: string
+          snapshot: Json
+        }
+        Insert: {
+          backed_up_at?: string
+          email?: string | null
+          id?: string
+          legacy_user_id: string
+          reason: string
+          snapshot: Json
+        }
+        Update: {
+          backed_up_at?: string
+          email?: string | null
+          id?: string
+          legacy_user_id?: string
+          reason?: string
+          snapshot?: Json
+        }
+        Relationships: []
+      }
+      legacy_account_claims: {
+        Row: {
+          consumed_at: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          hm_member_id: string
+          id: string
+          legacy_user_id: string
+          token_hash: string
+        }
+        Insert: {
+          consumed_at?: string | null
+          created_at?: string
+          email: string
+          expires_at: string
+          hm_member_id: string
+          id?: string
+          legacy_user_id: string
+          token_hash: string
+        }
+        Update: {
+          consumed_at?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          hm_member_id?: string
+          id?: string
+          legacy_user_id?: string
+          token_hash?: string
+        }
+        Relationships: []
+      }
       nectarpay_events: {
         Row: {
           event_id: string
@@ -1455,8 +1515,10 @@ export type Database = {
         Args: { _trade_id: string; _user_id: string }
         Returns: boolean
       }
+      legacy_user_for_email: { Args: { _email: string }; Returns: string }
       purge_expired_delegations: { Args: never; Returns: number }
       purge_expired_wallet_challenges: { Args: never; Returns: number }
+      redeem_legacy_claim: { Args: { _token_hash: string }; Returns: string }
       release_delegation_spend: {
         Args: { _amount: number; _id: string }
         Returns: undefined

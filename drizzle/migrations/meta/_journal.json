@@ -99,6 +99,13 @@
       "when": 1794942484588,
       "tag": "0013_ignite_paid_asset",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1794943714493,
+      "tag": "0014_legacy_account_backup_and_claims",
+      "breakpoints": true
     }
   ]
 }

@@ -30,6 +30,7 @@ function Sso() {
   const redeem = useServerFn(redeemHonestMoneyToken);
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
+  const [legacy, setLegacy] = useState<{ state: "sent" | "limited" | "failed"; to: string } | null>(null);
   const ran = useRef(false);
 
   useEffect(() => {
@@ -39,8 +40,9 @@ function Sso() {
     (async () => {
       try {
         const ref = (window as unknown as { honestMoney?: { ref: () => string } }).honestMoney?.ref?.() || undefined;
-        const { tokenHash } = await redeem({ data: { token, ref } });
-        const { error: err } = await supabase.auth.verifyOtp({ type: "magiclink", token_hash: tokenHash });
+        const r = await redeem({ data: { token, ref } });
+        if (!r.tokenHash) return setLegacy({ state: r.legacy ?? "failed", to: r.to ?? "your email" });
+        const { error: err } = await supabase.auth.verifyOtp({ type: "magiclink", token_hash: r.tokenHash });
         if (err) throw err;
         if (popup === "1" && window.opener) {
           window.opener.postMessage({ type: "seeds-sso-done" }, window.location.origin);
@@ -56,7 +58,9 @@ function Sso() {
 
   return (
     <div className="mx-auto max-w-md px-5 py-24 text-center">
-      {error ? (
+      {legacy ? (
+        <LegacyNotice {...legacy} />
+      ) : error ? (
         <p className="rounded-sm border border-destructive/40 bg-destructive/10 px-3 py-2 font-mono text-xs text-destructive">{error}</p>
       ) : (
         <p className="font-mono text-sm text-muted-foreground">Signing you in with Honest.Money…</p>
@@ -65,6 +69,23 @@ function Sso() {
   );
 }
 
+function LegacyNotice({ state, to }: { state: "sent" | "limited" | "failed"; to: string }) {
+  const title = state === "failed" ? "We couldn't send your link." : "Check your email.";
+  const body =
+    state === "sent"
+      ? `We found an older Seeds account under ${to}. We just emailed that address a link to join it to your Honest.Money membership. It works once, for 30 minutes.`
+      : state === "limited"
+        ? `We've already emailed ${to} a link to join your older Seeds account. Use the newest one. If it expired, wait an hour and sign in again.`
+        : "We found an older Seeds account under your email but couldn't send the link just now. Try signing in again in a few minutes, or contact support@honest.money.";
+  return (
+    <div className="rounded-sm border border-primary/40 bg-card px-5 py-6 text-left">
+      <p className="font-mono text-xs uppercase tracking-widest text-primary">Older account found</p>
+      <h1 className="mt-2 text-xl font-semibold">{title}</h1>
+      <p className="mt-3 text-sm text-muted-foreground">{body}</p>
+      <p className="mt-3 text-sm text-muted-foreground">After you click it, sign in with Honest.Money again and your history and saved wallet will be there.</p>
+    </div>
+  );
+}
 
 function afterSignIn() {
   try {
