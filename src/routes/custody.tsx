@@ -72,7 +72,7 @@ function Custody() {
       <p className="font-mono text-[11px] tracking-[0.24em] text-primary uppercase">
         Custody ledger
       </p>
-      <h1 className="mt-3 font-display text-4xl leading-[1.05] font-black tracking-tight text-foreground uppercase">
+      <h1 className="mt-3 font-display text-4xl leading-[1.05] font-bold tracking-tight text-foreground">
         Every key we hold
         <br />
         <span className="text-primary">has a timer on it.</span>
@@ -97,7 +97,7 @@ function Custody() {
         ))}
       </dl>
 
-      <h2 className="mt-14 font-display text-lg font-bold tracking-tight text-foreground uppercase">
+      <h2 className="mt-14 font-display text-lg font-bold tracking-tight text-foreground">
         Nodes we run
       </h2>
       <p className="mt-3 text-sm text-muted-foreground">
@@ -146,7 +146,7 @@ function Custody() {
 
 
 
-      <h2 className="mt-14 font-display text-lg font-bold tracking-tight text-foreground uppercase">
+      <h2 className="mt-14 font-display text-lg font-bold tracking-tight text-foreground">
         Sweep log
       </h2>
       <div className="mt-4 overflow-hidden rounded-lg border border-border">

@@ -258,7 +258,7 @@ function Index() {
               <p className="font-mono text-[11px] tracking-[0.3em] text-primary uppercase">
                 Physical cold storage
               </p>
-              <h2 className="mt-3 font-display text-3xl font-black tracking-tight text-foreground uppercase md:text-5xl">
+              <h2 className="mt-3 font-display text-3xl font-bold tracking-tight text-foreground md:text-5xl">
                 The SEEDS coin.
               </h2>
               <p className="mt-4 max-w-lg text-base leading-relaxed text-muted-foreground">

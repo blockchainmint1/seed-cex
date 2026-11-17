@@ -54,7 +54,7 @@ function Manifesto() {
   return (
     <div className="mx-auto max-w-7xl px-5 py-16">
       <p className="font-mono text-[11px] tracking-[0.24em] text-primary uppercase">Manifesto</p>
-      <h1 className="mt-3 font-display text-4xl leading-[1.05] font-black tracking-tight text-foreground uppercase">
+      <h1 className="mt-3 font-display text-4xl leading-[1.05] font-bold tracking-tight text-foreground">
         Custody is the bug.
         <br />
         <span className="text-primary">Escrow is the fix.</span>
@@ -88,7 +88,7 @@ function Manifesto() {
           href="https://texitcoin.org/build"
           target="_blank"
           rel="noreferrer noopener"
-          className="rounded-sm border border-border px-5 py-2.5 font-mono text-xs tracking-[0.16em] text-foreground uppercase transition-colors hover:border-primary hover:text-primary"
+          className="rounded-xl border border-foreground/60 px-5 py-2.5 text-sm font-semibold text-foreground transition-colors hover:border-primary hover:text-primary"
         >
           Learn TXC + Omni L2
         </a>

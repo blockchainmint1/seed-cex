@@ -235,7 +235,7 @@ function Wallet() {
   return (
     <div className="mx-auto max-w-7xl px-5 py-12">
       <p className="font-mono text-[11px] tracking-[0.24em] text-primary uppercase">Wallet</p>
-      <h1 className="mt-3 font-display text-3xl font-black tracking-tight text-foreground uppercase">
+      <h1 className="mt-3 font-display text-3xl font-bold tracking-tight text-foreground">
         Spot balances
       </h1>
       <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">

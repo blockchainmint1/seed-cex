@@ -308,7 +308,7 @@ function LbtcReport() {
         <p className="font-mono text-[11px] tracking-[0.3em] text-primary uppercase">
           Research report · Post-mortem
         </p>
-        <h1 className="mt-5 max-w-4xl font-display text-4xl leading-[1.05] font-black tracking-tight text-foreground uppercase md:text-5xl">
+        <h1 className="mt-5 max-w-4xl font-display text-4xl leading-[1.05] font-bold tracking-tight text-foreground md:text-5xl">
           They didn't get hacked to death.
           <br />
           <span className="text-primary">They got compliant to death.</span>
@@ -532,7 +532,7 @@ function LbtcReport() {
           </Link>
           <Link
             to="/manifesto"
-            className="rounded-sm border border-border px-5 py-2.5 font-mono text-xs tracking-[0.16em] text-foreground uppercase transition-colors hover:border-primary hover:text-primary"
+            className="rounded-xl border border-foreground/60 px-5 py-2.5 text-sm font-semibold text-foreground transition-colors hover:border-primary hover:text-primary"
           >
             Read the manifesto
           </Link>

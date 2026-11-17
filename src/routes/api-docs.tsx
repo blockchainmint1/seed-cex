@@ -70,22 +70,22 @@ function ApiDocs() {
           you control — there is no exchange balance to fund and no exchange balance to lose. Point an
           existing Binance-style client at this base URL and most calls work unchanged.
         </p>
-        <div className="mt-6 flex flex-wrap gap-3 font-mono text-xs">
+        <div className="mt-6 flex flex-wrap gap-3 text-sm">
           <Link
             to="/wallet"
-            className="rounded-sm bg-primary px-4 py-2 font-semibold tracking-wider text-primary-foreground uppercase"
+            className="rounded-xl bg-action px-4 py-2 font-semibold text-action-foreground transition hover:brightness-105"
           >
             Create API key
           </Link>
           <a
             href="/api/public/v1/openapi.json"
-            className="rounded-sm border border-border px-4 py-2 tracking-wider uppercase hover:border-primary hover:text-primary"
+            className="rounded-xl border border-foreground/60 px-4 py-2 font-semibold hover:border-primary hover:text-primary"
           >
             OpenAPI spec
           </a>
           <a
             href="/api/public/v1"
-            className="rounded-sm border border-border px-4 py-2 tracking-wider uppercase hover:border-primary hover:text-primary"
+            className="rounded-xl border border-foreground/60 px-4 py-2 font-semibold hover:border-primary hover:text-primary"
           >
             Endpoint index
           </a>

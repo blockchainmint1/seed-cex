@@ -75,7 +75,7 @@ function CodePage() {
                 href="https://github.com/blockchainmint1/seed-cex"
                 target="_blank"
                 rel="noreferrer noopener"
-                className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
+                className="inline-flex items-center gap-2 rounded-xl bg-action px-4 py-2 text-sm font-semibold text-action-foreground transition hover:brightness-105"
               >
                 <Github className="h-4 w-4" />
                 View on GitHub
