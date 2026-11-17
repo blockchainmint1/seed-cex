@@ -60,20 +60,20 @@ function AdminAiPage() {
             }
           >
             <div className="-m-4 overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full min-w-[46rem] text-sm whitespace-nowrap">
                 <thead className="label-caps text-left"><tr>
-                  <th className="py-2 pl-4 font-normal">Coin</th><th className="font-normal">Buys via</th><th className="text-right font-normal">Days saved</th>
-                  <th className="pl-4 font-normal">From</th><th className="font-normal">Latest</th><th className="font-normal">Source</th><th className="pr-4 text-right font-normal">Offered</th>
+                  <th className="py-2 pl-4 font-normal">Coin</th><th className="pl-4 font-normal">Buys via</th><th className="pl-4 text-right font-normal">Days saved</th>
+                  <th className="pl-4 font-normal">From</th><th className="pl-4 font-normal">Latest</th><th className="pl-4 font-normal">Source</th><th className="pr-4 text-right font-normal">Offered</th>
                 </tr></thead>
                 <tbody>
                   {q.data.coins.map((c) => (
                     <tr key={c.id} className="border-t border-border">
                       <td className="py-2 pl-4 font-semibold">{c.name} <span className="font-mono text-[11px] text-muted-foreground uppercase">{c.symbol}</span></td>
-                      <td className="font-mono text-xs">{c.swapCoin ?? "—"}</td>
+                      <td className="pl-4 font-mono text-xs">{c.swapCoin ?? "—"}</td>
                       <td className="num text-right">{c.days.toLocaleString()}</td>
                       <td className="num pl-4 text-muted-foreground">{c.firstDay ?? "—"}</td>
-                      <td className="num text-muted-foreground">{c.lastDay ?? "—"}</td>
-                      <td className="text-xs text-muted-foreground">{c.source ?? "—"}</td>
+                      <td className="num pl-4 text-muted-foreground">{c.lastDay ?? "—"}</td>
+                      <td className="pl-4 text-xs text-muted-foreground">{c.source ?? "—"}</td>
                       <td className="pr-4 text-right">
                         <button className="seed-btn-ghost min-h-0 px-3 py-1 text-xs" disabled={coinM.isPending} onClick={() => coinM.mutate({ id: c.id, active: !c.active })}>
                           {c.active ? "On" : "Off"}
@@ -125,16 +125,16 @@ function AdminAiPage() {
           >
             {!q.data.plans.length ? <p className="text-sm text-muted-foreground">No plans locked yet.</p> : (
               <div className="-m-4 overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full min-w-[46rem] text-sm whitespace-nowrap">
                   <thead className="label-caps text-left"><tr>
-                    <th className="py-2 pl-4 font-normal">Member</th><th className="font-normal">Plan</th><th className="font-normal">Kind</th><th className="text-right font-normal">Coins</th>
+                    <th className="py-2 pl-4 font-normal">Member</th><th className="pl-4 font-normal">Plan</th><th className="pl-4 font-normal">Kind</th><th className="text-right font-normal">Coins</th>
                     <th className="text-right font-normal">TSD</th><th className="pl-4 font-normal">Status</th><th className="font-normal">Locked</th><th className="pr-4 text-right font-normal">Alerts (7d)</th>
                   </tr></thead>
                   <tbody>
                     {q.data.plans.map((p) => (
                       <tr key={p.id} className="border-t border-border">
-                        <td className="py-2 pl-4">{p.member}</td><td className="font-semibold">{p.name}</td>
-                        <td className="text-xs">{p.mode === "momentum" ? "Strongest" : "Basket"}</td>
+                        <td className="py-2 pl-4">{p.member}</td><td className="pl-4 font-semibold">{p.name}</td>
+                        <td className="pl-4 text-xs">{p.mode === "momentum" ? "Strongest" : "Basket"}</td>
                         <td className="num text-right">{p.coins}</td><td className="num text-right">{p.commitTsd.toLocaleString("en-US")}</td>
                         <td className="pl-4 font-mono text-xs uppercase">{p.status === "locked" ? "live" : p.status}</td>
                         <td className="num text-muted-foreground">{p.lockedAt.slice(0, 10)}</td><td className="num pr-4 text-right">{p.alerts7d}</td>
