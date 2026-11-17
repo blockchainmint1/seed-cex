@@ -188,7 +188,7 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
             Pair
           </p>
           <h1 className="font-display text-2xl font-black tracking-tight text-foreground">
-            {pair.label}
+            {pair.label} market
           </h1>
           <nav className="mt-2 flex flex-wrap gap-2">
             {PAIRS.map((p) => (
@@ -260,6 +260,10 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
           live settlement · {pair.base.toLowerCase()} + {pair.quote.toLowerCase()}
         </span>
       </div>
+      <p className="mt-4 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+        Buy and sell {pair.base} with prices quoted in {pair.quote}. {pair.blurb} Matched trades settle on-chain,
+        directly between the two traders' wallets. Seeds never takes custody of your coins.
+      </p>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-[1fr_320px_300px]">
         {/* chart + my activity */}

@@ -82,25 +82,22 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Seeds — Non-Custodial USDC/TXC Exchange" },
+      { title: "Seeds — Non-Custodial Crypto Exchange" },
       {
         name: "description",
         content:
-          "Trade USDC and TEXITcoin without handing over your keys. Seeds encrypts your recovery phrase in the browser and settles trades through peer-to-peer escrow.",
+          "Seeds is an exchange-style crypto order book that never takes your keys. Trades settle directly between traders' own wallets. Part of the Honest Money Ecosystem.",
       },
       { name: "author", content: "Seeds" },
       { name: "google-site-verification", content: "pFhdpWiEXX18KJ4dzCnKh-Voe4lDc2sxRXEXz88JjYE" },
-      { property: "og:title", content: "Seeds — Non-Custodial USDC/TXC Exchange" },
+      { property: "og:site_name", content: "Seeds" },
+      { property: "og:title", content: "Seeds — Non-Custodial Crypto Exchange" },
       {
         property: "og:description",
-        content: "Trade USDC and TEXITcoin without handing over your keys. Seeds encrypts your recovery phrase in the browser and settles trades through peer-to-peer escrow.",
+        content: "Seeds is an exchange-style crypto order book that never takes your keys. Trades settle directly between traders' own wallets.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Seeds — Non-Custodial USDC/TXC Exchange" },
-      { name: "twitter:description", content: "Trade USDC and TEXITcoin without handing over your keys. Seeds encrypts your recovery phrase in the browser and settles trades through peer-to-peer escrow." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/66e62653-95bf-4bdc-b85c-3a0a4f646064/id-preview-b5ba82c1--0ce4bcf5-5883-4de0-96d3-b161585d1bf4.lovable.app-1785315396428.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/66e62653-95bf-4bdc-b85c-3a0a4f646064/id-preview-b5ba82c1--0ce4bcf5-5883-4de0-96d3-b161585d1bf4.lovable.app-1785315396428.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
