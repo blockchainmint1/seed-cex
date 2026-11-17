@@ -506,7 +506,7 @@ function SendPanel(props: {
       <label className="flex items-start gap-2 text-xs text-muted-foreground">
         <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-0.5 accent-primary" />
         <span>
-          I checked the receiving address. Blockchain sends can't be undone. Limits during the test: ${SWAP_LIMITS.perSwapUsd} per swap, ${SWAP_LIMITS.dailyUsd} a day.
+          I checked the receiving address. Blockchain sends can't be undone. Limits during the test: ${SWAP_LIMITS.perSwapUsd.toLocaleString("en-US")} per swap, ${SWAP_LIMITS.dailyUsd.toLocaleString("en-US")} a day.
         </span>
       </label>
       <button
@@ -544,7 +544,26 @@ function MySwaps({ sends }: { sends: SendCtx["sends"] }) {
   return (
     <div className="rounded-sm border border-border bg-surface">
       <h2 className="border-b border-border px-4 py-3 font-mono text-[11px] tracking-[0.2em] uppercase">My swaps</h2>
-      <div className="overflow-x-auto">
+      <ul className="divide-y divide-border sm:hidden">
+        {sends.map((s) => (
+          <li key={s.id} className="space-y-1 px-4 py-3 font-mono text-xs">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className={s.status === "failed" ? "text-destructive" : s.status === "done" ? "text-primary" : ""}>{STATUS_LABEL[s.status] ?? s.status}</span>
+              <span className="text-[10px] text-muted-foreground">{new Date(s.created_at).toLocaleString("en-US", { dateStyle: "short", timeStyle: "short" })}</span>
+            </div>
+            <p>
+              {coins(Number(s.amount_in))} {assetLabel(s.from_asset)} → ~{coins(Number(s.expected_out))} {assetLabel(s.to_asset)}
+            </p>
+            {s.error ? <p className="text-[10px] text-muted-foreground">{s.error}</p> : null}
+            {s.txid && s.status !== "failed" ? (
+              <a href={TRACKER(s.txid)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary underline">
+                Track on RuneScan <ExternalLink className="h-3 w-3" />
+              </a>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+      <div className="hidden overflow-x-auto sm:block">
         <table className="w-full min-w-[40rem] font-mono text-xs">
           <thead>
             <tr className="text-left text-[10px] tracking-wider text-muted-foreground uppercase">
