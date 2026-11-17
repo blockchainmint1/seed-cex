@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as ApiDocsRouteImport } from './routes/api-docs'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as BrandRouteImport } from './routes/brand'
 import { Route as CustodyRouteImport } from './routes/custody'
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
 import { Route as LbtcRouteImport } from './routes/lbtc'
@@ -88,6 +89,11 @@ const ApiDocsRoute = ApiDocsRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BrandRoute = BrandRouteImport.update({
+  id: '/brand',
+  path: '/brand',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CustodyRoute = CustodyRouteImport.update({
@@ -387,6 +393,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/api-docs': typeof ApiDocsRoute
   '/auth': typeof AuthRoute
+  '/brand': typeof BrandRoute
   '/custody': typeof CustodyRoute
   '/how-it-works': typeof HowItWorksRoute
   '/lbtc': typeof LbtcRoute
@@ -449,6 +456,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/api-docs': typeof ApiDocsRoute
   '/auth': typeof AuthRoute
+  '/brand': typeof BrandRoute
   '/custody': typeof CustodyRoute
   '/how-it-works': typeof HowItWorksRoute
   '/lbtc': typeof LbtcRoute
@@ -513,6 +521,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/api-docs': typeof ApiDocsRoute
   '/auth': typeof AuthRoute
+  '/brand': typeof BrandRoute
   '/custody': typeof CustodyRoute
   '/how-it-works': typeof HowItWorksRoute
   '/lbtc': typeof LbtcRoute
@@ -577,6 +586,7 @@ export interface FileRouteTypes {
     | '/'
     | '/api-docs'
     | '/auth'
+    | '/brand'
     | '/custody'
     | '/how-it-works'
     | '/lbtc'
@@ -639,6 +649,7 @@ export interface FileRouteTypes {
     | '/'
     | '/api-docs'
     | '/auth'
+    | '/brand'
     | '/custody'
     | '/how-it-works'
     | '/lbtc'
@@ -702,6 +713,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/api-docs'
     | '/auth'
+    | '/brand'
     | '/custody'
     | '/how-it-works'
     | '/lbtc'
@@ -766,6 +778,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   ApiDocsRoute: typeof ApiDocsRoute
   AuthRoute: typeof AuthRoute
+  BrandRoute: typeof BrandRoute
   CustodyRoute: typeof CustodyRoute
   HowItWorksRoute: typeof HowItWorksRoute
   LbtcRoute: typeof LbtcRoute
@@ -844,6 +857,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/brand': {
+      id: '/brand'
+      path: '/brand'
+      fullPath: '/brand'
+      preLoaderRoute: typeof BrandRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/custody': {
@@ -1292,6 +1312,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   ApiDocsRoute: ApiDocsRoute,
   AuthRoute: AuthRoute,
+  BrandRoute: BrandRoute,
   CustodyRoute: CustodyRoute,
   HowItWorksRoute: HowItWorksRoute,
   LbtcRoute: LbtcRoute,
