@@ -1,4 +1,3 @@
-/// <reference types="bun" />
 import { describe, expect, test as it } from "bun:test";
 import { validateDetails, normalizeEmail, SEAT_CAPACITY, DEPOSIT_USD, PAYMENTS_ENABLED } from "./ignite-registration";
 
