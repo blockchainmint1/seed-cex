@@ -10,6 +10,7 @@ import { AccountChangeEmail, type AccountChangeProps } from "./templates/account
 import { WeeklyUpdateEmail, type WeeklyUpdateProps } from "./templates/weekly-update";
 import { PeerPayRequestEmail, type PeerPayRequestProps } from "./templates/peer-pay-request";
 import { PeerPayPaidEmail, type PeerPayPaidProps } from "./templates/peer-pay-paid";
+import { IgniteSeatConfirmedEmail, type IgniteSeatConfirmedProps } from "./templates/ignite-seat-confirmed";
 import { fmt, usd } from "./components";
 
 export type TemplateProps = {
@@ -20,6 +21,7 @@ export type TemplateProps = {
   "weekly-update": WeeklyUpdateProps;
   "peer-pay-request": PeerPayRequestProps;
   "peer-pay-paid": PeerPayPaidProps;
+  "ignite-seat-confirmed": IgniteSeatConfirmedProps;
 };
 export type TemplateName = keyof TemplateProps;
 /** security = always sent; trades = email_trade_confirmations; weekly = email_weekly_update; welcome = once; receipt = always (payment receipts); invite = to a non-member, sent by direct delivery. */
@@ -104,6 +106,13 @@ export const TEMPLATES: { [K in TemplateName]: Def<K> } = {
     subject: (p) => `${p.payerName} paid your Ignite seat`,
     render: (p) => <PeerPayPaidEmail {...p} />,
     sample: { name: "Alex", payerName: "Jordan Lee", amount: 400, paidAt: "2026-11-18T15:10:00Z", timezone: "America/Chicago" },
+  },
+  "ignite-seat-confirmed": {
+    label: "Ignite seat confirmed",
+    category: "receipt",
+    subject: () => "Your Ignite seat is reserved",
+    render: (p) => <IgniteSeatConfirmedEmail {...p} />,
+    sample: { name: "Alex", amount: 400, paidBy: null, confirmedAt: "2026-11-18T15:10:00Z", timezone: "America/Chicago", referralUrl: "https://honest.money/r/alex?to=https%3A%2F%2Fseeds.honest.money%2Fregister" },
   },
 };
 

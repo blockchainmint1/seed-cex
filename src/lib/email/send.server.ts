@@ -57,7 +57,7 @@ export async function emailUser<K extends TemplateName>(
   userId: string,
   name: K,
   build: (r: Recipient) => TemplateProps[K] | Promise<TemplateProps[K]>,
-  opts: { dedupe?: string } = {},
+  opts: { dedupe?: string; to?: string } = {},
 ): Promise<"sent" | "skipped" | "failed"> {
   try {
     if (!sesConfigured()) return "skipped";
@@ -75,7 +75,7 @@ export async function emailUser<K extends TemplateName>(
       if (!claimed?.length) return "skipped";
     }
     try {
-      await deliver(r.email, name, await build(r));
+      await deliver(opts.to || r.email, name, await build(r));
       return "sent";
     } catch (err) {
       // Free the claim so a later attempt can retry.

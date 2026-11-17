@@ -47,3 +47,8 @@
 - [ ] AI basket builder: AI writes a member-approved rulebook, fixed engine executes it (concept in docs/ai-basket-strategy-concept.md; blocked: Bobby's detailed spec + linked-pocket settlement)
 - [x] /register Peer Pay: 7-day copy/email link, payer signs in with Honest.Money, registrant can cancel, no discount
 - [ ] Peer Pay: full friend-pays test with a second Honest.Money account (blocked: Bobby picks a test account)
+
+- [x] Ignite confirmation page after payment: thanks, seat reserved, HME referral link (existing members), seats left, check email, connection info coming
+- [x] Ignite: find out why NectarPay never notified Seeds of Bobby's paid invoice; add a server-side payment re-check so a missed notice can't strand a paid seat
+- [ ] Ignite: "connection info" email for confirmed seats (blocked: Bobby supplies the class link/details)
+- [ ] NectarPay: explain why no notice was sent for invoice 5f6650b3 (empty delivery log; resend worked) (blocked: NectarPay team)

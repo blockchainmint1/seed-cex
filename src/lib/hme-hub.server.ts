@@ -27,3 +27,26 @@ export async function sendHubEvent(body: {
     /* best effort */
   }
 }
+
+/**
+ * Member's Honest.Money affiliate code (their HME username) via member-check.
+ * Only approved members get one. Best effort: null on any failure.
+ */
+export async function hmeReferralCode(memberId: string | null | undefined): Promise<string | null> {
+  if (!memberId) return null;
+  try {
+    const res = await fetch("https://honest.money/api/public/minetxc/member-check", {
+      method: "POST", headers: ecosystemHeaders(),
+      body: JSON.stringify({ members: [{ ref: "seeds-referral", hmeId: memberId }] }),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return null;
+    const j = (await res.json()) as { results?: { result?: string; hmeId?: string; username?: string; status?: string }[] };
+    const r = j.results?.[0];
+    if (!r || r.result !== "found" || r.hmeId !== memberId || r.status !== "APPROVED") return null;
+    const { cleanRefCode } = await import("./ignite-registration");
+    return cleanRefCode(r.username);
+  } catch {
+    return null;
+  }
+}

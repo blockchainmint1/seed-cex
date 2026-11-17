@@ -34,6 +34,7 @@ import { Route as AuthenticatedWalletRouteImport } from './routes/_authenticated
 import { Route as P2pIndexRouteImport } from './routes/p2p.index'
 import { Route as PayTokenRouteImport } from './routes/pay.$token'
 import { Route as ProofCodeRouteImport } from './routes/proof.code'
+import { Route as RegisterConfirmedRouteImport } from './routes/register_.confirmed'
 import { Route as TradeBtcTsdRouteImport } from './routes/trade.btc-tsd'
 import { Route as TradeEthTsdRouteImport } from './routes/trade.eth-tsd'
 import { Route as TradeIskTsdRouteImport } from './routes/trade.isk-tsd'
@@ -199,6 +200,11 @@ const PayTokenRoute = PayTokenRouteImport.update({
 const ProofCodeRoute = ProofCodeRouteImport.update({
   id: '/proof/code',
   path: '/proof/code',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RegisterConfirmedRoute = RegisterConfirmedRouteImport.update({
+  id: '/register_/confirmed',
+  path: '/register/confirmed',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TradeBtcTsdRoute = TradeBtcTsdRouteImport.update({
@@ -444,6 +450,7 @@ export interface FileRoutesByFullPath {
   '/wallet': typeof AuthenticatedWalletRoute
   '/pay/$token': typeof PayTokenRoute
   '/proof/code': typeof ProofCodeRoute
+  '/register/confirmed': typeof RegisterConfirmedRoute
   '/trade/btc-tsd': typeof TradeBtcTsdRoute
   '/trade/eth-tsd': typeof TradeEthTsdRoute
   '/trade/isk-tsd': typeof TradeIskTsdRoute
@@ -512,6 +519,7 @@ export interface FileRoutesByTo {
   '/wallet': typeof AuthenticatedWalletRoute
   '/pay/$token': typeof PayTokenRoute
   '/proof/code': typeof ProofCodeRoute
+  '/register/confirmed': typeof RegisterConfirmedRoute
   '/trade/btc-tsd': typeof TradeBtcTsdRoute
   '/trade/eth-tsd': typeof TradeEthTsdRoute
   '/trade/isk-tsd': typeof TradeIskTsdRoute
@@ -582,6 +590,7 @@ export interface FileRoutesById {
   '/_authenticated/wallet': typeof AuthenticatedWalletRoute
   '/pay/$token': typeof PayTokenRoute
   '/proof/code': typeof ProofCodeRoute
+  '/register_/confirmed': typeof RegisterConfirmedRoute
   '/trade/btc-tsd': typeof TradeBtcTsdRoute
   '/trade/eth-tsd': typeof TradeEthTsdRoute
   '/trade/isk-tsd': typeof TradeIskTsdRoute
@@ -652,6 +661,7 @@ export interface FileRouteTypes {
     | '/wallet'
     | '/pay/$token'
     | '/proof/code'
+    | '/register/confirmed'
     | '/trade/btc-tsd'
     | '/trade/eth-tsd'
     | '/trade/isk-tsd'
@@ -720,6 +730,7 @@ export interface FileRouteTypes {
     | '/wallet'
     | '/pay/$token'
     | '/proof/code'
+    | '/register/confirmed'
     | '/trade/btc-tsd'
     | '/trade/eth-tsd'
     | '/trade/isk-tsd'
@@ -789,6 +800,7 @@ export interface FileRouteTypes {
     | '/_authenticated/wallet'
     | '/pay/$token'
     | '/proof/code'
+    | '/register_/confirmed'
     | '/trade/btc-tsd'
     | '/trade/eth-tsd'
     | '/trade/isk-tsd'
@@ -854,6 +866,7 @@ export interface RootRouteChildren {
   TsdRoute: typeof TsdRoute
   PayTokenRoute: typeof PayTokenRoute
   ProofCodeRoute: typeof ProofCodeRoute
+  RegisterConfirmedRoute: typeof RegisterConfirmedRoute
   TradeBtcTsdRoute: typeof TradeBtcTsdRoute
   TradeEthTsdRoute: typeof TradeEthTsdRoute
   TradeIskTsdRoute: typeof TradeIskTsdRoute
@@ -1070,6 +1083,13 @@ declare module '@tanstack/react-router' {
       path: '/proof/code'
       fullPath: '/proof/code'
       preLoaderRoute: typeof ProofCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/register_/confirmed': {
+      id: '/register_/confirmed'
+      path: '/register/confirmed'
+      fullPath: '/register/confirmed'
+      preLoaderRoute: typeof RegisterConfirmedRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/trade/btc-tsd': {
@@ -1428,6 +1448,7 @@ const rootRouteChildren: RootRouteChildren = {
   TsdRoute: TsdRoute,
   PayTokenRoute: PayTokenRoute,
   ProofCodeRoute: ProofCodeRoute,
+  RegisterConfirmedRoute: RegisterConfirmedRoute,
   TradeBtcTsdRoute: TradeBtcTsdRoute,
   TradeEthTsdRoute: TradeEthTsdRoute,
   TradeIskTsdRoute: TradeIskTsdRoute,

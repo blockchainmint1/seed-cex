@@ -436,6 +436,7 @@ export type Database = {
           paid_chain: string | null
           payment_method: string
           phone: string
+          ref_code: string | null
           status: string
           updated_at: string
           user_id: string
@@ -457,6 +458,7 @@ export type Database = {
           paid_chain?: string | null
           payment_method?: string
           phone: string
+          ref_code?: string | null
           status?: string
           updated_at?: string
           user_id: string
@@ -478,6 +480,7 @@ export type Database = {
           paid_chain?: string | null
           payment_method?: string
           phone?: string
+          ref_code?: string | null
           status?: string
           updated_at?: string
           user_id?: string

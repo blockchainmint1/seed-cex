@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { DEPOSIT_USD, validateDetails, normalizeEmail, type Details } from "./ignite-registration";
+import { DEPOSIT_USD, SEAT_CAPACITY, cleanRefCode, referralUrl, seatsLeft, validateDetails, normalizeEmail, type Details } from "./ignite-registration";
 import { emailsLeft, peerLinkState, peerToken, selfCheckoutBlock } from "./ignite-peer";
 
 const COLS = "id, payment_method, status, full_name, email, country_code, phone, amount_usd, checkout_url, invoice_expires_at, confirmed_at, paid_chain";
@@ -10,6 +10,9 @@ export const getMyIgnite = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { nectarpayConfigured } = await import("./nectarpay.server");
+    const { reconcileIgniteRegistration } = await import("./ignite-confirm.server");
+    const { data: before } = await context.supabase.from("ignite_registrations").select("status, invoice_id, updated_at").eq("user_id", context.userId).maybeSingle();
+    await reconcileIgniteRegistration(before);
     const [{ data: reg }, { data: prof }] = await Promise.all([
       context.supabase.from("ignite_registrations").select(COLS).eq("user_id", context.userId).maybeSingle(),
       context.supabase.from("profiles").select("display_name, hm_member_id").eq("id", context.userId).maybeSingle(),
@@ -45,7 +48,7 @@ export const getMyIgnite = createServerFn({ method: "GET" })
 /** Saves details and opens a NectarPay invoice. Amount always comes from the server. */
 export const startIgniteCheckout = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: Details & { origin: string }) => d)
+  .inputValidator((d: Details & { origin: string; ref?: string | null }) => d)
   .handler(async ({ data, context }) => {
     if (Object.keys(validateDetails(data)).length) throw new Error("Please check your details.");
     const origin = /^https:\/\/[a-z0-9.-]+$/i.test(data.origin) || data.origin.startsWith("http://localhost") ? data.origin : "https://seeds.honest.money";
@@ -73,13 +76,60 @@ export const startIgniteCheckout = createServerFn({ method: "POST" })
       user_id: context.userId, hm_member_id: prof?.hm_member_id ?? null, full_name: data.fullName.trim(), email,
       country_code: data.countryCode, phone: data.phone.replace(/[\s\-().]/g, ""), marketing_opt_in: !!data.marketingOptIn,
       amount_usd: DEPOSIT_USD, status: "pending", payment_method: "nectarpay", updated_at: now,
+      ...(cleanRefCode(data.ref) ? { ref_code: cleanRefCode(data.ref) } : {}),
     }, { onConflict: "user_id" }).select("id").single();
     if (error || !row) throw new Error("Couldn't save your registration.");
 
     const inv = await createInvoice({
       amount: DEPOSIT_USD, order_id: `ignite-${row.id}`, description: "Seeds Ignite class reservation",
-      redirect_url: `${origin}/register?paid=1`, buyer_email: email, expires_in_seconds: 3600,
+      redirect_url: `${origin}/register/confirmed`, buyer_email: email, expires_in_seconds: 3600,
     });
     await supabaseAdmin.from("ignite_registrations").update({ invoice_id: inv.id, checkout_url: inv.checkout_url, invoice_expires_at: inv.expires_at }).eq("id", row.id);
     return { checkoutUrl: inv.checkout_url };
+  });
+
+/** Seats held right now: confirmed, or with a live checkout. */
+async function seatsHeld() {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { count } = await supabaseAdmin.from("ignite_registrations").select("id", { count: "exact", head: true })
+    .or(`status.eq.confirmed,and(status.in.(pending,underpaid),invoice_expires_at.gt.${new Date().toISOString()})`);
+  return count ?? 0;
+}
+
+/**
+ * The page members land on after NectarPay checkout. Re-checks a pending payment
+ * with NectarPay, then reports seat status, seats left and (once confirmed) the
+ * member's Honest.Money referral link.
+ */
+export const getIgniteConfirmation = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { reconcileIgniteRegistration } = await import("./ignite-confirm.server");
+    const cols = "status, invoice_id, invoice_expires_at, updated_at, full_name, email, paid_chain, confirmed_at, payment_method, hm_member_id, id";
+    let { data: reg } = await context.supabase.from("ignite_registrations").select(cols).eq("user_id", context.userId).maybeSingle();
+    if (reg && (await reconcileIgniteRegistration(reg)))
+      ({ data: reg } = await context.supabase.from("ignite_registrations").select(cols).eq("user_id", context.userId).maybeSingle());
+    const left = seatsLeft(await seatsHeld());
+    if (!reg) return { state: "none" as const, seatsLeft: left, capacity: SEAT_CAPACITY };
+    const first = reg.full_name.trim().split(/\s+/)[0] || "there";
+    const firstName = first.charAt(0).toUpperCase() + first.slice(1);
+    if (reg.status === "confirmed") {
+      let paidBy: string | null = null;
+      if (reg.payment_method === "peer") {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { data: link } = await supabaseAdmin.from("ignite_peer_links").select("payer_name").eq("registration_id", reg.id).eq("status", "paid").maybeSingle();
+        paidBy = link?.payer_name ?? null;
+      }
+      const { hmeReferralCode } = await import("./hme-hub.server");
+      const code = await hmeReferralCode(reg.hm_member_id);
+      return {
+        state: "confirmed" as const, seatsLeft: left, capacity: SEAT_CAPACITY, firstName, email: reg.email,
+        paidChain: reg.paid_chain, confirmedAt: reg.confirmed_at, paidBy, referralUrl: code ? referralUrl(code) : null,
+      };
+    }
+    if (reg.status === "underpaid") return { state: "underpaid" as const, seatsLeft: left, capacity: SEAT_CAPACITY, firstName };
+    const live = !!reg.invoice_expires_at && new Date(reg.invoice_expires_at).getTime() > Date.now();
+    // NectarPay can finish confirming a payment a little after the checkout window closes.
+    const recentlyClosed = !!reg.invoice_expires_at && Date.now() - new Date(reg.invoice_expires_at).getTime() < 3 * 3_600_000;
+    return { state: live || recentlyClosed ? ("pending" as const) : ("expired" as const), seatsLeft: left, capacity: SEAT_CAPACITY, firstName };
   });

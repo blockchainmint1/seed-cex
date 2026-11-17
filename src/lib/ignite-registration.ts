@@ -28,3 +28,36 @@ export const SCHEDULE_TIME = "Daily from 5:00–6:30 PM CST";
 export const RECORDING_NOTE = "*Sessions will be recorded.";
 export const SCHEDULE_START_UTC = "2026-11-30T23:00:00Z";
 export const SCHEDULE_END_UTC = "2026-12-05T00:30:00Z";
+
+// ---- Payment confirmation + referral rules (pure, tested) ----
+
+/** HME referral/affiliate codes: letters, digits, dot, dash, underscore; max 64. */
+export const REF_CODE_RE = /^[A-Za-z0-9_.-]{1,64}$/;
+export function cleanRefCode(v: unknown): string | null {
+  const s = typeof v === "string" ? v.trim() : "";
+  return REF_CODE_RE.test(s) ? s : null;
+}
+
+/** Seats still open, never negative. `held` = confirmed + live checkouts. */
+export function seatsLeft(held: number, capacity = SEAT_CAPACITY) {
+  return Math.max(0, capacity - Math.max(0, held));
+}
+
+/**
+ * Member's personal invite link. honest.money/r/{code}?to= counts the click for
+ * the referrer and forwards to the Seeds registration page with ?ref={code}.
+ */
+export function referralUrl(code: string, site = "https://seeds.honest.money") {
+  return `https://honest.money/r/${encodeURIComponent(code)}?to=${encodeURIComponent(`${site}/register`)}`;
+}
+
+/** NectarPay invoice says paid in full: confirmed/overpaid and at least the deposit. */
+export function invoiceSettled(inv: { status: string; fiat_amount: number | string }, amountUsd: number | string) {
+  return ["confirmed", "overpaid"].includes(inv.status) && Number(inv.fiat_amount) >= Number(amountUsd);
+}
+
+/** The invoice was opened by Seeds for this seat: `ignite-<registration>` or `ignite-peer-<link>`. */
+export function invoiceBelongs(orderId: string | null | undefined, registrationId: string, peerLinkId: string | null) {
+  if (!orderId) return false;
+  return orderId === `ignite-${registrationId}` || (!!peerLinkId && orderId === `ignite-peer-${peerLinkId}`);
+}

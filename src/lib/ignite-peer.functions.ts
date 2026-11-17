@@ -102,8 +102,11 @@ export const getPeerLinkPublic = createServerFn({ method: "GET" })
     const link = await findLink(data.token);
     if (!link) return { found: false as const };
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: reg } = await supabaseAdmin.from("ignite_registrations").select("full_name, status").eq("id", link.registration_id).single();
-    const state = reg?.status === "confirmed" ? "paid" : peerLinkState(link);
+    const { data: reg } = await supabaseAdmin.from("ignite_registrations").select("full_name, status, invoice_id, updated_at, payment_method").eq("id", link.registration_id).single();
+    // A friend's payment whose NectarPay notice never arrived is picked up here too.
+    const { reconcileIgniteRegistration } = await import("./ignite-confirm.server");
+    const caughtUp = reg?.payment_method === "peer" && (await reconcileIgniteRegistration(reg));
+    const state = reg?.status === "confirmed" || caughtUp ? "paid" : peerLinkState(link);
     return { found: true as const, forName: shortName(reg?.full_name ?? ""), amount: DEPOSIT_USD, state, expiresAt: link.expires_at };
   });
 

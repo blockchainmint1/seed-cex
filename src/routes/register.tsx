@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { SCHEDULE_DATES, SCHEDULE_SESSIONS, SCHEDULE_TIME, RECORDING_NOTE } from "@/lib/ignite-registration";
 import { RegistrationFlow, StatusPreviews } from "@/components/ignite/RegistrationFlow";
@@ -21,6 +21,11 @@ export const Route = createFileRoute("/register")({
 
 function Index() {
   const formRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+  // Checkouts opened before the confirmation page existed still return to /register?paid=1.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("paid")) navigate({ to: "/register/confirmed", replace: true });
+  }, [navigate]);
   const [formVisible, setFormVisible] = useState(false);
   useEffect(() => {
     const el = formRef.current;

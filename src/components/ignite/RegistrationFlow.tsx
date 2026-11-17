@@ -35,7 +35,8 @@ export function RegistrationFlow() {
   const pay = async () => {
     setPaying(true); setPayError(null);
     try {
-      const { checkoutUrl } = await checkout({ data: { ...details, origin: window.location.origin } });
+      const ref = (window as unknown as { honestMoney?: { ref?: () => string | null } }).honestMoney?.ref?.() || new URLSearchParams(window.location.search).get("ref");
+      const { checkoutUrl } = await checkout({ data: { ...details, origin: window.location.origin, ref } });
       window.location.href = checkoutUrl;
     } catch (e) { setPayError(e instanceof Error ? e.message : "Checkout failed"); setPaying(false); }
   };
@@ -59,6 +60,7 @@ export function RegistrationFlow() {
         <p className="text-xs font-semibold uppercase tracking-widest text-primary">Seat confirmed</p>
         <h2 className="mt-2 font-display text-3xl">You're in, {reg.full_name.split(" ")[0]}.</h2>
         <p className="mt-2 text-sm text-muted-foreground">Payment verified{reg.paid_chain ? ` (${reg.paid_chain.toUpperCase()})` : ""}{mine.data?.peer?.state === "paid" && mine.data.peer.payerName ? `, paid by ${mine.data.peer.payerName} through Peer Pay` : ""}. Ignite runs {SCHEDULE_DATES}, {SCHEDULE_TIME.toLowerCase()}. We'll send reminders to {reg.email}.</p>
+        <Link to="/register/confirmed" className="seed-btn mt-6 inline-flex justify-center">See your confirmation & referral link</Link>
       </div>
     );
   }
