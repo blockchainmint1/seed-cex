@@ -551,11 +551,26 @@ function Manifesto() {
             where we still fall short — written plainly enough to be held against us.
           </p>
 
+          <details className="mt-8 rounded-xl border border-border bg-card px-5 py-3 lg:hidden">
+            <summary className="cursor-pointer font-mono text-[11px] tracking-[0.24em] text-primary uppercase">
+              On this page
+            </summary>
+            <ol className="mt-3 space-y-2 pb-2 text-sm">
+              {toc.map((t) => (
+                <li key={t.id}>
+                  <a href={`#${t.id}`} className="text-muted-foreground hover:text-foreground">
+                    {t.label}
+                  </a>
+                </li>
+              ))}
+            </ol>
+          </details>
+
           <div className="mt-12 space-y-14">
             <Section id="why-now" kicker="Part 1" title="Why we are writing this now">
               <p>
                 On 29 October 2026, the largest crypto exchange in the world lost about $6.3 billion
-                in a single afternoon. It is the biggest theft in the history of crypto.
+                in a single day. It is the biggest theft in the history of crypto.
                 <Cite n={S.coindeskBinance} /> Five weeks earlier, Bitget lost about $387.5 million.
                 <Cite n={S.bitgetOfficial} /> Meanwhile BitMart, an exchange that had run for nine
                 years, was quietly winding down. It told customers the hole in its books traced back
@@ -567,8 +582,8 @@ function Manifesto() {
                 and that problem is older than most of the people now trading crypto. By one count,
                 more than $34 billion of customer money has been lost, stolen or frozen at
                 exchanges, lenders and custodial wallets since 2011, across 155 incidents.
-                <Cite n={S.casa} /> 2026 is already the worst year on record for crypto hacks by
-                value.
+                <Cite n={S.casa} /> In one tracker’s data, 2026 is already the worst year on
+                record for crypto hacks by value.
                 <Cite n={S.guardian2026} />
               </p>
               <p>
@@ -720,16 +735,15 @@ function Manifesto() {
                 strongest possible argument for our point. The world’s largest exchange did
                 everything an exchange is supposed to do: cold storage, emergency funds, a big
                 security team. A fake job interview still got through. Most companies could not
-                write a $6 billion cheque. BitMart couldn’t cover $196 million without it eventually
-                ending the company.
+                write a $6 billion cheque. For BitMart, a $196 million hack became the hole it now
+                blames for its shutdown.
               </p>
               <p>
                 It is also not the first time. In May 2019, attackers gathered API keys and
                 two-factor codes, then took more than 7,000 bitcoin from Binance’s hot wallet in a
                 single transaction that “passed our existing security checks,” in Binance’s own
                 words.
-                <Cite n={S.techcrunchBinance19} /> Seven years and billions of dollars of security
-                spending later, the 2026 attack also passed the checks. When the design is “one
+                <Cite n={S.techcrunchBinance19} /> Seven years later, the 2026 attack also passed the checks. When the design is “one
                 company can send everyone’s coins,” the security budget only changes how hard the
                 attackers have to work.
               </p>
@@ -862,7 +876,7 @@ function Manifesto() {
             </Section>
 
             <Section id="promises" kicker="Part 10" title="Our promises">
-              <ul className="space-y-3">
+              <ul className="list-disc space-y-3 pl-5 marker:text-primary">
                 <li>We will never ask for your recovery phrase, in any channel, for any reason.</li>
                 <li>We will never ask to link your savings. Only the trading pocket you choose.</li>
                 <li>We will tell you in plain words whenever a feature means we hold a key.</li>
