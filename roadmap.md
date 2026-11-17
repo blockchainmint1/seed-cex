@@ -2,7 +2,11 @@
 
 - [x] Cross-chain swaps: THORChain routes for BTC, ETH, LTC, DOGE, BCH, XRP, SOL, ZEC, BNB, TRX (+ USDC/USDT on Ethereum) — live quotes, safety checks, /swap page
 - [x] Cross-chain swaps: add Maya Protocol as second route with best-price comparison (price-only until a second independent Maya server exists)
-- [ ] Cross-chain swaps: sending from HME Wallet pockets (blocked: HME Wallet chain support + linked-pocket settlement)
+- [x] Multichain pockets: Seeds-side keys/addresses/balances/signing for DOGE, BCH, XRP, TRX, SOL (+ ZEC addresses/balances); HME link accepts optional pockets
+- [ ] HME Wallet: send optional pocket keys per docs/hme-wallet-extra-pockets.md (blocked: HME team)
+- [ ] Zcash v5 (ZIP-244) signing
+- [ ] Per-coin "send out" for the new coins before taking deposits (HME Wallet can't move them)
+- [ ] Cross-chain swaps: wire pocket signers + broadcast into /swap behind existing safety gates and settle-guard (blocked: HME optional pockets + linked-pocket settlement)
 - [ ] Cross-chain swaps: Seeds fee — register a THORName/MAYAName and set the fee (blocked: Bobby's fee choice)
 
 - [x] Import the supplied 21-page brand guidelines faithfully at /brand, with original PDF access and desktop/mobile verification

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
-  ALLOWED_CHAINS, type LinkChain, chainForPath, checkXprvMatches, delegateMessage, json,
+  ACCEPTED_CHAINS, ALLOWED_CHAINS, type LinkChain, chainForPath, checkXprvMatches, delegateMessage, json,
   linkDomainFor, openSealed, parseExtKey, payloadSha256, validAccount, verifyTxcMessage,
 } from "@/lib/hme-link.server";
 import { decryptDelegatedKey, encryptDelegatedKey } from "@/lib/delegation.server";
@@ -21,7 +21,7 @@ export const Route = createFileRoute("/api/public/hme-link/submit")({
         if (!b.token || !/^[A-Za-z0-9_-]{8,64}$/.test(b.token)) return json({ error: "bad token" }, 400);
         if (b.mode !== "access" && b.mode !== "approve") return json({ error: "bad mode" }, 400);
         if (!validAccount(b.account)) return json({ error: "bad account" }, 400);
-        if (!Array.isArray(b.paths) || b.paths.length === 0 || b.paths.length > 5) return json({ error: "bad paths" }, 400);
+        if (!Array.isArray(b.paths) || b.paths.length === 0 || b.paths.length > ACCEPTED_CHAINS.length) return json({ error: "bad paths" }, 400);
         if (!b.identity_address || !b.signature || typeof b.message !== "string") return json({ error: "missing signature" }, 400);
 
         const { data: req } = await supabaseAdmin.from("hme_link_requests").select("*").eq("challenge_id", b.token).maybeSingle();
@@ -32,6 +32,8 @@ export const Route = createFileRoute("/api/public/hme-link/submit")({
         for (const p of b.paths) {
           const c = chainForPath(p);
           if (!c || c.account !== b.account || chains.includes(c.chain)) return json({ error: `refused path ${p}` }, 400);
+          // Approve-every-trade needs the wallet to sign; HME Wallet can't sign the optional coins.
+          if (b.mode === "approve" && !(ALLOWED_CHAINS as readonly string[]).includes(c.chain)) return json({ error: `${c.chain} needs instant access` }, 400);
           chains.push(c.chain);
         }
         const xpubs: Record<string, string> = {};
@@ -66,7 +68,7 @@ export const Route = createFileRoute("/api/public/hme-link/submit")({
             if (!xprvs[c] || !checkXprvMatches(c, xprvs[c], xpubs[c])) return json({ error: `xprv mismatch ${c}` }, 400);
           }
           const keep: Record<string, string> = {};
-          for (const c of ALLOWED_CHAINS) if (xprvs[c] && chains.includes(c)) keep[c] = xprvs[c];
+          for (const c of ACCEPTED_CHAINS) if (xprvs[c] && chains.includes(c)) keep[c] = xprvs[c];
           keyCiphertext = encryptDelegatedKey(JSON.stringify(keep));
         }
 

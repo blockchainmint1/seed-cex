@@ -38,13 +38,13 @@ export const getMyHmeLink = createServerFn({ method: "GET" })
       .limit(1).maybeSingle();
     const addresses: Record<string, string> = {};
     if (data) {
-      const { pocketAddress } = await import("./hme-pocket");
+      const { pocketReceiveAddress } = await import("./pockets/derive");
       const { chainForPath } = await import("./hme-link.server");
       const xpubs = data.xpubs as Record<string, string>;
       for (const path of data.paths as string[]) {
         const info = chainForPath(path);
         if (!info || info.account !== data.account || !xpubs[info.chain]) continue;
-        addresses[info.chain] = pocketAddress(info.chain, xpubs[info.chain]);
+        try { addresses[info.chain] = pocketReceiveAddress(info.chain, xpubs[info.chain]); } catch { /* skip malformed legacy row */ }
       }
     }
     let pending = 0;

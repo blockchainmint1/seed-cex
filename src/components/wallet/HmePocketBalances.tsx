@@ -10,6 +10,8 @@ import { getTsdBalance } from "@/lib/omni.functions";
 import { getUtxoBalances } from "@/lib/utxo.functions";
 import { getBtcBalance } from "@/lib/wrap.functions";
 import { getEvmPortfolio } from "@/lib/evm.functions";
+import { getMyExtraPocketBalances } from "@/lib/pockets/pockets.functions";
+import { POCKET_SPECS, type PocketCoin } from "@/lib/pockets/coins";
 
 export function HmePocketBalances({ addresses, linkId }: { addresses: Record<string, string>; linkId: string }) {
   const txcRead = useServerFn(getAddressStats);
@@ -17,6 +19,8 @@ export function HmePocketBalances({ addresses, linkId }: { addresses: Record<str
   const utxoRead = useServerFn(getUtxoBalances);
   const btcRead = useServerFn(getBtcBalance);
   const evmRead = useServerFn(getEvmPortfolio);
+  const extraRead = useServerFn(getMyExtraPocketBalances);
+  const hasExtra = ["DOGE", "BCH", "ZEC", "XRP", "TRX", "SOL"].some((c) => Boolean(addresses[c]));
   const query = useQuery({
     queryKey: ["hme-pocket-balances", linkId, addresses],
     queryFn: async () => {
@@ -26,14 +30,16 @@ export function HmePocketBalances({ addresses, linkId }: { addresses: Record<str
         utxoRead({ data: { ltcAddress: addresses.LTC, iskAddress: addresses.ISK } }),
         addresses.BTC ? btcRead({ data: { address: addresses.BTC } }) : Promise.resolve(null),
         addresses.EVM ? evmRead({ data: { address: addresses.EVM } }) : Promise.resolve(null),
+        hasExtra ? extraRead() : Promise.resolve([]),
       ]);
-      const [txc, tsd, utxo, btc, evm] = results;
+      const [txc, tsd, utxo, btc, evm, extra] = results;
       return {
         txc: txc.status === "fulfilled" ? txc.value : null,
         tsd: tsd.status === "fulfilled" ? tsd.value : null,
         utxo: utxo.status === "fulfilled" ? utxo.value : [],
         btc: btc.status === "fulfilled" ? btc.value : null,
         evm: evm.status === "fulfilled" ? evm.value : [],
+        extra: extra.status === "fulfilled" ? extra.value : [],
       };
     },
     refetchInterval: 60_000,
@@ -50,6 +56,10 @@ export function HmePocketBalances({ addresses, linkId }: { addresses: Record<str
       const b = d?.utxo.find((r) => r.symbol === symbol);
       return { symbol, network: symbol === "LTC" ? "Litecoin" : "Iskandercoin", address: addresses[symbol], balance: b?.online ? b.balance : null };
     }),
+    ...(["DOGE", "BCH", "ZEC", "XRP", "TRX", "SOL"] as PocketCoin[]).map((c) => ({
+      symbol: c, network: POCKET_SPECS[c].name, address: addresses[c],
+      balance: d?.extra.find((r) => r.coin === c)?.balance ?? null,
+    })),
     ...(d?.evm ?? []).map((r) => ({ symbol: r.symbol, network: `${r.chainName} · EVM`, address: addresses.EVM, balance: r.online ? r.balance : null })),
   ].filter((r) => Boolean(r.address));
   const visibleRows = rows.filter((r, i) => showAll || i < 5 || r.balance === null || r.balance > 0);

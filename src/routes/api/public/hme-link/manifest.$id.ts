@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ALLOWED_CHAINS, REQUEST_PATHS, json } from "@/lib/hme-link.server";
+import { ALLOWED_CHAINS, OPTIONAL_CHAINS, OPTIONAL_PATHS, REQUEST_PATHS, json } from "@/lib/hme-link.server";
 
 // Repeatable GET until submit (the wallet fetches it twice).
 export const Route = createFileRoute("/api/public/hme-link/manifest/$id")({
@@ -26,6 +26,8 @@ export const Route = createFileRoute("/api/public/hme-link/manifest/$id")({
           submit_url: `${origin}/api/public/hme-link/submit`,
           revoke_url: `${origin}/api/public/hme-link/revoke`,
           request: ALLOWED_CHAINS.map((c) => ({ chain: c, path: REQUEST_PATHS[c] })),
+          // Extra pockets a wallet MAY include (same rules; SOL is a raw SLIP-0010 key). Unknown to older wallets, which ignore it.
+          request_optional: OPTIONAL_CHAINS.map((c) => ({ chain: c, path: OPTIONAL_PATHS[c], curve: c === "SOL" ? "ed25519" : "secp256k1" })),
         });
       },
     },

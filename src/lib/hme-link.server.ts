@@ -9,36 +9,27 @@ import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { hkdf } from "@noble/hashes/hkdf.js";
 import { ripemd160 } from "@noble/hashes/legacy.js";
-import { base64, base64urlnopad, createBase58check, hex } from "@scure/base";
+import { base58, base64, base64urlnopad, createBase58check, hex } from "@scure/base";
 import { HDKey } from "@scure/bip32";
+import { accountPath, parseAccountPath, type PocketCoin } from "./pockets/coins";
+import { pocketKeysMatch } from "./pockets/derive";
 import { createDecipheriv } from "node:crypto";
 
 export const LINK_DOMAIN = "seeds.honest.money";
+/** Pockets requested from every wallet today (HME Wallet derives these five). */
 export const ALLOWED_CHAINS = ["TXC", "ISK", "BTC", "LTC", "EVM"] as const;
-export type LinkChain = (typeof ALLOWED_CHAINS)[number];
+/** Pockets Seeds accepts when a wallet chooses to send them (see docs/hme-wallet-extra-pockets.md). */
+export const OPTIONAL_CHAINS = ["DOGE", "BCH", "ZEC", "XRP", "TRX", "SOL"] as const;
+export const ACCEPTED_CHAINS = [...ALLOWED_CHAINS, ...OPTIONAL_CHAINS] as const;
+export type LinkChain = PocketCoin;
 
-/** Path templates; the wallet may substitute 1106..2105 after pocket rotation. */
-const PATH_RE: Record<LinkChain, RegExp> = {
-  TXC: /^m\/44'\/696969'\/(\d+)'$/,
-  ISK: /^m\/44'\/969696'\/(\d+)'$/,
-  BTC: /^m\/84'\/0'\/(\d+)'$/,
-  LTC: /^m\/44'\/2'\/(\d+)'$/,
-  EVM: /^m\/44'\/60'\/(\d+)'$/,
-};
-export const REQUEST_PATHS: Record<LinkChain, string> = {
-  TXC: "m/44'/696969'/1106'",
-  ISK: "m/44'/969696'/1106'",
-  BTC: "m/84'/0'/1106'",
-  LTC: "m/44'/2'/1106'",
-  EVM: "m/44'/60'/1106'",
-};
+/** The wallet may substitute 1106..2105 after pocket rotation. */
+export const REQUEST_PATHS = Object.fromEntries(ALLOWED_CHAINS.map((c) => [c, accountPath(c, 1106)])) as Record<(typeof ALLOWED_CHAINS)[number], string>;
+export const OPTIONAL_PATHS = Object.fromEntries(OPTIONAL_CHAINS.map((c) => [c, accountPath(c, 1106)])) as Record<(typeof OPTIONAL_CHAINS)[number], string>;
 
 export function chainForPath(path: string): { chain: LinkChain; account: number } | null {
-  for (const c of ALLOWED_CHAINS) {
-    const m = PATH_RE[c].exec(path);
-    if (m) return { chain: c, account: Number(m[1]) };
-  }
-  return null;
+  const r = parseAccountPath(path);
+  return r ? { chain: r.coin, account: r.account } : null;
 }
 
 export function validAccount(n: unknown): n is number {
@@ -136,19 +127,20 @@ export function openSealed(payloadB64url: string, recipientPrivHex: string, reci
 // ---------- extended keys ----------
 const LTC_VERSIONS = { public: 0x019da462, private: 0x019d9cfe };
 
-export function parseExtKey(chain: LinkChain, key: string): HDKey {
+/** Validates a submitted public half: account xpub, or a 32-byte base58 key for Solana. */
+export function parseExtKey(chain: LinkChain, key: string): HDKey | Uint8Array {
+  if (chain === "SOL") {
+    const k = base58.decode(key);
+    if (k.length !== 32) throw new Error("bad Solana key");
+    return k;
+  }
   if (chain === "LTC" && (key.startsWith("Ltub") || key.startsWith("Ltpv"))) return HDKey.fromExtendedKey(key, LTC_VERSIONS);
   return HDKey.fromExtendedKey(key);
 }
 
-/** Every xprv must neuter to the xpub the wallet sent. */
+/** Every private half must match the public half the wallet sent. */
 export function checkXprvMatches(chain: LinkChain, xprv: string, xpub: string): boolean {
-  try {
-    const k = parseExtKey(chain, xprv);
-    const p = parseExtKey(chain, xpub);
-    if (!k.privateKey || !k.publicKey || !p.publicKey) return false;
-    return hex.encode(k.publicKey) === hex.encode(p.publicKey) && hex.encode(k.chainCode!) === hex.encode(p.chainCode!);
-  } catch { return false; }
+  return pocketKeysMatch(chain, xprv, xpub);
 }
 
 export function json(body: unknown, status = 200): Response {
