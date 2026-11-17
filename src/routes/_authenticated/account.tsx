@@ -95,6 +95,8 @@ function AccountPage() {
   const [code, setCode] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  // Telegram results show next to the Telegram buttons, so they're visible on phones too.
+  const [tgNote, setTgNote] = useState<{ ok: boolean; text: string } | null>(null);
 
   useEffect(() => {
     if (p) setForm(p);
@@ -144,23 +146,18 @@ function AccountPage() {
       return test();
     },
     onSuccess: (_r, action) => {
-      setErr(null);
-      setMsg(
+      setTgNote({ ok: true, text:
         action === "start"
           ? "Code sent to Telegram."
           : action === "confirm"
             ? "Telegram linked."
             : action === "unlink"
               ? "Telegram unlinked."
-              : "Test alert sent.",
-      );
+              : "Test alert sent." });
       setCode("");
       qc.invalidateQueries({ queryKey: ["my-profile"] });
     },
-    onError: (e: Error) => {
-      setMsg(null);
-      setErr(e.message);
-    },
+    onError: (e: Error) => setTgNote({ ok: false, text: e.message }),
   });
 
   return (
@@ -257,6 +254,14 @@ function AccountPage() {
         </form>
       <div className="border-t border-border pt-5">
       <h3 className="mb-3 font-display font-bold">Telegram alerts</h3>
+        {tgNote ? (
+          <p
+            role="status"
+            className={`mb-3 rounded-sm border px-3 py-2 font-mono text-xs ${tgNote.ok ? "border-primary/40 bg-primary/10 text-primary" : "border-destructive/40 bg-destructive/10 text-destructive"}`}
+          >
+            {tgNote.text}
+          </p>
+        ) : null}
         {p?.telegram_verified ? (
           <div className="flex flex-wrap items-center gap-3">
             <span className="inline-flex items-center gap-2 font-mono text-xs text-primary">
