@@ -17,6 +17,7 @@ export const Route = createFileRoute("/api/public/nectarpay/webhook")({
         const { error: dup } = await supabaseAdmin.from("nectarpay_events").insert({ event_id: ev.id, type: ev.type, invoice_id: ev.data.invoice_id, payload: ev as never });
         if (dup) return Response.json({ ok: true, duplicate: true });
 
+        try {
         const { data: reg } = await supabaseAdmin.from("ignite_registrations").select("id, user_id, status, hm_member_id, email, amount_usd").eq("invoice_id", ev.data.invoice_id).maybeSingle();
         if (!reg) return Response.json({ ok: true, ignored: true });
 
@@ -36,6 +37,12 @@ export const Route = createFileRoute("/api/public/nectarpay/webhook")({
           await sendHubEvent({ event: "purchase", member_id: reg.hm_member_id, email: reg.email, metadata: { product: "ignite_seat", amount_usd: Number(reg.amount_usd) } });
         }
         return Response.json({ ok: true });
+        } catch (e) {
+          // Let NectarPay's retry reprocess this event.
+          await supabaseAdmin.from("nectarpay_events").delete().eq("event_id", ev.id);
+          console.error("NectarPay webhook failed", e);
+          return new Response("Retry", { status: 500 });
+        }
       },
     },
   },
