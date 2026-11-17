@@ -73,3 +73,11 @@ export function paidInLabel(asset: string | null | undefined, chain: string | nu
   if (a && c && a.toUpperCase() !== c) return `${a} on ${c}`;
   return a ?? c ?? null;
 }
+
+// ---- Seat status rules (pure, tested) ----
+
+/** Only these seats may be moved to "confirmed" by a payment. A cancelled (refunded) seat never comes back by itself. */
+export const CONFIRMABLE_STATUSES = ["pending", "underpaid", "expired"] as const;
+export const canConfirmSeat = (status: string) => (CONFIRMABLE_STATUSES as readonly string[]).includes(status);
+/** An operator may cancel any seat that isn't already cancelled (e.g. a test or a refund). */
+export const canCancelSeat = (status: string) => status !== "canceled";

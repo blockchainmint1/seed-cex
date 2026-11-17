@@ -2,7 +2,7 @@
 // Called by the signed NectarPay webhook and by the payment re-check, so a
 // missed webhook can't strand a paid seat. Both paths re-read the invoice from
 // the NectarPay API and confirm with a compare-and-set, so notices fire once.
-import { invoiceBelongs, invoiceSettled, paidInLabel, referralUrl } from "./ignite-registration";
+import { CONFIRMABLE_STATUSES, canConfirmSeat, invoiceBelongs, invoiceSettled, paidInLabel, referralUrl } from "./ignite-registration";
 
 type EventData = { invoice_id: string; chain?: string | null; paid_amount_usd?: number | null };
 const REG_COLS = "id, user_id, status, hm_member_id, email, full_name, amount_usd, payment_method, invoice_id, ref_code";
@@ -36,6 +36,11 @@ export async function processIgniteInvoiceEvent(type: string, data: EventData): 
     return "underpaid";
   }
   if (type !== "invoice.confirmed" || reg.status === "confirmed") return "noop";
+  if (!canConfirmSeat(reg.status)) {
+    // A cancelled (refunded) seat is never revived by a late or repeated payment notice.
+    console.error("[ignite] payment notice for a cancelled seat — review by hand", reg.id, data.invoice_id);
+    return "noop";
+  }
 
   const inv = await getInvoice(data.invoice_id);
   if (!invoiceSettled(inv, reg.amount_usd) || !invoiceBelongs(inv.order_id, reg.id, peer?.id ?? null)) return "unverified";
@@ -46,7 +51,7 @@ export async function processIgniteInvoiceEvent(type: string, data: EventData): 
   const { data: won } = await supabaseAdmin.from("ignite_registrations").update({
     status: "confirmed", confirmed_at: now, updated_at: now,
     paid_chain: data.chain ?? inv.chain ?? null, paid_amount_usd: data.paid_amount_usd ?? null, paid_asset: paidAsset,
-  }).eq("id", reg.id).neq("status", "confirmed").select("id");
+  }).eq("id", reg.id).in("status", [...CONFIRMABLE_STATUSES]).select("id");
   if (!won?.length) return "noop"; // the other path confirmed it first
 
   if (peer) await supabaseAdmin.from("ignite_peer_links").update({ status: "paid", paid_at: now, updated_at: now }).eq("id", peer.id);

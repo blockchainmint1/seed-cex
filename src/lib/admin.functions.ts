@@ -243,3 +243,77 @@ export const getAdminOverview = createServerFn({ method: "GET" })
         })),
     };
   });
+
+// ---- Ignite class registrations (admin only) ----
+
+export type AdminIgniteRow = {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  status: string;
+  method: string;
+  paidAsset: string | null;
+  paidChain: string | null;
+  paidUsd: number | null;
+  invoiceId: string | null;
+  payerName: string | null;
+  refCode: string | null;
+  hmLinked: boolean;
+  createdAt: string;
+  confirmedAt: string | null;
+};
+
+export const getAdminIgnite = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.supabase as never, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { SEAT_CAPACITY } = await import("./ignite-registration");
+    const [{ data: regs }, { data: links }] = await Promise.all([
+      supabaseAdmin.from("ignite_registrations")
+        .select("id, full_name, email, country_code, phone, status, payment_method, paid_asset, paid_chain, paid_amount_usd, invoice_id, ref_code, hm_member_id, created_at, confirmed_at")
+        .order("created_at", { ascending: false }),
+      supabaseAdmin.from("ignite_peer_links").select("registration_id, payer_name, status").eq("status", "paid"),
+    ]);
+    const payer = new Map((links ?? []).map((l) => [l.registration_id, l.payer_name]));
+    const rows: AdminIgniteRow[] = (regs ?? []).map((r) => ({
+      id: r.id, fullName: r.full_name, email: r.email, phone: `${r.country_code} ${r.phone}`, status: r.status,
+      method: r.payment_method, paidAsset: r.paid_asset, paidChain: r.paid_chain,
+      paidUsd: r.paid_amount_usd == null ? null : Number(r.paid_amount_usd), invoiceId: r.invoice_id,
+      payerName: payer.get(r.id) ?? null, refCode: r.ref_code, hmLinked: !!r.hm_member_id,
+      createdAt: r.created_at, confirmedAt: r.confirmed_at,
+    }));
+    const confirmed = rows.filter((r) => r.status === "confirmed").length;
+    return {
+      capacity: SEAT_CAPACITY,
+      confirmed,
+      seatsLeft: Math.max(0, SEAT_CAPACITY - confirmed),
+      pending: rows.filter((r) => r.status === "pending" || r.status === "underpaid").length,
+      canceled: rows.filter((r) => r.status === "canceled").length,
+      rows,
+    };
+  });
+
+/** Cancels a seat (test or refund). Frees the seat; the money itself is refunded in NectarPay by hand. */
+export const cancelIgniteSeat = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string }) => {
+    if (!/^[0-9a-f-]{36}$/i.test(d?.id ?? "")) throw new Error("Bad registration id");
+    return { id: d.id };
+  })
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.supabase as never, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { canCancelSeat } = await import("./ignite-registration");
+    const { data: cur } = await supabaseAdmin.from("ignite_registrations").select("status").eq("id", data.id).maybeSingle();
+    if (!cur || !canCancelSeat(cur.status)) return { ok: false };
+    const now = new Date().toISOString();
+    const { data: done } = await supabaseAdmin.from("ignite_registrations")
+      .update({ status: "canceled", updated_at: now }).eq("id", data.id).neq("status", "canceled").select("id, status");
+    // Close any still-open friend payment link so it can't be paid after cancelling.
+    await supabaseAdmin.from("ignite_peer_links").update({ status: "cancelled", cancelled_at: now, updated_at: now })
+      .eq("registration_id", data.id).eq("status", "active");
+    console.info("[ignite] seat cancelled by admin", { registration: data.id, by: context.userId });
+    return { ok: !!done?.length };
+  });

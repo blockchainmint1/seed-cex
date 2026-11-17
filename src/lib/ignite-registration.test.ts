@@ -1,5 +1,5 @@
 import { describe, expect, test as it } from "bun:test";
-import { validateDetails, normalizeEmail, SEAT_CAPACITY, DEPOSIT_USD } from "./ignite-registration";
+import { validateDetails, normalizeEmail, SEAT_CAPACITY, DEPOSIT_USD, canCancelSeat, canConfirmSeat } from "./ignite-registration";
 
 const ok = { fullName: "Ada Lovelace", email: "Ada@Example.com ", countryCode: "+1", phone: "555 123 4567", marketingOptIn: false };
 
@@ -20,4 +20,11 @@ describe("schedule", () => {
     expect(end).toBe(Date.parse("2026-12-04T18:30:00-06:00"));
     expect(end - Date.parse("2026-12-04T17:00:00-06:00")).toBe(90 * 60000);
   });
+});
+
+describe("seat cancel rules", () => {
+  it("a cancelled (refunded) seat can't be re-confirmed by a late payment", () => expect(canConfirmSeat("canceled")).toBe(false));
+  it("a pending seat can still be confirmed", () => expect(canConfirmSeat("pending")).toBe(true));
+  it("a confirmed seat can be cancelled by an admin", () => expect(canCancelSeat("confirmed")).toBe(true));
+  it("an already-cancelled seat can't be cancelled twice", () => expect(canCancelSeat("canceled")).toBe(false));
 });

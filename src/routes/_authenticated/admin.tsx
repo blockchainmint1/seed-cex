@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getAdminOverview } from "@/lib/admin.functions";
+import { cancelIgniteSeat, getAdminIgnite, getAdminOverview } from "@/lib/admin.functions";
 import { fmtAgo, fmtAmount, fmtPrice } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/admin")({
@@ -106,6 +107,8 @@ function AdminPage() {
         <Stat label="Failed legs" value={String(d.totals.failedLegs)} />
         <Stat label="API keys" value={String(d.totals.apiKeys)} />
       </div>
+
+      <IgnitePanel />
 
       <Panel title="Accounts">
         <table className="w-full font-mono text-[11px]">
@@ -270,5 +273,91 @@ function TradeTable({
         ) : null}
       </tbody>
     </table>
+  );
+}
+
+const STATUS_TONE: Record<string, string> = {
+  confirmed: "text-primary",
+  pending: "text-warning",
+  underpaid: "text-warning",
+  canceled: "text-muted-foreground line-through",
+  expired: "text-muted-foreground",
+};
+
+function IgnitePanel() {
+  const fetchIgnite = useServerFn(getAdminIgnite);
+  const cancel = useServerFn(cancelIgniteSeat);
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState<string | null>(null);
+  const q = useQuery({ queryKey: ["admin-ignite"], queryFn: () => fetchIgnite(), refetchInterval: 30_000, retry: false });
+  if (!q.data) return null;
+  const d = q.data;
+
+  async function onCancel(id: string, name: string) {
+    if (!window.confirm(`Cancel ${name}'s Ignite seat? This frees the seat. Refund the payment in NectarPay separately.`)) return;
+    setBusy(id);
+    try {
+      await cancel({ data: { id } });
+      await qc.invalidateQueries({ queryKey: ["admin-ignite"] });
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <Panel title={`Ignite class registrations · ${d.confirmed} confirmed · ${d.seatsLeft} of ${d.capacity} seats left · ${d.pending} pending · ${d.canceled} cancelled`}>
+      <table className="w-full font-mono text-[11px]">
+        <thead className="text-muted-foreground">
+          <tr className="border-b border-border">
+            <th className="px-4 py-2 text-left">Name</th>
+            <th className="px-4 py-2 text-left">Email</th>
+            <th className="px-4 py-2 text-left">Phone</th>
+            <th className="px-4 py-2 text-left">Status</th>
+            <th className="px-4 py-2 text-left">Paid with</th>
+            <th className="px-4 py-2 text-left">Paid by</th>
+            <th className="px-4 py-2 text-left">Invoice</th>
+            <th className="px-4 py-2 text-left">Referred by</th>
+            <th className="px-4 py-2 text-right">Registered</th>
+            <th className="px-4 py-2 text-right" />
+          </tr>
+        </thead>
+        <tbody>
+          {d.rows.map((r) => (
+            <tr key={r.id} className="border-b border-border/50">
+              <td className="px-4 py-2 text-foreground">{r.fullName}</td>
+              <td className="px-4 py-2">{r.email}</td>
+              <td className="px-4 py-2">{r.phone}</td>
+              <td className={`px-4 py-2 ${STATUS_TONE[r.status] ?? ""}`}>{r.status === "canceled" ? "cancelled" : r.status}</td>
+              <td className="px-4 py-2">
+                {r.status === "confirmed" || r.paidAsset
+                  ? `${r.paidUsd != null ? `$${r.paidUsd} ` : ""}${r.paidAsset ?? r.paidChain ?? ""}${r.method === "peer" ? " · Peer Pay" : ""}`
+                  : r.method === "peer" ? "Peer Pay" : "crypto"}
+              </td>
+              <td className="px-4 py-2">{r.payerName ?? (r.method === "peer" ? "—" : "self")}</td>
+              <td className="px-4 py-2" title={r.invoiceId ?? undefined}>{short(r.invoiceId)}</td>
+              <td className="px-4 py-2">{r.refCode ?? "—"}</td>
+              <td className="px-4 py-2 text-right text-muted-foreground">{fmtAgo(r.createdAt)}</td>
+              <td className="px-4 py-2 text-right">
+                {r.status !== "canceled" ? (
+                  <button
+                    type="button"
+                    className="rounded-sm border border-border px-2 py-0.5 text-destructive hover:bg-destructive/10 disabled:opacity-50"
+                    disabled={busy === r.id}
+                    onClick={() => onCancel(r.id, r.fullName)}
+                  >
+                    {busy === r.id ? "Cancelling…" : "Cancel seat"}
+                  </button>
+                ) : null}
+              </td>
+            </tr>
+          ))}
+          {d.rows.length === 0 ? (
+            <tr>
+              <td className="px-4 py-6 text-muted-foreground" colSpan={10}>No registrations yet.</td>
+            </tr>
+          ) : null}
+        </tbody>
+      </table>
+    </Panel>
   );
 }
