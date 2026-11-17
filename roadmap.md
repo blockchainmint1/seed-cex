@@ -45,3 +45,4 @@
 - [ ] Email footer postal address (CAN-SPAM) — needs Bobby's business mailing address
 
 - [ ] AI basket builder: AI writes a member-approved rulebook, fixed engine executes it (concept in docs/ai-basket-strategy-concept.md; blocked: Bobby's detailed spec + linked-pocket settlement)
+- [ ] /register Peer Pay: simple "copy pay link" + "email my friend" (no discount, anyone can pay, fresh NectarPay invoice on open) — blocked: Bobby's go-ahead on the proposal
