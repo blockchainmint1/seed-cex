@@ -9,7 +9,7 @@ const SIGNED_PARAMS = [
 const symbolParam = {
   name: "symbol",
   in: "query",
-  schema: { type: "string", example: "TXCUSDC" },
+  schema: { type: "string", example: "TXCTSD" },
 };
 
 function spec(origin: string) {
@@ -19,8 +19,9 @@ function spec(origin: string) {
       title: "Seeds Exchange API",
       version: "1.0.0",
       description:
-        "Binance-compatible REST API for the Seeds non-custodial exchange. Trading settles directly between user wallets; API keys can read and trade but can never withdraw.",
+        "Binance-style REST API for the Seeds exchange. Public market data needs no key; signed endpoints use HMAC-SHA256 with the X-SEEDS-APIKEY header. API keys can read and trade but can never withdraw. Human-readable docs: /api",
     },
+    externalDocs: { description: "Seeds API docs", url: `${origin}/api` },
     servers: [{ url: origin }],
     components: {
       securitySchemes: {
@@ -76,7 +77,7 @@ function spec(origin: string) {
       },
       "/api/public/v1/account": {
         get: {
-          summary: "Account state and live trading authorizations",
+          summary: "Account: linked HME Wallet trading pocket, addresses and live trading authorizations",
           security: [{ SeedsApiKey: [] }],
           parameters: SIGNED_PARAMS,
           responses: { 200: { description: "OK" } },
@@ -99,7 +100,7 @@ function spec(origin: string) {
           responses: { 200: { description: "OK" } },
         },
         post: {
-          summary: "New limit order (matches and settles on-chain inline)",
+          summary: "New LIMIT/GTC order (matches immediately; settlement depends on the account, see /api#status)",
           security: [{ SeedsApiKey: [] }],
           parameters: [
             { ...symbolParam, required: true },

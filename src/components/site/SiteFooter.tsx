@@ -7,7 +7,7 @@ const links = [
   { label: "TSD", to: "/tsd" },
   { label: "Manifesto", to: "/manifesto" },
   { label: "LocalBitcoins report", to: "/lbtc" },
-  { label: "API", to: "/api-docs" },
+  { label: "API", to: "/api" },
   { label: "Our code", to: "/proof/code" },
   { label: "Custody Ledger", to: "/custody" },
   { label: "Stats", to: "/stats" },

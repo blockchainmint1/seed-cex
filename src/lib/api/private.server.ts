@@ -24,7 +24,7 @@ export async function apiAccount(userId: string) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   await supabaseAdmin.rpc("purge_expired_delegations");
 
-  const [{ data: wallet }, { data: auths }] = await Promise.all([
+  const [{ data: wallet }, { data: auths }, { data: link }] = await Promise.all([
     supabaseAdmin
       .from("wallets")
       .select("txc_address, evm_address, ltc_address, isk_address, btc_address")
@@ -35,7 +35,43 @@ export async function apiAccount(userId: string) {
       .select("chain, asset, trading_address, max_amount, expires_at, created_at, label")
       .eq("user_id", userId)
       .is("revoked_at", null),
+    supabaseAdmin
+      .from("hme_links")
+      .select("mode, account, paths, xpubs, created_at")
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .maybeSingle(),
   ]);
+
+  // Linked HME Wallet trading pocket: public receive addresses derived from the
+  // wallet-submitted xpubs (never a static path), same as the Profile page.
+  let tradingPocket: {
+    mode: "instant" | "approve";
+    account: number;
+    linkedAt: number;
+    addresses: Record<string, string>;
+  } | null = null;
+  if (link) {
+    const { pocketReceiveAddress } = await import("@/lib/pockets/derive");
+    const { chainForPath } = await import("@/lib/hme-link.server");
+    const xpubs = (link.xpubs ?? {}) as Record<string, string>;
+    const addresses: Record<string, string> = {};
+    for (const path of (link.paths ?? []) as string[]) {
+      const info = chainForPath(path);
+      if (!info || info.account !== link.account || !xpubs[info.chain]) continue;
+      try {
+        addresses[info.chain] = pocketReceiveAddress(info.chain, xpubs[info.chain]);
+      } catch {
+        /* skip malformed legacy row */
+      }
+    }
+    tradingPocket = {
+      mode: link.mode === "access" ? "instant" : "approve",
+      account: link.account,
+      linkedAt: new Date(link.created_at).getTime(),
+      addresses,
+    };
+  }
 
   const live = (auths ?? []).filter((a) => new Date(a.expires_at).getTime() > Date.now());
 
@@ -48,6 +84,7 @@ export async function apiAccount(userId: string) {
     makerCommission: 0,
     takerCommission: 0,
     updateTime: Date.now(),
+    tradingPocket,
     addresses: {
       txc: wallet?.txc_address ?? null,
       evm: wallet?.evm_address ?? null,

@@ -3,8 +3,9 @@
  *
  * Shapes deliberately mirror the Binance spot API so existing bot code and
  * CCXT-style adapters need only a base-URL change. Differences are documented
- * in /api-docs — the big one being that Seeds never custodies funds, so
- * "balances" are on-chain balances of your own wallet, not exchange credits.
+ * in /api — the big one being that Seeds never custodies funds, so
+ * there are no exchange balances: /account returns the linked HME Wallet
+ * trading pocket and its addresses instead.
  */
 
 import { PAIRS, getPair, type PairDef } from "@/lib/chains";
@@ -104,8 +105,8 @@ export function buildExchangeInfo() {
     exchange: "Seeds",
     custody: "non-custodial",
     rateLimits: [
+      // Only the per-key weight budget is enforced (auth.server.ts); don't advertise limits we don't apply.
       { rateLimitType: "REQUEST_WEIGHT", interval: "MINUTE", intervalNum: 1, limit: 1200 },
-      { rateLimitType: "ORDERS", interval: "MINUTE", intervalNum: 1, limit: 100 },
     ],
     symbols: PAIRS.map((p) => {
       const f = filtersFor(p);

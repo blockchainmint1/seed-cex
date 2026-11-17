@@ -12,7 +12,7 @@ const about = [
   { label: "How it works", to: "/how-it-works" as const },
   { label: "Texas Stable Dollar", to: "/tsd" as const },
   { label: "Manifesto", to: "/manifesto" as const },
-  { label: "API", to: "/api-docs" as const },
+  { label: "API", to: "/api" as const },
 ];
 
 const proof = [

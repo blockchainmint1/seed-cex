@@ -140,7 +140,7 @@ function CodePage() {
           </li>
           <li>
             <span className="text-foreground">4. Read the market data raw.</span> Our{" "}
-            <Link to="/api-docs" className="text-primary hover:underline">
+            <Link to="/api" className="text-primary hover:underline">
               public API
             </Link>{" "}
             exposes depth, trades and klines with no key, so the book you see is the book bots see.

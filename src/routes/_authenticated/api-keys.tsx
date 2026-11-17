@@ -82,7 +82,7 @@ function ApiKeysPage() {
         <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
           Keys let a bot read markets and place or cancel orders on your behalf, within the trading
           authorizations you have already granted. Keys can never withdraw — that stays in this UI.{" "}
-          <Link to="/api-docs" className="text-primary underline underline-offset-4">
+          <Link to="/api" className="text-primary underline underline-offset-4">
             Read the API docs
           </Link>
           .

@@ -8,7 +8,7 @@ import { createFileRoute } from "@tanstack/react-router";
  * built into every browser and most bot HTTP clients. Payload shapes match the
  * REST responses so a bot can share parsing code.
  *
- *   GET /api/public/v1/stream?symbol=TXCUSDC&streams=ticker,depth,trade
+ *   GET /api/public/v1/stream?symbol=TXCTSD&streams=ticker,depth,trade
  */
 export const Route = createFileRoute("/api/public/v1/stream")({
   staticData: { sitemap: false },

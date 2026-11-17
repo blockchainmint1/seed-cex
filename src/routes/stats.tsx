@@ -124,8 +124,8 @@ function StatsPage() {
 
       <p className="font-mono text-xs text-muted-foreground">
         Machine-readable versions of this data live at{" "}
-        <Link to="/api-docs" className="text-primary hover:underline">
-          /api-docs
+        <Link to="/api" className="text-primary hover:underline">
+          /api
         </Link>{" "}
         — ticker, depth, klines and trades are all public, no key required.
       </p>

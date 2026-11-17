@@ -32,6 +32,7 @@ import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedApiKeysRouteImport } from './routes/_authenticated/api-keys'
 import { Route as AuthenticatedTradesRouteImport } from './routes/_authenticated/trades'
 import { Route as AuthenticatedWalletRouteImport } from './routes/_authenticated/wallet'
+import { Route as ApiIndexRouteImport } from './routes/api/index'
 import { Route as InviteCodeRouteImport } from './routes/invite.$code'
 import { Route as P2pIndexRouteImport } from './routes/p2p.index'
 import { Route as PayTokenRouteImport } from './routes/pay.$token'
@@ -194,6 +195,11 @@ const AuthenticatedWalletRoute = AuthenticatedWalletRouteImport.update({
   id: '/wallet',
   path: '/wallet',
   getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const ApiIndexRoute = ApiIndexRouteImport.update({
+  id: '/api/',
+  path: '/api/',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const InviteCodeRoute = InviteCodeRouteImport.update({
   id: '/invite/$code',
@@ -479,6 +485,7 @@ export interface FileRoutesByFullPath {
   '/trade/tsd-txc': typeof TradeTsdTxcRoute
   '/trade/tsd-usdc': typeof TradeTsdUsdcRoute
   '/trade/zcu-tsd': typeof TradeZcuTsdRoute
+  '/api/': typeof ApiIndexRoute
   '/p2p/': typeof P2pIndexRoute
   '/p2p/dashboard': typeof AuthenticatedP2pDashboardRoute
   '/p2p/jury': typeof AuthenticatedP2pJuryRoute
@@ -551,6 +558,7 @@ export interface FileRoutesByTo {
   '/trade/tsd-txc': typeof TradeTsdTxcRoute
   '/trade/tsd-usdc': typeof TradeTsdUsdcRoute
   '/trade/zcu-tsd': typeof TradeZcuTsdRoute
+  '/api': typeof ApiIndexRoute
   '/p2p': typeof P2pIndexRoute
   '/p2p/dashboard': typeof AuthenticatedP2pDashboardRoute
   '/p2p/jury': typeof AuthenticatedP2pJuryRoute
@@ -625,6 +633,7 @@ export interface FileRoutesById {
   '/trade/tsd-txc': typeof TradeTsdTxcRoute
   '/trade/tsd-usdc': typeof TradeTsdUsdcRoute
   '/trade/zcu-tsd': typeof TradeZcuTsdRoute
+  '/api/': typeof ApiIndexRoute
   '/p2p/': typeof P2pIndexRoute
   '/_authenticated/p2p/dashboard': typeof AuthenticatedP2pDashboardRoute
   '/_authenticated/p2p/jury': typeof AuthenticatedP2pJuryRoute
@@ -699,6 +708,7 @@ export interface FileRouteTypes {
     | '/trade/tsd-txc'
     | '/trade/tsd-usdc'
     | '/trade/zcu-tsd'
+    | '/api/'
     | '/p2p/'
     | '/p2p/dashboard'
     | '/p2p/jury'
@@ -771,6 +781,7 @@ export interface FileRouteTypes {
     | '/trade/tsd-txc'
     | '/trade/tsd-usdc'
     | '/trade/zcu-tsd'
+    | '/api'
     | '/p2p'
     | '/p2p/dashboard'
     | '/p2p/jury'
@@ -844,6 +855,7 @@ export interface FileRouteTypes {
     | '/trade/tsd-txc'
     | '/trade/tsd-usdc'
     | '/trade/zcu-tsd'
+    | '/api/'
     | '/p2p/'
     | '/_authenticated/p2p/dashboard'
     | '/_authenticated/p2p/jury'
@@ -913,6 +925,7 @@ export interface RootRouteChildren {
   TradeTsdTxcRoute: typeof TradeTsdTxcRoute
   TradeTsdUsdcRoute: typeof TradeTsdUsdcRoute
   TradeZcuTsdRoute: typeof TradeZcuTsdRoute
+  ApiIndexRoute: typeof ApiIndexRoute
   P2pIndexRoute: typeof P2pIndexRoute
   P2pSellerHandleRoute: typeof P2pSellerHandleRoute
   ApiPublicCmcAssetsRoute: typeof ApiPublicCmcAssetsRoute
@@ -1110,6 +1123,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/wallet'
       preLoaderRoute: typeof AuthenticatedWalletRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/': {
+      id: '/api/'
+      path: '/api'
+      fullPath: '/api/'
+      preLoaderRoute: typeof ApiIndexRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/invite/$code': {
       id: '/invite/$code'
@@ -1519,6 +1539,7 @@ const rootRouteChildren: RootRouteChildren = {
   TradeTsdTxcRoute: TradeTsdTxcRoute,
   TradeTsdUsdcRoute: TradeTsdUsdcRoute,
   TradeZcuTsdRoute: TradeZcuTsdRoute,
+  ApiIndexRoute: ApiIndexRoute,
   P2pIndexRoute: P2pIndexRoute,
   P2pSellerHandleRoute: P2pSellerHandleRoute,
   ApiPublicCmcAssetsRoute: ApiPublicCmcAssetsRoute,
