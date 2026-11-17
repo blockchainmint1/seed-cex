@@ -4,6 +4,7 @@ import { getMarketStats } from "@/lib/market.functions";
 import { getCmcSummary } from "@/lib/cmc.functions";
 import { fmtAmount, fmtPrice } from "@/lib/format";
 import { PAIRS } from "@/lib/chains";
+import seedsCoin from "@/assets/seeds-coin.jpeg.asset.json";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -288,16 +289,12 @@ function Index() {
                 </button>
               </div>
             </div>
-            <div className="flex aspect-square items-center justify-center rounded-sm border border-border bg-background p-8">
-              <div className="text-center">
-                <div className="mx-auto h-40 w-40 rounded-full border-4 border-primary/30 bg-primary/10" />
-                <p className="mt-6 font-mono text-xs tracking-wider text-muted-foreground uppercase">
-                  SEEDS cold-storage coin placeholder
-                </p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Your kickass design goes here.
-                </p>
-              </div>
+            <div className="flex aspect-square items-center justify-center overflow-hidden rounded-sm border border-border bg-background">
+              <img
+                src={seedsCoin.url}
+                alt="SEEDS cold-storage coin — black coin with a green ring and twelve seed dots"
+                className="h-full w-full object-cover"
+              />
             </div>
           </div>
         </div>
