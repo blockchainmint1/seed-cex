@@ -40,6 +40,8 @@ export async function rpc<T = unknown>(
   method: string,
   params: unknown[] = [],
   timeoutMs = 12_000,
+  /** e.g. "/wallet/<name>" for wallet-scoped calls such as omni_decodetransaction */
+  path = "",
 ): Promise<T> {
   const c = creds(chain);
   if (!c) throw new RpcError(`${chain.toUpperCase()} RPC is not configured`);
@@ -47,7 +49,7 @@ export async function rpc<T = unknown>(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetch(c.url, {
+    const res = await fetch(path ? c.url.replace(/\/+$/, "") + path : c.url, {
       method: "POST",
       signal: controller.signal,
       headers: {

@@ -550,6 +550,103 @@ export type Database = {
         }
         Relationships: []
       }
+      lock_signed_outpoints: {
+        Row: {
+          created_at: string
+          spend_id: string
+          txid: string
+          vout: number
+        }
+        Insert: {
+          created_at?: string
+          spend_id: string
+          txid: string
+          vout: number
+        }
+        Update: {
+          created_at?: string
+          spend_id?: string
+          txid?: string
+          vout?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lock_signed_outpoints_spend_id_fkey"
+            columns: ["spend_id"]
+            isOneToOne: false
+            referencedRelation: "lock_spends"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lock_spends: {
+        Row: {
+          amount: string | null
+          created_at: string
+          error: string | null
+          expires_at: string
+          id: string
+          inputs: Json
+          lock_id: string
+          pair_id: string | null
+          property_id: number | null
+          purpose: string
+          signed_txid: string | null
+          status: string
+          to_address: string
+          trade_id: string | null
+          unsigned_hex: string
+          unsigned_sha256: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: string | null
+          created_at?: string
+          error?: string | null
+          expires_at: string
+          id?: string
+          inputs: Json
+          lock_id: string
+          pair_id?: string | null
+          property_id?: number | null
+          purpose: string
+          signed_txid?: string | null
+          status?: string
+          to_address: string
+          trade_id?: string | null
+          unsigned_hex: string
+          unsigned_sha256: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: string | null
+          created_at?: string
+          error?: string | null
+          expires_at?: string
+          id?: string
+          inputs?: Json
+          lock_id?: string
+          pair_id?: string | null
+          property_id?: number | null
+          purpose?: string
+          signed_txid?: string | null
+          status?: string
+          to_address?: string
+          trade_id?: string | null
+          unsigned_hex?: string
+          unsigned_sha256?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lock_spends_lock_id_fkey"
+            columns: ["lock_id"]
+            isOneToOne: false
+            referencedRelation: "trade_locks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nectarpay_events: {
         Row: {
           event_id: string
@@ -1162,6 +1259,60 @@ export type Database = {
           },
         ]
       }
+      trade_locks: {
+        Row: {
+          address: string
+          chain: string
+          created_at: string
+          csv_blocks: number
+          custody_mode: string
+          generation: number
+          id: string
+          member_pub: string
+          pocket_account: number
+          seeds_pub: string
+          status: string
+          updated_at: string
+          user_id: string
+          witness_script: string
+          wrapper: string
+        }
+        Insert: {
+          address: string
+          chain: string
+          created_at?: string
+          csv_blocks: number
+          custody_mode: string
+          generation?: number
+          id?: string
+          member_pub: string
+          pocket_account: number
+          seeds_pub: string
+          status?: string
+          updated_at?: string
+          user_id: string
+          witness_script: string
+          wrapper: string
+        }
+        Update: {
+          address?: string
+          chain?: string
+          created_at?: string
+          csv_blocks?: number
+          custody_mode?: string
+          generation?: number
+          id?: string
+          member_pub?: string
+          pocket_account?: number
+          seeds_pub?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+          witness_script?: string
+          wrapper?: string
+        }
+        Relationships: []
+      }
       trades: {
         Row: {
           amount: number
@@ -1531,6 +1682,10 @@ export type Database = {
           _user_id: string
         }
         Returns: string
+      }
+      reserve_lock_outpoints: {
+        Args: { _spend_ids: string[] }
+        Returns: boolean
       }
     }
     Enums: {

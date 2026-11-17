@@ -107,3 +107,31 @@ describe("BIP143 signing", () => {
     expect(serializeTx(refund, [w])[4]).toBe(0); // segwit marker present
   });
 });
+
+import { finalizeLockTx, legacySighash, lockAddressFor, lockP2shAddress, parseUnsignedTx, signLock, verifyLock } from "./script";
+describe("legacy P2SH lock", () => {
+  it("matches the live TEXITcoin node's P2SH address for the reference script", () =>
+    expect(lockP2shAddress(buildLockScript({ seedsPub: G, memberPub: G2, csvBlocks: 4320 }), "TXC")).toBe("TACrLRCQcvdc27MprECthK9XRKA587dDYA"));
+  it("ISK P2SH locks start with J", () => expect(lockAddressFor(buildLockScript({ seedsPub: G, memberPub: G2, csvBlocks: 4320 }), "ISK", "p2sh").startsWith("J")).toBe(true));
+  const mk = secp256k1.utils.randomSecretKey();
+  const sk = secp256k1.utils.randomSecretKey();
+  const ws = buildLockScript({ seedsPub: secp256k1.getPublicKey(sk, true), memberPub: secp256k1.getPublicKey(mk, true), csvBlocks: 20 });
+  const tx: Tx = { version: 2, locktime: 0, inputs: [{ txid: "22".repeat(32), vout: 1, sequence: 0xffffffff }], outputs: [{ value: 1000n, script: hexToBytes("6a00") }] };
+  it("signs and verifies both halves; the redeem script is pushed with OP_PUSHDATA1 (77 bytes for a 20-block test delay)", () => {
+    const p = { tx, index: 0, ws, value: 0n, wrapper: "p2sh" as const };
+    const m = signLock(p, mk), s = signLock(p, sk);
+    expect(verifyLock(p, m, secp256k1.getPublicKey(mk, true))).toBe(true);
+    expect(verifyLock(p, s, secp256k1.getPublicKey(mk, true))).toBe(false);
+    expect(ws.length).toBe(77);
+    const hex = finalizeLockTx(tx, ws, "p2sh", [{ member: m, seeds: s }]);
+    expect(hex.includes("514c4d" + bytesToHex(ws))).toBe(true);
+  });
+  it("the legacy digest changes when any output changes", () => {
+    const a = bytesToHex(legacySighash(tx, 0, ws));
+    expect(bytesToHex(legacySighash({ ...tx, outputs: [{ value: 999n, script: hexToBytes("6a00") }] }, 0, ws))).not.toBe(a);
+  });
+  it("round-trips an unsigned node transaction", () => {
+    const hex = bytesToHex(serializeTx(tx));
+    expect(bytesToHex(serializeTx(parseUnsignedTx(hex)))).toBe(hex);
+  });
+});

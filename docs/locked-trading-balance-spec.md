@@ -75,3 +75,28 @@ All 198 current TSD holders are on legacy "T…" addresses. None of them is on a
 3. Seeds key derivation from one HMAC master secret: where should it live (hot server secret vs. HSM/KMS)? Rotation plan?
 4. Omni sender rule: is "all inputs from the lock address" enough, or should Seeds also check the sender with `omni_decodetransaction` before co-signing?
 5. Labelling: is the custody split in section 5 acceptable for marketing "non-custodial" for approve-mode members only?
+
+---
+
+## Revision 2 (2026-11-17, after the auditor's design review)
+
+The auditor signed off on the design with conditions. All of them are now enforced in code (`src/lib/lock/rules.ts` and `lock.server.ts`); none is left to the UI.
+
+| Auditor condition | How Seeds enforces it |
+|---|---|
+| Default to legacy **P2SH** on TEXITcoin until the live test proves Omni reads P2WSH senders | `DEFAULT_WRAPPER = "p2sh"`. "T…" addresses (version 65; ISK "J…" 44, both checked with `validateaddress` on each node). Same redeem script as section 3. scriptSig coop `<memberSig> <seedsSig> OP_1 <redeem>`, refund `<memberSig> OP_0 <redeem>`. Legacy SIGHASH_ALL. HME Wallet must supply `nonWitnessUtxo` for P2SH lock inputs |
+| P2SH txids are malleable | Lock spends only use coins with ≥ 1 confirmation |
+| Deposit reorg risk | A member's own deposit becomes tradable only after 6 confirmations (up to $1,000), 12 (up to $10,000) or 24 (above). Co-signed trade receipts are exempt |
+| Seeds must never co-sign one coin twice | Permanent insert-only `lock_signed_outpoints` (primary key txid+vout). `reserve_lock_outpoints()` reserves every input of a set of spends in one all-or-nothing statement before Seeds signs |
+| No replace-by-fee on trades | Cooperative inputs use nSequence `0xffffffff`. A stuck trade gets re-signed, never fee-bumped in place |
+| Pending sends reduce what's tradable | `tradableAmount = confirmed − pending signed − immature deposits` |
+| Refresh must sweep every coin, including dust | **Every** lock spend (trade, unlock, refresh) must spend exactly every confirmed coin at the lock, so each trade is also a refresh. Leaving any coin behind is refused |
+| Keep a TXC fee reserve for the refund | Every spend must return ≥ 0.01 TXC to the lock. Miner fee is capped at 0.005 TXC. First deposit sends 0.05 TXC along with the tokens |
+| Sign only what Seeds built; decode with Omni before signing | Seeds builds the transaction on its own node and stores `unsigned_hex` + its SHA-256. It co-signs only that transaction, taking only signatures from the wallet, never a PSBT. Before signing it requires `omni_decodetransaction` to show sender = lock, reference = expected recipient, property and amount exact, type = simple send, and no extra outputs |
+| Atomic two-leg settlement (audit C2) | `pairReady`: both members' signatures are verified before Seeds signs either leg, and both legs are broadcast together after both pass `testmempoolaccept` |
+| Seeds key in KMS/HSM | **Open.** Today: HMAC derivation from the `SEEDS_LOCK_MASTER` server secret. Before launch, move signing into AWS KMS (secp256k1 key, digest signing) |
+| Say the 30-day freeze out loud | Required in member-facing copy when the feature ships |
+
+Trade-off accepted with P2SH: a lock spends at most once per block (~3 minutes), because its next spend must wait for its coins to confirm.
+
+**Live test** (`scripts/lock-live-test.ts`, operator-only, 20-block test delay). Funding address `TiwXXpo37QWNnykS1LTHVfmJArTvSETNX5`. Test locks: P2SH `TLQq2kuVHciy3QA6Au9Emsty2PzMpYqfQv`, P2WSH `txc1qrrsjnvtc7at974mew76txyn9xfm6gs45jgur6ct87klq2wr0j58qj8nm6r`. Steps: deposit to each lock, co-signed send P2SH→P2WSH and P2WSH→P2SH (also proves the ledger refuses a second co-sign), then member-only refunds after 20 blocks. Results get appended here.

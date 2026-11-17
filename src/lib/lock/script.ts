@@ -16,8 +16,9 @@
 import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { hmac } from "@noble/hashes/hmac.js";
+import { ripemd160 } from "@noble/hashes/legacy.js";
 import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
-import { bech32 } from "@scure/base";
+import { base58check, bech32 } from "@scure/base";
 
 export type LockChain = "TXC" | "ISK";
 export const LOCK_HRP: Record<LockChain, string> = { TXC: "txc", ISK: "isk" };
@@ -106,6 +107,23 @@ export function lockAddress(witnessScript: Uint8Array, chain: LockChain = "TXC")
   return bech32.encode(LOCK_HRP[chain], [0, ...bech32.toWords(sha256(witnessScript))]);
 }
 
+/** Legacy P2SH version bytes, confirmed with validateaddress on each node: TXC 65 ("T…"), ISK 44 ("J…"). */
+export const LOCK_P2SH_VERSION: Record<LockChain, number> = { TXC: 65, ISK: 44 };
+export type LockWrapper = "p2sh" | "p2wsh";
+/** P2SH is the default on TEXITcoin until a live test proves Omni reads P2WSH senders (auditor, 2026-11-17). */
+export const DEFAULT_WRAPPER: LockWrapper = "p2sh";
+
+const hash160 = (b: Uint8Array) => ripemd160(sha256(b));
+/** a9 14 <hash160(redeemScript)> 87 */
+export const lockP2shScriptPubKey = (redeemScript: Uint8Array) => concat(Uint8Array.of(0xa9, 0x14), hash160(redeemScript), Uint8Array.of(0x87));
+export function lockP2shAddress(redeemScript: Uint8Array, chain: LockChain = "TXC"): string {
+  return base58check(sha256).encode(concat(Uint8Array.of(LOCK_P2SH_VERSION[chain]), hash160(redeemScript)));
+}
+export const lockAddressFor = (ws: Uint8Array, chain: LockChain, wrapper: LockWrapper) =>
+  wrapper === "p2sh" ? lockP2shAddress(ws, chain) : lockAddress(ws, chain);
+export const lockScriptPubKeyFor = (ws: Uint8Array, wrapper: LockWrapper) =>
+  wrapper === "p2sh" ? lockP2shScriptPubKey(ws) : lockScriptPubKey(ws);
+
 /**
  * Per-member Seeds key, derived from one server secret so nothing per-member is stored.
  * `generation` bumps when a lock is rebuilt (e.g. after pocket rotation).
@@ -136,7 +154,7 @@ export function lockStrength(confirmations: number[], csvBlocks = LOCK_CSV_BLOCK
 
 // ── Transactions (segwit v0, BIP143) ────────────────────────────────────────
 
-export type TxIn = { txid: string; vout: number; sequence: number };
+export type TxIn = { txid: string; vout: number; sequence: number; scriptSig?: Uint8Array };
 export type TxOut = { value: bigint; script: Uint8Array };
 export type Tx = { version: number; inputs: TxIn[]; outputs: TxOut[]; locktime: number };
 
@@ -190,7 +208,7 @@ export const refundWitness = (memberSig: Uint8Array, ws: Uint8Array) => [memberS
 
 export function serializeTx(tx: Tx, witnesses?: Uint8Array[][]): Uint8Array {
   const hasW = !!witnesses?.some((w) => w.length);
-  const ins = concat(varint(tx.inputs.length), ...tx.inputs.map((i) => concat(outpoint(i), Uint8Array.of(0), u32(i.sequence))));
+  const ins = concat(varint(tx.inputs.length), ...tx.inputs.map((i) => concat(outpoint(i), varBytes(i.scriptSig ?? new Uint8Array(0)), u32(i.sequence))));
   const outs = concat(varint(tx.outputs.length), ...tx.outputs.map(serOut));
   const wit = hasW ? concat(...tx.inputs.map((_, k) => { const w = witnesses![k] ?? []; return concat(varint(w.length), ...w.map(varBytes)); })) : new Uint8Array(0);
   return concat(u32(tx.version), hasW ? Uint8Array.of(0, 1) : new Uint8Array(0), ins, outs, wit, u32(tx.locktime));
@@ -198,6 +216,72 @@ export function serializeTx(tx: Tx, witnesses?: Uint8Array[][]): Uint8Array {
 
 export const txid = (tx: Tx) => bytesToHex(dsha(serializeTx(tx)).reverse());
 
-/** Sequence for a cooperative spend (final, no relative lock) vs. a refund (relative lock = csvBlocks). */
-export const COOP_SEQUENCE = 0xfffffffd;
+/**
+ * Cooperative spends are final and do NOT signal replace-by-fee (auditor): a stuck trade is
+ * re-signed by Seeds, never fee-bumped in place. Refunds carry the relative lock = csvBlocks.
+ */
+export const COOP_SEQUENCE = 0xffffffff;
 export const refundSequence = (csvBlocks: number) => csvBlocks; // BIP68: type flag 0 = blocks
+
+// ── Legacy P2SH signing ─────────────────────────────────────────────────────
+
+/** Legacy SIGHASH_ALL digest: every scriptSig blanked except this input's = redeemScript. */
+export function legacySighash(tx: Tx, index: number, redeemScript: Uint8Array): Uint8Array {
+  if (!tx.inputs[index]) throw new Error("No such input");
+  const blank: Tx = { ...tx, inputs: tx.inputs.map((i, k) => ({ txid: i.txid, vout: i.vout, sequence: i.sequence, scriptSig: k === index ? redeemScript : new Uint8Array(0) })) };
+  return dsha(concat(serializeTx(blank), u32(SIGHASH_ALL)));
+}
+
+export type LockSigner = { tx: Tx; index: number; ws: Uint8Array; value: bigint; wrapper: LockWrapper };
+export const lockSighash = (p: LockSigner) => p.wrapper === "p2sh" ? legacySighash(p.tx, p.index, p.ws) : bip143Sighash(p.tx, p.index, p.ws, p.value);
+
+export function signLock(p: LockSigner, privateKey: Uint8Array): Uint8Array {
+  const der = secp256k1.sign(lockSighash(p), privateKey, { prehash: false, format: "der", lowS: true });
+  return concat(der, Uint8Array.of(SIGHASH_ALL));
+}
+export function verifyLock(p: LockSigner, sigWithType: Uint8Array, pub: Uint8Array): boolean {
+  if (sigWithType.length < 9 || sigWithType[sigWithType.length - 1] !== SIGHASH_ALL) return false;
+  try { return secp256k1.verify(sigWithType.slice(0, -1), lockSighash(p), pub, { prehash: false, format: "der", lowS: true }); } catch { return false; }
+}
+
+const push = (d: Uint8Array) => d.length < 0x4c ? concat(Uint8Array.of(d.length), d) : concat(Uint8Array.of(0x4c, d.length), d);
+/** P2SH scriptSigs. Cooperative: <memberSig> <seedsSig> OP_1 <redeem>. Refund: <memberSig> OP_0 <redeem>. */
+export const p2shCooperativeScriptSig = (memberSig: Uint8Array, seedsSig: Uint8Array, rs: Uint8Array) => concat(push(memberSig), push(seedsSig), Uint8Array.of(0x51), push(rs));
+export const p2shRefundScriptSig = (memberSig: Uint8Array, rs: Uint8Array) => concat(push(memberSig), Uint8Array.of(0x00), push(rs));
+
+/** Put the finished signatures into the tx for either wrapper; returns the broadcastable hex. */
+export function finalizeLockTx(tx: Tx, ws: Uint8Array, wrapper: LockWrapper, sigs: { member: Uint8Array; seeds?: Uint8Array }[]): string {
+  if (sigs.length !== tx.inputs.length) throw new Error("One signature set per input");
+  if (wrapper === "p2sh") {
+    const signed: Tx = { ...tx, inputs: tx.inputs.map((i, k) => ({ ...i, scriptSig: sigs[k]!.seeds ? p2shCooperativeScriptSig(sigs[k]!.member, sigs[k]!.seeds!, ws) : p2shRefundScriptSig(sigs[k]!.member, ws) })) };
+    return bytesToHex(serializeTx(signed));
+  }
+  const w = sigs.map((s) => s.seeds ? cooperativeWitness(s.member, s.seeds, ws) : refundWitness(s.member, ws));
+  return bytesToHex(serializeTx(tx, w));
+}
+
+/** Parse a node-built (unsigned, non-segwit) raw tx into our Tx shape. */
+export function parseUnsignedTx(hex: string): Tx {
+  const b = hexToBytes(hex.toLowerCase());
+  const dv = new DataView(b.buffer, b.byteOffset, b.byteLength);
+  let o = 0;
+  const rv = (): number => { const f = b[o]!; if (f < 0xfd) { o += 1; return f; } if (f === 0xfd) { const v = dv.getUint16(o + 1, true); o += 3; return v; } const v = dv.getUint32(o + 1, true); o += 5; return v; };
+  const version = dv.getUint32(0, true); o = 4;
+  if (b[o] === 0) throw new Error("Expected an unsigned legacy-serialised transaction");
+  const nIn = rv(); const inputs: TxIn[] = [];
+  for (let i = 0; i < nIn; i++) {
+    const txid = bytesToHex(b.slice(o, o + 32).reverse()); o += 32;
+    const vout = dv.getUint32(o, true); o += 4;
+    const sl = rv(); if (sl !== 0) throw new Error("Inputs must be unsigned"); 
+    const sequence = dv.getUint32(o, true); o += 4;
+    inputs.push({ txid, vout, sequence });
+  }
+  const nOut = rv(); const outputs: TxOut[] = [];
+  for (let i = 0; i < nOut; i++) {
+    const value = dv.getBigUint64(o, true); o += 8;
+    const sl = rv(); outputs.push({ value, script: b.slice(o, o + sl) }); o += sl;
+  }
+  const locktime = dv.getUint32(o, true); o += 4;
+  if (o !== b.length) throw new Error("Trailing bytes in transaction");
+  return { version, inputs, outputs, locktime };
+}
