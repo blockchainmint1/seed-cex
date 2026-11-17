@@ -24,6 +24,9 @@ describe("You changed X email", () => {
     const r = describeProfileChanges({ timezone: "UTC", notify_p2p: true }, { timezone: "America/Chicago", notify_p2p: true });
     expect(r).toEqual({ thing: "account settings", lines: ["Time zone: UTC → America/Chicago"] });
   });
+  test("markets are named the way members see them", () => {
+    expect(describeProfileChanges({ default_pair: "TSD_TXC" }, { default_pair: "BTC_TSD" })?.lines).toEqual(["Default market: TXC / TSD → BTC / TSD"]);
+  });
   test("saving with no changes sends nothing", () => {
     expect(describeProfileChanges({ notify_p2p: true }, { notify_p2p: true })).toBeNull();
   });

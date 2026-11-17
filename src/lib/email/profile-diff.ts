@@ -1,4 +1,5 @@
 /** Turns a profile before/after into plain lines for the "You changed X" email. Pure. */
+import { PAIRS } from "@/lib/chains";
 const LABELS: Record<string, string> = {
   display_name: "Display name",
   timezone: "Time zone",
@@ -18,6 +19,7 @@ const LABELS: Record<string, string> = {
   email_weekly_update: "Email: weekly account update",
 };
 
+const pairLabel = (v: unknown) => PAIRS.find((p) => p.id === v)?.label;
 const show = (v: unknown) => (v === true ? "on" : v === false ? "off" : v === null || v === undefined || v === "" ? "none" : String(v));
 
 export function describeProfileChanges(before: Record<string, unknown> | null, after: Record<string, unknown>): { thing: string; lines: string[] } | null {
@@ -27,7 +29,8 @@ export function describeProfileChanges(before: Record<string, unknown> | null, a
   for (const k of Object.keys(LABELS)) {
     if (!(k in after) || before[k] === after[k]) continue;
     keys.push(k);
-    lines.push(`${LABELS[k]}: ${show(before[k])} → ${show(after[k])}`);
+    const fmt = (v: unknown) => (k === "default_pair" ? (pairLabel(v) ?? show(v)) : show(v));
+    lines.push(`${LABELS[k]}: ${fmt(before[k])} → ${fmt(after[k])}`);
   }
   if (!lines.length) return null;
   const alertsOnly = keys.every((k) => k.startsWith("notify_") || k.startsWith("email_"));
