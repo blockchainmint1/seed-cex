@@ -52,3 +52,8 @@
 - [x] Ignite: find out why NectarPay never notified Seeds of Bobby's paid invoice; add a server-side payment re-check so a missed notice can't strand a paid seat
 - [ ] Ignite: "connection info" email for confirmed seats (blocked: Bobby supplies the class link/details)
 - [ ] NectarPay: explain why no notice was sent for invoice 5f6650b3 (empty delivery log; resend worked) (blocked: NectarPay team)
+
+## TSD <-> THORChain route (decision pending)
+- [ ] Choose route model: split (TSD Bridge redeem/mint + Seeds THORChain leg) vs one-stop at TSD Bridge
+- [ ] Get working TSD Bridge partner key (cashout scope), partner fee rate and >$5k lane — blocked on TSD Bridge team
+- [ ] View-only THORChain order book on market pages (waiting on Bobby's go-ahead)
