@@ -48,7 +48,6 @@ export function SiteFooter() {
       <div className="mx-auto grid max-w-7xl gap-10 px-5 py-12 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,2fr)]">
         <div className="space-y-2">
           <SiteLogo className="h-[34px]" />
-          <p className="text-[13px] font-medium text-muted-foreground">Powered by the Honest Money Ecosystem</p>
           <p className="max-w-md text-sm text-muted-foreground">
             Non-custodial crypto trading. Trades settle directly between traders' own wallets.
           </p>
@@ -90,12 +89,6 @@ export function SiteFooter() {
             </div>
           ))}
         </nav>
-      </div>
-      <div className="border-t border-border/60 py-4">
-        <p className="mx-auto max-w-7xl px-5 font-mono text-[11px] text-muted-foreground">
-          © {new Date().getFullYear()} Seeds. Trading digital assets carries risk. Seeds never
-          stores an unencrypted recovery phrase.
-        </p>
       </div>
     </footer>
   );
