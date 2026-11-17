@@ -47,6 +47,8 @@ import { Route as ApiPublicCmcIndexRouteImport } from './routes/api/public/cmc/i
 import { Route as ApiPublicCmcAssetsRouteImport } from './routes/api/public/cmc/assets'
 import { Route as ApiPublicCmcSummaryRouteImport } from './routes/api/public/cmc/summary'
 import { Route as ApiPublicCmcTickerRouteImport } from './routes/api/public/cmc/ticker'
+import { Route as ApiPublicEmailUnsubscribeRouteImport } from './routes/api/public/email/unsubscribe'
+import { Route as ApiPublicEmailWeeklyRouteImport } from './routes/api/public/email/weekly'
 import { Route as ApiPublicHmeLinkRevokeRouteImport } from './routes/api/public/hme-link/revoke'
 import { Route as ApiPublicHmeLinkSubmitRouteImport } from './routes/api/public/hme-link/submit'
 import { Route as ApiPublicHmeLinkTradesRouteImport } from './routes/api/public/hme-link/trades'
@@ -263,6 +265,17 @@ const ApiPublicCmcTickerRoute = ApiPublicCmcTickerRouteImport.update({
   path: '/api/public/cmc/ticker',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicEmailUnsubscribeRoute =
+  ApiPublicEmailUnsubscribeRouteImport.update({
+    id: '/api/public/email/unsubscribe',
+    path: '/api/public/email/unsubscribe',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicEmailWeeklyRoute = ApiPublicEmailWeeklyRouteImport.update({
+  id: '/api/public/email/weekly',
+  path: '/api/public/email/weekly',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHmeLinkRevokeRoute = ApiPublicHmeLinkRevokeRouteImport.update({
   id: '/api/public/hme-link/revoke',
   path: '/api/public/hme-link/revoke',
@@ -432,6 +445,8 @@ export interface FileRoutesByFullPath {
   '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
   '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
   '/api/public/cmc/ticker': typeof ApiPublicCmcTickerRoute
+  '/api/public/email/unsubscribe': typeof ApiPublicEmailUnsubscribeRoute
+  '/api/public/email/weekly': typeof ApiPublicEmailWeeklyRoute
   '/api/public/hme-link/revoke': typeof ApiPublicHmeLinkRevokeRoute
   '/api/public/hme-link/submit': typeof ApiPublicHmeLinkSubmitRoute
   '/api/public/hme-link/trades': typeof ApiPublicHmeLinkTradesRouteWithChildren
@@ -496,6 +511,8 @@ export interface FileRoutesByTo {
   '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
   '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
   '/api/public/cmc/ticker': typeof ApiPublicCmcTickerRoute
+  '/api/public/email/unsubscribe': typeof ApiPublicEmailUnsubscribeRoute
+  '/api/public/email/weekly': typeof ApiPublicEmailWeeklyRoute
   '/api/public/hme-link/revoke': typeof ApiPublicHmeLinkRevokeRoute
   '/api/public/hme-link/submit': typeof ApiPublicHmeLinkSubmitRoute
   '/api/public/hme-link/trades': typeof ApiPublicHmeLinkTradesRouteWithChildren
@@ -562,6 +579,8 @@ export interface FileRoutesById {
   '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
   '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
   '/api/public/cmc/ticker': typeof ApiPublicCmcTickerRoute
+  '/api/public/email/unsubscribe': typeof ApiPublicEmailUnsubscribeRoute
+  '/api/public/email/weekly': typeof ApiPublicEmailWeeklyRoute
   '/api/public/hme-link/revoke': typeof ApiPublicHmeLinkRevokeRoute
   '/api/public/hme-link/submit': typeof ApiPublicHmeLinkSubmitRoute
   '/api/public/hme-link/trades': typeof ApiPublicHmeLinkTradesRouteWithChildren
@@ -628,6 +647,8 @@ export interface FileRouteTypes {
     | '/api/public/cmc/assets'
     | '/api/public/cmc/summary'
     | '/api/public/cmc/ticker'
+    | '/api/public/email/unsubscribe'
+    | '/api/public/email/weekly'
     | '/api/public/hme-link/revoke'
     | '/api/public/hme-link/submit'
     | '/api/public/hme-link/trades'
@@ -692,6 +713,8 @@ export interface FileRouteTypes {
     | '/api/public/cmc/assets'
     | '/api/public/cmc/summary'
     | '/api/public/cmc/ticker'
+    | '/api/public/email/unsubscribe'
+    | '/api/public/email/weekly'
     | '/api/public/hme-link/revoke'
     | '/api/public/hme-link/submit'
     | '/api/public/hme-link/trades'
@@ -757,6 +780,8 @@ export interface FileRouteTypes {
     | '/api/public/cmc/assets'
     | '/api/public/cmc/summary'
     | '/api/public/cmc/ticker'
+    | '/api/public/email/unsubscribe'
+    | '/api/public/email/weekly'
     | '/api/public/hme-link/revoke'
     | '/api/public/hme-link/submit'
     | '/api/public/hme-link/trades'
@@ -815,6 +840,8 @@ export interface RootRouteChildren {
   ApiPublicCmcAssetsRoute: typeof ApiPublicCmcAssetsRoute
   ApiPublicCmcSummaryRoute: typeof ApiPublicCmcSummaryRoute
   ApiPublicCmcTickerRoute: typeof ApiPublicCmcTickerRoute
+  ApiPublicEmailUnsubscribeRoute: typeof ApiPublicEmailUnsubscribeRoute
+  ApiPublicEmailWeeklyRoute: typeof ApiPublicEmailWeeklyRoute
   ApiPublicHmeLinkRevokeRoute: typeof ApiPublicHmeLinkRevokeRoute
   ApiPublicHmeLinkSubmitRoute: typeof ApiPublicHmeLinkSubmitRoute
   ApiPublicHmeLinkTradesRoute: typeof ApiPublicHmeLinkTradesRouteWithChildren
@@ -1110,6 +1137,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCmcTickerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/email/unsubscribe': {
+      id: '/api/public/email/unsubscribe'
+      path: '/api/public/email/unsubscribe'
+      fullPath: '/api/public/email/unsubscribe'
+      preLoaderRoute: typeof ApiPublicEmailUnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/email/weekly': {
+      id: '/api/public/email/weekly'
+      path: '/api/public/email/weekly'
+      fullPath: '/api/public/email/weekly'
+      preLoaderRoute: typeof ApiPublicEmailWeeklyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hme-link/revoke': {
       id: '/api/public/hme-link/revoke'
       path: '/api/public/hme-link/revoke'
@@ -1357,6 +1398,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCmcAssetsRoute: ApiPublicCmcAssetsRoute,
   ApiPublicCmcSummaryRoute: ApiPublicCmcSummaryRoute,
   ApiPublicCmcTickerRoute: ApiPublicCmcTickerRoute,
+  ApiPublicEmailUnsubscribeRoute: ApiPublicEmailUnsubscribeRoute,
+  ApiPublicEmailWeeklyRoute: ApiPublicEmailWeeklyRoute,
   ApiPublicHmeLinkRevokeRoute: ApiPublicHmeLinkRevokeRoute,
   ApiPublicHmeLinkSubmitRoute: ApiPublicHmeLinkSubmitRoute,
   ApiPublicHmeLinkTradesRoute: ApiPublicHmeLinkTradesRouteWithChildren,

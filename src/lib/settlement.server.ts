@@ -315,6 +315,8 @@ export async function refreshTradeStatus(tradeId: string) {
       takerId: trade?.taker_id ?? null,
       pair: trade?.pair ?? "",
     });
+    const { emailTradeSettled } = await import("./email/events.server");
+    await emailTradeSettled(tradeId);
   }
 }
 

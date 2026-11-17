@@ -517,6 +517,8 @@ export const openTrade = createServerFn({ method: "POST" })
     } else {
       await p2pAlert(sellerId, t.id, `🛒 New buyer! They want ${crypto} ${asset} for $${data.fiat.toFixed(2)} by ${data.method}. ${crypto} ${asset} is reserved in your pocket — keep an eye on your account.`);
     }
+    const { emailP2pOpened } = await import("@/lib/email/events.server");
+    await emailP2pOpened(t.id);
     return { id: t.id };
   });
 

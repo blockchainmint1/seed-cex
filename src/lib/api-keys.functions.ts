@@ -50,6 +50,9 @@ export const createApiKey = createServerFn({ method: "POST" })
     });
     if (error) throw new Error(error.message);
 
+    const { emailAccountChange } = await import("@/lib/email/send.server");
+    await emailAccountChange(context.userId, "API keys", [`Created key "${data.label}" (${data.scopes.join(", ")})`],
+      "delete the key on your API keys page, revoke your HME Wallet link from your profile, and contact support@honest.money.");
     // The secret is shown exactly once; it is never returned by any read path.
     return { keyId, secret, label: data.label, scopes: data.scopes };
   });
@@ -65,6 +68,8 @@ export const setApiKeyEnabled = createServerFn({ method: "POST" })
       .eq("id", data.id)
       .eq("user_id", context.userId);
     if (error) throw new Error(error.message);
+    const { emailAccountChange } = await import("@/lib/email/send.server");
+    await emailAccountChange(context.userId, "API keys", [data.enabled ? "Turned a key back on" : "Paused a key"]);
     return { ok: true };
   });
 
@@ -79,5 +84,7 @@ export const deleteApiKey = createServerFn({ method: "POST" })
       .eq("id", data.id)
       .eq("user_id", context.userId);
     if (error) throw new Error(error.message);
+    const { emailAccountChange } = await import("@/lib/email/send.server");
+    await emailAccountChange(context.userId, "API keys", ["Deleted a key"]);
     return { ok: true };
   });

@@ -15,13 +15,15 @@ export const Route = createFileRoute("/api/public/hme-link/revoke")({
         if (!verifyTxcMessage(b.identity_address, b.message, b.signature)) return json({ error: "bad signature" }, 401);
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const { data: link } = await supabaseAdmin.from("hme_links").select("id, identity_address, status").eq("id", b.link_id).maybeSingle();
+        const { data: link } = await supabaseAdmin.from("hme_links").select("id, user_id, identity_address, status").eq("id", b.link_id).maybeSingle();
         if (!link || link.identity_address !== b.identity_address) return json({ error: "unknown link" }, 404);
         if (link.status === "active") {
           await supabaseAdmin.from("hme_links")
             .update({ status: "revoked", revoked_at: new Date().toISOString(), revoked_by: "wallet", key_ciphertext: null })
             .eq("id", link.id);
           await supabaseAdmin.from("hme_trade_proposals").update({ status: "expired" }).eq("link_id", link.id).eq("status", "pending");
+          const { emailAccountChange } = await import("@/lib/email/send.server");
+          await emailAccountChange(link.user_id, "HME Wallet link", ["Revoked from HME Wallet. Seeds deleted its access to your trading pocket."]);
         }
         return json({ revoked: true });
       },

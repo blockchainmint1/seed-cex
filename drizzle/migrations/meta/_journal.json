@@ -71,6 +71,13 @@
       "when": 1794931732039,
       "tag": "0009_ignite_registrations",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794935293276,
+      "tag": "0010_email_preferences",
+      "breakpoints": true
     }
   ]
 }

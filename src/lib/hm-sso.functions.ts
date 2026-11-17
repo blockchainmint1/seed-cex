@@ -60,6 +60,10 @@ export const redeemHonestMoneyToken = createServerFn({ method: "POST" })
     if (userId) {
       const { alertSignIn } = await import("./alerts.server");
       await alertSignIn({ userId, email });
+      if (isNew) {
+        const { emailWelcome } = await import("./email/events.server");
+        await emailWelcome(userId);
+      }
     }
 
     await sendHubEvent({ event: isNew ? "signup" : "service_used", member_id: p.minerId, ref: data.ref, metadata: { via: "sso" } });

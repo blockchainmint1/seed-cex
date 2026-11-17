@@ -86,6 +86,11 @@ export const Route = createFileRoute("/api/public/hme-link/submit")({
           identity_address: b.identity_address, xpubs, key_ciphertext: keyCiphertext,
         }).select("id").single();
         if (error || !link) return json({ error: "store failed" }, 500);
+        const { emailAccountChange } = await import("@/lib/email/send.server");
+        await emailAccountChange(req.user_id, "HME Wallet link", [
+          `Linked pocket #${b.account} (${b.mode === "access" ? "instant trades — Seeds can sign" : "you approve every trade"})`,
+          `Coins: ${chains.join(", ")}`,
+        ], "revoke the link in HME Wallet right away, then contact support@honest.money.");
         return json({ linked_to: "Seeds Exchange", link_id: link.id });
       },
     },

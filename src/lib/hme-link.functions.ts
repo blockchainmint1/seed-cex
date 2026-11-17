@@ -76,5 +76,10 @@ export const revokeMyHmeLink = createServerFn({ method: "POST" })
     for (const l of data ?? []) {
       await supabaseAdmin.from("hme_trade_proposals").update({ status: "expired" }).eq("link_id", l.id).eq("status", "pending");
     }
+    if (data?.length) {
+      const { emailAccountChange } = await import("@/lib/email/send.server");
+      await emailAccountChange(context.userId, "HME Wallet link", ["Revoked on Seeds. Seeds deleted its access to your trading pocket."],
+        "link your HME Wallet again from your profile only if you trust the device you're using, and contact support@honest.money.");
+    }
     return { ok: true };
   });

@@ -15,6 +15,8 @@ export type Profile = {
   notify_deposit: boolean;
   notify_login: boolean;
   notify_weekly_digest: boolean;
+  email_trade_confirmations: boolean;
+  email_weekly_update: boolean;
   notify_p2p: boolean;
   default_auth_cap: number | null;
   default_auth_hours: number;
@@ -26,7 +28,7 @@ export type Profile = {
 };
 
 const COLS =
-  "id, display_name, timezone, telegram_chat_id, telegram_verified, notify_order_filled, notify_settlement, notify_settlement_failed, notify_auth_expiring, notify_deposit, notify_login, notify_weekly_digest, notify_p2p, default_auth_cap, default_auth_hours, confirm_before_order, default_pair, hm_member_id, hm_status, created_at";
+  "id, display_name, timezone, telegram_chat_id, telegram_verified, notify_order_filled, notify_settlement, notify_settlement_failed, notify_auth_expiring, notify_deposit, notify_login, notify_weekly_digest, notify_p2p, email_trade_confirmations, email_weekly_update, default_auth_cap, default_auth_hours, confirm_before_order, default_pair, hm_member_id, hm_status, created_at";
 
 export const getMyProfile = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -65,6 +67,8 @@ export const updateMyProfile = createServerFn({ method: "POST" })
         notify_login: z.boolean().optional(),
         notify_weekly_digest: z.boolean().optional(),
         notify_p2p: z.boolean().optional(),
+        email_trade_confirmations: z.boolean().optional(),
+        email_weekly_update: z.boolean().optional(),
         default_auth_cap: z.number().nonnegative().nullable().optional(),
         default_auth_hours: z.number().int().min(1).max(720).optional(),
         confirm_before_order: z.boolean().optional(),
@@ -74,12 +78,19 @@ export const updateMyProfile = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }): Promise<Profile> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: before } = await supabaseAdmin.from("profiles").select(COLS).eq("id", context.userId).maybeSingle();
     const { data: row, error } = await supabaseAdmin
       .from("profiles")
       .upsert({ id: context.userId, ...data } as never, { onConflict: "id" })
       .select(COLS)
       .single();
     if (error) throw new Error(error.message);
+    const { describeProfileChanges } = await import("@/lib/email/profile-diff");
+    const change = describeProfileChanges(before as Record<string, unknown> | null, row as unknown as Record<string, unknown>);
+    if (change) {
+      const { emailAccountChange } = await import("@/lib/email/send.server");
+      await emailAccountChange(context.userId, change.thing, change.lines);
+    }
     return row as unknown as Profile;
   });
 
@@ -152,6 +163,9 @@ export const confirmTelegramLink = createServerFn({ method: "POST" })
       String(row.telegram_chat_id),
       "<b>Seeds</b>\nAlerts are on. You'll hear from us when your orders fill and settle.",
     );
+    const { emailAccountChange } = await import("@/lib/email/send.server");
+    await emailAccountChange(context.userId, "Telegram alerts", [`Linked Telegram chat ending ${String(row.telegram_chat_id).slice(-4)}`],
+      "unlink Telegram on your profile, then sign out of Honest.Money everywhere and contact support@honest.money.");
     return { verified: true as const };
   });
 
@@ -169,6 +183,8 @@ export const unlinkTelegram = createServerFn({ method: "POST" })
       })
       .eq("id", context.userId);
     if (error) throw new Error(error.message);
+    const { emailAccountChange } = await import("@/lib/email/send.server");
+    await emailAccountChange(context.userId, "Telegram alerts", ["Unlinked Telegram; alerts there have stopped"]);
     return { unlinked: true as const };
   });
 

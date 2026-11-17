@@ -867,6 +867,8 @@ export type Database = {
           default_auth_hours: number
           default_pair: string | null
           display_name: string
+          email_trade_confirmations: boolean
+          email_weekly_update: boolean
           hm_member_id: string | null
           hm_status: string
           id: string
@@ -894,6 +896,8 @@ export type Database = {
           default_auth_hours?: number
           default_pair?: string | null
           display_name?: string
+          email_trade_confirmations?: boolean
+          email_weekly_update?: boolean
           hm_member_id?: string | null
           hm_status?: string
           id: string
@@ -921,6 +925,8 @@ export type Database = {
           default_auth_hours?: number
           default_pair?: string | null
           display_name?: string
+          email_trade_confirmations?: boolean
+          email_weekly_update?: boolean
           hm_member_id?: string | null
           hm_status?: string
           id?: string
