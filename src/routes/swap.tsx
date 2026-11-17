@@ -142,7 +142,10 @@ function SwapPage() {
                   value={from}
                   onChange={(v) => {
                     setFrom(v);
-                    if (v === to) setTo(from);
+                    if (v === to) {
+                      setTo(from);
+                      setDestination("");
+                    }
                     quote.reset();
                   }}
                 />
