@@ -133,3 +133,6 @@ export const getIgniteConfirmation = createServerFn({ method: "GET" })
     const recentlyClosed = !!reg.invoice_expires_at && Date.now() - new Date(reg.invoice_expires_at).getTime() < 3 * 3_600_000;
     return { state: live || recentlyClosed ? ("pending" as const) : ("expired" as const), seatsLeft: left, capacity: SEAT_CAPACITY, firstName };
   });
+
+/** Public: seats still open (a count only, no member data). */
+export const getIgniteSeats = createServerFn({ method: "GET" }).handler(async () => ({ seatsLeft: seatsLeft(await seatsHeld()), capacity: SEAT_CAPACITY }));

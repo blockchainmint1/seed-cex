@@ -2,6 +2,8 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { SCHEDULE_DATES, SCHEDULE_SESSIONS, SCHEDULE_TIME, RECORDING_NOTE } from "@/lib/ignite-registration";
 import { RegistrationFlow, StatusPreviews } from "@/components/ignite/RegistrationFlow";
+import { useQuery } from "@tanstack/react-query";
+import { getIgniteSeats } from "@/lib/ignite.functions";
 
 export const Route = createFileRoute("/register")({
   staticData: { sitemap: true },
@@ -22,6 +24,7 @@ export const Route = createFileRoute("/register")({
 function Index() {
   const formRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const seats = useQuery({ queryKey: ["ignite-seats"], queryFn: () => getIgniteSeats(), refetchInterval: 60000 });
   // Checkouts opened before the confirmation page existed still return to /register?paid=1.
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("paid")) navigate({ to: "/register/confirmed", replace: true });
@@ -84,7 +87,7 @@ function Index() {
         </section>
 
         <aside id="reserve" ref={formRef} className="scroll-mt-20 lg:sticky lg:top-20 lg:self-start">
-          <p className="mb-3 text-center text-sm text-muted-foreground">Limited to 100 seats · {SCHEDULE_DATES}</p>
+          <p className="mb-3 text-center text-sm text-muted-foreground">{seats.data ? (seats.data.seatsLeft > 0 ? <><span className="font-semibold text-primary">{seats.data.seatsLeft} of {seats.data.capacity} seats left</span></> : <span className="font-semibold">Fully reserved</span>) : "Limited to 100 seats"} · {SCHEDULE_DATES}</p>
           <RegistrationFlow />
         </aside>
       </main>
