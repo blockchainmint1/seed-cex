@@ -52,9 +52,17 @@
 - [x] Ignite confirmation page after payment: thanks, seat reserved, HME referral link (existing members), seats left, check email, connection info coming
 - [x] Ignite: find out why NectarPay never notified Seeds of Bobby's paid invoice; add a server-side payment re-check so a missed notice can't strand a paid seat
 - [ ] Ignite: "connection info" email for confirmed seats (blocked: Bobby supplies the class link/details)
-- [ ] NectarPay: explain why no notice was sent for invoice 5f6650b3 (empty delivery log; resend worked) (blocked: NectarPay team)
+- [x] NectarPay: explained the missed notice (follow-up work cut off, never retried); they now save + retry; Seeds re-runs repeated confirmations
+- [ ] NectarPay: confirm each retry is re-signed with a fresh timestamp (blocked: NectarPay team)
 
 ## TSD <-> THORChain route (decision pending)
 - [ ] Choose route model: split (TSD Bridge redeem/mint + Seeds THORChain leg) vs one-stop at TSD Bridge
 - [ ] Get working TSD Bridge partner key (cashout scope), partner fee rate and >$5k lane — blocked on TSD Bridge team
 - [ ] View-only THORChain order book on market pages (waiting on Bobby's go-ahead)
+
+## Locked trading balance (2-of-2 + 30-day refund, TXC/ISK)
+- [x] Lock rules: script, address, Seeds key derivation, BIP143 signing, refund path, lock strength (src/lib/lock/, tested against live node)
+- [x] Spec for HME Wallet + auditor (docs/locked-trading-balance-spec.md)
+- [ ] HME Wallet: recognise/sign lock inputs, save lock description, offline "Recover locked funds" (blocked: HME team)
+- [ ] Real test on TXC: lock 1 TSD, cooperative send, short-delay refund; confirms Omni reads segwit senders (blocked: Bobby approves a few cents of TSD/TXC + test key)
+- [ ] Wire lock into settlement: lock/refresh/unlock flows, instant settle only while strong (blocked: HME Wallet + real test + auditor)

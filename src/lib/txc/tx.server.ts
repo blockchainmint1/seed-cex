@@ -16,6 +16,12 @@ const b58check = base58check(sha256);
 /** base58Prefixes[PUBKEY_ADDRESS] / [SCRIPT_ADDRESS] from TXC chainparams. */
 export const TXC_P2PKH_VERSION = 66;
 export const TXC_P2SH_VERSION = 5;
+/**
+ * Real P2SH version bytes per chain, keyed by its P2PKH version (checked against each
+ * chain's own node with createmultisig): TXC 65 ("T…"), ISK 44 ("J…"), LTC 50 ("M…").
+ * Version 5 ("3…") stays accepted for backwards compatibility; it maps to the same script.
+ */
+const P2SH_VERSIONS: Record<number, number[]> = { 66: [65, 5], 45: [44, 5], 48: [50, 5] };
 
 export const SATS = 100_000_000;
 export const DUST_SATS = 546;
@@ -102,7 +108,7 @@ export function addressToScriptFor(address: string, p2pkhVersion: number): Uint8
   const version = payload[0];
   const hash = payload.subarray(1);
   if (version === p2pkhVersion) return p2pkhScript(hash);
-  if (version === TXC_P2SH_VERSION) return p2shScript(hash);
+  if ((P2SH_VERSIONS[p2pkhVersion] ?? [TXC_P2SH_VERSION]).includes(version)) return p2shScript(hash);
   throw new Error(`Address ${address} is not on the expected network`);
 }
 
