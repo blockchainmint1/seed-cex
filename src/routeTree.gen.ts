@@ -49,6 +49,7 @@ import { Route as ApiPublicHmeLinkRevokeRouteImport } from './routes/api/public/
 import { Route as ApiPublicHmeLinkSubmitRouteImport } from './routes/api/public/hme-link/submit'
 import { Route as ApiPublicHmeLinkTradesRouteImport } from './routes/api/public/hme-link/trades'
 import { Route as ApiPublicMinehmeProfileUpdateRouteImport } from './routes/api/public/minehme/profile-update'
+import { Route as ApiPublicNectarpayWebhookRouteImport } from './routes/api/public/nectarpay/webhook'
 import { Route as ApiPublicV1IndexRouteImport } from './routes/api/public/v1/index'
 import { Route as ApiPublicV1AccountRouteImport } from './routes/api/public/v1/account'
 import { Route as ApiPublicV1AllOrdersRouteImport } from './routes/api/public/v1/allOrders'
@@ -271,6 +272,12 @@ const ApiPublicMinehmeProfileUpdateRoute =
     path: '/api/public/minehme/profile-update',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicNectarpayWebhookRoute =
+  ApiPublicNectarpayWebhookRouteImport.update({
+    id: '/api/public/nectarpay/webhook',
+    path: '/api/public/nectarpay/webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicV1IndexRoute = ApiPublicV1IndexRouteImport.update({
   id: '/api/public/v1/',
   path: '/api/public/v1/',
@@ -415,6 +422,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hme-link/submit': typeof ApiPublicHmeLinkSubmitRoute
   '/api/public/hme-link/trades': typeof ApiPublicHmeLinkTradesRouteWithChildren
   '/api/public/minehme/profile-update': typeof ApiPublicMinehmeProfileUpdateRoute
+  '/api/public/nectarpay/webhook': typeof ApiPublicNectarpayWebhookRoute
   '/api/public/v1/account': typeof ApiPublicV1AccountRoute
   '/api/public/v1/allOrders': typeof ApiPublicV1AllOrdersRoute
   '/api/public/v1/depth': typeof ApiPublicV1DepthRoute
@@ -476,6 +484,7 @@ export interface FileRoutesByTo {
   '/api/public/hme-link/submit': typeof ApiPublicHmeLinkSubmitRoute
   '/api/public/hme-link/trades': typeof ApiPublicHmeLinkTradesRouteWithChildren
   '/api/public/minehme/profile-update': typeof ApiPublicMinehmeProfileUpdateRoute
+  '/api/public/nectarpay/webhook': typeof ApiPublicNectarpayWebhookRoute
   '/api/public/v1/account': typeof ApiPublicV1AccountRoute
   '/api/public/v1/allOrders': typeof ApiPublicV1AllOrdersRoute
   '/api/public/v1/depth': typeof ApiPublicV1DepthRoute
@@ -539,6 +548,7 @@ export interface FileRoutesById {
   '/api/public/hme-link/submit': typeof ApiPublicHmeLinkSubmitRoute
   '/api/public/hme-link/trades': typeof ApiPublicHmeLinkTradesRouteWithChildren
   '/api/public/minehme/profile-update': typeof ApiPublicMinehmeProfileUpdateRoute
+  '/api/public/nectarpay/webhook': typeof ApiPublicNectarpayWebhookRoute
   '/api/public/v1/account': typeof ApiPublicV1AccountRoute
   '/api/public/v1/allOrders': typeof ApiPublicV1AllOrdersRoute
   '/api/public/v1/depth': typeof ApiPublicV1DepthRoute
@@ -602,6 +612,7 @@ export interface FileRouteTypes {
     | '/api/public/hme-link/submit'
     | '/api/public/hme-link/trades'
     | '/api/public/minehme/profile-update'
+    | '/api/public/nectarpay/webhook'
     | '/api/public/v1/account'
     | '/api/public/v1/allOrders'
     | '/api/public/v1/depth'
@@ -663,6 +674,7 @@ export interface FileRouteTypes {
     | '/api/public/hme-link/submit'
     | '/api/public/hme-link/trades'
     | '/api/public/minehme/profile-update'
+    | '/api/public/nectarpay/webhook'
     | '/api/public/v1/account'
     | '/api/public/v1/allOrders'
     | '/api/public/v1/depth'
@@ -725,6 +737,7 @@ export interface FileRouteTypes {
     | '/api/public/hme-link/submit'
     | '/api/public/hme-link/trades'
     | '/api/public/minehme/profile-update'
+    | '/api/public/nectarpay/webhook'
     | '/api/public/v1/account'
     | '/api/public/v1/allOrders'
     | '/api/public/v1/depth'
@@ -780,6 +793,7 @@ export interface RootRouteChildren {
   ApiPublicHmeLinkSubmitRoute: typeof ApiPublicHmeLinkSubmitRoute
   ApiPublicHmeLinkTradesRoute: typeof ApiPublicHmeLinkTradesRouteWithChildren
   ApiPublicMinehmeProfileUpdateRoute: typeof ApiPublicMinehmeProfileUpdateRoute
+  ApiPublicNectarpayWebhookRoute: typeof ApiPublicNectarpayWebhookRoute
   ApiPublicV1AccountRoute: typeof ApiPublicV1AccountRoute
   ApiPublicV1AllOrdersRoute: typeof ApiPublicV1AllOrdersRoute
   ApiPublicV1DepthRoute: typeof ApiPublicV1DepthRoute
@@ -1084,6 +1098,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicMinehmeProfileUpdateRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/nectarpay/webhook': {
+      id: '/api/public/nectarpay/webhook'
+      path: '/api/public/nectarpay/webhook'
+      fullPath: '/api/public/nectarpay/webhook'
+      preLoaderRoute: typeof ApiPublicNectarpayWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/v1/': {
       id: '/api/public/v1/'
       path: '/api/public/v1'
@@ -1298,6 +1319,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHmeLinkSubmitRoute: ApiPublicHmeLinkSubmitRoute,
   ApiPublicHmeLinkTradesRoute: ApiPublicHmeLinkTradesRouteWithChildren,
   ApiPublicMinehmeProfileUpdateRoute: ApiPublicMinehmeProfileUpdateRoute,
+  ApiPublicNectarpayWebhookRoute: ApiPublicNectarpayWebhookRoute,
   ApiPublicV1AccountRoute: ApiPublicV1AccountRoute,
   ApiPublicV1AllOrdersRoute: ApiPublicV1AllOrdersRoute,
   ApiPublicV1DepthRoute: ApiPublicV1DepthRoute,

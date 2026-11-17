@@ -46,7 +46,7 @@ function Sso() {
           window.close();
           return;
         }
-        navigate({ to: "/wallet" });
+        navigate({ to: afterSignIn() as "/wallet" });
       } catch (e) {
         setError(e instanceof Error ? e.message : "Sign-in failed");
       }
@@ -62,4 +62,13 @@ function Sso() {
       )}
     </div>
   );
+}
+
+
+function afterSignIn() {
+  try {
+    const n = sessionStorage.getItem("seeds-after-signin");
+    if (n) { sessionStorage.removeItem("seeds-after-signin"); if (/^\/[a-z0-9/-]*$/i.test(n)) return n; }
+  } catch { /* ignore */ }
+  return "/wallet";
 }

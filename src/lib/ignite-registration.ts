@@ -2,8 +2,6 @@
 // any live checkout must take the amount from the server, never from the client.
 export const SEAT_CAPACITY = 100;
 export const DEPOSIT_USD = 400;
-// Live payments stay off until approved deposit terms AND a working payment integration exist.
-export const PAYMENTS_ENABLED = false;
 
 export type Details = { fullName: string; email: string; countryCode: string; phone: string; marketingOptIn: boolean };
 export type Errors = Partial<Record<"fullName" | "email" | "phone" | "countryCode", string>>;

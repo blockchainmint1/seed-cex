@@ -1,5 +1,10 @@
-import { useId, useRef, useState, type ReactNode } from "react";
-import { SCHEDULE_DATES, SCHEDULE_SESSIONS, SCHEDULE_TIME, RECORDING_NOTE, DEPOSIT_USD, PAYMENTS_ENABLED, validateDetails, type Details, type Errors } from "@/lib/ignite-registration";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { useSession } from "@/hooks/use-session";
+import { getMyIgnite, startIgniteCheckout } from "@/lib/ignite.functions";
+import { SCHEDULE_DATES, SCHEDULE_SESSIONS, SCHEDULE_TIME, RECORDING_NOTE, DEPOSIT_USD, validateDetails, type Details, type Errors } from "@/lib/ignite-registration";
 
 const COUNTRY_CODES = ["+1", "+44", "+61", "+64", "+353", "+49", "+33", "+34", "+39", "+31", "+41", "+46", "+47", "+45", "+52", "+55", "+57", "+27", "+234", "+254", "+971", "+65", "+60", "+63", "+91", "+81", "+82"];
 
@@ -11,6 +16,49 @@ export function RegistrationFlow() {
   const [errors, setErrors] = useState<Errors>({});
   const [touched, setTouched] = useState<Partial<Record<"fullName" | "email" | "phone" | "countryCode", boolean>>>({});
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const { user, loading } = useSession();
+  const fetchMine = useServerFn(getMyIgnite);
+  const checkout = useServerFn(startIgniteCheckout);
+  const mine = useQuery({ queryKey: ["ignite", user?.id], queryFn: () => fetchMine(), enabled: !!user, refetchInterval: (q) => (q.state.data?.registration?.status === "pending" ? 15000 : false) });
+  const [paying, setPaying] = useState(false);
+  const [payError, setPayError] = useState<string | null>(null);
+  const prefilled = useRef(false);
+  useEffect(() => {
+    const d = mine.data;
+    if (!d || prefilled.current) return;
+    prefilled.current = true;
+    const r = d.registration;
+    setDetails((x) => ({ ...x, fullName: r?.full_name || d.prefill.fullName || x.fullName, email: r?.email || d.prefill.email || x.email, countryCode: r?.country_code || x.countryCode, phone: r?.phone || x.phone }));
+  }, [mine.data]);
+
+  const pay = async () => {
+    setPaying(true); setPayError(null);
+    try {
+      const { checkoutUrl } = await checkout({ data: { ...details, origin: window.location.origin } });
+      window.location.href = checkoutUrl;
+    } catch (e) { setPayError(e instanceof Error ? e.message : "Checkout failed"); setPaying(false); }
+  };
+
+  if (loading) return <div className="rounded-3xl border border-border bg-card p-8 shadow-glow text-sm text-muted-foreground">Loading…</div>;
+  if (!user) {
+    return (
+      <div className="rounded-3xl border border-border bg-card p-6 shadow-glow sm:p-8">
+        <h2 className="font-display text-3xl">Reserve your seat</h2>
+        <p className="mt-2 text-sm text-muted-foreground">Sign in with your Honest.Money account to reserve. Your seat, receipt and class reminders stay tied to your HME profile. New to Honest.Money? You can create a free account in the same step.</p>
+        <Link to="/auth" onClick={() => { try { sessionStorage.setItem("seeds-after-signin", "/register"); } catch { /* ignore */ } }} className="seed-btn mt-6 inline-flex justify-center">Sign in with Honest.Money</Link>
+      </div>
+    );
+  }
+  const reg = mine.data?.registration;
+  if (reg?.status === "confirmed") {
+    return (
+      <div className="rounded-3xl border border-border bg-card p-6 shadow-glow sm:p-8" role="status">
+        <p className="text-xs font-semibold uppercase tracking-widest text-primary">Seat confirmed</p>
+        <h2 className="mt-2 font-display text-3xl">You're in, {reg.full_name.split(" ")[0]}.</h2>
+        <p className="mt-2 text-sm text-muted-foreground">Payment verified{reg.paid_chain ? ` (${reg.paid_chain.toUpperCase()})` : ""}. Ignite runs {SCHEDULE_DATES}, {SCHEDULE_TIME.toLowerCase()}. We'll send reminders to {reg.email}.</p>
+      </div>
+    );
+  }
 
   const update = <K extends keyof Details>(k: K, v: Details[K]) => {
     const next = { ...details, [k]: v };
@@ -105,14 +153,23 @@ export function RegistrationFlow() {
             This payment is a reservation deposit for the Ignite class. It is not trading funds and does not open, fund, or grant ownership in a Seeds exchange account.
           </p>
 
-          <div className="mt-5 rounded-2xl border border-warning/40 bg-warning/5 p-4" role="status">
-            <p className="text-sm font-semibold text-warning">Payment setup in progress</p>
-            <p className="mt-1 text-sm text-muted-foreground">Payments aren't open yet, so no money can be collected and no seat is reserved from this preview.</p>
-          </div>
+          {reg && (reg.status === "pending" || reg.status === "underpaid") && (
+            <div className="mt-5 rounded-2xl border border-warning/40 bg-warning/5 p-4" role="status">
+              <p className="text-sm font-semibold text-warning">{reg.status === "underpaid" ? "Payment arrived short" : "Payment pending"}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{reg.status === "underpaid" ? "We received less than the deposit. Contact help before paying again." : "Crypto payments stay pending until confirmed on-chain. This page updates by itself."}</p>
+            </div>
+          )}
+          {!mine.data?.cryptoOpen && (
+            <div className="mt-5 rounded-2xl border border-warning/40 bg-warning/5 p-4" role="status">
+              <p className="text-sm font-semibold text-warning">Payment setup in progress</p>
+              <p className="mt-1 text-sm text-muted-foreground">Crypto checkout opens shortly. No money can be collected yet.</p>
+            </div>
+          )}
           <div className="mt-4 grid gap-3">
-            <button type="button" className="seed-btn" disabled={!PAYMENTS_ENABLED} aria-describedby="pay-note">Pay with card / debit (Stripe)</button>
-            <button type="button" className="seed-btn" disabled={!PAYMENTS_ENABLED} aria-describedby="pay-note">Pay with crypto (NectarPay)</button>
-            <p id="pay-note" className="sr-only">Payment options are disabled until setup is complete.</p>
+            <button type="button" className="seed-btn" disabled={!mine.data?.cryptoOpen || paying} onClick={pay}>{paying ? "Opening checkout…" : reg?.status === "pending" ? "Continue crypto payment (NectarPay)" : `Pay $${DEPOSIT_USD} with crypto (NectarPay)`}</button>
+            <button type="button" className="seed-btn-ghost" disabled>Peer Pay — coming soon</button>
+            {payError && <p className="text-sm text-destructive" role="alert">{payError}</p>}
+            <p className="text-xs text-muted-foreground">BTC, TXC, TSD, USDC, ETH, LTC, DOGE, ISK or ZCU — paid straight to Seeds' own wallet through NectarPay.</p>
           </div>
           <button type="button" onClick={() => go("details")} className="seed-btn-ghost mt-4 w-full">← Back to details</button>
         </div>

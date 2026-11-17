@@ -112,6 +112,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     scripts: [
       { src: "https://honest.money/hm.js", async: true },
+      { src: "https://help.honest.money/api/public/widget.js", async: true, "data-ecosystem": "seeds", "data-brand-name": "Seeds", "data-context": "Seeds", "data-theme": "auto" } as never,
       {
         children:
           "try{if(localStorage.getItem('seeds-theme')==='light')document.documentElement.classList.remove('dark')}catch(e){}",

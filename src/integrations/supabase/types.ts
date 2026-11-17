@@ -321,6 +321,96 @@ export type Database = {
           },
         ]
       }
+      ignite_registrations: {
+        Row: {
+          amount_usd: number
+          checkout_url: string | null
+          confirmed_at: string | null
+          country_code: string
+          created_at: string
+          email: string
+          full_name: string
+          hm_member_id: string | null
+          id: string
+          invoice_expires_at: string | null
+          invoice_id: string | null
+          marketing_opt_in: boolean
+          paid_amount_usd: number | null
+          paid_chain: string | null
+          payment_method: string
+          phone: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_usd: number
+          checkout_url?: string | null
+          confirmed_at?: string | null
+          country_code: string
+          created_at?: string
+          email: string
+          full_name: string
+          hm_member_id?: string | null
+          id?: string
+          invoice_expires_at?: string | null
+          invoice_id?: string | null
+          marketing_opt_in?: boolean
+          paid_amount_usd?: number | null
+          paid_chain?: string | null
+          payment_method?: string
+          phone: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_usd?: number
+          checkout_url?: string | null
+          confirmed_at?: string | null
+          country_code?: string
+          created_at?: string
+          email?: string
+          full_name?: string
+          hm_member_id?: string | null
+          id?: string
+          invoice_expires_at?: string | null
+          invoice_id?: string | null
+          marketing_opt_in?: boolean
+          paid_amount_usd?: number | null
+          paid_chain?: string | null
+          payment_method?: string
+          phone?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      nectarpay_events: {
+        Row: {
+          event_id: string
+          invoice_id: string | null
+          payload: Json
+          received_at: string
+          type: string
+        }
+        Insert: {
+          event_id: string
+          invoice_id?: string | null
+          payload: Json
+          received_at?: string
+          type: string
+        }
+        Update: {
+          event_id?: string
+          invoice_id?: string | null
+          payload?: Json
+          received_at?: string
+          type?: string
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           amount: number

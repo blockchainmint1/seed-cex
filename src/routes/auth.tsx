@@ -29,7 +29,7 @@ function Auth() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!loading && user) navigate({ to: "/wallet" });
+    if (!loading && user) navigate({ to: afterSignIn() as "/wallet" });
   }, [loading, user, navigate]);
 
   function honestMoney() {
@@ -55,7 +55,7 @@ function Auth() {
     const onMsg = (ev: MessageEvent) => {
       if (ev.origin !== window.location.origin || ev.data?.type !== "seeds-sso-done") return;
       window.removeEventListener("message", onMsg);
-      navigate({ to: "/wallet" });
+      navigate({ to: afterSignIn() as "/wallet" });
     };
     window.addEventListener("message", onMsg);
   }
@@ -90,4 +90,13 @@ function Auth() {
       </p>
     </div>
   );
+}
+
+
+function afterSignIn() {
+  try {
+    const n = sessionStorage.getItem("seeds-after-signin");
+    if (n) { sessionStorage.removeItem("seeds-after-signin"); if (/^\/[a-z0-9/-]*$/i.test(n)) return n; }
+  } catch { /* ignore */ }
+  return "/wallet";
 }

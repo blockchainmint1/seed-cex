@@ -64,6 +64,13 @@
       "when": 1794930982126,
       "tag": "0008_audit_day0_week1_hardening",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794931732039,
+      "tag": "0009_ignite_registrations",
+      "breakpoints": true
     }
   ]
 }
