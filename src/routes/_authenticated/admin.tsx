@@ -306,7 +306,7 @@ function IgnitePanel() {
 
   return (
     <Panel title={`Ignite class registrations · ${d.confirmed} confirmed · ${d.seatsLeft} of ${d.capacity} seats left · ${d.pending} pending · ${d.canceled} cancelled`}>
-      <table className="w-full font-mono text-[11px]">
+      <table className="w-full whitespace-nowrap font-mono text-[11px]">
         <thead className="text-muted-foreground">
           <tr className="border-b border-border">
             <th className="px-4 py-2 text-left">Name</th>
