@@ -22,6 +22,7 @@ import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as SsoRouteImport } from './routes/sso'
 import { Route as StatsRouteImport } from './routes/stats'
+import { Route as SwapRouteImport } from './routes/swap'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as TsdRouteImport } from './routes/tsd'
 import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticated/account'
@@ -134,6 +135,11 @@ const SsoRoute = SsoRouteImport.update({
 const StatsRoute = StatsRouteImport.update({
   id: '/stats',
   path: '/stats',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SwapRoute = SwapRouteImport.update({
+  id: '/swap',
+  path: '/swap',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TermsRoute = TermsRouteImport.update({
@@ -402,6 +408,7 @@ export interface FileRoutesByFullPath {
   '/register': typeof RegisterRoute
   '/sso': typeof SsoRoute
   '/stats': typeof StatsRoute
+  '/swap': typeof SwapRoute
   '/terms': typeof TermsRoute
   '/tsd': typeof TsdRoute
   '/account': typeof AuthenticatedAccountRoute
@@ -465,6 +472,7 @@ export interface FileRoutesByTo {
   '/register': typeof RegisterRoute
   '/sso': typeof SsoRoute
   '/stats': typeof StatsRoute
+  '/swap': typeof SwapRoute
   '/terms': typeof TermsRoute
   '/tsd': typeof TsdRoute
   '/account': typeof AuthenticatedAccountRoute
@@ -530,6 +538,7 @@ export interface FileRoutesById {
   '/register': typeof RegisterRoute
   '/sso': typeof SsoRoute
   '/stats': typeof StatsRoute
+  '/swap': typeof SwapRoute
   '/terms': typeof TermsRoute
   '/tsd': typeof TsdRoute
   '/_authenticated/account': typeof AuthenticatedAccountRoute
@@ -595,6 +604,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/sso'
     | '/stats'
+    | '/swap'
     | '/terms'
     | '/tsd'
     | '/account'
@@ -658,6 +668,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/sso'
     | '/stats'
+    | '/swap'
     | '/terms'
     | '/tsd'
     | '/account'
@@ -722,6 +733,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/sso'
     | '/stats'
+    | '/swap'
     | '/terms'
     | '/tsd'
     | '/_authenticated/account'
@@ -787,6 +799,7 @@ export interface RootRouteChildren {
   RegisterRoute: typeof RegisterRoute
   SsoRoute: typeof SsoRoute
   StatsRoute: typeof StatsRoute
+  SwapRoute: typeof SwapRoute
   TermsRoute: typeof TermsRoute
   TsdRoute: typeof TsdRoute
   ProofCodeRoute: typeof ProofCodeRoute
@@ -920,6 +933,13 @@ declare module '@tanstack/react-router' {
       path: '/stats'
       fullPath: '/stats'
       preLoaderRoute: typeof StatsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/swap': {
+      id: '/swap'
+      path: '/swap'
+      fullPath: '/swap'
+      preLoaderRoute: typeof SwapRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/terms': {
@@ -1321,6 +1341,7 @@ const rootRouteChildren: RootRouteChildren = {
   RegisterRoute: RegisterRoute,
   SsoRoute: SsoRoute,
   StatsRoute: StatsRoute,
+  SwapRoute: SwapRoute,
   TermsRoute: TermsRoute,
   TsdRoute: TsdRoute,
   ProofCodeRoute: ProofCodeRoute,

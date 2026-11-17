@@ -1,5 +1,10 @@
 # Roadmap
 
+- [x] Cross-chain swaps: THORChain routes for BTC, ETH, LTC, DOGE, BCH, XRP, SOL, ZEC, BNB, TRX (+ USDC/USDT on Ethereum) — live quotes, safety checks, /swap page
+- [x] Cross-chain swaps: add Maya Protocol as second route with best-price comparison (price-only until a second independent Maya server exists)
+- [ ] Cross-chain swaps: sending from HME Wallet pockets (blocked: HME Wallet chain support + linked-pocket settlement)
+- [ ] Cross-chain swaps: Seeds fee — register a THORName/MAYAName and set the fee (blocked: Bobby's fee choice)
+
 - [x] Import the supplied 21-page brand guidelines faithfully at /brand, with original PDF access and desktop/mobile verification
 
 - [x] Update HME SSO, profile sync and events to HME_ECOSYSTEM; confirmed all 11 existing UUIDs with HME, tested profile receiver, activity reporting and site restrictions

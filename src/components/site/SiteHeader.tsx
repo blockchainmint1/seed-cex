@@ -94,6 +94,13 @@ export function SiteHeader() {
           >
             P2P
           </Link>
+          <Link
+            to="/swap"
+            className="text-muted-foreground transition-colors hover:text-foreground"
+            activeProps={{ className: "text-primary" }}
+          >
+            Swap
+          </Link>
           {user ? (
             <Link
               to="/trades"
