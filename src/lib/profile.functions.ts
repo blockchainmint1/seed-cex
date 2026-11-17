@@ -94,79 +94,20 @@ export const updateMyProfile = createServerFn({ method: "POST" })
     return row as unknown as Profile;
   });
 
-/** Step 1 of Telegram linking: send a 6-digit code to the chat id the user gave us. */
-export const startTelegramLink = createServerFn({ method: "POST" })
+/** One-tap Telegram linking: returns a t.me link carrying a single-use code (stored hashed, 15 minutes). */
+export const startTelegramConnect = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) =>
-    z.object({ chatId: z.string().trim().min(2).max(32) }).parse(input ?? {}),
-  )
-  .handler(async ({ data, context }) => {
+  .handler(async ({ context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { sendTelegram, telegramConfigured } = await import("./telegram.server");
-
-    if (!telegramConfigured()) {
-      throw new Error(
-        "Telegram alerts are not connected yet on this deployment. Ask an admin to link the Seeds Telegram bot.",
-      );
-    }
-
-    const code = String(Math.floor(100000 + Math.random() * 900000));
-    const expires = new Date(Date.now() + 10 * 60_000).toISOString();
-
-    await sendTelegram(
-      data.chatId,
-      `<b>Seeds</b>\nYour verification code is <b>${code}</b>.\nEnter it on your account page to switch on alerts. It expires in 10 minutes.`,
-    );
-
-    const { error } = await supabaseAdmin.from("profiles").upsert(
-      {
-        id: context.userId,
-        telegram_chat_id: data.chatId,
-        telegram_verified: false,
-        telegram_code: code,
-        telegram_code_expires_at: expires,
-      },
-      { onConflict: "id" },
-    );
-    if (error) throw new Error(error.message);
-    return { sent: true as const };
-  });
-
-export const confirmTelegramLink = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input) =>
-    z.object({ code: z.string().trim().length(6) }).parse(input ?? {}),
-  )
-  .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { sendTelegram } = await import("./telegram.server");
-
-    const { data: row } = await supabaseAdmin
-      .from("profiles")
-      .select("telegram_chat_id, telegram_code, telegram_code_expires_at")
-      .eq("id", context.userId)
-      .maybeSingle();
-
-    if (!row?.telegram_code || !row.telegram_chat_id) throw new Error("Start the link first.");
-    if (row.telegram_code_expires_at && new Date(row.telegram_code_expires_at) < new Date()) {
-      throw new Error("That code expired. Send a new one.");
-    }
-    if (row.telegram_code !== data.code) throw new Error("Wrong code.");
-
-    const { error } = await supabaseAdmin
-      .from("profiles")
-      .update({ telegram_verified: true, telegram_code: null, telegram_code_expires_at: null })
+    const { newStartCode, sha256hex, telegramConfigured } = await import("./telegram.server");
+    const { connectUrl } = await import("./telegram-bot");
+    if (!telegramConfigured()) throw new Error("Telegram alerts aren't switched on yet. Please try again later.");
+    const code = newStartCode();
+    const { error } = await supabaseAdmin.from("profiles")
+      .update({ telegram_code: await sha256hex(code), telegram_code_expires_at: new Date(Date.now() + 15 * 60_000).toISOString() })
       .eq("id", context.userId);
     if (error) throw new Error(error.message);
-
-    await sendTelegram(
-      String(row.telegram_chat_id),
-      "<b>Seeds</b>\nAlerts are on. You'll hear from us when your orders fill and settle.",
-    );
-    const { emailAccountChange } = await import("@/lib/email/send.server");
-    await emailAccountChange(context.userId, "Telegram alerts", [`Linked Telegram chat ending ${String(row.telegram_chat_id).slice(-4)}`],
-      "unlink Telegram on your profile, then sign out of Honest.Money everywhere and contact support@honest.money.");
-    return { verified: true as const };
+    return { url: connectUrl(code) };
   });
 
 export const unlinkTelegram = createServerFn({ method: "POST" })

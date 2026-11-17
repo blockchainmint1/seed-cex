@@ -68,3 +68,43 @@ export async function notifyUser(
     console.error("notifyUser failed", err);
   }
 }
+
+const b64url = (b: Uint8Array) => btoa(String.fromCharCode(...b)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+export async function sha256hex(v: string) {
+  const d = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(v)));
+  return [...d].map((x) => x.toString(16).padStart(2, "0")).join("");
+}
+export const newStartCode = () => b64url(crypto.getRandomValues(new Uint8Array(18)));
+
+/** Secret Telegram echoes back in X-Telegram-Bot-Api-Secret-Token; derived so nothing extra is stored. */
+export async function telegramWebhookSecret() {
+  const key = process.env["TELEGRAM_API_KEY"] ?? "";
+  const d = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`telegram-webhook:${key}`)));
+  return b64url(d);
+}
+
+/** Handles "/start <code>" from the Seeds bot: links that private chat to the member who made the code. */
+export async function handleTelegramUpdate(update: { message?: { text?: string; chat?: { id?: number; type?: string } } }) {
+  const { parseStartCode } = await import("./telegram-bot");
+  const msg = update.message;
+  const chatId = msg?.chat?.id;
+  if (!chatId || msg?.chat?.type !== "private" || !msg.text?.startsWith("/start")) return "ignored";
+  const code = parseStartCode(msg.text);
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const now = new Date().toISOString();
+  const { data: rows } = code
+    ? await supabaseAdmin.from("profiles")
+        .update({ telegram_chat_id: String(chatId), telegram_verified: true, telegram_code: null, telegram_code_expires_at: null })
+        .eq("telegram_code", await sha256hex(code)).gt("telegram_code_expires_at", now).select("id")
+    : { data: null };
+  const userId = rows?.[0]?.id;
+  if (!userId) {
+    await sendTelegram(String(chatId), "<b>Seeds</b>\nTo turn on alerts, open your Seeds Profile and tap <b>Connect Telegram</b>. Links expire after 15 minutes.").catch(() => {});
+    return "no_match";
+  }
+  await sendTelegram(String(chatId), "<b>Seeds</b>\nAlerts are on. You'll hear from us when your orders fill and settle.").catch(() => {});
+  const { emailAccountChange } = await import("@/lib/email/send.server");
+  await emailAccountChange(userId, "Telegram alerts", [`Linked Telegram chat ending ${String(chatId).slice(-4)}`],
+    "unlink Telegram on your profile, then sign out of Honest.Money everywhere and contact support@honest.money.");
+  return "linked";
+}

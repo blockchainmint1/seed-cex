@@ -6,10 +6,9 @@ import { useServerFn } from "@tanstack/react-start";
 import { Check, KeyRound, Send, ArrowUpRight } from "lucide-react";
 import { useSession } from "@/hooks/use-session";
 import {
-  confirmTelegramLink,
   getMyProfile,
   sendTestAlert,
-  startTelegramLink,
+  startTelegramConnect,
   unlinkTelegram,
   updateMyProfile,
   type Profile,
@@ -82,17 +81,16 @@ function AccountPage() {
   const { user } = useSession();
   const load = useServerFn(getMyProfile);
   const save = useServerFn(updateMyProfile);
-  const startLink = useServerFn(startTelegramLink);
-  const confirmLink = useServerFn(confirmTelegramLink);
+  const connect = useServerFn(startTelegramConnect);
   const unlink = useServerFn(unlinkTelegram);
   const test = useServerFn(sendTestAlert);
 
-  const profile = useQuery({ queryKey: ["my-profile"], queryFn: () => load() });
+  // Set while we wait for the member to tap Start in Telegram; the profile is re-read until it links.
+  const [tgWaitUrl, setTgWaitUrl] = useState<string | null>(null);
+  const profile = useQuery({ queryKey: ["my-profile"], queryFn: () => load(), refetchInterval: (q) => (tgWaitUrl && !q.state.data?.telegram_verified ? 3000 : false) });
   const p = profile.data;
 
   const [form, setForm] = useState<Partial<Profile>>({});
-  const [chatId, setChatId] = useState("");
-  const [code, setCode] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   // Telegram results show next to the Telegram buttons, so they're visible on phones too.
@@ -101,6 +99,13 @@ function AccountPage() {
   useEffect(() => {
     if (p) setForm(p);
   }, [p]);
+
+  useEffect(() => {
+    if (tgWaitUrl && p?.telegram_verified) {
+      setTgWaitUrl(null);
+      setTgNote({ ok: true, text: "Telegram linked. Alerts are on." });
+    }
+  }, [tgWaitUrl, p?.telegram_verified]);
 
   const patch = (v: Partial<Profile>) => setForm((f) => ({ ...f, ...v }));
 
@@ -139,22 +144,12 @@ function AccountPage() {
   );
 
   const tg = useMutation({
-    mutationFn: async (action: "start" | "confirm" | "unlink" | "test") => {
-      if (action === "start") return startLink({ data: { chatId: chatId.trim() } });
-      if (action === "confirm") return confirmLink({ data: { code: code.trim() } });
+    mutationFn: async (action: "unlink" | "test") => {
       if (action === "unlink") return unlink();
       return test();
     },
     onSuccess: (_r, action) => {
-      setTgNote({ ok: true, text:
-        action === "start"
-          ? "Code sent to Telegram."
-          : action === "confirm"
-            ? "Telegram linked."
-            : action === "unlink"
-              ? "Telegram unlinked."
-              : "Test alert sent." });
-      setCode("");
+      setTgNote({ ok: true, text: action === "unlink" ? "Telegram unlinked." : "Test alert sent." });
       qc.invalidateQueries({ queryKey: ["my-profile"] });
     },
     onError: (e: Error) => setTgNote({ ok: false, text: e.message }),
@@ -290,54 +285,38 @@ function AccountPage() {
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <input
-                className={inputCls}
-                value={chatId}
-                onChange={(e) => setChatId(e.target.value)}
-                placeholder="Telegram chat ID (e.g. 123456789)"
-              />
-              <Button
-                onClick={() => tg.mutate("start")}
-                disabled={!chatId.trim() || tg.isPending}
-                className="rounded-sm bg-primary px-4 py-2 font-mono text-xs font-semibold tracking-wider text-primary-foreground uppercase hover:opacity-90 disabled:opacity-50"
-              >
-                Send code
-              </Button>
-            </div>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <input
-                className={inputCls}
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder="6-digit code from Telegram"
-              />
-              <Button
-                onClick={() => tg.mutate("confirm")}
-                disabled={code.trim().length !== 6 || tg.isPending}
-                className="rounded-sm border border-border px-4 py-2 font-mono text-xs uppercase hover:border-primary hover:text-primary disabled:opacity-50"
-              >
-                Verify
-              </Button>
-            </div>
-            <ol className="list-decimal space-y-1 pl-4 font-mono text-[11px] text-muted-foreground">
-              <li>
-                Open{" "}
-                <a href={SEEDS_BOT_URL} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-4">
-                  @{SEEDS_BOT_USERNAME}
-                </a>{" "}
-                in Telegram and tap <b>Start</b>. Telegram blocks bots until you do.
-              </li>
-              <li>
-                Get your chat ID by messaging{" "}
-                <a href="https://t.me/userinfobot" target="_blank" rel="noreferrer" className="text-primary underline underline-offset-4">
-                  @userinfobot
-                </a>
-                , paste it above and tap Send code.
-              </li>
-              <li>Enter the 6-digit code the Seeds bot sends you.</li>
-            </ol>
+          <div className="space-y-3">
+            <Button
+              onClick={async () => {
+                // Open the tab during the click so phones don't block it, then point it at Telegram.
+                const tab = window.open("", "_blank");
+                try {
+                  const { url } = await connect();
+                  setTgWaitUrl(url);
+                  setTgNote(null);
+                  if (tab) tab.location.href = url;
+                  else window.location.href = url;
+                } catch (e) {
+                  tab?.close();
+                  setTgNote({ ok: false, text: e instanceof Error ? e.message : "Couldn't start Telegram linking." });
+                }
+              }}
+              className="inline-flex items-center gap-2 rounded-sm bg-primary px-4 py-2 font-mono text-xs font-semibold tracking-wider text-primary-foreground uppercase hover:opacity-90"
+            >
+              <Send className="h-3.5 w-3.5" /> Connect Telegram
+            </Button>
+            <p className="font-mono text-[11px] text-muted-foreground">
+              {tgWaitUrl ? (
+                <>
+                  Waiting for you to tap <b>Start</b> in Telegram… This page updates by itself.{" "}
+                  <a href={tgWaitUrl} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-4">
+                    Open Telegram again
+                  </a>
+                </>
+              ) : (
+                <>Opens @{SEEDS_BOT_USERNAME} in Telegram. Tap Start and you're done.</>
+              )}
+            </p>
           </div>
         )}
       </div>
