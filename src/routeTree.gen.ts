@@ -32,6 +32,7 @@ import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedApiKeysRouteImport } from './routes/_authenticated/api-keys'
 import { Route as AuthenticatedTradesRouteImport } from './routes/_authenticated/trades'
 import { Route as AuthenticatedWalletRouteImport } from './routes/_authenticated/wallet'
+import { Route as InviteCodeRouteImport } from './routes/invite.$code'
 import { Route as P2pIndexRouteImport } from './routes/p2p.index'
 import { Route as PayTokenRouteImport } from './routes/pay.$token'
 import { Route as ProofCodeRouteImport } from './routes/proof.code'
@@ -193,6 +194,11 @@ const AuthenticatedWalletRoute = AuthenticatedWalletRouteImport.update({
   id: '/wallet',
   path: '/wallet',
   getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const InviteCodeRoute = InviteCodeRouteImport.update({
+  id: '/invite/$code',
+  path: '/invite/$code',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const P2pIndexRoute = P2pIndexRouteImport.update({
   id: '/p2p/',
@@ -462,6 +468,7 @@ export interface FileRoutesByFullPath {
   '/api-keys': typeof AuthenticatedApiKeysRoute
   '/trades': typeof AuthenticatedTradesRoute
   '/wallet': typeof AuthenticatedWalletRoute
+  '/invite/$code': typeof InviteCodeRoute
   '/pay/$token': typeof PayTokenRoute
   '/proof/code': typeof ProofCodeRoute
   '/register/confirmed': typeof RegisterConfirmedRoute
@@ -533,6 +540,7 @@ export interface FileRoutesByTo {
   '/api-keys': typeof AuthenticatedApiKeysRoute
   '/trades': typeof AuthenticatedTradesRoute
   '/wallet': typeof AuthenticatedWalletRoute
+  '/invite/$code': typeof InviteCodeRoute
   '/pay/$token': typeof PayTokenRoute
   '/proof/code': typeof ProofCodeRoute
   '/register/confirmed': typeof RegisterConfirmedRoute
@@ -606,6 +614,7 @@ export interface FileRoutesById {
   '/_authenticated/api-keys': typeof AuthenticatedApiKeysRoute
   '/_authenticated/trades': typeof AuthenticatedTradesRoute
   '/_authenticated/wallet': typeof AuthenticatedWalletRoute
+  '/invite/$code': typeof InviteCodeRoute
   '/pay/$token': typeof PayTokenRoute
   '/proof/code': typeof ProofCodeRoute
   '/register_/confirmed': typeof RegisterConfirmedRoute
@@ -679,6 +688,7 @@ export interface FileRouteTypes {
     | '/api-keys'
     | '/trades'
     | '/wallet'
+    | '/invite/$code'
     | '/pay/$token'
     | '/proof/code'
     | '/register/confirmed'
@@ -750,6 +760,7 @@ export interface FileRouteTypes {
     | '/api-keys'
     | '/trades'
     | '/wallet'
+    | '/invite/$code'
     | '/pay/$token'
     | '/proof/code'
     | '/register/confirmed'
@@ -822,6 +833,7 @@ export interface FileRouteTypes {
     | '/_authenticated/api-keys'
     | '/_authenticated/trades'
     | '/_authenticated/wallet'
+    | '/invite/$code'
     | '/pay/$token'
     | '/proof/code'
     | '/register_/confirmed'
@@ -890,6 +902,7 @@ export interface RootRouteChildren {
   SwapRoute: typeof SwapRoute
   TermsRoute: typeof TermsRoute
   TsdRoute: typeof TsdRoute
+  InviteCodeRoute: typeof InviteCodeRoute
   PayTokenRoute: typeof PayTokenRoute
   ProofCodeRoute: typeof ProofCodeRoute
   RegisterConfirmedRoute: typeof RegisterConfirmedRoute
@@ -1097,6 +1110,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/wallet'
       preLoaderRoute: typeof AuthenticatedWalletRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/invite/$code': {
+      id: '/invite/$code'
+      path: '/invite/$code'
+      fullPath: '/invite/$code'
+      preLoaderRoute: typeof InviteCodeRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/p2p/': {
       id: '/p2p/'
@@ -1488,6 +1508,7 @@ const rootRouteChildren: RootRouteChildren = {
   SwapRoute: SwapRoute,
   TermsRoute: TermsRoute,
   TsdRoute: TsdRoute,
+  InviteCodeRoute: InviteCodeRoute,
   PayTokenRoute: PayTokenRoute,
   ProofCodeRoute: ProofCodeRoute,
   RegisterConfirmedRoute: RegisterConfirmedRoute,

@@ -51,6 +51,19 @@ export function referralUrl(code: string, site = "https://seeds.honest.money") {
   return `https://honest.money/r/${encodeURIComponent(code)}?to=${encodeURIComponent(`${site}/register`)}`;
 }
 
+/**
+ * Short, shareable invite link shown to members: seeds.honest.money/invite/{code}.
+ * That page forwards to referralUrl(code) so Honest.Money still counts the click.
+ */
+export function inviteUrl(code: string, site = "https://seeds.honest.money") {
+  return `${site}/invite/${encodeURIComponent(code)}`;
+}
+
+/** The invite link as people read it: no https://, no trailing slash. */
+export function inviteLabel(url: string) {
+  return url.replace(/^https?:\/\//, "").replace(/\/$/, "");
+}
+
 /** NectarPay invoice says paid in full: confirmed/overpaid and at least the deposit. */
 export function invoiceSettled(inv: { status: string; fiat_amount: number | string }, amountUsd: number | string) {
   return ["confirmed", "overpaid"].includes(inv.status) && Number(inv.fiat_amount) >= Number(amountUsd);

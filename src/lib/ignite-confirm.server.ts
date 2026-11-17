@@ -2,7 +2,7 @@
 // Called by the signed NectarPay webhook and by the payment re-check, so a
 // missed webhook can't strand a paid seat. Both paths re-read the invoice from
 // the NectarPay API and confirm with a compare-and-set, so notices fire once.
-import { CONFIRMABLE_STATUSES, canConfirmSeat, invoiceBelongs, invoiceSettled, paidInLabel, referralUrl } from "./ignite-registration";
+import { CONFIRMABLE_STATUSES, canConfirmSeat, invoiceBelongs, invoiceSettled, paidInLabel, inviteUrl } from "./ignite-registration";
 
 type EventData = { invoice_id: string; chain?: string | null; paid_amount_usd?: number | null };
 const REG_COLS = "id, user_id, status, hm_member_id, email, full_name, amount_usd, payment_method, invoice_id, ref_code";
@@ -67,7 +67,7 @@ export async function processIgniteInvoiceEvent(type: string, data: EventData): 
   await emailUser(reg.user_id, "ignite-seat-confirmed", (r) => ({
     name: ((n) => n.charAt(0).toUpperCase() + n.slice(1))(reg!.full_name.trim().split(/\s+/)[0] || r.name), amount: Number(reg!.amount_usd), paidBy: payerName,
     paidWith: paidInLabel(paidAsset, data.chain ?? inv.chain ?? null),
-    confirmedAt: now, timezone: r.timezone, referralUrl: code ? referralUrl(code) : null,
+    confirmedAt: now, timezone: r.timezone, referralUrl: code ? inviteUrl(code) : null,
   }), { dedupe: reg.id, to: reg.email });
   await sendHubEvent({
     event: "purchase", member_id: reg.hm_member_id, email: reg.email, ref: reg.ref_code,

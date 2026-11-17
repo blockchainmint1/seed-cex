@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { DEPOSIT_USD, SEAT_CAPACITY, cleanRefCode, referralUrl, seatsLeft, validateDetails, normalizeEmail, type Details } from "./ignite-registration";
+import { DEPOSIT_USD, SEAT_CAPACITY, cleanRefCode, inviteUrl, seatsLeft, validateDetails, normalizeEmail, type Details } from "./ignite-registration";
 import { emailsLeft, peerLinkState, peerToken, selfCheckoutBlock } from "./ignite-peer";
 
 const COLS = "id, payment_method, status, full_name, email, country_code, phone, amount_usd, checkout_url, invoice_expires_at, confirmed_at, paid_chain, paid_asset";
@@ -124,7 +124,7 @@ export const getIgniteConfirmation = createServerFn({ method: "GET" })
       const code = await hmeReferralCode(reg.hm_member_id);
       return {
         state: "confirmed" as const, seatsLeft: left, capacity: SEAT_CAPACITY, firstName, email: reg.email,
-        paidChain: reg.paid_chain, paidAsset: reg.paid_asset, confirmedAt: reg.confirmed_at, paidBy, referralUrl: code ? referralUrl(code) : null,
+        paidChain: reg.paid_chain, paidAsset: reg.paid_asset, confirmedAt: reg.confirmed_at, paidBy, referralUrl: code ? inviteUrl(code) : null,
       };
     }
     if (reg.status === "underpaid") return { state: "underpaid" as const, seatsLeft: left, capacity: SEAT_CAPACITY, firstName };

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Link } from "@react-email/components";
+import { Link, Section, Text } from "@react-email/components";
 import { C, Cta, Details, Layout, Note, P, SITE, usd, when } from "../components";
 
 export type IgniteSeatConfirmedProps = {
@@ -32,13 +32,25 @@ export function IgniteSeatConfirmedEmail(p: IgniteSeatConfirmedProps) {
       ]} />
       <Note>We'll email you the connection details for the live sessions shortly, before the first class. Sessions are recorded, so you can catch up if you miss one.</Note>
       {p.referralUrl && (
-        <P>Know another Honest.Money miner who should be in the room? Share your personal link:{" "}
-          <Link href={p.referralUrl} style={{ color: C.greenDeep, fontWeight: 600, wordBreak: "break-all" }}>{p.referralUrl}</Link>
-        </P>
+        <>
+          <P>Know another Honest.Money miner who should be in the room? Share your personal invite link:</P>
+          <Section style={{ border: `1px solid ${C.line}`, borderRadius: 12, padding: "14px 20px", margin: "0 0 24px", backgroundColor: "#FFFFFF" }}>
+            <Text style={{ margin: "0 0 4px", fontSize: 12, lineHeight: "16px", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: C.stone }}>Your invite link</Text>
+            <Link href={p.referralUrl} style={{ color: C.greenDeep, fontSize: 16, lineHeight: "22px", fontWeight: 600, overflowWrap: "break-word" }}>{breakable(p.referralUrl.replace(/^https?:\/\//, ""))}</Link>
+          </Section>
+        </>
       )}
       <Cta href={`${SITE}/register/confirmed`}>View your confirmation</Cta>
       {p.paidBy && <P muted>Any repayment between you and {p.paidBy} is your own arrangement. Seeds doesn't handle it.</P>}
       <P muted>This deposit reserves a class seat. It doesn't open or fund a Seeds exchange account.</P>
     </Layout>
   );
+}
+
+/** Lets a narrow phone wrap the link after a "/" instead of mid-name. */
+function breakable(label: string) {
+  const parts = label.split("/");
+  return parts.map((part, i) => (
+    <React.Fragment key={i}>{i > 0 ? "/" : ""}{i > 0 && i === parts.length - 1 ? <wbr /> : null}{part}</React.Fragment>
+  ));
 }

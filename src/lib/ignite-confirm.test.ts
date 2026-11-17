@@ -1,5 +1,5 @@
 import { describe, expect, test as it } from "bun:test";
-import { cleanRefCode, invoiceBelongs, invoiceSettled, referralUrl, seatsLeft } from "./ignite-registration";
+import { cleanRefCode, inviteLabel, inviteUrl, invoiceBelongs, invoiceSettled, referralUrl, seatsLeft } from "./ignite-registration";
 
 const REG = "4cb2f720-947e-4c78-ba1c-ca20748d497a";
 const LINK = "9a1b2c3d-0000-4000-8000-000000000001";
@@ -23,6 +23,10 @@ describe("seats left", () => {
 });
 
 describe("referral link", () => {
+  it("members share a short Seeds invite link", () =>
+    expect(inviteUrl("CryptoCoryency")).toBe("https://seeds.honest.money/invite/CryptoCoryency"));
+  it("the invite link reads without https://", () =>
+    expect(inviteLabel("https://seeds.honest.money/invite/CryptoCoryency")).toBe("seeds.honest.money/invite/CryptoCoryency"));
   it("sends friends through honest.money to the Seeds registration page", () =>
     expect(referralUrl("Murdock")).toBe("https://honest.money/r/Murdock?to=https%3A%2F%2Fseeds.honest.money%2Fregister"));
   it("accepts normal codes and rejects junk", () => {

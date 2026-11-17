@@ -5,7 +5,7 @@ import { useState } from "react";
 import { CalendarDays, Check, Copy, Mail, Users, Video } from "lucide-react";
 import { useSession } from "@/hooks/use-session";
 import { getIgniteConfirmation } from "@/lib/ignite.functions";
-import { SCHEDULE_DATES, SCHEDULE_TIME, SCHEDULE_SESSIONS, RECORDING_NOTE, paidInLabel } from "@/lib/ignite-registration";
+import { SCHEDULE_DATES, SCHEDULE_TIME, SCHEDULE_SESSIONS, RECORDING_NOTE, paidInLabel, inviteLabel } from "@/lib/ignite-registration";
 
 export const Route = createFileRoute("/register_/confirmed")({
   staticData: { sitemap: false },
@@ -188,7 +188,7 @@ function ReferralCard({ url }: { url: string | null }) {
       <p className="mt-2 text-sm text-muted-foreground">Know another Honest.Money miner who should be in the room? Share your personal link. They'll sign in with their own Honest.Money account to reserve, and the referral is credited to you through Honest.Money.</p>
       <div className="mt-5 flex flex-col gap-2 sm:flex-row">
         <label htmlFor="ref-link" className="sr-only">Your referral link</label>
-        <input id="ref-link" readOnly value={url} onFocus={(e) => e.currentTarget.select()} className="seed-field min-w-0 flex-1 font-mono text-xs" />
+        <input id="ref-link" readOnly value={inviteLabel(url)} onFocus={(e) => e.currentTarget.select()} className="seed-field min-w-0 flex-1 font-mono text-xs" />
         <button type="button" onClick={copy} className="seed-btn inline-flex w-full items-center justify-center gap-2 sm:w-auto sm:px-6" aria-live="polite">
           {copied ? <><Check className="size-4" aria-hidden />Copied</> : <><Copy className="size-4" aria-hidden />Copy link</>}
         </button>
