@@ -210,7 +210,7 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
           <p className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
             Last
           </p>
-          <p className="font-mono text-2xl text-primary tabular-nums">
+          <p className="num text-2xl text-primary">
             {stats.data?.last != null ? fmtPrice(stats.data.last) : "—"}
           </p>
         </div>
@@ -219,8 +219,7 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
             24h
           </p>
           <p
-            className={`font-mono text-lg tabular-nums ${
-              (stats.data?.changePct ?? 0) >= 0 ? "text-bid" : "text-ask"
+            className={`num text-lg ${ (stats.data?.changePct ?? 0) >= 0 ?"text-bid" : "text-ask"
             }`}
           >
             {stats.data?.changePct != null ? `${stats.data.changePct.toFixed(2)}%` : "—"}
@@ -230,7 +229,7 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
           <p className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
             24h volume
           </p>
-          <p className="font-mono text-lg text-foreground tabular-nums">
+          <p className="num text-lg text-foreground">
             {stats.data ? fmtAmount(stats.data.volume24h) : "—"} {pair.base}
           </p>
         </div>
@@ -238,7 +237,7 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
           <p className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
             CMC ref
           </p>
-          <p className="font-mono text-lg text-foreground tabular-nums">
+          <p className="num text-lg text-foreground">
             {ref.data?.txcUsd != null ? fmtPrice(ref.data.txcUsd) : "—"}
           </p>
           <p className="font-mono text-[10px] text-muted-foreground">
@@ -252,7 +251,7 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
           <p className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
             Chain
           </p>
-          <p className="font-mono text-lg text-foreground tabular-nums">
+          <p className="num text-lg text-foreground">
             {chain.data?.height != null ? `#${chain.data.height.toLocaleString()}` : "offline"}
           </p>
         </div>
@@ -389,7 +388,7 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
               </li>
             ))}
           </ul>
-          <div className="border-y border-border px-3 py-2 text-center font-mono text-sm text-primary tabular-nums">
+          <div className="border-y border-border px-3 py-2 text-center num text-sm text-primary">
             {book.data?.mid != null ? fmtPrice(book.data.mid) : "—"}
           </div>
           <ul>
@@ -437,7 +436,7 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
                 onChange={(e) => setPrice(e.target.value)}
                 inputMode="decimal"
                 maxLength={20}
-                className="mt-1 mb-3 w-full rounded-sm border border-input bg-background px-3 py-2 font-mono text-sm tabular-nums outline-none focus:border-primary"
+                className="mt-1 mb-3 w-full rounded-sm border border-input bg-background px-3 py-2 num text-sm outline-none focus:border-primary"
               />
 
               <label className="font-mono text-[10px] tracking-[0.16em] text-muted-foreground uppercase">
@@ -448,7 +447,7 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
                 onChange={(e) => setAmount(e.target.value)}
                 inputMode="decimal"
                 maxLength={20}
-                className="mt-1 mb-3 w-full rounded-sm border border-input bg-background px-3 py-2 font-mono text-sm tabular-nums outline-none focus:border-primary"
+                className="mt-1 mb-3 w-full rounded-sm border border-input bg-background px-3 py-2 num text-sm outline-none focus:border-primary"
               />
 
               <p className="mb-4 flex justify-between font-mono text-[11px] text-muted-foreground">
@@ -480,7 +479,7 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
               ) : (
                 <Link
                   to="/auth"
-                  className="block w-full rounded-sm bg-primary px-4 py-3 text-center font-mono text-xs font-semibold tracking-[0.16em] text-primary-foreground uppercase"
+                  className="block w-full rounded-md bg-action px-4 py-3 text-center text-sm font-semibold text-action-foreground"
                 >
                   Sign in to trade
                 </Link>
@@ -496,7 +495,7 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
                 (tape.data ?? []).map((t) => (
                   <li
                     key={t.id}
-                    className="flex justify-between px-4 py-1 font-mono text-[11px] tabular-nums"
+                    className="flex justify-between px-4 py-1 num text-[11px]"
                   >
                     <span className={t.side === "buy" ? "text-bid" : "text-ask"}>
                       {fmtPrice(t.price)}

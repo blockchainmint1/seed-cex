@@ -51,7 +51,7 @@ function LinkAccount() {
           <>
             <h1 className="mt-2 text-2xl font-semibold">You're linked.</h1>
             <p className="mt-3 text-sm text-muted-foreground">Your older Seeds account is now joined to your Honest.Money membership. Your order history, trades and saved wallet carry over. Sign in with Honest.Money to continue.</p>
-            <Link to="/auth" className="mt-6 inline-flex w-full items-center justify-center rounded-sm bg-primary px-4 py-3 font-mono text-sm font-semibold uppercase tracking-widest text-primary-foreground">Sign in with Honest.Money</Link>
+            <Link to="/auth" className="mt-6 inline-flex w-full items-center justify-center rounded-md bg-action px-4 py-3 text-sm font-semibold text-action-foreground">Sign in with Honest.Money</Link>
           </>
         ) : !valid ? (
           <>
@@ -65,7 +65,7 @@ function LinkAccount() {
             <p className="mt-3 text-sm text-muted-foreground">You signed in with Honest.Money, and your email already had a Seeds account from before. Linking joins them for good: your history and saved wallet carry over, and you'll sign in with Honest.Money from now on.</p>
             <p className="mt-3 text-sm text-muted-foreground">If you didn't just sign in to Seeds, close this page. Nothing changes.</p>
             {error && <p className="mt-4 rounded-sm border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
-            <button onClick={go} disabled={state === "busy"} className="mt-6 w-full rounded-sm bg-primary px-4 py-3 font-mono text-sm font-semibold uppercase tracking-widest text-primary-foreground disabled:opacity-60">
+            <button onClick={go} disabled={state === "busy"} className="mt-6 w-full rounded-md bg-action px-4 py-3 text-sm font-semibold text-action-foreground disabled:opacity-60">
               {state === "busy" ? "Linking…" : "Yes, link my account"}
             </button>
           </>

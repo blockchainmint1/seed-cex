@@ -28,7 +28,7 @@ function NotFoundComponent() {
         <div className="mt-6">
           <Link
             to="/"
-            className="inline-flex items-center justify-center rounded-sm bg-primary px-4 py-2 font-mono text-xs tracking-wider text-primary-foreground uppercase transition-opacity hover:opacity-90"
+            className="inline-flex items-center justify-center rounded-md bg-action px-4 py-2 text-sm text-action-foreground transition-opacity hover:opacity-90 font-semibold"
           >
             Go home
           </Link>
@@ -60,7 +60,7 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
               router.invalidate();
               reset();
             }}
-            className="inline-flex items-center justify-center rounded-sm bg-primary px-4 py-2 font-mono text-xs tracking-wider text-primary-foreground uppercase"
+            className="inline-flex items-center justify-center rounded-md bg-action px-4 py-2 text-sm text-action-foreground font-semibold"
           >
             Try again
           </button>
@@ -89,6 +89,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "Seeds is an exchange-style crypto order book that never takes your keys. Trades settle directly between traders' own wallets. Part of the Honest Money Ecosystem.",
       },
       { name: "author", content: "Seeds" },
+      { name: "theme-color", content: "#002419" },
       { name: "google-site-verification", content: "pFhdpWiEXX18KJ4dzCnKh-Voe4lDc2sxRXEXz88JjYE" },
       { property: "og:site_name", content: "Seeds" },
       { property: "og:title", content: "Seeds — Non-Custodial Crypto Exchange" },
@@ -105,9 +106,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;900&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap",
       },
       { rel: "icon", type: "image/png", href: "/favicon.png" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
     ],
     scripts: [
       { src: "https://honest.money/hm.js", async: true },
@@ -126,7 +128,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className="dark" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>

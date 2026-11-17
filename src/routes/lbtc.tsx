@@ -526,7 +526,7 @@ function LbtcReport() {
         <div className="not-prose mt-6 flex flex-wrap gap-3">
           <Link
             to="/how-it-works"
-            className="rounded-sm bg-primary px-5 py-2.5 font-mono text-xs font-semibold tracking-[0.16em] text-primary-foreground uppercase transition-opacity hover:opacity-90"
+            className="rounded-md bg-action px-5 py-2.5 text-sm font-semibold text-action-foreground transition-opacity hover:opacity-90"
           >
             How Seeds works
           </Link>

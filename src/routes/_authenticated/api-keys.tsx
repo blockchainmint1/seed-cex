@@ -141,7 +141,7 @@ function ApiKeysPage() {
           <button
             onClick={() => create.mutate()}
             disabled={create.isPending}
-            className="self-end rounded-sm bg-primary px-4 py-2 font-mono text-xs font-semibold tracking-wider text-primary-foreground uppercase disabled:opacity-60"
+            className="self-end rounded-md bg-action px-4 py-2 text-sm font-semibold text-action-foreground disabled:opacity-60"
           >
             <KeyRound className="mr-1 inline h-3.5 w-3.5" />
             {create.isPending ? "Creating…" : "Create"}

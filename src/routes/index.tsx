@@ -51,7 +51,7 @@ function Stat({ label, value, hint }: { label: string; value: string; hint?: str
       <p className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
         {label}
       </p>
-      <p className="mt-1 font-mono text-xl text-foreground tabular-nums">{value}</p>
+      <p className="mt-1 num text-xl text-foreground">{value}</p>
       {hint ? <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">{hint}</p> : null}
     </div>
   );
@@ -89,7 +89,7 @@ function Index() {
           <p className="font-mono text-[11px] tracking-[0.3em] text-primary uppercase">
             Not your keys, not your coins — until now
           </p>
-          <h1 className="mt-5 max-w-4xl font-display text-4xl leading-[1.05] font-black tracking-tight text-foreground uppercase md:text-6xl">
+          <h1 className="mt-5 max-w-4xl font-display text-4xl leading-[1.06] font-bold tracking-[-0.03em] text-foreground md:text-6xl">
             The world's only
             <br />
             <span className="text-primary">non-custodial centralized exchange.</span>
@@ -104,13 +104,13 @@ function Index() {
           <div className="mt-9 flex flex-wrap gap-3">
             <Link
               to="/auth"
-              className="rounded-sm bg-primary px-6 py-3 font-mono text-xs font-semibold tracking-[0.16em] text-primary-foreground uppercase transition-opacity hover:opacity-90"
+              className="rounded-md bg-action px-6 py-3 text-sm font-semibold text-action-foreground transition-opacity hover:opacity-90"
             >
               Get started
             </Link>
             <Link
               to="/trade/tsd-txc"
-              className="rounded-sm border border-border px-6 py-3 font-mono text-xs tracking-[0.16em] text-foreground uppercase transition-colors hover:border-primary hover:text-primary"
+              className="rounded-md border border-foreground/70 px-6 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-foreground/5"
             >
               View markets
             </Link>
@@ -218,15 +218,14 @@ function Index() {
                         <td className="px-4 py-4 font-mono text-sm text-foreground">
                           {PAIR_LABELS[m.trading_pairs] ?? m.trading_pairs}
                         </td>
-                        <td className="px-4 py-4 text-right font-mono text-sm tabular-nums text-foreground">
+                        <td className="px-4 py-4 text-right num text-sm text-foreground">
                           {fmtPrice(m.last_price ?? 0)}
                         </td>
-                        <td className="px-4 py-4 text-right font-mono text-sm tabular-nums text-muted-foreground">
+                        <td className="px-4 py-4 text-right num text-sm text-muted-foreground">
                           {fmtAmount(m.base_volume ?? 0)}
                         </td>
                         <td
-                          className={`px-4 py-4 text-right font-mono text-sm tabular-nums ${
-                            positive ? "text-success" : "text-destructive"
+                          className={`px-4 py-4 text-right num text-sm ${ positive ?"text-success" : "text-destructive"
                           }`}
                         >
                           {positive ? "+" : ""}
@@ -284,7 +283,7 @@ function Index() {
               <div className="mt-8">
                 <button
                   disabled
-                  className="rounded-sm bg-primary px-6 py-3 font-mono text-xs font-semibold tracking-[0.16em] text-primary-foreground uppercase opacity-60 cursor-not-allowed"
+                  className="rounded-md bg-action px-6 py-3 text-sm font-semibold text-action-foreground opacity-60 cursor-not-allowed"
                 >
                   Pre-order coming soon
                 </button>

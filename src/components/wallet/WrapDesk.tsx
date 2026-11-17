@@ -218,7 +218,7 @@ export function WrapDesk() {
               type="button"
               onClick={() => submit.mutate()}
               disabled={submit.isPending || deskOffline || !desk.data?.configured}
-              className="w-full rounded-sm bg-primary px-4 py-3 font-mono text-xs font-semibold tracking-[0.16em] text-primary-foreground uppercase disabled:opacity-50"
+              className="w-full rounded-md bg-action px-4 py-3 text-sm font-semibold text-action-foreground disabled:opacity-50"
             >
               {submit.isPending
                 ? "Opening…"

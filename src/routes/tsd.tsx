@@ -76,7 +76,7 @@ export default function TsdPage() {
           href="https://tsd.honest.money"
           target="_blank"
           rel="noreferrer noopener"
-          className="inline-flex items-center gap-2 rounded-sm bg-primary px-5 py-3 font-mono text-xs font-semibold tracking-wider text-primary-foreground uppercase transition-opacity hover:opacity-90"
+          className="inline-flex items-center gap-2 rounded-md bg-action px-5 py-3 text-sm font-semibold text-action-foreground transition-opacity hover:opacity-90"
         >
           Get TSD from the issuer
           <ArrowUpRight className="h-4 w-4" />

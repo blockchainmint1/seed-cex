@@ -103,11 +103,11 @@ function StatsPage() {
             {stats.markets.map((m) => (
               <tr key={m.pair}>
                 <td className="px-4 py-4 font-mono text-sm">{m.label}</td>
-                <td className="px-4 py-4 text-right font-mono text-sm tabular-nums">{p(m.lastPrice)}</td>
-                <td className="px-4 py-4 text-right font-mono text-sm tabular-nums">{p(m.bid)}</td>
-                <td className="px-4 py-4 text-right font-mono text-sm tabular-nums">{p(m.ask)}</td>
-                <td className="px-4 py-4 text-right font-mono text-sm tabular-nums">{p(m.baseVolume)}</td>
-                <td className="px-4 py-4 text-right font-mono text-sm tabular-nums">{p(m.quoteVolume)}</td>
+                <td className="px-4 py-4 text-right num text-sm">{p(m.lastPrice)}</td>
+                <td className="px-4 py-4 text-right num text-sm">{p(m.bid)}</td>
+                <td className="px-4 py-4 text-right num text-sm">{p(m.ask)}</td>
+                <td className="px-4 py-4 text-right num text-sm">{p(m.baseVolume)}</td>
+                <td className="px-4 py-4 text-right num text-sm">{p(m.quoteVolume)}</td>
                 <td className="px-4 py-4 text-right">
                   <Link
                     to={m.route as "/trade/tsd-txc"}

@@ -17,7 +17,6 @@ export const Route = createFileRoute("/register")({
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
-  links: [{ rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Manrope:wght@400;500;600;700&display=swap" }],
   }),
   component: Index,
 });
@@ -43,8 +42,8 @@ function Index() {
     <div className="ignite-theme seed-lines min-h-screen pb-28 lg:pb-0">
       <main className="mx-auto grid max-w-7xl gap-12 px-6 pt-6 pb-16 lg:grid-cols-[1.15fr_1fr] lg:gap-16 lg:pt-16">
         <section>
-          <p className="text-xs font-bold tracking-[0.3em] text-primary">INTRODUCING SEEDS</p>
-          <h1 className="mt-5 font-display text-5xl leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl">
+          <p className="font-mono text-xs font-medium tracking-[0.14em] text-primary">INTRODUCING SEEDS</p>
+          <h1 className="mt-5 font-display text-5xl font-bold leading-[1.05] tracking-[-0.03em] sm:text-6xl lg:text-[4.25rem]">
             Your next chapter in crypto starts here.
           </h1>
           <p className="mt-6 max-w-xl text-lg text-muted-foreground">
@@ -60,7 +59,7 @@ function Index() {
             <span className="text-muted-foreground">The $400 reservation deposit is returned to you during the class for trading activity, so you trade with it during the program.</span>
           </p>
           <div className="mt-6 inline-flex flex-col gap-1 rounded-2xl border border-border bg-card/60 px-5 py-4">
-            <p className="text-xs font-bold tracking-[0.25em] text-primary">EVENT SCHEDULE</p>
+            <p className="font-mono text-xs font-medium tracking-[0.14em] text-primary">EVENT SCHEDULE</p>
             <p className="font-display text-xl sm:text-2xl">{SCHEDULE_DATES}</p>
             <p className="text-sm text-muted-foreground">{SCHEDULE_SESSIONS}</p>
             <p className="text-sm text-muted-foreground">{SCHEDULE_TIME}</p>
@@ -79,11 +78,11 @@ function Index() {
             <h2 className="font-display text-4xl">Meet seeds. Start with Ignite.</h2>
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
               <div className="rounded-2xl border border-border p-5">
-                <p className="text-xs font-bold tracking-[0.25em] text-primary">SEEDS</p>
+                <p className="font-mono text-xs font-medium tracking-[0.14em] text-primary">SEEDS</p>
                 <p className="mt-2">The exchange — a new non-custodial crypto exchange powered by HME.</p>
               </div>
               <div className="rounded-2xl border border-border p-5">
-                <p className="text-xs font-bold tracking-[0.25em] text-primary">IGNITE</p>
+                <p className="font-mono text-xs font-medium tracking-[0.14em] text-primary">IGNITE</p>
                 <p className="mt-2">The crypto trading class. Five daily 90-minute sessions, {SCHEDULE_DATES}.</p>
               </div>
             </div>
@@ -91,15 +90,19 @@ function Index() {
           </div>
         </section>
 
-        <aside id="reserve" ref={formRef} className="scroll-mt-20 lg:sticky lg:top-20 lg:self-start">
-          <p className="mb-3 text-center text-sm text-muted-foreground">{seats.data ? (seats.data.seatsLeft > 0 ? <><span className="font-semibold text-primary">{seats.data.seatsLeft} of {seats.data.capacity} seats left</span></> : <span className="font-semibold">Fully reserved</span>) : "Limited to 100 seats"} · {SCHEDULE_DATES}</p>
-          <RegistrationFlow />
+        <aside id="reserve" ref={formRef} className="relative scroll-mt-20 lg:sticky lg:top-20 lg:self-start">
+          <p className="relative mb-3 text-center text-sm text-muted-foreground">{seats.data ? (seats.data.seatsLeft > 0 ? <><span className="font-semibold text-primary">{seats.data.seatsLeft} of {seats.data.capacity} seats left</span></> : <span className="font-semibold">Fully reserved</span>) : "Limited to 100 seats"} · {SCHEDULE_DATES}</p>
+          {/* Brand "seed arc": one open 2px arc, one per layout, passing behind the reservation card. */}
+          <svg aria-hidden className="pointer-events-none absolute -top-24 -right-20 hidden h-80 w-80 lg:block" viewBox="0 0 320 320" fill="none">
+            <path d="M 68 68 A 130 130 0 0 1 290 200" stroke="var(--action)" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+          <div className="relative"><RegistrationFlow /></div>
         </aside>
       </main>
 
       <section className="mx-auto max-w-7xl px-6 pb-16">
         <div className="border-t border-border pt-16">
-          <p className="text-xs font-bold tracking-[0.3em] text-primary">LIVE CRYPTO TRADING CLASS</p>
+          <p className="font-mono text-xs font-medium tracking-[0.14em] text-primary">LIVE CRYPTO TRADING CLASS</p>
           <h2 className="mt-4 font-display text-4xl tracking-tight sm:text-5xl">Learn directly. Put understanding into practice.</h2>
           <p className="mt-5 max-w-2xl text-lg text-muted-foreground">
             Join an inaugural group of up to 100 HME community members for five live sessions with Bobby Gray. Build a clearer understanding of how to set up a wallet, move into crypto and navigate buying and selling on Seeds.
@@ -142,25 +145,25 @@ function Index() {
         </div>
 
         <div className="mt-20 border-t border-border pt-16">
-          <p className="text-xs font-bold tracking-[0.3em] text-primary">YOUR PARTICIPATION GUIDE</p>
+          <p className="font-mono text-xs font-medium tracking-[0.14em] text-primary">YOUR PARTICIPATION GUIDE</p>
           <h2 className="mt-4 font-display text-4xl tracking-tight sm:text-5xl">Learn. Prepare. Participate.</h2>
           <p className="mt-5 max-w-2xl text-lg text-muted-foreground">A practical starting point for the Seeds experience.</p>
 
           <div className="mt-12 grid gap-4 sm:grid-cols-2">
             <div className="rounded-2xl border border-primary/40 bg-card/60 p-6">
-              <p className="text-xs font-bold tracking-[0.25em] text-primary">YOUR $400 TRADING COMMITMENT</p>
+              <p className="font-mono text-xs font-medium tracking-[0.14em] text-primary">YOUR $400 TRADING COMMITMENT</p>
               <p className="mt-3 text-muted-foreground">
                 Come prepared to commit $400 of your own funds to trading activity during the program. This is your trading capital, not tuition or a course registration fee. Your $400 reservation deposit is returned to you during the class for this trading activity. Trading involves risk, and the value of assets you buy can fall.
               </p>
             </div>
             <div className="rounded-2xl border border-border p-6">
-              <p className="text-xs font-bold tracking-[0.25em] text-primary">HOW TO PREPARE</p>
+              <p className="font-mono text-xs font-medium tracking-[0.14em] text-primary">HOW TO PREPARE</p>
               <p className="mt-3 text-muted-foreground">
                 New to crypto? The training covers foundational steps, including wallet setup and on-ramping. Already hold crypto? Preparation may start with USDC or TSD, depending on your setup. Experienced participants can prepare TSD in their wallet. Follow the official funding instructions before transferring funds — specific funding routes and setup guidance will be confirmed before the program.
               </p>
             </div>
             <div className="rounded-2xl border border-border p-6">
-              <p className="text-xs font-bold tracking-[0.25em] text-primary">WHAT THE EXPERIENCE LOOKS LIKE</p>
+              <p className="font-mono text-xs font-medium tracking-[0.14em] text-primary">WHAT THE EXPERIENCE LOOKS LIKE</p>
               <ul className="mt-3 space-y-2 text-muted-foreground">
                 <li><span className="font-semibold text-foreground">Get set up:</span> understand the wallet and funding tools you will use.</li>
                 <li><span className="font-semibold text-foreground">Explore Seeds:</span> become familiar with the exchange and its trading process.</li>
@@ -169,7 +172,7 @@ function Index() {
               </ul>
             </div>
             <div className="rounded-2xl border border-border p-6">
-              <p className="text-xs font-bold tracking-[0.25em] text-primary">YOUR WALLET. YOUR RESPONSIBILITY.</p>
+              <p className="font-mono text-xs font-medium tracking-[0.14em] text-primary">YOUR WALLET. YOUR RESPONSIBILITY.</p>
               <p className="mt-3 text-muted-foreground">
                 Seeds is designed around a non-custodial experience, with participants retaining control of their own wallets. Protect your recovery phrase and private keys. Non-custodial trading still carries market, technical, bridge and security risks.
               </p>

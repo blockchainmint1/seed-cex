@@ -76,7 +76,7 @@ export function HmePocketBalances({ addresses, linkId }: { addresses: Record<str
         <thead className="border-y border-border font-mono text-xs text-muted-foreground"><tr><th className="py-3 pr-3">Asset</th><th className="py-3 pr-3">Network</th><th className="py-3 text-right">In pocket</th><th className="py-3 text-right">Receive</th></tr></thead>
         <tbody>{visibleRows.map((r) => <tr key={`${r.symbol}-${r.network}`} className="border-b border-border/60">
           <td className="py-3 pr-3 font-semibold">{r.symbol}</td><td className="py-3 pr-3 text-muted-foreground">{r.network}</td>
-          <td className="py-3 text-right font-mono text-xs tabular-nums">{r.balance === null ? (query.isFetching ? "Checking…" : "Not available") : r.balance.toLocaleString("en-US", { maximumFractionDigits: 8 })}</td>
+          <td className="py-3 text-right num text-xs">{r.balance === null ? (query.isFetching ? "Checking…" : "Not available") : r.balance.toLocaleString("en-US", { maximumFractionDigits: 8 })}</td>
           <td className="py-2 pl-3 text-right"><Button variant="ghost" size="icon" title={`Receive ${r.symbol} on ${r.network}`} aria-label={`Receive ${r.symbol} on ${r.network}`} onClick={() => { if (r.address) { setCopied(false); setReceive({ ...r, address: r.address }); } }}><QrCode /></Button></td>
         </tr>)}</tbody>
       </table>

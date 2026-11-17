@@ -4,6 +4,7 @@ import { ChevronDown, Moon, Sun } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
 import { useTheme } from "@/hooks/use-theme";
+import { SiteLogo } from "@/components/site/SiteLogo";
 
 
 const about = [
@@ -24,15 +25,15 @@ function NavMenu({ label, items }: { label: string; items: { label: string; to: 
     <div className="group relative">
       <button className="flex items-center gap-1 text-muted-foreground transition-colors group-hover:text-foreground">
         {label}
-        <ChevronDown className="h-3 w-3" />
+        <ChevronDown className="h-3.5 w-3.5" strokeWidth={1.5} />
       </button>
       <div className="invisible absolute left-0 top-full z-50 pt-3 opacity-0 transition-opacity group-hover:visible group-hover:opacity-100">
-        <div className="min-w-44 rounded-sm border border-border bg-background p-1 shadow-lg">
+        <div className="min-w-48 rounded-lg border border-border bg-popover p-1 shadow-lg normal-case tracking-normal">
           {items.map((i) => (
             <Link
               key={i.to}
               to={i.to as "/custody"}
-              className="block rounded-sm px-3 py-2 text-muted-foreground transition-colors hover:bg-surface hover:text-primary"
+              className="block rounded-sm px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               activeProps={{ className: "text-primary" }}
             >
               {i.label}
@@ -79,19 +80,12 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur">
-      <div className="mx-auto flex h-14 max-w-7xl items-center gap-6 px-5">
-        <Link to="/" className="flex items-center gap-2">
-          <span
-            className="block h-2.5 w-2.5 rounded-full bg-primary"
-            style={{ boxShadow: "0 0 12px var(--primary)" }}
-            aria-hidden
-          />
-          <span className="font-display text-base font-extrabold tracking-[0.28em] uppercase">
-            Seeds
-          </span>
+      <div className="mx-auto flex h-16 max-w-7xl items-center gap-7 px-5">
+        <Link to="/" className="flex shrink-0 items-center" aria-label="Seeds home">
+          <SiteLogo />
         </Link>
 
-        <nav className="hidden items-center gap-5 font-mono text-xs tracking-wider uppercase md:flex">
+        <nav className="hidden items-center gap-5 text-[13px] font-semibold tracking-[0.04em] uppercase md:flex">
           <Link
             to="/trade/tsd-txc"
             className="text-muted-foreground transition-colors hover:text-foreground"
@@ -126,25 +120,25 @@ export function SiteHeader() {
           <NavMenu label="PROOF" items={proof} />
         </nav>
 
-        <div className="ml-auto flex items-center gap-3 font-mono text-xs">
+        <div className="ml-auto flex items-center gap-3 text-[13px] font-semibold">
           <button
             onClick={toggle}
             aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-            className="flex h-8 w-8 items-center justify-center rounded-sm border border-border text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+            className="flex h-9 w-9 items-center justify-center rounded-sm border border-border text-muted-foreground transition-colors hover:border-primary hover:text-primary"
           >
-            {theme === "dark" ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+            {theme === "dark" ? <Sun className="h-4 w-4" strokeWidth={1.5} /> : <Moon className="h-4 w-4" strokeWidth={1.5} />}
           </button>
           {loading ? null : user ? (
             <>
               <Link
                 to="/account"
-                className="hidden tracking-wider text-muted-foreground uppercase transition-colors hover:text-primary sm:inline"
+                className="hidden tracking-[0.04em] text-muted-foreground uppercase transition-colors hover:text-foreground sm:inline"
               >
                 Profile
               </Link>
               <button
                 onClick={signOut}
-                className="rounded-sm border border-border px-3 py-1.5 tracking-wider uppercase transition-colors hover:border-primary hover:text-primary"
+                className="rounded-sm border border-foreground/60 px-3.5 py-2 tracking-[0.04em] uppercase transition-colors hover:border-foreground"
               >
                 Sign out
               </button>
@@ -153,7 +147,7 @@ export function SiteHeader() {
             <Link
               to="/auth"
               onClick={rememberReturnPath}
-              className="rounded-sm bg-primary px-3 py-1.5 font-semibold tracking-wider text-primary-foreground uppercase transition-opacity hover:opacity-90"
+              className="rounded-sm bg-action px-3.5 py-2 tracking-[0.04em] text-action-foreground uppercase transition-[filter] hover:brightness-105"
             >
               Sign in
             </Link>

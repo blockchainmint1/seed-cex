@@ -80,7 +80,7 @@ function Manifesto() {
       <div className="mt-14 flex flex-wrap gap-3">
         <Link
           to="/trade/tsd-txc"
-          className="rounded-sm bg-primary px-5 py-2.5 font-mono text-xs tracking-[0.16em] text-primary-foreground uppercase"
+          className="rounded-md bg-action px-5 py-2.5 text-sm text-action-foreground font-semibold"
         >
           See the book
         </Link>

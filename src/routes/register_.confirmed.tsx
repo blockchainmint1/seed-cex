@@ -19,7 +19,6 @@ export const Route = createFileRoute("/register_/confirmed")({
       { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex,nofollow" },
     ],
-    links: [{ rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Manrope:wght@400;500;600;700&display=swap" }],
   }),
   component: ConfirmedPage,
 });
@@ -95,7 +94,7 @@ function ConfirmedPage() {
         <Card>
           <div className="flex items-center gap-3">
             <span className="relative flex size-3"><span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-60" /><span className="relative inline-flex size-3 rounded-full bg-primary" /></span>
-            <p className="text-xs font-bold tracking-[0.25em] text-primary">CONFIRMING YOUR PAYMENT</p>
+            <p className="font-mono text-xs font-medium tracking-[0.14em] text-primary">CONFIRMING YOUR PAYMENT</p>
           </div>
           <h1 className="mt-4 font-display text-3xl sm:text-4xl">Thanks, {d.firstName}. Hang tight.</h1>
           <p className="mt-3 text-muted-foreground">Crypto payments take a few minutes to confirm on the blockchain. This page checks with NectarPay every few seconds and will update by itself — you can leave it open.</p>
@@ -108,7 +107,7 @@ function ConfirmedPage() {
   const paidWith = paidInLabel(d.paidAsset, d.paidChain);
   return (
     <Shell>
-      <p className="text-xs font-bold tracking-[0.3em] text-primary">SEAT RESERVED</p>
+      <p className="font-mono text-xs font-medium tracking-[0.14em] text-primary">SEAT RESERVED</p>
       <h1 className="mt-4 font-display text-5xl leading-[1.05] tracking-tight sm:text-6xl">Thank you, {d.firstName}. You're in.</h1>
       <p className="mt-5 max-w-2xl text-lg text-muted-foreground">
         Your seat in Ignite is reserved{d.paidBy ? ` — ${d.paidBy} covered your deposit through Peer Pay` : ""}. We can't wait to see you in class.
@@ -182,7 +181,7 @@ function ReferralCard({ url }: { url: string | null }) {
   };
   return (
     <Card className="mt-4 border-primary/40">
-      <p className="text-xs font-bold tracking-[0.25em] text-primary">BRING SOMEONE WITH YOU</p>
+      <p className="font-mono text-xs font-medium tracking-[0.14em] text-primary">BRING SOMEONE WITH YOU</p>
       <h2 className="mt-2 font-display text-2xl">Your referral link</h2>
       <p className="mt-2 text-sm text-muted-foreground">Know another Honest.Money miner who should be in the room? Share your personal link. They'll sign in with their own Honest.Money account to reserve, and the referral is credited to you through Honest.Money.</p>
       <div className="mt-5 flex flex-col gap-2 sm:flex-row">

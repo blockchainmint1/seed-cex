@@ -136,7 +136,7 @@ function SwapPage() {
                     setAmount(e.target.value.replace(/[^0-9.]/g, ""));
                     quote.reset();
                   }}
-                  className="h-12 min-w-0 flex-1 rounded-sm border border-input bg-background px-3 font-mono text-lg tabular-nums outline-none focus:border-primary"
+                  className="h-12 min-w-0 flex-1 rounded-sm border border-input bg-background px-3 num text-lg outline-none focus:border-primary"
                 />
                 <CoinSelect
                   label="Coin you send"
@@ -170,7 +170,7 @@ function SwapPage() {
             <div className="space-y-2">
               <span className="font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">You receive</span>
               <div className="flex gap-2">
-                <div className="flex h-12 min-w-0 flex-1 items-center rounded-sm border border-input bg-background px-3 font-mono text-lg tabular-nums">
+                <div className="flex h-12 min-w-0 flex-1 items-center rounded-sm border border-input bg-background px-3 num text-lg">
                   {bestPrice ? coins(bestPrice.expectedOut) : <span className="text-muted-foreground">—</span>}
                 </div>
                 <CoinSelect
@@ -208,7 +208,7 @@ function SwapPage() {
             <button
               type="submit"
               disabled={quote.isPending || !amount}
-              className="h-11 w-full rounded-sm bg-primary font-mono text-xs font-semibold tracking-wider text-primary-foreground uppercase transition-opacity hover:opacity-90 disabled:opacity-50"
+              className="h-11 w-full rounded-md bg-action text-sm font-semibold text-action-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
             >
               {quote.isPending ? "Asking THORChain and Maya…" : "Compare routes"}
             </button>

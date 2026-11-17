@@ -275,7 +275,7 @@ function Wallet() {
           <div className="mt-5 flex flex-wrap gap-3">
             <button
               onClick={() => backedUp.mutate()}
-              className="rounded-sm bg-primary px-5 py-2.5 font-mono text-xs tracking-[0.16em] text-primary-foreground uppercase"
+              className="rounded-md bg-action px-5 py-2.5 text-sm text-action-foreground font-semibold"
             >
               I wrote it down
             </button>
@@ -338,7 +338,7 @@ function Wallet() {
             <button
               onClick={() => create.mutate()}
               disabled={create.isPending}
-              className="w-full rounded-sm bg-primary px-4 py-3 font-mono text-xs font-semibold tracking-[0.16em] text-primary-foreground uppercase disabled:opacity-50"
+              className="w-full rounded-md bg-action px-4 py-3 text-sm font-semibold text-action-foreground disabled:opacity-50"
             >
               {create.isPending ? "Encrypting…" : "Create encrypted vault"}
             </button>
@@ -849,7 +849,7 @@ function DepositModal({ row, onClose }: { row: SpotRow; onClose: () => void }) {
             setCopied(true);
             setTimeout(() => setCopied(false), 1500);
           }}
-          className="flex-1 rounded-sm bg-primary px-4 py-2.5 font-mono text-xs tracking-[0.16em] text-primary-foreground uppercase"
+          className="flex-1 rounded-md bg-action px-4 py-2.5 text-sm text-action-foreground font-semibold"
         >
           {copied ? "Copied" : "Copy address"}
         </button>
@@ -1199,7 +1199,7 @@ function SharedAccessPanel({
         <button
           onClick={() => enable.mutate()}
           disabled={enable.isPending || pw.length === 0}
-          className="mt-4 rounded-sm bg-primary px-5 py-2.5 font-mono text-xs font-semibold tracking-[0.16em] text-primary-foreground uppercase disabled:opacity-50"
+          className="mt-4 rounded-md bg-action px-5 py-2.5 text-sm font-semibold text-action-foreground disabled:opacity-50"
         >
           {enable.isPending ? "Authorizing…" : `Authorize on ${chain.name}`}
         </button>

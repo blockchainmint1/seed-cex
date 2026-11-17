@@ -82,7 +82,7 @@ function Auth() {
 
       <button
         onClick={honestMoney}
-        className="mt-8 w-full rounded-sm bg-primary px-4 py-3 font-mono text-xs font-semibold tracking-[0.16em] text-primary-foreground uppercase"
+        className="mt-8 w-full rounded-md bg-action px-4 py-3 text-sm font-semibold text-action-foreground"
       >
         Sign in with Honest.Money
       </button>

@@ -223,7 +223,7 @@ function HowItWorks() {
       <section className="mt-16 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
         <Link
           to="/auth"
-          className="rounded-sm bg-primary px-5 py-2.5 font-mono text-xs font-semibold tracking-widest text-primary-foreground uppercase transition-opacity hover:opacity-90"
+          className="rounded-md bg-action px-5 py-2.5 text-sm font-semibold text-action-foreground transition-opacity hover:opacity-90"
         >
           <Lock className="mr-2 inline h-3.5 w-3.5" /> Open your vault
         </Link>

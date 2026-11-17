@@ -20,7 +20,7 @@
 
 @theme inline {
   --color-warning: var(--warning);
-  --radius-sm: calc(var(--radius) - 2px);
+  --radius-sm: 0.5rem; /* brand: inputs 8px */
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) + 2px);
   --radius-xl: calc(var(--radius) + 4px);
@@ -28,8 +28,9 @@
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
 
-  --font-display: "Archivo", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  /* Brand: Manrope everywhere (system UI fallback); mono only for small labels and code. */
+  --font-display: "Manrope", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-sans: "Manrope", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
 
   --color-background: var(--background);
@@ -52,6 +53,13 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-ring-offset-background: var(--background);
+  --color-action: var(--action);
+  --color-action-foreground: var(--action-foreground);
+
+  /* Brand motion: standard 200ms, ease (0.2, 0, 0, 1). */
+  --default-transition-duration: 200ms;
+  --default-transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  --ease-brand: cubic-bezier(0.2, 0, 0, 1);
 
   /* market semantics */
   --color-bid: var(--bid);
@@ -79,119 +87,137 @@
 }
 
 /*
- * Seeds runs dark-first: a trading instrument, not a brochure.
- * Deep forest-floor substrate, live sprout-green accent, market green + rust.
- * :root = light "daylight meadow" palette; .dark = the forest-floor default.
+ * Seeds brand palette (Brand Guidelines v0.1, /brand).
+ * Seed Green #19ED50 · Deep Forest #002419 · Near Black #00170F · Warm Ivory #FFF8E8
+ * Neutrals: Forest 700 #0A3327 · Moss #1F4D3D (lines only) · Sage #9DB5A8 · Stone #56645C
+ *           Ivory 200 #F2EAD6 · Line #DCD2BC
+ * Status:   Green Deep #0A7A35 · Amber #F5B841 / Deep #8A5800 · Signal Red #FF6E5A / Deep #B3261E
+ * Rules: Forest + Ivory lead, Seed Green up to ~5% (actions, confirmed states).
+ *        No Seed Green text on Ivory: light mode uses Green Deep for green text.
+ * :root = light (Deep Forest on Warm Ivory); .dark = default (Ivory on Deep Forest).
  */
 :root {
   color-scheme: light;
-  --radius: 0.25rem;
+  --radius: 0.75rem; /* brand: buttons and cards 12px */
 
-  --background: oklch(0.965 0.012 150);
-  --foreground: oklch(0.24 0.03 152);
-  --surface: oklch(0.94 0.014 150);
-  --surface-raised: oklch(0.99 0.006 150);
-  --grid: oklch(0.9 0.016 150);
+  --background: oklch(0.98 0.022 87.1);          /* Warm Ivory */
+  --foreground: oklch(0.231 0.047 168.2);        /* Deep Forest */
+  --surface: oklch(0.938 0.028 88.8);            /* Ivory 200 */
+  --surface-raised: oklch(0.991 0.011 89.7);
+  --grid: oklch(0.866 0.032 86.5);               /* Line */
 
-  --card: oklch(0.985 0.008 150);
-  --card-foreground: oklch(0.24 0.03 152);
-  --popover: oklch(0.985 0.008 150);
-  --popover-foreground: oklch(0.24 0.03 152);
+  --card: oklch(0.991 0.011 89.7);
+  --card-foreground: oklch(0.231 0.047 168.2);
+  --popover: oklch(0.991 0.011 89.7);
+  --popover-foreground: oklch(0.231 0.047 168.2);
 
-  --primary: oklch(0.56 0.15 148);
-  --primary-foreground: oklch(0.98 0.01 140);
+  --primary: oklch(0.507 0.139 149.2);           /* Green Deep (text-safe on Ivory) */
+  --primary-foreground: oklch(0.98 0.022 87.1);
+  --action: oklch(0.825 0.249 145.7);            /* Seed Green, the one primary action */
+  --action-foreground: oklch(0.182 0.037 168.6); /* Near Black */
 
-  --secondary: oklch(0.92 0.02 150);
-  --secondary-foreground: oklch(0.26 0.03 152);
+  --secondary: oklch(0.938 0.028 88.8);
+  --secondary-foreground: oklch(0.231 0.047 168.2);
 
-  --muted: oklch(0.93 0.015 150);
-  --muted-foreground: oklch(0.46 0.03 148);
+  --muted: oklch(0.938 0.028 88.8);
+  --muted-foreground: oklch(0.489 0.021 160.5);  /* Stone */
 
-  --accent: oklch(0.91 0.03 150);
-  --accent-foreground: oklch(0.24 0.03 152);
+  --accent: oklch(0.918 0.03 88);
+  --accent-foreground: oklch(0.231 0.047 168.2);
 
-  --destructive: oklch(0.55 0.2 27);
-  --destructive-foreground: oklch(0.98 0.01 140);
+  --destructive: oklch(0.501 0.178 28.7);        /* Red Deep */
+  --destructive-foreground: oklch(0.98 0.022 87.1);
+  --warning: oklch(0.504 0.108 71.5);            /* Amber Deep */
 
-  --bid: oklch(0.58 0.17 148);
-  --bid-muted: oklch(0.58 0.17 148 / 14%);
-  --ask: oklch(0.56 0.2 30);
-  --ask-muted: oklch(0.56 0.2 30 / 14%);
-  --warn: oklch(0.68 0.15 86);
+  --bid: oklch(0.507 0.139 149.2);
+  --bid-muted: oklch(0.507 0.139 149.2 / 12%);
+  --ask: oklch(0.501 0.178 28.7);
+  --ask-muted: oklch(0.501 0.178 28.7 / 12%);
+  --warn: oklch(0.504 0.108 71.5);
 
-  --border: oklch(0.87 0.02 150);
-  --input: oklch(0.87 0.02 150);
-  --ring: oklch(0.56 0.15 148);
+  --border: oklch(0.866 0.032 86.5);             /* Line */
+  --input: oklch(0.866 0.032 86.5);
+  --ring: oklch(0.507 0.139 149.2);
 
-  --chart-1: oklch(0.56 0.15 148);
-  --chart-2: oklch(0.58 0.17 132);
-  --chart-3: oklch(0.56 0.2 30);
-  --chart-4: oklch(0.6 0.1 200);
-  --chart-5: oklch(0.5 0.03 145);
+  --chart-1: oklch(0.507 0.139 149.2);
+  --chart-2: oklch(0.383 0.058 167.8);
+  --chart-3: oklch(0.501 0.178 28.7);
+  --chart-4: oklch(0.504 0.108 71.5);
+  --chart-5: oklch(0.489 0.021 160.5);
 
-  --sidebar: oklch(0.95 0.013 150);
-  --sidebar-foreground: oklch(0.24 0.03 152);
-  --sidebar-primary: oklch(0.56 0.15 148);
-  --sidebar-primary-foreground: oklch(0.98 0.01 140);
-  --sidebar-accent: oklch(0.92 0.02 150);
-  --sidebar-accent-foreground: oklch(0.24 0.03 152);
-  --sidebar-border: oklch(0.87 0.02 150);
-  --sidebar-ring: oklch(0.56 0.15 148);
+  --sidebar: oklch(0.938 0.028 88.8);
+  --sidebar-foreground: oklch(0.231 0.047 168.2);
+  --sidebar-primary: oklch(0.507 0.139 149.2);
+  --sidebar-primary-foreground: oklch(0.98 0.022 87.1);
+  --sidebar-accent: oklch(0.918 0.03 88);
+  --sidebar-accent-foreground: oklch(0.231 0.047 168.2);
+  --sidebar-border: oklch(0.866 0.032 86.5);
+  --sidebar-ring: oklch(0.507 0.139 149.2);
+
+  /* Graphic language: seed field dots and growth glow (dark heroes only). */
+  --field-dot: oklch(0.866 0.032 86.5 / 70%);
+  --growth-glow: transparent;
 }
 
 .dark {
   color-scheme: dark;
 
-  --background: oklch(0.158 0.014 152);
-  --foreground: oklch(0.93 0.014 140);
-  --surface: oklch(0.192 0.017 152);
-  --surface-raised: oklch(0.228 0.02 152);
-  --grid: oklch(0.28 0.022 150);
+  --background: oklch(0.231 0.047 168.2);        /* Deep Forest */
+  --foreground: oklch(0.98 0.022 87.1);          /* Warm Ivory */
+  --surface: oklch(0.205 0.042 168.4);           /* between Forest and Near Black */
+  --surface-raised: oklch(0.289 0.05 169.5);     /* Forest 700 */
+  --grid: oklch(0.383 0.058 167.8 / 70%);        /* Moss */
 
-  --card: oklch(0.192 0.017 152);
-  --card-foreground: oklch(0.93 0.014 140);
-  --popover: oklch(0.205 0.018 152);
-  --popover-foreground: oklch(0.93 0.014 140);
+  --card: oklch(0.289 0.05 169.5);               /* Forest 700 */
+  --card-foreground: oklch(0.98 0.022 87.1);
+  --popover: oklch(0.289 0.05 169.5);
+  --popover-foreground: oklch(0.98 0.022 87.1);
 
-  --primary: oklch(0.76 0.175 143);
-  --primary-foreground: oklch(0.16 0.03 150);
+  --primary: oklch(0.825 0.249 145.7);           /* Seed Green */
+  --primary-foreground: oklch(0.182 0.037 168.6);/* Near Black */
+  --action: oklch(0.825 0.249 145.7);
+  --action-foreground: oklch(0.182 0.037 168.6);
 
-  --secondary: oklch(0.255 0.022 150);
-  --secondary-foreground: oklch(0.9 0.014 140);
+  --secondary: oklch(0.289 0.05 169.5);
+  --secondary-foreground: oklch(0.98 0.022 87.1);
 
-  --muted: oklch(0.24 0.018 150);
-  --muted-foreground: oklch(0.67 0.022 145);
+  --muted: oklch(0.265 0.048 169);
+  --muted-foreground: oklch(0.751 0.032 161.9);  /* Sage */
 
-  --accent: oklch(0.28 0.028 148);
-  --accent-foreground: oklch(0.93 0.014 140);
+  --accent: oklch(0.32 0.054 168.5);
+  --accent-foreground: oklch(0.98 0.022 87.1);
 
-  --destructive: oklch(0.58 0.19 27);
-  --destructive-foreground: oklch(0.97 0.01 140);
+  --destructive: oklch(0.713 0.181 30.1);        /* Signal Red */
+  --destructive-foreground: oklch(0.182 0.037 168.6);
+  --warning: oklch(0.819 0.147 80.3);            /* Amber */
 
-  --bid: oklch(0.82 0.19 132);
-  --bid-muted: oklch(0.82 0.19 132 / 12%);
-  --ask: oklch(0.66 0.19 30);
-  --ask-muted: oklch(0.66 0.19 30 / 12%);
-  --warn: oklch(0.82 0.15 86);
+  --bid: oklch(0.825 0.249 145.7);
+  --bid-muted: oklch(0.825 0.249 145.7 / 12%);
+  --ask: oklch(0.713 0.181 30.1);
+  --ask-muted: oklch(0.713 0.181 30.1 / 12%);
+  --warn: oklch(0.819 0.147 80.3);
 
-  --border: oklch(0.29 0.024 150);
-  --input: oklch(0.29 0.024 150);
-  --ring: oklch(0.76 0.175 143);
+  --border: oklch(0.383 0.058 167.8);            /* Moss, lines only */
+  --input: oklch(0.383 0.058 167.8);
+  --ring: oklch(0.825 0.249 145.7);
 
-  --chart-1: oklch(0.76 0.175 143);
-  --chart-2: oklch(0.82 0.19 132);
-  --chart-3: oklch(0.66 0.19 30);
-  --chart-4: oklch(0.7 0.09 200);
-  --chart-5: oklch(0.67 0.022 145);
+  --chart-1: oklch(0.825 0.249 145.7);
+  --chart-2: oklch(0.751 0.032 161.9);
+  --chart-3: oklch(0.713 0.181 30.1);
+  --chart-4: oklch(0.819 0.147 80.3);
+  --chart-5: oklch(0.489 0.021 160.5);
 
-  --sidebar: oklch(0.178 0.016 152);
-  --sidebar-foreground: oklch(0.93 0.014 140);
-  --sidebar-primary: oklch(0.76 0.175 143);
-  --sidebar-primary-foreground: oklch(0.16 0.03 150);
-  --sidebar-accent: oklch(0.255 0.022 150);
-  --sidebar-accent-foreground: oklch(0.93 0.014 140);
-  --sidebar-border: oklch(0.29 0.024 150);
-  --sidebar-ring: oklch(0.76 0.175 143);
+  --sidebar: oklch(0.205 0.042 168.4);
+  --sidebar-foreground: oklch(0.98 0.022 87.1);
+  --sidebar-primary: oklch(0.825 0.249 145.7);
+  --sidebar-primary-foreground: oklch(0.182 0.037 168.6);
+  --sidebar-accent: oklch(0.289 0.05 169.5);
+  --sidebar-accent-foreground: oklch(0.98 0.022 87.1);
+  --sidebar-border: oklch(0.383 0.058 167.8);
+  --sidebar-ring: oklch(0.825 0.249 145.7);
+
+  --field-dot: oklch(0.383 0.058 167.8 / 80%);
+  --growth-glow: oklch(0.825 0.249 145.7 / 18%); /* brand max 18% opacity */
 }
 
 @layer base {
@@ -213,10 +239,29 @@
     font-family: var(--font-display);
     letter-spacing: -0.02em;
   }
+
+  h1 {
+    letter-spacing: -0.03em;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--primary) 30%, transparent);
+  }
 }
 
+/* Brand motion: replace movement with a short fade or none. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 150ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 150ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Brand: tabular Manrope figures for every price, balance and table. */
 @utility num {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;
 }
@@ -237,59 +282,62 @@
   background-size: 48px 48px;
 }
 
-
-/* Ignite registration page (/register): scoped copy of the original Ignite design. */
+/* Ignite pages (/register, /register/confirmed, /pay): same brand tokens as the
+   rest of Seeds, so they follow light/dark mode; only larger sheet radii. */
 .ignite-theme {
-  --forest: oklch(0.235 0.05 165); --ink: oklch(0.19 0.04 165); --seed: oklch(0.83 0.24 145); --ivory: oklch(0.98 0.02 85);
-  --radius: 1rem;
-  --background: var(--forest); --foreground: var(--ivory); --card: var(--ink); --card-foreground: var(--ivory);
-  --popover: var(--ink); --popover-foreground: var(--ivory); --primary: var(--seed); --primary-foreground: var(--ink);
-  --secondary: oklch(0.28 0.05 165); --secondary-foreground: var(--ivory); --muted: oklch(0.27 0.045 165);
-  --muted-foreground: oklch(0.82 0.03 120); --accent: oklch(0.3 0.06 160); --accent-foreground: var(--ivory);
-  --destructive: oklch(0.72 0.17 30); --destructive-foreground: var(--ink); --warning: oklch(0.85 0.13 85);
-  --border: oklch(0.98 0.02 85 / 14%); --input: oklch(0.98 0.02 85 / 22%); --ring: var(--seed);
-  --glow: 0 0 0 1px oklch(0.83 0.24 145 / 30%), 0 20px 60px -20px oklch(0.83 0.24 145 / 35%);
-  --font-display: "Fraunces", Georgia, serif; --font-sans: "Manrope", system-ui, sans-serif;
-  background-color: var(--forest); color: var(--ivory); font-family: var(--font-sans);
+  --radius: 0.75rem;
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
 }
-.ignite-theme h1, .ignite-theme h2, .ignite-theme h3, .ignite-theme h4 { letter-spacing: normal; }
-.ignite-theme :focus-visible { outline: 3px solid var(--seed); outline-offset: 3px; border-radius: 6px; }
-.ignite-theme * { border-color: var(--border); }
+.ignite-theme :focus-visible { outline: 3px solid var(--ring); outline-offset: 3px; border-radius: 6px; }
 
 @utility seed-field {
-  background-color: oklch(0.98 0.02 85 / 5%);
+  background-color: var(--background);
   border: 1px solid var(--input);
-  color: var(--ivory);
-  border-radius: 0.75rem;
+  color: var(--foreground);
+  border-radius: 0.5rem;
   padding: 0.8rem 1rem;
   width: 100%;
   font-size: 1rem;
-  &::placeholder { color: oklch(0.98 0.02 85 / 40%); }
-  &:focus-visible { outline: 2px solid var(--seed); outline-offset: 1px; }
+  min-height: 3rem;
+  &::placeholder { color: var(--muted-foreground); }
+  &:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
   &[aria-invalid="true"] { border-color: var(--destructive); }
 }
 
+/* Brand primary button: Seed Green, Near Black label, 12px radius, 48px min height, flat. */
 @utility seed-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
-  background: var(--seed); color: var(--ink); font-weight: 700;
-  border-radius: 999px; padding: .95rem 1.5rem; width: 100%;
-  box-shadow: var(--glow); transition: transform .15s, filter .15s;
-  &:hover { filter: brightness(1.05); transform: translateY(-1px); }
-  &:disabled { background: var(--muted); color: var(--muted-foreground); box-shadow: none; cursor: not-allowed; transform: none; }
+  background: var(--action); color: var(--action-foreground); font-weight: 600;
+  font-size: 0.9375rem; line-height: 1.25rem;
+  border-radius: 0.75rem; padding: .875rem 1.5rem; min-height: 3rem; width: 100%;
+  transition: filter 120ms var(--ease-brand), background-color 120ms var(--ease-brand);
+  &:hover { filter: brightness(1.06); }
+  &:disabled { background: var(--muted); color: var(--muted-foreground); cursor: not-allowed; filter: none; }
 }
 
 @utility seed-btn-ghost {
   display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
-  border: 1px solid var(--border); color: var(--ivory); border-radius: 999px; padding: .85rem 1.25rem;
-  &:hover { background: oklch(0.98 0.02 85 / 6%); }
+  border: 1px solid var(--foreground); color: var(--foreground); border-radius: 0.75rem;
+  padding: .8rem 1.25rem; min-height: 3rem; font-weight: 600;
+  transition: background-color 120ms var(--ease-brand);
+  &:hover { background: color-mix(in oklab, var(--foreground) 6%, transparent); }
 }
 
+/* Graphic language: "seed field" quiet dot texture + "growth glow" (dark heroes only). */
 @utility seed-lines {
   background-image:
-    radial-gradient(60rem 30rem at 85% -10%, oklch(0.83 0.24 145 / 14%), transparent 60%),
-    radial-gradient(40rem 30rem at -10% 110%, oklch(0.83 0.24 145 / 8%), transparent 60%);
+    radial-gradient(48rem 28rem at 100% 0%, var(--growth-glow), transparent 65%),
+    radial-gradient(circle at 1px 1px, var(--field-dot) 1px, transparent 1.6px);
+  background-size: auto, 28px 28px;
+  background-repeat: no-repeat, repeat;
 }
-.ignite-theme .font-display, .ignite-theme h1, .ignite-theme h2, .ignite-theme h3, .ignite-theme h4 { font-family: "Fraunces", Georgia, serif; }
 
-/* Ignite registration card: green rim + soft glow, as on the original page. */
-.ignite-theme .shadow-glow { box-shadow: var(--glow); }
+/* Ignite cards: flat with a thin green rim (brand: no glow behind text blocks). */
+.ignite-theme .shadow-glow { box-shadow: 0 0 0 1px color-mix(in oklab, var(--primary) 45%, transparent); }
+
+@layer base {
+  /* Brand type scale: headings Manrope 600 (display 700, set per element). */
+  h1, h2, h3, h4, .font-display { font-weight: 600; }
+}

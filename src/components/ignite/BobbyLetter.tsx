@@ -14,12 +14,12 @@ const SPLIT: [string, string][] = [
 export function BobbyLetter() {
   return (
     <section aria-labelledby="bobby-letter" className="mt-20 border-t border-border pt-16">
-      <p className="text-xs font-bold tracking-[0.3em] text-primary">A LETTER FROM BOBBY</p>
-      <h2 id="bobby-letter" className="mt-4 max-w-3xl font-display text-4xl tracking-tight sm:text-5xl">
+      <p className="font-mono text-xs font-medium tracking-[0.14em] text-primary">A LETTER FROM BOBBY</p>
+      <h2 id="bobby-letter" className="mt-4 max-w-3xl font-display text-4xl font-bold tracking-[-0.03em] sm:text-5xl">
         We have a plan. We’re igniting the fire.
       </h2>
 
-      <article className="mt-10 max-w-3xl rounded-3xl border border-primary/40 bg-card/60 p-7 shadow-glow sm:p-12">
+      <article className="mt-10 max-w-3xl rounded-3xl border border-primary/40 bg-card/60 p-7 sm:p-12">
         <div className="space-y-5 text-lg leading-relaxed text-muted-foreground">
           <p className="font-display text-2xl text-foreground">Friends,</p>
 
@@ -104,7 +104,7 @@ export function BobbyLetter() {
           </p>
 
           <div className="pt-4">
-            <p className="font-display text-3xl italic text-foreground">Bobby Gray</p>
+            <p className="font-display text-3xl font-semibold tracking-[-0.02em] text-foreground">Bobby Gray</p>
             <p className="text-sm">Founder, Honest Money Ecosystem</p>
           </div>
         </div>

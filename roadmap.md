@@ -53,6 +53,8 @@
 - [x] Ignite: find out why NectarPay never notified Seeds of Bobby's paid invoice; add a server-side payment re-check so a missed notice can't strand a paid seat
 - [ ] Ignite: "connection info" email for confirmed seats (blocked: Bobby supplies the class link/details)
 - [x] Ignite: "A letter from Bobby" at the bottom of /register (from Week 138 call) + class overview write-up
+- [x] Site-wide rebrand to /brand guidelines (logo, colors, Manrope, buttons, favicon), /register first
+- [ ] Brand: SVG logo masters + .ico/PWA icons (blocked: designer supplies vector files)
 - [ ] Ignite letter: Bobby confirms $1,000/seat match + 10/10/10/20 split, contest rules/prizes, "free for miners", basket-builder timing (blocked: Bobby/counsel)
 - [x] NectarPay: explained the missed notice (follow-up work cut off, never retried); they now save + retry; Seeds re-runs repeated confirmations
 - [ ] NectarPay: confirm each retry is re-signed with a fresh timestamp (blocked: NectarPay team)
