@@ -26,12 +26,15 @@ export function sesConfigured(): boolean {
 export function signV4(p: {
   method: string; host: string; path: string; query?: string; body: string;
   region: string; service: string; accessKeyId: string; secret: string; now: Date;
+  /** Extra headers to sign (e.g. x-amz-target); names must be lowercase. */
+  extraHeaders?: Record<string, string>; contentType?: string;
 }): Record<string, string> {
   const amzDate = p.now.toISOString().replace(/[:-]|\.\d{3}/g, "");
   const day = amzDate.slice(0, 8);
   const payloadHash = bytesToHex(sha256(enc.encode(p.body)));
   const headers: Record<string, string> = { host: p.host, "x-amz-content-sha256": payloadHash, "x-amz-date": amzDate };
-  if (p.body) headers["content-type"] = "application/json";
+  if (p.body) headers["content-type"] = p.contentType ?? "application/json";
+  Object.assign(headers, p.extraHeaders);
   const names = Object.keys(headers).sort();
   const canonical = [p.method, p.path, p.query ?? "", ...names.map((n) => `${n}:${headers[n]}`), "", names.join(";"), payloadHash].join("\n");
   const scope = `${day}/${p.region}/${p.service}/aws4_request`;

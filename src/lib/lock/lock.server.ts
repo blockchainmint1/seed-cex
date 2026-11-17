@@ -9,9 +9,11 @@ import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
 import { rpc, type RpcChain } from "@/lib/rpc.server";
 import {
   COOP_SEQUENCE, buildLockScript, deriveSeedsLockKey, finalizeLockTx, lockAddressFor, lockScriptPubKeyFor,
-  parseLockScript, parseUnsignedTx, refundSequence, serializeTx, signLock, verifyLock,
+  lockSighash, parseLockScript, parseUnsignedTx, refundSequence, serializeTx, signLock, verifyLock,
   type LockChain, type LockWrapper, type Tx,
 } from "./script";
+import { secp256k1 } from "@noble/curves/secp256k1.js";
+import { kmsLockConfigured, kmsSeedsSigner, type SeedsSigner } from "./kms.server";
 import { checkLockSpend, type ExpectedSpend, type LockUtxo, type OmniDecoded, type SpendPurpose } from "./rules";
 
 const rpcChain = (c: LockChain): RpcChain => (c === "TXC" ? "txc" : "isk");
@@ -23,6 +25,19 @@ export function seedsLockKey(memberId: string, chain: LockChain, generation = 0)
   const m = process.env.SEEDS_LOCK_MASTER;
   if (!m) throw new Error("SEEDS_LOCK_MASTER is not configured");
   return deriveSeedsLockKey(new TextEncoder().encode(m), memberId, chain, generation);
+}
+
+/**
+ * Seeds' signer for a chain: AWS KMS once it is configured for that chain (the master-secret
+ * key is then never used for that chain), otherwise the local master-derived key (test only).
+ */
+export async function seedsSigner(memberId: string, chain: LockChain, generation = 0): Promise<SeedsSigner> {
+  if (kmsLockConfigured(chain)) return kmsSeedsSigner(chain);
+  const k = seedsLockKey(memberId, chain, generation);
+  return {
+    publicKey: k.publicKey, source: "local",
+    sign: async (digest) => secp256k1.sign(digest, k.privateKey, { prehash: false, format: "der", lowS: true }),
+  };
 }
 
 export type LockDescriptor = { chain: LockChain; wrapper: LockWrapper; ws: Uint8Array; address: string; csvBlocks: number };
@@ -65,6 +80,7 @@ export type BuiltLockSpend = { tx: Tx; unsignedHex: string; unsignedSha256: stri
 /** Seeds builds every lock spend itself: sweep all confirmed coins, Omni send, change back to the lock. */
 export async function buildLockSpend(lock: LockDescriptor, p: { purpose: SpendPurpose; toAddress?: string; propertyId?: number; amount?: string }): Promise<BuiltLockSpend> {
   const c = rpcChain(lock.chain);
+  if (lock.wrapper === "p2wsh" && p.purpose !== "refresh") throw new Error("Tokens can't move through a segwit lock on this chain; use the P2SH lock");
   const all = await lockCoins(lock.chain, lock.address);
   const coins = all.filter((u) => u.confirmations >= 1);
   if (!coins.length) throw new Error("No confirmed coins at the lock yet");
@@ -102,6 +118,19 @@ export function addSeedsHalf(lock: LockDescriptor, built: BuiltLockSpend, member
     const value = built.coins.find((c) => c.txid === inp.txid && c.vout === inp.vout)!.value;
     return { member: memberSigs[i]!, seeds: signLock({ tx: built.tx, index: i, ws: lock.ws, value, wrapper: lock.wrapper }, seedsPriv) };
   });
+  return finalizeLockTx(built.tx, lock.ws, lock.wrapper, sigs);
+}
+
+/** Same as addSeedsHalf, but with a SeedsSigner (KMS). Refuses if the signer isn't this lock's Seeds key. */
+export async function addSeedsHalfWith(lock: LockDescriptor, built: BuiltLockSpend, memberSigs: Uint8Array[], signer: SeedsSigner): Promise<string> {
+  const terms = parseLockScript(lock.ws);
+  if (!terms || bytesToHex(terms.seedsPub) !== bytesToHex(signer.publicKey)) throw new Error("This lock was made with a different Seeds key");
+  const sigs = [];
+  for (const [i, inp] of built.tx.inputs.entries()) {
+    const value = built.coins.find((c) => c.txid === inp.txid && c.vout === inp.vout)!.value;
+    const der = await signer.sign(lockSighash({ tx: built.tx, index: i, ws: lock.ws, value, wrapper: lock.wrapper }));
+    sigs.push({ member: memberSigs[i]!, seeds: Uint8Array.of(...der, 0x01) });
+  }
   return finalizeLockTx(built.tx, lock.ws, lock.wrapper, sigs);
 }
 

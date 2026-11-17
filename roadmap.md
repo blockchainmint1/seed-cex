@@ -65,7 +65,12 @@
 - [x] Spec for HME Wallet + auditor (docs/locked-trading-balance-spec.md)
 - [ ] HME Wallet: recognise/sign lock inputs, save lock description, offline "Recover locked funds" (blocked: HME team)
 - [x] Auditor design review: all conditions encoded (P2SH default, deposit depth, never-sign-twice ledger, sweep-all, fee reserve, Omni decode, no RBF, pair settlement)
-- [ ] Real test on TXC with scripts/lock-live-test.ts (blocked: Bobby sends 1 TSD + 0.2 TXC to TiwXXpo37QWNnykS1LTHVfmJArTvSETNX5)
-- [ ] Move Seeds lock signing into AWS KMS (blocked: Bobby creates a KMS secp256k1 key + IAM access)
+- [x] Real test on TXC: P2SH deposit + co-signed send + never-sign-twice all pass; P2WSH proven unusable for tokens (Omni ignores it) -> P2SH only
+- [ ] Live test: member-only refund from the P2SH lock (waits for the 20-block test timer)
+- [x] KMS signer code (src/lib/lock/kms.server.ts) + setup instructions for Bobby
+- [ ] Connect AWS KMS keys and run kms-check (blocked: Bobby creates the two keys + signing user, then enters 5 settings)
+- [x] HME Wallet hand-off doc for lock signing/recovery (P2SH only)
 - [ ] HME Wallet: P2SH lock inputs need nonWitnessUtxo support in their signer (blocked: HME team)
+- [x] Attorney briefing incl. trade-type comparison
+- [ ] Legal answers on custody wording, licensing, P2P, Ignite deposit promise (blocked: counsel)
 - [ ] Wire lock into settlement: lock/refresh/unlock flows, instant settle only while strong (blocked: HME Wallet + real test + auditor)

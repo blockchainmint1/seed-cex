@@ -111,6 +111,8 @@ export function lockAddress(witnessScript: Uint8Array, chain: LockChain = "TXC")
 export const LOCK_P2SH_VERSION: Record<LockChain, number> = { TXC: 65, ISK: 44 };
 export type LockWrapper = "p2sh" | "p2wsh";
 /** P2SH is the default on TEXITcoin until a live test proves Omni reads P2WSH senders (auditor, 2026-11-17). */
+// Live test 2026-11-17 (block 384328, tx c5e06fde…): TEXITcoin's Omni layer ignores P2WSH
+// ("txc1q…") outputs as token recipients — the TSD fell back to the sender. Token locks are P2SH only.
 export const DEFAULT_WRAPPER: LockWrapper = "p2sh";
 
 const hash160 = (b: Uint8Array) => ripemd160(sha256(b));

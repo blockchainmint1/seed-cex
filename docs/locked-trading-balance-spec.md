@@ -100,3 +100,15 @@ The auditor signed off on the design with conditions. All of them are now enforc
 Trade-off accepted with P2SH: a lock spends at most once per block (~3 minutes), because its next spend must wait for its coins to confirm.
 
 **Live test** (`scripts/lock-live-test.ts`, operator-only, 20-block test delay). Funding address `TiwXXpo37QWNnykS1LTHVfmJArTvSETNX5`. Test locks: P2SH `TLQq2kuVHciy3QA6Au9Emsty2PzMpYqfQv`, P2WSH `txc1qrrsjnvtc7at974mew76txyn9xfm6gs45jgur6ct87klq2wr0j58qj8nm6r`. Steps: deposit to each lock, co-signed send P2SH→P2WSH and P2WSH→P2SH (also proves the ledger refuses a second co-sign), then member-only refunds after 20 blocks. Results get appended here.
+
+### Live test results (2026-11-17, TEXITcoin mainnet)
+| Step | Result | Tx |
+|---|---|---|
+| 0.5 TSD into P2SH lock `TLQq2kuV…YqfQv` | Credited by Omni | `8a8255c4a6f08babad3cc1923460018baa098822f2de55c1cc1bf675f776bf7e` |
+| 0.5 TSD toward P2WSH lock `txc1qrrsj…nm6r` | **Omni ignored the P2WSH output; the reference fell back to the sender, so the TSD stayed home.** 0.05 TXC did land at the P2WSH address | `c5e06fde11c8cbdb90144ade653cb61c7c737042087642390f0670cef6e8c743` |
+| Seeds-built co-sign P2SH → P2WSH | Refused by Seeds before signing: the Omni decode showed recipient = sender | n/a |
+| Co-signed 0.25 TSD P2SH lock → member address | Omni valid, sender = P2SH lock, recipient correct | `1d80fc2ae99595474467a6e905119f1937222bf933865509a24d793a9f1e8726` |
+| Second co-sign of the same coins | Refused by `reserve_lock_outpoints` | n/a |
+| Member-only refund (20-block test delay) | Pending until the change coin is 20 blocks old | |
+
+**Decision:** token locks are P2SH only. `buildLockSpend` refuses token spends from P2WSH locks. HME Wallet only needs the legacy P2SH path.
