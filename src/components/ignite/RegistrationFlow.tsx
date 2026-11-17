@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useSession } from "@/hooks/use-session";
 import { getMyIgnite, startIgniteCheckout } from "@/lib/ignite.functions";
+import { PeerPayPanel } from "./PeerPayPanel";
 import { SCHEDULE_DATES, SCHEDULE_SESSIONS, SCHEDULE_TIME, RECORDING_NOTE, DEPOSIT_USD, validateDetails, type Details, type Errors } from "@/lib/ignite-registration";
 
 const COUNTRY_CODES = ["+1", "+44", "+61", "+64", "+353", "+49", "+33", "+34", "+39", "+31", "+41", "+46", "+47", "+45", "+52", "+55", "+57", "+27", "+234", "+254", "+971", "+65", "+60", "+63", "+91", "+81", "+82"];
@@ -19,7 +20,7 @@ export function RegistrationFlow() {
   const { user, loading } = useSession();
   const fetchMine = useServerFn(getMyIgnite);
   const checkout = useServerFn(startIgniteCheckout);
-  const mine = useQuery({ queryKey: ["ignite", user?.id], queryFn: () => fetchMine(), enabled: !!user, refetchInterval: (q) => (q.state.data?.registration?.status === "pending" ? 15000 : false) });
+  const mine = useQuery({ queryKey: ["ignite", user?.id], queryFn: () => fetchMine(), enabled: !!user, refetchInterval: (q) => (q.state.data?.registration?.status === "pending" || q.state.data?.peer?.state === "active" ? 15000 : false) });
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
   const prefilled = useRef(false);
@@ -50,12 +51,14 @@ export function RegistrationFlow() {
     );
   }
   const reg = mine.data?.registration;
+  const peerActive = mine.data?.peer?.state === "active";
+  const peerCheckoutOpen = reg?.payment_method === "peer" && !!reg.invoice_expires_at && new Date(reg.invoice_expires_at).getTime() > Date.now() + 60_000 && reg.status === "pending";
   if (reg?.status === "confirmed") {
     return (
       <div className="rounded-3xl border border-border bg-card p-6 shadow-glow sm:p-8" role="status">
         <p className="text-xs font-semibold uppercase tracking-widest text-primary">Seat confirmed</p>
         <h2 className="mt-2 font-display text-3xl">You're in, {reg.full_name.split(" ")[0]}.</h2>
-        <p className="mt-2 text-sm text-muted-foreground">Payment verified{reg.paid_chain ? ` (${reg.paid_chain.toUpperCase()})` : ""}. Ignite runs {SCHEDULE_DATES}, {SCHEDULE_TIME.toLowerCase()}. We'll send reminders to {reg.email}.</p>
+        <p className="mt-2 text-sm text-muted-foreground">Payment verified{reg.paid_chain ? ` (${reg.paid_chain.toUpperCase()})` : ""}{mine.data?.peer?.state === "paid" && mine.data.peer.payerName ? `, paid by ${mine.data.peer.payerName} through Peer Pay` : ""}. Ignite runs {SCHEDULE_DATES}, {SCHEDULE_TIME.toLowerCase()}. We'll send reminders to {reg.email}.</p>
       </div>
     );
   }
@@ -153,7 +156,7 @@ export function RegistrationFlow() {
             This payment is a reservation deposit for the Ignite class. It is not trading funds and does not open, fund, or grant ownership in a Seeds exchange account.
           </p>
 
-          {reg && (reg.status === "pending" || reg.status === "underpaid") && (
+          {reg && (reg.status === "underpaid" || (reg.status === "pending" && !!reg.invoice_expires_at && new Date(reg.invoice_expires_at).getTime() > Date.now())) && (
             <div className="mt-5 rounded-2xl border border-warning/40 bg-warning/5 p-4" role="status">
               <p className="text-sm font-semibold text-warning">{reg.status === "underpaid" ? "Payment arrived short" : "Payment pending"}</p>
               <p className="mt-1 text-sm text-muted-foreground">{reg.status === "underpaid" ? "We received less than the deposit. Contact help before paying again." : "Crypto payments stay pending until confirmed on-chain. This page updates by itself."}</p>
@@ -166,8 +169,9 @@ export function RegistrationFlow() {
             </div>
           )}
           <div className="mt-4 grid gap-3">
-            <button type="button" className="seed-btn" disabled={!mine.data?.cryptoOpen || paying} onClick={pay}>{paying ? "Opening checkout…" : reg?.status === "pending" ? "Continue crypto payment (NectarPay)" : `Pay $${DEPOSIT_USD} with crypto (NectarPay)`}</button>
-            <button type="button" className="seed-btn-ghost" disabled>Peer Pay — coming soon</button>
+            <button type="button" className="seed-btn" disabled={!mine.data?.cryptoOpen || paying || peerActive || peerCheckoutOpen} onClick={pay}>{paying ? "Opening checkout…" : reg?.status === "pending" && reg.payment_method === "nectarpay" && reg.checkout_url && !!reg.invoice_expires_at && new Date(reg.invoice_expires_at).getTime() > Date.now() + 60_000 ? "Continue crypto payment (NectarPay)" : `Pay $${DEPOSIT_USD} with crypto (NectarPay)`}</button>
+            {(peerActive || peerCheckoutOpen) && <p className="text-xs text-muted-foreground">{peerCheckoutOpen ? "Your friend has a checkout open. Paying yourself is paused until it finishes or expires." : "Paying yourself is paused while your Peer Pay link is on, so your seat can't be paid twice. Cancel the link to pay yourself."}</p>}
+            <PeerPayPanel details={details} peer={mine.data?.peer} cryptoOpen={!!mine.data?.cryptoOpen} onChanged={() => { void mine.refetch(); }} />
             {payError && <p className="text-sm text-destructive" role="alert">{payError}</p>}
             <p className="text-xs text-muted-foreground">BTC, TXC, TSD, USDC, ETH, LTC, DOGE, ISK or ZCU — paid straight to Seeds' own wallet through NectarPay.</p>
           </div>

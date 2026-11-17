@@ -8,6 +8,8 @@ import { TradeConfirmationEmail, type TradeConfirmationProps } from "./templates
 import { P2pOrderEmail, type P2pOrderProps } from "./templates/p2p-order";
 import { AccountChangeEmail, type AccountChangeProps } from "./templates/account-change";
 import { WeeklyUpdateEmail, type WeeklyUpdateProps } from "./templates/weekly-update";
+import { PeerPayRequestEmail, type PeerPayRequestProps } from "./templates/peer-pay-request";
+import { PeerPayPaidEmail, type PeerPayPaidProps } from "./templates/peer-pay-paid";
 import { fmt, usd } from "./components";
 
 export type TemplateProps = {
@@ -16,10 +18,12 @@ export type TemplateProps = {
   "p2p-order": P2pOrderProps;
   "account-change": AccountChangeProps;
   "weekly-update": WeeklyUpdateProps;
+  "peer-pay-request": PeerPayRequestProps;
+  "peer-pay-paid": PeerPayPaidProps;
 };
 export type TemplateName = keyof TemplateProps;
-/** security = always sent; trades = email_trade_confirmations; weekly = email_weekly_update; welcome = once. */
-export type Category = "welcome" | "trades" | "security" | "weekly";
+/** security = always sent; trades = email_trade_confirmations; weekly = email_weekly_update; welcome = once; receipt = always (payment receipts); invite = to a non-member, sent by direct delivery. */
+export type Category = "welcome" | "trades" | "security" | "weekly" | "receipt" | "invite";
 
 type Def<K extends TemplateName> = {
   label: string;
@@ -86,6 +90,20 @@ export const TEMPLATES: { [K in TemplateName]: Def<K> } = {
       attention: ["One order on BTC/TSD has been open for 6 days."],
       unsubscribeUrl: "https://seeds.honest.money/api/public/email/unsubscribe?t=sample",
     },
+  },
+  "peer-pay-request": {
+    label: "Peer Pay request (to a friend)",
+    category: "invite",
+    subject: (p) => `${p.registrantName} asked you to pay their Ignite seat`,
+    render: (p) => <PeerPayRequestEmail {...p} />,
+    sample: { registrantName: "Alex Rivera", amount: 400, payUrl: "https://seeds.honest.money/pay/sample", expiresAt: "2026-11-24T18:00:00Z" },
+  },
+  "peer-pay-paid": {
+    label: "Peer Pay received",
+    category: "receipt",
+    subject: (p) => `${p.payerName} paid your Ignite seat`,
+    render: (p) => <PeerPayPaidEmail {...p} />,
+    sample: { name: "Alex", payerName: "Jordan Lee", amount: 400, paidAt: "2026-11-18T15:10:00Z", timezone: "America/Chicago" },
   },
 };
 

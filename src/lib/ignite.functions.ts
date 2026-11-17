@@ -1,8 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { DEPOSIT_USD, SEAT_CAPACITY, validateDetails, normalizeEmail, type Details } from "./ignite-registration";
+import { DEPOSIT_USD, validateDetails, normalizeEmail, type Details } from "./ignite-registration";
+import { emailsLeft, peerLinkState, peerToken, selfCheckoutBlock } from "./ignite-peer";
 
-const COLS = "status, full_name, email, country_code, phone, amount_usd, checkout_url, invoice_expires_at, confirmed_at, paid_chain";
+const COLS = "id, payment_method, status, full_name, email, country_code, phone, amount_usd, checkout_url, invoice_expires_at, confirmed_at, paid_chain";
 
 /** The signed-in member's registration (if any), prefill from their HME profile, and whether crypto checkout is open. */
 export const getMyIgnite = createServerFn({ method: "GET" })
@@ -13,7 +14,27 @@ export const getMyIgnite = createServerFn({ method: "GET" })
       context.supabase.from("ignite_registrations").select(COLS).eq("user_id", context.userId).maybeSingle(),
       context.supabase.from("profiles").select("display_name, hm_member_id").eq("id", context.userId).maybeSingle(),
     ]);
+    // Latest Peer Pay link, with the shareable URL rebuilt from the server secret.
+    let peer: null | { path: string | null; state: string; expiresAt: string; payerName: string | null; openedAt: string | null; paidAt: string | null; emailsLeft: number } = null;
+    if (reg) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: link } = await supabaseAdmin.from("ignite_peer_links")
+        .select("id, status, expires_at, payer_name, opened_at, paid_at").eq("registration_id", reg.id)
+        .order("created_at", { ascending: false }).limit(1).maybeSingle();
+      if (link) {
+        const state = peerLinkState(link);
+        const { count } = await supabaseAdmin.from("ignite_peer_emails").select("id", { count: "exact", head: true })
+          .eq("registrant_id", context.userId).gte("sent_at", new Date(Date.now() - 86_400_000).toISOString());
+        const secret = process.env.EMAIL_LINK_SECRET;
+        peer = {
+          path: state === "active" && secret ? `/pay/${peerToken(secret, link.id)}` : null,
+          state, expiresAt: link.expires_at, payerName: link.payer_name, openedAt: link.opened_at, paidAt: link.paid_at,
+          emailsLeft: emailsLeft(count ?? 0),
+        };
+      }
+    }
     return {
+      peer,
       registration: reg,
       prefill: { fullName: prof?.display_name ?? "", email: (context.claims as { email?: string }).email ?? "" },
       hmeLinked: !!prof?.hm_member_id,
@@ -32,16 +53,19 @@ export const startIgniteCheckout = createServerFn({ method: "POST" })
     const { createInvoice, nectarpayConfigured } = await import("./nectarpay.server");
     if (!nectarpayConfigured()) throw new Error("Crypto checkout isn't open yet.");
 
-    const { data: existing } = await supabaseAdmin.from("ignite_registrations").select("id, status, checkout_url, invoice_expires_at").eq("user_id", context.userId).maybeSingle();
+    const { data: existing } = await supabaseAdmin.from("ignite_registrations").select("id, status, payment_method, checkout_url, invoice_expires_at").eq("user_id", context.userId).maybeSingle();
     if (existing?.status === "confirmed") throw new Error("Your seat is already confirmed.");
-    if (existing?.status === "pending" && existing.checkout_url && existing.invoice_expires_at && new Date(existing.invoice_expires_at).getTime() > Date.now() + 60_000)
+    const { data: activeLink } = existing
+      ? await supabaseAdmin.from("ignite_peer_links").select("id, status, expires_at").eq("registration_id", existing.id).eq("status", "active").maybeSingle()
+      : { data: null };
+    const block = selfCheckoutBlock({ hasActivePeerLink: !!activeLink && peerLinkState(activeLink) === "active", reg: existing ?? null });
+    if (block) throw new Error(block);
+    if (existing?.status === "pending" && existing.payment_method === "nectarpay" && existing.checkout_url && existing.invoice_expires_at && new Date(existing.invoice_expires_at).getTime() > Date.now() + 60_000)
       return { checkoutUrl: existing.checkout_url };
 
     const now = new Date().toISOString();
-    const { count } = await supabaseAdmin.from("ignite_registrations").select("id", { count: "exact", head: true })
-      .neq("user_id", context.userId)
-      .or(`status.eq.confirmed,and(status.in.(pending,underpaid),invoice_expires_at.gt.${now})`);
-    if ((count ?? 0) >= SEAT_CAPACITY) throw new Error("Ignite is fully reserved.");
+    const { seatsFull } = await import("./ignite.server");
+    if (await seatsFull(context.userId)) throw new Error("Ignite is fully reserved.");
 
     const { data: prof } = await supabaseAdmin.from("profiles").select("hm_member_id").eq("id", context.userId).maybeSingle();
     const email = normalizeEmail(data.email);

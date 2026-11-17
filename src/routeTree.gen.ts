@@ -32,6 +32,7 @@ import { Route as AuthenticatedApiKeysRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedTradesRouteImport } from './routes/_authenticated/trades'
 import { Route as AuthenticatedWalletRouteImport } from './routes/_authenticated/wallet'
 import { Route as P2pIndexRouteImport } from './routes/p2p.index'
+import { Route as PayTokenRouteImport } from './routes/pay.$token'
 import { Route as ProofCodeRouteImport } from './routes/proof.code'
 import { Route as TradeBtcTsdRouteImport } from './routes/trade.btc-tsd'
 import { Route as TradeEthTsdRouteImport } from './routes/trade.eth-tsd'
@@ -188,6 +189,11 @@ const AuthenticatedWalletRoute = AuthenticatedWalletRouteImport.update({
 const P2pIndexRoute = P2pIndexRouteImport.update({
   id: '/p2p/',
   path: '/p2p/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PayTokenRoute = PayTokenRouteImport.update({
+  id: '/pay/$token',
+  path: '/pay/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProofCodeRoute = ProofCodeRouteImport.update({
@@ -436,6 +442,7 @@ export interface FileRoutesByFullPath {
   '/api-keys': typeof AuthenticatedApiKeysRoute
   '/trades': typeof AuthenticatedTradesRoute
   '/wallet': typeof AuthenticatedWalletRoute
+  '/pay/$token': typeof PayTokenRoute
   '/proof/code': typeof ProofCodeRoute
   '/trade/btc-tsd': typeof TradeBtcTsdRoute
   '/trade/eth-tsd': typeof TradeEthTsdRoute
@@ -503,6 +510,7 @@ export interface FileRoutesByTo {
   '/api-keys': typeof AuthenticatedApiKeysRoute
   '/trades': typeof AuthenticatedTradesRoute
   '/wallet': typeof AuthenticatedWalletRoute
+  '/pay/$token': typeof PayTokenRoute
   '/proof/code': typeof ProofCodeRoute
   '/trade/btc-tsd': typeof TradeBtcTsdRoute
   '/trade/eth-tsd': typeof TradeEthTsdRoute
@@ -572,6 +580,7 @@ export interface FileRoutesById {
   '/_authenticated/api-keys': typeof AuthenticatedApiKeysRoute
   '/_authenticated/trades': typeof AuthenticatedTradesRoute
   '/_authenticated/wallet': typeof AuthenticatedWalletRoute
+  '/pay/$token': typeof PayTokenRoute
   '/proof/code': typeof ProofCodeRoute
   '/trade/btc-tsd': typeof TradeBtcTsdRoute
   '/trade/eth-tsd': typeof TradeEthTsdRoute
@@ -641,6 +650,7 @@ export interface FileRouteTypes {
     | '/api-keys'
     | '/trades'
     | '/wallet'
+    | '/pay/$token'
     | '/proof/code'
     | '/trade/btc-tsd'
     | '/trade/eth-tsd'
@@ -708,6 +718,7 @@ export interface FileRouteTypes {
     | '/api-keys'
     | '/trades'
     | '/wallet'
+    | '/pay/$token'
     | '/proof/code'
     | '/trade/btc-tsd'
     | '/trade/eth-tsd'
@@ -776,6 +787,7 @@ export interface FileRouteTypes {
     | '/_authenticated/api-keys'
     | '/_authenticated/trades'
     | '/_authenticated/wallet'
+    | '/pay/$token'
     | '/proof/code'
     | '/trade/btc-tsd'
     | '/trade/eth-tsd'
@@ -840,6 +852,7 @@ export interface RootRouteChildren {
   SwapRoute: typeof SwapRoute
   TermsRoute: typeof TermsRoute
   TsdRoute: typeof TsdRoute
+  PayTokenRoute: typeof PayTokenRoute
   ProofCodeRoute: typeof ProofCodeRoute
   TradeBtcTsdRoute: typeof TradeBtcTsdRoute
   TradeEthTsdRoute: typeof TradeEthTsdRoute
@@ -1043,6 +1056,13 @@ declare module '@tanstack/react-router' {
       path: '/p2p'
       fullPath: '/p2p/'
       preLoaderRoute: typeof P2pIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pay/$token': {
+      id: '/pay/$token'
+      path: '/pay/$token'
+      fullPath: '/pay/$token'
+      preLoaderRoute: typeof PayTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/proof/code': {
@@ -1406,6 +1426,7 @@ const rootRouteChildren: RootRouteChildren = {
   SwapRoute: SwapRoute,
   TermsRoute: TermsRoute,
   TsdRoute: TsdRoute,
+  PayTokenRoute: PayTokenRoute,
   ProofCodeRoute: ProofCodeRoute,
   TradeBtcTsdRoute: TradeBtcTsdRoute,
   TradeEthTsdRoute: TradeEthTsdRoute,

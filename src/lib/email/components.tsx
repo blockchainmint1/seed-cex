@@ -30,7 +30,7 @@ export const C = {
 const FONT = "Manrope, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 const NUM: React.CSSProperties = { fontVariantNumeric: "tabular-nums", fontFeatureSettings: "'tnum'" };
 
-export type FooterKind = "security" | "transactional" | "weekly";
+export type FooterKind = "security" | "transactional" | "weekly" | "peer";
 
 export function Layout(props: {
   preview: string;
@@ -145,7 +145,9 @@ export function Mono({ children }: { children: React.ReactNode }) {
 
 function Footer({ kind, unsubscribeUrl }: { kind: FooterKind; unsubscribeUrl?: string }) {
   const link = { color: C.stone, textDecoration: "underline" };
-  const reason = kind === "security"
+  const reason = kind === "peer"
+    ? "A Seeds member asked us to send you this payment link. If you don't know them, ignore this email. Nothing happens unless you pay."
+    : kind === "security"
     ? "You're receiving this because it's about the security of your Seeds account. These emails can't be turned off."
     : kind === "weekly"
       ? "You're receiving this weekly update because you have a Seeds account."
@@ -157,7 +159,7 @@ function Footer({ kind, unsubscribeUrl }: { kind: FooterKind; unsubscribeUrl?: s
       </Text>
       <Text style={{ margin: "0 0 12px", fontSize: 13, lineHeight: "19px", color: C.stone }}>
         {reason}{" "}
-        {kind !== "security" ? <Link href={`${SITE}/account`} style={link}>Email settings</Link> : null}
+        {kind !== "security" && kind !== "peer" ? <Link href={`${SITE}/account`} style={link}>Email settings</Link> : null}
         {unsubscribeUrl ? <>{" · "}<Link href={unsubscribeUrl} style={link}>Unsubscribe from weekly updates</Link></> : null}
       </Text>
       <Hr style={{ borderColor: C.line, margin: "16px 0" }} />

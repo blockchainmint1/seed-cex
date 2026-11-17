@@ -321,6 +321,103 @@ export type Database = {
           },
         ]
       }
+      ignite_peer_emails: {
+        Row: {
+          id: string
+          link_id: string
+          registrant_id: string
+          sent_at: string
+          to_email: string
+        }
+        Insert: {
+          id?: string
+          link_id: string
+          registrant_id: string
+          sent_at?: string
+          to_email: string
+        }
+        Update: {
+          id?: string
+          link_id?: string
+          registrant_id?: string
+          sent_at?: string
+          to_email?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ignite_peer_emails_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: false
+            referencedRelation: "ignite_peer_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ignite_peer_links: {
+        Row: {
+          cancelled_at: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          invoice_id: string | null
+          opened_at: string | null
+          paid_at: string | null
+          payer_email: string | null
+          payer_hm_member_id: string | null
+          payer_id: string | null
+          payer_name: string | null
+          registrant_id: string
+          registration_id: string
+          status: string
+          token_hash: string
+          updated_at: string
+        }
+        Insert: {
+          cancelled_at?: string | null
+          created_at?: string
+          expires_at: string
+          id?: string
+          invoice_id?: string | null
+          opened_at?: string | null
+          paid_at?: string | null
+          payer_email?: string | null
+          payer_hm_member_id?: string | null
+          payer_id?: string | null
+          payer_name?: string | null
+          registrant_id: string
+          registration_id: string
+          status?: string
+          token_hash: string
+          updated_at?: string
+        }
+        Update: {
+          cancelled_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          invoice_id?: string | null
+          opened_at?: string | null
+          paid_at?: string | null
+          payer_email?: string | null
+          payer_hm_member_id?: string | null
+          payer_id?: string | null
+          payer_name?: string | null
+          registrant_id?: string
+          registration_id?: string
+          status?: string
+          token_hash?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ignite_peer_links_registration_id_fkey"
+            columns: ["registration_id"]
+            isOneToOne: false
+            referencedRelation: "ignite_registrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ignite_registrations: {
         Row: {
           amount_usd: number
