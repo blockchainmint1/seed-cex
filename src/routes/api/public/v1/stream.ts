@@ -11,6 +11,7 @@ import { createFileRoute } from "@tanstack/react-router";
  *   GET /api/public/v1/stream?symbol=TXCUSDC&streams=ticker,depth,trade
  */
 export const Route = createFileRoute("/api/public/v1/stream")({
+  staticData: { sitemap: false },
   server: {
     handlers: {
       OPTIONS: async () => (await import("@/lib/api/v1.server")).apiPreflight(),

@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
 export const Route = createFileRoute("/_authenticated/p2p/trade/$id")({
+  staticData: { sitemap: false },
   head: () => ({
     meta: [
       { title: "P2P Trade Room — Seeds" },

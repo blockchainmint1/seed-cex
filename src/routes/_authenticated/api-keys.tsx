@@ -7,6 +7,7 @@ import { createApiKey, deleteApiKey, listApiKeys, setApiKeyEnabled } from "@/lib
 import { fmtAgo } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/api-keys")({
+  staticData: { sitemap: false },
   head: () => ({
     meta: [
       { title: "API Keys — Seeds" },

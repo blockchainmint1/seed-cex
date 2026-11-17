@@ -15,6 +15,7 @@ const pages = Object.entries(assets)
   .map(([, asset], index) => ({ url: asset.default.url, text: pageText[index] ?? "", number: index + 1 }));
 
 export const Route = createFileRoute("/brand")({
+  staticData: { sitemap: true },
   head: () => ({
     meta: [
       { title: "Seeds Brand Guidelines — Visual Identity & Brand Reference" },

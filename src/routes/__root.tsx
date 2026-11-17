@@ -77,6 +77,7 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  staticData: { sitemap: false },
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -88,6 +89,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "Trade USDC and TEXITcoin without handing over your keys. Seeds encrypts your recovery phrase in the browser and settles trades through peer-to-peer escrow.",
       },
       { name: "author", content: "Seeds" },
+      { name: "google-site-verification", content: "pFhdpWiEXX18KJ4dzCnKh-Voe4lDc2sxRXEXz88JjYE" },
       { property: "og:title", content: "Seeds — Non-Custodial USDC/TXC Exchange" },
       {
         property: "og:description",

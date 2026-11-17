@@ -8,6 +8,7 @@ import { STATUS_LABEL } from "@/lib/p2p-config";
 import { fmtAgo } from "@/lib/format";
 
 export const Route = createFileRoute("/p2p/seller/$handle")({
+  staticData: { sitemap: false },
   head: ({ params }) => ({
     meta: [
       { title: `${params.handle} — Seeds P2P seller profile` },

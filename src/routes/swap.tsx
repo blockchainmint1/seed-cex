@@ -9,6 +9,7 @@ import { getSwapQuotes, getSwapStatus } from "@/lib/xchain/swap.functions";
 import { fmtCompact } from "@/lib/format";
 
 export const Route = createFileRoute("/swap")({
+  staticData: { sitemap: true },
   head: () => ({
     meta: [
       { title: "Cross-Chain Swap — BTC, ETH, SOL, XRP & more | Seeds" },

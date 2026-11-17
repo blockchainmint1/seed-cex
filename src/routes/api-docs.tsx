@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/api-docs")({
+  staticData: { sitemap: true },
   head: () => ({
     meta: [
       { title: "Seeds API — Trading API for Bots & Market Makers" },

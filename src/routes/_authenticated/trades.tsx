@@ -8,6 +8,7 @@ import { LegPanel } from "@/components/trade/LegPanel";
 import { fmtAgo, fmtAmount, fmtPrice } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/trades")({
+  staticData: { sitemap: false },
   head: () => ({
     meta: [
       { title: "My Trades & Orders — Seeds" },

@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/tsd")({
+  staticData: { sitemap: true },
   head: () => ({
     meta: [
       { title: "Texas Stable Dollar (TSD) — Seeds" },

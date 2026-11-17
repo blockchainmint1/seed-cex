@@ -5,6 +5,7 @@ import { getAdminOverview } from "@/lib/admin.functions";
 import { fmtAgo, fmtAmount, fmtPrice } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/admin")({
+  staticData: { sitemap: false },
   head: () => ({
     meta: [
       { title: "Admin Console — Seeds" },

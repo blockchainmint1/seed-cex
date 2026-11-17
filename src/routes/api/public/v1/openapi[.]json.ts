@@ -124,6 +124,7 @@ function spec(origin: string) {
 }
 
 export const Route = createFileRoute("/api/public/v1/openapi.json")({
+  staticData: { sitemap: false },
   server: {
     handlers: {
       OPTIONS: async () => (await import("@/lib/api/v1.server")).apiPreflight(),

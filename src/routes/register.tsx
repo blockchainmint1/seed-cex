@@ -4,6 +4,7 @@ import { SCHEDULE_DATES, SCHEDULE_SESSIONS, SCHEDULE_TIME, RECORDING_NOTE } from
 import { RegistrationFlow, StatusPreviews } from "@/components/ignite/RegistrationFlow";
 
 export const Route = createFileRoute("/register")({
+  staticData: { sitemap: true },
   head: () => ({
     meta: [
       { title: "Seeds — Reserve your Ignite seat" },

@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/lbtc")({
+  staticData: { sitemap: true },
   head: () => ({
     meta: [
       { title: "Why LocalBitcoins Died — A Full Post-Mortem & 2026 P2P Landscape" },

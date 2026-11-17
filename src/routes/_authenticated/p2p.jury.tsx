@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/_authenticated/p2p/jury")({
+  staticData: { sitemap: false },
   head: () => ({
     meta: [
       { title: "Community Jury — Seeds P2P" },

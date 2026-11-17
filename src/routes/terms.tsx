@@ -35,6 +35,7 @@ function Section({ heading, children }: { heading: string; children: React.React
 export { LegalShell, Section };
 
 export const Route = createFileRoute("/terms")({
+  staticData: { sitemap: true },
   head: () => ({
     meta: [
       { title: "Terms of Use — Seeds" },

@@ -6,6 +6,7 @@ const description =
   "Live Ethereum/Texas Stable Dollar order book on Seeds. Deposit native ETH, trade from your own keys, settle in seconds.";
 
 export const Route = createFileRoute("/trade/eth-tsd")({
+  staticData: { sitemap: true },
   head: () => ({
     meta: [
       { title },

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/api/public/cmc/orderbook/$pair")({
+  staticData: { sitemap: false },
   server: {
     handlers: {
       OPTIONS: async () => {

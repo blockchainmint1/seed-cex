@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/how-it-works")({
+  staticData: { sitemap: true },
   head: () => ({
     meta: [
       { title: "How Seeds Works — Shared-Wallet, Non-Custodial Exchange" },

@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { json, linkDomainFor, revokeMessagePrefix, verifyTxcMessage } from "@/lib/hme-link.server";
 
 export const Route = createFileRoute("/api/public/hme-link/revoke")({
+  staticData: { sitemap: false },
   server: {
     handlers: {
       POST: async ({ request }) => {

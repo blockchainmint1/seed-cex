@@ -7,6 +7,7 @@ import { PAIRS } from "@/lib/chains";
 import seedsCoin from "@/assets/seeds-coin.jpeg.asset.json";
 
 export const Route = createFileRoute("/")({
+  staticData: { sitemap: true },
   head: () => ({
     meta: [
       { title: "Seeds — The World's Only Non-Custodial Centralized Crypto Exchange" },

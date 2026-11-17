@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { getPublicStats } from "@/lib/stats.functions";
 
 export const Route = createFileRoute("/stats")({
+  staticData: { sitemap: true },
   head: () => ({
     meta: [
       { title: "Live Exchange Stats — Seeds" },

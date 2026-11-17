@@ -38,6 +38,7 @@ import { HmeWalletLinkCard } from "@/components/wallet/HmeWalletLinkCard";
 
 
 export const Route = createFileRoute("/_authenticated/wallet")({
+  staticData: { sitemap: false },
   beforeLoad: () => { throw redirect({ to: "/account" }); },
   head: () => ({
     meta: [

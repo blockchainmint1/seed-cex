@@ -3,6 +3,7 @@ import { ALLOWED_CHAINS, OPTIONAL_CHAINS, OPTIONAL_PATHS, REQUEST_PATHS, json } 
 
 // Repeatable GET until submit (the wallet fetches it twice).
 export const Route = createFileRoute("/api/public/hme-link/manifest/$id")({
+  staticData: { sitemap: false },
   server: {
     handlers: {
       GET: async ({ request, params }) => {

@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/manifesto")({
+  staticData: { sitemap: true },
   head: () => ({
     meta: [
       { title: "The Seeds Manifesto — Custody Is the Bug" },

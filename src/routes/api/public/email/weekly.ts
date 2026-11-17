@@ -11,6 +11,7 @@ function lastMonday(now: Date): Date {
 // Scheduled Mondays. Each member gets at most one email per week (dedupe in alert_log),
 // so repeat runs that morning only pick up anyone the first run didn't reach.
 export const Route = createFileRoute("/api/public/email/weekly")({
+  staticData: { sitemap: false },
   server: {
     handlers: {
       POST: async ({ request }) => {

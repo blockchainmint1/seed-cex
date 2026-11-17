@@ -6,6 +6,7 @@ const description =
   "Live Bitcoin/Texas Stable Dollar order book on Seeds. Deposit native BTC, trade from your own keys, settle in seconds.";
 
 export const Route = createFileRoute("/trade/btc-tsd")({
+  staticData: { sitemap: true },
   head: () => ({
     meta: [
       { title },

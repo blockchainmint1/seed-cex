@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { TradeTerminal } from "@/components/trade/TradeTerminal";
 
 export const Route = createFileRoute("/trade/tsd-txc")({
+  staticData: { sitemap: true },
   head: () => ({
     meta: [
       { title: "TSD / TXC Order Book — Seeds" },

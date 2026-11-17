@@ -6,6 +6,7 @@ import { json, linkDomainFor, tradeMessage, verifyTxcMessage } from "@/lib/hme-l
 type Body = { link_id?: string; trade_id?: string; decision?: string; signed_psbt?: string; identity_address?: string; signature?: string; message?: string };
 
 export const Route = createFileRoute("/api/public/hme-link/trades/respond")({
+  staticData: { sitemap: false },
   server: {
     handlers: {
       POST: async ({ request }) => {

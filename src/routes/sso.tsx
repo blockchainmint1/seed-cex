@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { redeemHonestMoneyToken } from "@/lib/hm-sso.functions";
 
 export const Route = createFileRoute("/sso")({
+  staticData: { sitemap: false },
   ssr: false,
   validateSearch: (s: Record<string, unknown>): { token?: string; popup?: string } => ({
     token: typeof s.token === "string" ? s.token : undefined,

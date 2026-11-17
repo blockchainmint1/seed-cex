@@ -3,6 +3,7 @@ import { json } from "@/lib/hme-link.server";
 
 // Polled by the wallet every 30 s in approve mode. Only pending, unexpired proposals.
 export const Route = createFileRoute("/api/public/hme-link/trades")({
+  staticData: { sitemap: false },
   server: {
     handlers: {
       GET: async ({ request }) => {

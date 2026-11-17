@@ -23,6 +23,7 @@ function Select({ className = "", ...props }: React.SelectHTMLAttributes<HTMLSel
 }
 
 export const Route = createFileRoute("/_authenticated/p2p/dashboard")({
+  staticData: { sitemap: false },
   head: () => ({
     meta: [
       { title: "My P2P Desk — Seeds" },

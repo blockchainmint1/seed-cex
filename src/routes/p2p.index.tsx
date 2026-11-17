@@ -17,6 +17,7 @@ const description =
   "Buy TSD, TXC, BTC, USDC and USDT directly from verified sellers with Zelle, Venmo, Cash App, bank transfer or cash. Seller funds are verified on-chain.";
 
 export const Route = createFileRoute("/p2p/")({
+  staticData: { sitemap: true },
   head: () => ({
     meta: [
       { title },

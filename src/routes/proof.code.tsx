@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Github, ExternalLink, ShieldCheck, Code2, Lock } from "lucide-react";
 
 export const Route = createFileRoute("/proof/code")({
+  staticData: { sitemap: true },
   head: () => ({
     meta: [
       { title: "Our Code — What Seeds Runs and How to Check It" },

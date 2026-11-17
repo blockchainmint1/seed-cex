@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 
 // NectarPay signed invoice events (nectar-pay.com/api §6). Settle only on invoice.confirmed, re-checked against the API.
 export const Route = createFileRoute("/api/public/nectarpay/webhook")({
+  staticData: { sitemap: false },
   server: {
     handlers: {
       POST: async ({ request }) => {

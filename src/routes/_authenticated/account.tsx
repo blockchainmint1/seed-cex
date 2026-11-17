@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { HmeWalletLinkCard } from "@/components/wallet/HmeWalletLinkCard";
 
 export const Route = createFileRoute("/_authenticated/account")({
+  staticData: { sitemap: false },
   head: () => ({
     meta: [
       { title: "Profile & Trading Pocket — Seeds" },

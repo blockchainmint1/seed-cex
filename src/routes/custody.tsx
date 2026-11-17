@@ -3,6 +3,7 @@ import { getCustodySnapshot } from "@/lib/custody.functions";
 import { getNodeStatus } from "@/lib/rpc.functions";
 
 export const Route = createFileRoute("/custody")({
+  staticData: { sitemap: true },
   head: () => ({
     meta: [
       { title: "Custody Ledger — How Many Keys Seeds Holds" },

@@ -11,6 +11,7 @@ const Body = z.object({
 });
 
 export const Route = createFileRoute("/api/public/minehme/profile-update")({
+  staticData: { sitemap: false },
   server: {
     handlers: {
       POST: async ({ request }) => {

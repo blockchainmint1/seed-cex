@@ -11,6 +11,7 @@ type Body = {
 };
 
 export const Route = createFileRoute("/api/public/hme-link/submit")({
+  staticData: { sitemap: false },
   server: {
     handlers: {
       POST: async ({ request }) => {

@@ -24,6 +24,7 @@ async function optOut(token: string | null): Promise<boolean> {
 // GET shows a confirm button (so link scanners can't unsubscribe people);
 // POST does it — both from that button and from mail apps' RFC 8058 one-click.
 export const Route = createFileRoute("/api/public/email/unsubscribe")({
+  staticData: { sitemap: false },
   server: {
     handlers: {
       GET: async ({ request }) => {
