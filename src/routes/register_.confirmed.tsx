@@ -187,8 +187,14 @@ function ReferralCard({ url }: { url: string | null }) {
       <h2 className="mt-2 font-display text-2xl">Your referral link</h2>
       <p className="mt-2 text-sm text-muted-foreground">Know another Honest.Money miner who should be in the room? Share your personal link. They'll sign in with their own Honest.Money account to reserve, and the referral is credited to you through Honest.Money.</p>
       <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-        <label htmlFor="ref-link" className="sr-only">Your referral link</label>
-        <input id="ref-link" readOnly value={inviteLabel(url)} onFocus={(e) => e.currentTarget.select()} className="seed-field min-w-0 flex-1 font-mono text-xs" />
+        {/* Plain text (not an input) so the whole link wraps and stays readable on phones. */}
+        <p id="ref-link" aria-label="Your referral link" className="seed-field flex min-h-11 min-w-0 flex-1 select-all items-center break-words font-mono text-xs">
+          <span className="min-w-0">
+            {inviteLabel(url).split("/").map((part, i, all) => (
+              <span key={i}>{i > 0 ? "/" : ""}{i > 0 && i === all.length - 1 ? <wbr /> : null}{part}</span>
+            ))}
+          </span>
+        </p>
         <button type="button" onClick={copy} className="seed-btn inline-flex w-full items-center justify-center gap-2 sm:w-auto sm:px-6" aria-live="polite">
           {copied ? <><Check className="size-4" aria-hidden />Copied</> : <><Copy className="size-4" aria-hidden />Copy link</>}
         </button>
