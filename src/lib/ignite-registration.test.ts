@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+/// <reference types="bun" />
+import { describe, expect, test as it } from "bun:test";
 import { validateDetails, normalizeEmail, SEAT_CAPACITY, DEPOSIT_USD, PAYMENTS_ENABLED } from "./ignite-registration";
 
 const ok = { fullName: "Ada Lovelace", email: "Ada@Example.com ", countryCode: "+1", phone: "555 123 4567", marketingOptIn: false };
