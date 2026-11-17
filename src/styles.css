@@ -19,6 +19,7 @@
  */
 
 @theme inline {
+  --color-warning: var(--warning);
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) + 2px);
@@ -236,3 +237,56 @@
   background-size: 48px 48px;
 }
 
+
+/* Ignite registration page (/register): scoped copy of the original Ignite design. */
+.ignite-theme {
+  --forest: oklch(0.235 0.05 165); --ink: oklch(0.19 0.04 165); --seed: oklch(0.83 0.24 145); --ivory: oklch(0.98 0.02 85);
+  --radius: 1rem;
+  --background: var(--forest); --foreground: var(--ivory); --card: var(--ink); --card-foreground: var(--ivory);
+  --popover: var(--ink); --popover-foreground: var(--ivory); --primary: var(--seed); --primary-foreground: var(--ink);
+  --secondary: oklch(0.28 0.05 165); --secondary-foreground: var(--ivory); --muted: oklch(0.27 0.045 165);
+  --muted-foreground: oklch(0.82 0.03 120); --accent: oklch(0.3 0.06 160); --accent-foreground: var(--ivory);
+  --destructive: oklch(0.72 0.17 30); --destructive-foreground: var(--ink); --warning: oklch(0.85 0.13 85);
+  --border: oklch(0.98 0.02 85 / 14%); --input: oklch(0.98 0.02 85 / 22%); --ring: var(--seed);
+  --glow: 0 0 0 1px oklch(0.83 0.24 145 / 30%), 0 20px 60px -20px oklch(0.83 0.24 145 / 35%);
+  --font-display: "Fraunces", Georgia, serif; --font-sans: "Manrope", system-ui, sans-serif;
+  background-color: var(--forest); color: var(--ivory); font-family: var(--font-sans);
+}
+.ignite-theme h1, .ignite-theme h2, .ignite-theme h3, .ignite-theme h4 { letter-spacing: normal; }
+.ignite-theme :focus-visible { outline: 3px solid var(--seed); outline-offset: 3px; border-radius: 6px; }
+.ignite-theme * { border-color: var(--border); }
+
+@utility seed-field {
+  background-color: oklch(0.98 0.02 85 / 5%);
+  border: 1px solid var(--input);
+  color: var(--ivory);
+  border-radius: 0.75rem;
+  padding: 0.8rem 1rem;
+  width: 100%;
+  font-size: 1rem;
+  &::placeholder { color: oklch(0.98 0.02 85 / 40%); }
+  &:focus-visible { outline: 2px solid var(--seed); outline-offset: 1px; }
+  &[aria-invalid="true"] { border-color: var(--destructive); }
+}
+
+@utility seed-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+  background: var(--seed); color: var(--ink); font-weight: 700;
+  border-radius: 999px; padding: .95rem 1.5rem; width: 100%;
+  box-shadow: var(--glow); transition: transform .15s, filter .15s;
+  &:hover { filter: brightness(1.05); transform: translateY(-1px); }
+  &:disabled { background: var(--muted); color: var(--muted-foreground); box-shadow: none; cursor: not-allowed; transform: none; }
+}
+
+@utility seed-btn-ghost {
+  display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+  border: 1px solid var(--border); color: var(--ivory); border-radius: 999px; padding: .85rem 1.25rem;
+  &:hover { background: oklch(0.98 0.02 85 / 6%); }
+}
+
+@utility seed-lines {
+  background-image:
+    radial-gradient(60rem 30rem at 85% -10%, oklch(0.83 0.24 145 / 14%), transparent 60%),
+    radial-gradient(40rem 30rem at -10% 110%, oklch(0.83 0.24 145 / 8%), transparent 60%);
+}
+.ignite-theme .font-display, .ignite-theme h1, .ignite-theme h2, .ignite-theme h3, .ignite-theme h4 { font-family: "Fraunces", Georgia, serif; }

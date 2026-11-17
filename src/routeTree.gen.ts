@@ -18,6 +18,7 @@ import { Route as HowItWorksRouteImport } from './routes/how-it-works'
 import { Route as LbtcRouteImport } from './routes/lbtc'
 import { Route as ManifestoRouteImport } from './routes/manifesto'
 import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as RegisterRouteImport } from './routes/register'
 import { Route as SsoRouteImport } from './routes/sso'
 import { Route as StatsRouteImport } from './routes/stats'
 import { Route as TermsRouteImport } from './routes/terms'
@@ -111,6 +112,11 @@ const ManifestoRoute = ManifestoRouteImport.update({
 const PrivacyRoute = PrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SsoRoute = SsoRouteImport.update({
@@ -379,6 +385,7 @@ export interface FileRoutesByFullPath {
   '/lbtc': typeof LbtcRoute
   '/manifesto': typeof ManifestoRoute
   '/privacy': typeof PrivacyRoute
+  '/register': typeof RegisterRoute
   '/sso': typeof SsoRoute
   '/stats': typeof StatsRoute
   '/terms': typeof TermsRoute
@@ -439,6 +446,7 @@ export interface FileRoutesByTo {
   '/lbtc': typeof LbtcRoute
   '/manifesto': typeof ManifestoRoute
   '/privacy': typeof PrivacyRoute
+  '/register': typeof RegisterRoute
   '/sso': typeof SsoRoute
   '/stats': typeof StatsRoute
   '/terms': typeof TermsRoute
@@ -501,6 +509,7 @@ export interface FileRoutesById {
   '/lbtc': typeof LbtcRoute
   '/manifesto': typeof ManifestoRoute
   '/privacy': typeof PrivacyRoute
+  '/register': typeof RegisterRoute
   '/sso': typeof SsoRoute
   '/stats': typeof StatsRoute
   '/terms': typeof TermsRoute
@@ -563,6 +572,7 @@ export interface FileRouteTypes {
     | '/lbtc'
     | '/manifesto'
     | '/privacy'
+    | '/register'
     | '/sso'
     | '/stats'
     | '/terms'
@@ -623,6 +633,7 @@ export interface FileRouteTypes {
     | '/lbtc'
     | '/manifesto'
     | '/privacy'
+    | '/register'
     | '/sso'
     | '/stats'
     | '/terms'
@@ -684,6 +695,7 @@ export interface FileRouteTypes {
     | '/lbtc'
     | '/manifesto'
     | '/privacy'
+    | '/register'
     | '/sso'
     | '/stats'
     | '/terms'
@@ -746,6 +758,7 @@ export interface RootRouteChildren {
   LbtcRoute: typeof LbtcRoute
   ManifestoRoute: typeof ManifestoRoute
   PrivacyRoute: typeof PrivacyRoute
+  RegisterRoute: typeof RegisterRoute
   SsoRoute: typeof SsoRoute
   StatsRoute: typeof StatsRoute
   TermsRoute: typeof TermsRoute
@@ -852,6 +865,13 @@ declare module '@tanstack/react-router' {
       path: '/privacy'
       fullPath: '/privacy'
       preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sso': {
@@ -1256,6 +1276,7 @@ const rootRouteChildren: RootRouteChildren = {
   LbtcRoute: LbtcRoute,
   ManifestoRoute: ManifestoRoute,
   PrivacyRoute: PrivacyRoute,
+  RegisterRoute: RegisterRoute,
   SsoRoute: SsoRoute,
   StatsRoute: StatsRoute,
   TermsRoute: TermsRoute,
