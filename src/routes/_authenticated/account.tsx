@@ -49,6 +49,11 @@ const NOTIFS = [
   ["notify_weekly_digest", "Weekly digest", "A Sunday summary of your trading."],
 ] as const;
 
+const EMAILS = [
+  ["email_trade_confirmations", "Trade & P2P confirmations", "A receipt when an exchange trade settles or a P2P trade opens."],
+  ["email_weekly_update", "Weekly account update", "Monday summary of your trades, open orders and pocket."],
+] as const;
+
 function Section({
   title,
   desc,
@@ -337,6 +342,40 @@ function AccountPage() {
           }}
         >
           <div className="mt-4">{saveBtn("alerts", "Save alerts")}</div>
+        </form>
+      </details>
+      <details className="border-t border-border pt-4">
+        <summary className="cursor-pointer text-sm font-semibold">Email</summary>
+        <p className="mt-3 text-sm text-muted-foreground">
+          Sent to {user?.email ?? "your Honest.Money email"}. Change it on your Honest.Money profile. Security notices — like when a
+          setting, API key or wallet link changes — always go out.
+        </p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          {EMAILS.map(([key, label, hint]) => (
+            <label key={key} className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                className="mt-1 h-4 w-4 accent-[var(--primary)]"
+                checked={Boolean(form[key])}
+                onChange={(e) => patch({ [key]: e.target.checked } as Partial<Profile>)}
+              />
+              <span>
+                <span className="block text-sm text-foreground">{label}</span>
+                <span className="block font-mono text-[11px] text-muted-foreground">{hint}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            mutate.mutate({
+              section: "email",
+              data: Object.fromEntries(EMAILS.map(([k]) => [k, Boolean(form[k])])),
+            });
+          }}
+        >
+          <div className="mt-4">{saveBtn("email", "Save email settings")}</div>
         </form>
       </details>
       </Section>

@@ -40,3 +40,6 @@
 - [x] Authorization copy on /wallet + /account: branch 1106, HME Wallet link modes (verified in preview)
 - [ ] /how-it-works + homepage still pitch only the capped/expiring vault model — add the HME Wallet link (instant-until-revoked / approve-every-trade)
 
+- [x] Branded emails via AWS SES: welcome, trade confirmation, P2P order, "you changed X", weekly update; profile email switches; one-click unsubscribe
+- [ ] Weekly email schedule (Mondays) — scheduling tool unavailable this session; set up after publish
+- [ ] Email footer postal address (CAN-SPAM) — needs Bobby's business mailing address
