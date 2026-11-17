@@ -67,7 +67,7 @@ function Index() {
           </div>
 
           <div className="mt-16">
-            <h2 className="font-display text-4xl">Meet Seeds. Start with Ignite.</h2>
+            <h2 className="font-display text-4xl">Meet seeds. Start with Ignite.</h2>
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
               <div className="rounded-2xl border border-border p-5">
                 <p className="text-xs font-bold tracking-[0.25em] text-primary">SEEDS</p>
