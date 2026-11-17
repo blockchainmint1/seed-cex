@@ -82,3 +82,9 @@
 - [x] Attorney briefing incl. trade-type comparison
 - [ ] Legal answers on custody wording, licensing, P2P, Ignite deposit promise (blocked: counsel)
 - [ ] Wire lock into settlement: lock/refresh/unlock flows, instant settle only while strong (blocked: HME Wallet + real test + auditor)
+
+## Seeds AI (/ai) — absorbing Crypto Fortune Teller
+- [x] Phase 1: price history (daily download) for coins Seeds can buy, 10 theory tests per coin, plan tester incl. fixed basket (e.g. BTC/ETH/LTC), /ai + /ai/coin/$id, /admin/ai (coin list, data health, refresh) on normal admin sign-in
+- [x] Phase 2: "Lock it in" — plans saved to the member's account (TSD amount, coins, rules); daily server-side check + Telegram "Based on your plan we should… " message with a review link
+- [ ] Phase 3: EXECUTE — member's TSD → USDC via TSD Bridge cash-out API (Seeds key already has cash-out access) → THORChain buys into the member's own pocket addresses; gas top-up design; one-tap Telegram confirm below an admin-set dollar limit, bigger moves open Seeds (blocked: build + real small test + auditor review)
+- [ ] Phase 4: more coins — Ethereum tokens like SHIB need a DEX route (THORChain/Maya don't list them); DOGE/BCH/XRP/SOL/TRX buyable once members link those keys (HME handoff list)

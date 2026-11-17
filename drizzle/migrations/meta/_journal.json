@@ -120,6 +120,13 @@
       "when": 1794956508876,
       "tag": "0016_swap_sends",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1794958722786,
+      "tag": "0017_seeds_ai_prices_and_plans",
+      "breakpoints": true
     }
   ]
 }

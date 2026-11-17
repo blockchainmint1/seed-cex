@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -89,7 +89,8 @@ function AdminPage() {
       <header>
         <h1 className="font-display text-2xl font-bold tracking-tight">Admin console</h1>
         <p className="mt-1 font-mono text-[11px] text-muted-foreground">
-          Snapshot {fmtAgo(d.generatedAt)} · auto-refreshes every 30s
+          Snapshot {fmtAgo(d.generatedAt)} · auto-refreshes every 30s ·{" "}
+          <Link to="/admin/ai" className="text-primary underline">Seeds AI admin</Link>
         </p>
       </header>
 

@@ -14,6 +14,214 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_coins: {
+        Row: {
+          active: boolean
+          binance_ok: boolean | null
+          binance_symbol: string | null
+          id: string
+          image: string | null
+          market_cap: number | null
+          name: string
+          rank: number | null
+          swap_coin: string | null
+          symbol: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          binance_ok?: boolean | null
+          binance_symbol?: string | null
+          id: string
+          image?: string | null
+          market_cap?: number | null
+          name: string
+          rank?: number | null
+          swap_coin?: string | null
+          symbol: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          binance_ok?: boolean | null
+          binance_symbol?: string | null
+          id?: string
+          image?: string | null
+          market_cap?: number | null
+          name?: string
+          rank?: number | null
+          swap_coin?: string | null
+          symbol?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ai_daily_prices: {
+        Row: {
+          close: number
+          coin_id: string
+          day: string
+          high: number | null
+          low: number | null
+          open: number | null
+          source: string
+          volume: number | null
+        }
+        Insert: {
+          close: number
+          coin_id: string
+          day: string
+          high?: number | null
+          low?: number | null
+          open?: number | null
+          source: string
+          volume?: number | null
+        }
+        Update: {
+          close?: number
+          coin_id?: string
+          day?: string
+          high?: number | null
+          low?: number | null
+          open?: number | null
+          source?: string
+          volume?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_daily_prices_coin_id_fkey"
+            columns: ["coin_id"]
+            isOneToOne: false
+            referencedRelation: "ai_coins"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_plan_checks: {
+        Row: {
+          created_at: string
+          day: string
+          id: string
+          message: string
+          plan_id: string
+          sent_at: string | null
+          suggestion: Json
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          day: string
+          id?: string
+          message: string
+          plan_id: string
+          sent_at?: string | null
+          suggestion: Json
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          day?: string
+          id?: string
+          message?: string
+          plan_id?: string
+          sent_at?: string | null
+          suggestion?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_plan_checks_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "ai_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_plans: {
+        Row: {
+          commit_tsd: number
+          created_at: string
+          id: string
+          locked_at: string
+          name: string
+          settings: Json
+          status: string
+          telegram_daily: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          commit_tsd: number
+          created_at?: string
+          id?: string
+          locked_at?: string
+          name: string
+          settings: Json
+          status?: string
+          telegram_daily?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          commit_tsd?: number
+          created_at?: string
+          id?: string
+          locked_at?: string
+          name?: string
+          settings?: Json
+          status?: string
+          telegram_daily?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ai_settings: {
+        Row: {
+          execution_enabled: boolean
+          id: number
+          max_commit_tsd: number
+          one_tap_limit_usd: number
+          updated_at: string
+        }
+        Insert: {
+          execution_enabled?: boolean
+          id?: number
+          max_commit_tsd?: number
+          one_tap_limit_usd?: number
+          updated_at?: string
+        }
+        Update: {
+          execution_enabled?: boolean
+          id?: number
+          max_commit_tsd?: number
+          one_tap_limit_usd?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ai_sync_requests: {
+        Row: {
+          coin_id: string | null
+          created_at: string
+          id: number
+          kind: string
+        }
+        Insert: {
+          coin_id?: string | null
+          created_at?: string
+          id: number
+          kind: string
+        }
+        Update: {
+          coin_id?: string | null
+          created_at?: string
+          id?: number
+          kind?: string
+        }
+        Relationships: []
+      }
       alert_log: {
         Row: {
           kind: string
@@ -1723,6 +1931,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      ai_sync_ingest: { Args: never; Returns: number }
+      ai_sync_request: { Args: { _with_markets?: boolean }; Returns: number }
       api_bump_rate: {
         Args: { _key: string; _weight: number; _window: string }
         Returns: number

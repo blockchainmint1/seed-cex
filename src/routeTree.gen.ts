@@ -33,6 +33,7 @@ import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedApiKeysRouteImport } from './routes/_authenticated/api-keys'
 import { Route as AuthenticatedTradesRouteImport } from './routes/_authenticated/trades'
 import { Route as AuthenticatedWalletRouteImport } from './routes/_authenticated/wallet'
+import { Route as AiIndexRouteImport } from './routes/ai.index'
 import { Route as ApiIndexRouteImport } from './routes/api/index'
 import { Route as InviteCodeRouteImport } from './routes/invite.$code'
 import { Route as P2pIndexRouteImport } from './routes/p2p.index'
@@ -46,8 +47,10 @@ import { Route as TradeLtcTsdRouteImport } from './routes/trade.ltc-tsd'
 import { Route as TradeTsdTxcRouteImport } from './routes/trade.tsd-txc'
 import { Route as TradeTsdUsdcRouteImport } from './routes/trade.tsd-usdc'
 import { Route as TradeZcuTsdRouteImport } from './routes/trade.zcu-tsd'
+import { Route as AuthenticatedAdminAiRouteImport } from './routes/_authenticated/admin_.ai'
 import { Route as AuthenticatedP2pDashboardRouteImport } from './routes/_authenticated/p2p.dashboard'
 import { Route as AuthenticatedP2pJuryRouteImport } from './routes/_authenticated/p2p.jury'
+import { Route as AiCoinIdRouteImport } from './routes/ai.coin.$id'
 import { Route as P2pSellerHandleRouteImport } from './routes/p2p.seller.$handle'
 import { Route as AuthenticatedP2pTradeIdRouteImport } from './routes/_authenticated/p2p.trade.$id'
 import { Route as ApiPublicCmcIndexRouteImport } from './routes/api/public/cmc/index'
@@ -59,6 +62,7 @@ import { Route as ApiPublicEmailWeeklyRouteImport } from './routes/api/public/em
 import { Route as ApiPublicHmeLinkRevokeRouteImport } from './routes/api/public/hme-link/revoke'
 import { Route as ApiPublicHmeLinkSubmitRouteImport } from './routes/api/public/hme-link/submit'
 import { Route as ApiPublicHmeLinkTradesRouteImport } from './routes/api/public/hme-link/trades'
+import { Route as ApiPublicJobsAiDailyRouteImport } from './routes/api/public/jobs/ai-daily'
 import { Route as ApiPublicMinehmeProfileUpdateRouteImport } from './routes/api/public/minehme/profile-update'
 import { Route as ApiPublicNectarpayWebhookRouteImport } from './routes/api/public/nectarpay/webhook'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
@@ -202,6 +206,11 @@ const AuthenticatedWalletRoute = AuthenticatedWalletRouteImport.update({
   path: '/wallet',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AiIndexRoute = AiIndexRouteImport.update({
+  id: '/ai/',
+  path: '/ai/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiIndexRoute = ApiIndexRouteImport.update({
   id: '/api/',
   path: '/api/',
@@ -267,6 +276,11 @@ const TradeZcuTsdRoute = TradeZcuTsdRouteImport.update({
   path: '/trade/zcu-tsd',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAdminAiRoute = AuthenticatedAdminAiRouteImport.update({
+  id: '/admin_/ai',
+  path: '/admin/ai',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedP2pDashboardRoute =
   AuthenticatedP2pDashboardRouteImport.update({
     id: '/p2p/dashboard',
@@ -277,6 +291,11 @@ const AuthenticatedP2pJuryRoute = AuthenticatedP2pJuryRouteImport.update({
   id: '/p2p/jury',
   path: '/p2p/jury',
   getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AiCoinIdRoute = AiCoinIdRouteImport.update({
+  id: '/ai/coin/$id',
+  path: '/ai/coin/$id',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const P2pSellerHandleRoute = P2pSellerHandleRouteImport.update({
   id: '/p2p/seller/$handle',
@@ -332,6 +351,11 @@ const ApiPublicHmeLinkSubmitRoute = ApiPublicHmeLinkSubmitRouteImport.update({
 const ApiPublicHmeLinkTradesRoute = ApiPublicHmeLinkTradesRouteImport.update({
   id: '/api/public/hme-link/trades',
   path: '/api/public/hme-link/trades',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicJobsAiDailyRoute = ApiPublicJobsAiDailyRouteImport.update({
+  id: '/api/public/jobs/ai-daily',
+  path: '/api/public/jobs/ai-daily',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicMinehmeProfileUpdateRoute =
@@ -492,10 +516,13 @@ export interface FileRoutesByFullPath {
   '/trade/tsd-txc': typeof TradeTsdTxcRoute
   '/trade/tsd-usdc': typeof TradeTsdUsdcRoute
   '/trade/zcu-tsd': typeof TradeZcuTsdRoute
+  '/ai/': typeof AiIndexRoute
   '/api/': typeof ApiIndexRoute
   '/p2p/': typeof P2pIndexRoute
+  '/admin/ai': typeof AuthenticatedAdminAiRoute
   '/p2p/dashboard': typeof AuthenticatedP2pDashboardRoute
   '/p2p/jury': typeof AuthenticatedP2pJuryRoute
+  '/ai/coin/$id': typeof AiCoinIdRoute
   '/p2p/seller/$handle': typeof P2pSellerHandleRoute
   '/p2p/trade/$id': typeof AuthenticatedP2pTradeIdRoute
   '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
@@ -506,6 +533,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hme-link/revoke': typeof ApiPublicHmeLinkRevokeRoute
   '/api/public/hme-link/submit': typeof ApiPublicHmeLinkSubmitRoute
   '/api/public/hme-link/trades': typeof ApiPublicHmeLinkTradesRouteWithChildren
+  '/api/public/jobs/ai-daily': typeof ApiPublicJobsAiDailyRoute
   '/api/public/minehme/profile-update': typeof ApiPublicMinehmeProfileUpdateRoute
   '/api/public/nectarpay/webhook': typeof ApiPublicNectarpayWebhookRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
@@ -566,10 +594,13 @@ export interface FileRoutesByTo {
   '/trade/tsd-txc': typeof TradeTsdTxcRoute
   '/trade/tsd-usdc': typeof TradeTsdUsdcRoute
   '/trade/zcu-tsd': typeof TradeZcuTsdRoute
+  '/ai': typeof AiIndexRoute
   '/api': typeof ApiIndexRoute
   '/p2p': typeof P2pIndexRoute
+  '/admin/ai': typeof AuthenticatedAdminAiRoute
   '/p2p/dashboard': typeof AuthenticatedP2pDashboardRoute
   '/p2p/jury': typeof AuthenticatedP2pJuryRoute
+  '/ai/coin/$id': typeof AiCoinIdRoute
   '/p2p/seller/$handle': typeof P2pSellerHandleRoute
   '/p2p/trade/$id': typeof AuthenticatedP2pTradeIdRoute
   '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
@@ -580,6 +611,7 @@ export interface FileRoutesByTo {
   '/api/public/hme-link/revoke': typeof ApiPublicHmeLinkRevokeRoute
   '/api/public/hme-link/submit': typeof ApiPublicHmeLinkSubmitRoute
   '/api/public/hme-link/trades': typeof ApiPublicHmeLinkTradesRouteWithChildren
+  '/api/public/jobs/ai-daily': typeof ApiPublicJobsAiDailyRoute
   '/api/public/minehme/profile-update': typeof ApiPublicMinehmeProfileUpdateRoute
   '/api/public/nectarpay/webhook': typeof ApiPublicNectarpayWebhookRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
@@ -642,10 +674,13 @@ export interface FileRoutesById {
   '/trade/tsd-txc': typeof TradeTsdTxcRoute
   '/trade/tsd-usdc': typeof TradeTsdUsdcRoute
   '/trade/zcu-tsd': typeof TradeZcuTsdRoute
+  '/ai/': typeof AiIndexRoute
   '/api/': typeof ApiIndexRoute
   '/p2p/': typeof P2pIndexRoute
+  '/_authenticated/admin_/ai': typeof AuthenticatedAdminAiRoute
   '/_authenticated/p2p/dashboard': typeof AuthenticatedP2pDashboardRoute
   '/_authenticated/p2p/jury': typeof AuthenticatedP2pJuryRoute
+  '/ai/coin/$id': typeof AiCoinIdRoute
   '/p2p/seller/$handle': typeof P2pSellerHandleRoute
   '/_authenticated/p2p/trade/$id': typeof AuthenticatedP2pTradeIdRoute
   '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
@@ -656,6 +691,7 @@ export interface FileRoutesById {
   '/api/public/hme-link/revoke': typeof ApiPublicHmeLinkRevokeRoute
   '/api/public/hme-link/submit': typeof ApiPublicHmeLinkSubmitRoute
   '/api/public/hme-link/trades': typeof ApiPublicHmeLinkTradesRouteWithChildren
+  '/api/public/jobs/ai-daily': typeof ApiPublicJobsAiDailyRoute
   '/api/public/minehme/profile-update': typeof ApiPublicMinehmeProfileUpdateRoute
   '/api/public/nectarpay/webhook': typeof ApiPublicNectarpayWebhookRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
@@ -718,10 +754,13 @@ export interface FileRouteTypes {
     | '/trade/tsd-txc'
     | '/trade/tsd-usdc'
     | '/trade/zcu-tsd'
+    | '/ai/'
     | '/api/'
     | '/p2p/'
+    | '/admin/ai'
     | '/p2p/dashboard'
     | '/p2p/jury'
+    | '/ai/coin/$id'
     | '/p2p/seller/$handle'
     | '/p2p/trade/$id'
     | '/api/public/cmc/assets'
@@ -732,6 +771,7 @@ export interface FileRouteTypes {
     | '/api/public/hme-link/revoke'
     | '/api/public/hme-link/submit'
     | '/api/public/hme-link/trades'
+    | '/api/public/jobs/ai-daily'
     | '/api/public/minehme/profile-update'
     | '/api/public/nectarpay/webhook'
     | '/api/public/telegram/webhook'
@@ -792,10 +832,13 @@ export interface FileRouteTypes {
     | '/trade/tsd-txc'
     | '/trade/tsd-usdc'
     | '/trade/zcu-tsd'
+    | '/ai'
     | '/api'
     | '/p2p'
+    | '/admin/ai'
     | '/p2p/dashboard'
     | '/p2p/jury'
+    | '/ai/coin/$id'
     | '/p2p/seller/$handle'
     | '/p2p/trade/$id'
     | '/api/public/cmc/assets'
@@ -806,6 +849,7 @@ export interface FileRouteTypes {
     | '/api/public/hme-link/revoke'
     | '/api/public/hme-link/submit'
     | '/api/public/hme-link/trades'
+    | '/api/public/jobs/ai-daily'
     | '/api/public/minehme/profile-update'
     | '/api/public/nectarpay/webhook'
     | '/api/public/telegram/webhook'
@@ -867,10 +911,13 @@ export interface FileRouteTypes {
     | '/trade/tsd-txc'
     | '/trade/tsd-usdc'
     | '/trade/zcu-tsd'
+    | '/ai/'
     | '/api/'
     | '/p2p/'
+    | '/_authenticated/admin_/ai'
     | '/_authenticated/p2p/dashboard'
     | '/_authenticated/p2p/jury'
+    | '/ai/coin/$id'
     | '/p2p/seller/$handle'
     | '/_authenticated/p2p/trade/$id'
     | '/api/public/cmc/assets'
@@ -881,6 +928,7 @@ export interface FileRouteTypes {
     | '/api/public/hme-link/revoke'
     | '/api/public/hme-link/submit'
     | '/api/public/hme-link/trades'
+    | '/api/public/jobs/ai-daily'
     | '/api/public/minehme/profile-update'
     | '/api/public/nectarpay/webhook'
     | '/api/public/telegram/webhook'
@@ -938,8 +986,10 @@ export interface RootRouteChildren {
   TradeTsdTxcRoute: typeof TradeTsdTxcRoute
   TradeTsdUsdcRoute: typeof TradeTsdUsdcRoute
   TradeZcuTsdRoute: typeof TradeZcuTsdRoute
+  AiIndexRoute: typeof AiIndexRoute
   ApiIndexRoute: typeof ApiIndexRoute
   P2pIndexRoute: typeof P2pIndexRoute
+  AiCoinIdRoute: typeof AiCoinIdRoute
   P2pSellerHandleRoute: typeof P2pSellerHandleRoute
   ApiPublicCmcAssetsRoute: typeof ApiPublicCmcAssetsRoute
   ApiPublicCmcSummaryRoute: typeof ApiPublicCmcSummaryRoute
@@ -949,6 +999,7 @@ export interface RootRouteChildren {
   ApiPublicHmeLinkRevokeRoute: typeof ApiPublicHmeLinkRevokeRoute
   ApiPublicHmeLinkSubmitRoute: typeof ApiPublicHmeLinkSubmitRoute
   ApiPublicHmeLinkTradesRoute: typeof ApiPublicHmeLinkTradesRouteWithChildren
+  ApiPublicJobsAiDailyRoute: typeof ApiPublicJobsAiDailyRoute
   ApiPublicMinehmeProfileUpdateRoute: typeof ApiPublicMinehmeProfileUpdateRoute
   ApiPublicNectarpayWebhookRoute: typeof ApiPublicNectarpayWebhookRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
@@ -1144,6 +1195,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWalletRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/ai/': {
+      id: '/ai/'
+      path: '/ai'
+      fullPath: '/ai/'
+      preLoaderRoute: typeof AiIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/': {
       id: '/api/'
       path: '/api'
@@ -1235,6 +1293,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TradeZcuTsdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/admin_/ai': {
+      id: '/_authenticated/admin_/ai'
+      path: '/admin/ai'
+      fullPath: '/admin/ai'
+      preLoaderRoute: typeof AuthenticatedAdminAiRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/p2p/dashboard': {
       id: '/_authenticated/p2p/dashboard'
       path: '/p2p/dashboard'
@@ -1248,6 +1313,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/p2p/jury'
       preLoaderRoute: typeof AuthenticatedP2pJuryRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/ai/coin/$id': {
+      id: '/ai/coin/$id'
+      path: '/ai/coin/$id'
+      fullPath: '/ai/coin/$id'
+      preLoaderRoute: typeof AiCoinIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/p2p/seller/$handle': {
       id: '/p2p/seller/$handle'
@@ -1324,6 +1396,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/hme-link/trades'
       fullPath: '/api/public/hme-link/trades'
       preLoaderRoute: typeof ApiPublicHmeLinkTradesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/jobs/ai-daily': {
+      id: '/api/public/jobs/ai-daily'
+      path: '/api/public/jobs/ai-daily'
+      fullPath: '/api/public/jobs/ai-daily'
+      preLoaderRoute: typeof ApiPublicJobsAiDailyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/minehme/profile-update': {
@@ -1496,6 +1575,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedApiKeysRoute: typeof AuthenticatedApiKeysRoute
   AuthenticatedTradesRoute: typeof AuthenticatedTradesRoute
   AuthenticatedWalletRoute: typeof AuthenticatedWalletRoute
+  AuthenticatedAdminAiRoute: typeof AuthenticatedAdminAiRoute
   AuthenticatedP2pDashboardRoute: typeof AuthenticatedP2pDashboardRoute
   AuthenticatedP2pJuryRoute: typeof AuthenticatedP2pJuryRoute
   AuthenticatedP2pTradeIdRoute: typeof AuthenticatedP2pTradeIdRoute
@@ -1507,6 +1587,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedApiKeysRoute: AuthenticatedApiKeysRoute,
   AuthenticatedTradesRoute: AuthenticatedTradesRoute,
   AuthenticatedWalletRoute: AuthenticatedWalletRoute,
+  AuthenticatedAdminAiRoute: AuthenticatedAdminAiRoute,
   AuthenticatedP2pDashboardRoute: AuthenticatedP2pDashboardRoute,
   AuthenticatedP2pJuryRoute: AuthenticatedP2pJuryRoute,
   AuthenticatedP2pTradeIdRoute: AuthenticatedP2pTradeIdRoute,
@@ -1560,8 +1641,10 @@ const rootRouteChildren: RootRouteChildren = {
   TradeTsdTxcRoute: TradeTsdTxcRoute,
   TradeTsdUsdcRoute: TradeTsdUsdcRoute,
   TradeZcuTsdRoute: TradeZcuTsdRoute,
+  AiIndexRoute: AiIndexRoute,
   ApiIndexRoute: ApiIndexRoute,
   P2pIndexRoute: P2pIndexRoute,
+  AiCoinIdRoute: AiCoinIdRoute,
   P2pSellerHandleRoute: P2pSellerHandleRoute,
   ApiPublicCmcAssetsRoute: ApiPublicCmcAssetsRoute,
   ApiPublicCmcSummaryRoute: ApiPublicCmcSummaryRoute,
@@ -1571,6 +1654,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHmeLinkRevokeRoute: ApiPublicHmeLinkRevokeRoute,
   ApiPublicHmeLinkSubmitRoute: ApiPublicHmeLinkSubmitRoute,
   ApiPublicHmeLinkTradesRoute: ApiPublicHmeLinkTradesRouteWithChildren,
+  ApiPublicJobsAiDailyRoute: ApiPublicJobsAiDailyRoute,
   ApiPublicMinehmeProfileUpdateRoute: ApiPublicMinehmeProfileUpdateRoute,
   ApiPublicNectarpayWebhookRoute: ApiPublicNectarpayWebhookRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,

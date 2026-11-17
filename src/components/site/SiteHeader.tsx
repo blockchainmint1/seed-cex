@@ -78,6 +78,7 @@ export function SiteHeader() {
     { label: "Markets", to: "/trade/tsd-txc" },
     { label: "P2P", to: "/p2p" },
     { label: "Swap", to: "/swap" },
+    { label: "AI", to: "/ai" },
     ...(user ? [{ label: "Trades", to: "/trades" }, { label: "Profile", to: "/account" }] : []),
     ...about,
     ...proof,
@@ -111,6 +112,13 @@ export function SiteHeader() {
             activeProps={{ className: "text-primary" }}
           >
             Swap
+          </Link>
+          <Link
+            to="/ai"
+            className="text-muted-foreground transition-colors hover:text-foreground"
+            activeProps={{ className: "text-primary" }}
+          >
+            AI
           </Link>
           {user ? (
             <Link
