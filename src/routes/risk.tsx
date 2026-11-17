@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { B, Callout, List, Section, Sub } from "@/components/site/LegalDoc";
 
 export const Route = createFileRoute("/risk")({
   staticData: { sitemap: true },
@@ -51,66 +51,6 @@ const toc = [
   { id: "you", label: "Your responsibilities" },
   { id: "ack", label: "Acknowledgement" },
 ];
-
-function Section({
-  id,
-  n,
-  title,
-  children,
-}: {
-  id: string;
-  n: number;
-  title: string;
-  children: ReactNode;
-}) {
-  return (
-    <section id={id} className="scroll-mt-24 border-t border-border pt-10">
-      <p className="font-mono text-[11px] tracking-[0.24em] text-primary uppercase">
-        Section {n}
-      </p>
-      <h2 className="mt-2 font-display text-2xl leading-tight font-semibold tracking-tight text-foreground">
-        {title}
-      </h2>
-      <div className="mt-5 space-y-4 text-base leading-relaxed text-muted-foreground">
-        {children}
-      </div>
-    </section>
-  );
-}
-
-function Sub({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <div className="space-y-3">
-      <h3 className="font-display text-lg font-semibold tracking-tight text-foreground">{title}</h3>
-      {children}
-    </div>
-  );
-}
-
-function List({ items }: { items: ReactNode[] }) {
-  return (
-    <ul className="space-y-2.5">
-      {items.map((item, i) => (
-        <li key={i} className="flex gap-3">
-          <span aria-hidden className="mt-[0.6em] h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-          <span>{item}</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function Callout({ children }: { children: ReactNode }) {
-  return (
-    <div className="rounded-xl border border-warning/50 bg-warning/10 px-5 py-4 text-foreground">
-      {children}
-    </div>
-  );
-}
-
-const B = ({ children }: { children: ReactNode }) => (
-  <strong className="font-semibold text-foreground">{children}</strong>
-);
 
 function RiskPage() {
   return (
