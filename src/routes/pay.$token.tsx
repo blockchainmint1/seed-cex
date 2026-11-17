@@ -38,9 +38,9 @@ function PayPage() {
 
   const shell = (children: React.ReactNode) => (
     <div className="ignite-theme seed-lines min-h-screen">
-      <div className="mx-auto max-w-xl px-6 py-16">
+      <div className="mx-auto max-w-7xl px-5 py-16 [&>*]:max-w-xl">
         <div className="rounded-3xl border border-border bg-card p-6 shadow-glow sm:p-8">{children}</div>
-        <p className="mt-6 text-center text-xs text-muted-foreground">Seeds will never ask you to pay anywhere other than this page. Questions? <a className="underline" href="mailto:support@honest.money">support@honest.money</a></p>
+        <p className="mt-6 text-xs text-muted-foreground">Seeds will never ask you to pay anywhere other than this page. Questions? <a className="underline" href="mailto:support@honest.money">support@honest.money</a></p>
       </div>
     </div>
   );

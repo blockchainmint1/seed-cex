@@ -225,6 +225,11 @@
     border-color: var(--color-border);
   }
 
+  /* Reserve the scrollbar lane on every page so short and long pages line up. */
+  html {
+    scrollbar-gutter: stable;
+  }
+
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);

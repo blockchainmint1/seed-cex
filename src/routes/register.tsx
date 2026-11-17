@@ -40,7 +40,7 @@ function Index() {
 
   return (
     <div className="ignite-theme seed-lines min-h-screen pb-28 lg:pb-0">
-      <main className="mx-auto grid max-w-7xl gap-12 px-6 pt-6 pb-16 lg:grid-cols-[1.15fr_1fr] lg:gap-16 lg:pt-16">
+      <div className="mx-auto grid max-w-7xl gap-12 px-5 pt-6 pb-16 lg:grid-cols-[1.15fr_1fr] lg:gap-16 lg:pt-16">
         <section>
           <p className="font-mono text-xs font-medium tracking-[0.14em] text-primary">INTRODUCING SEEDS</p>
           <h1 className="mt-5 font-display text-5xl font-bold leading-[1.05] tracking-[-0.03em] sm:text-6xl lg:text-[4.25rem]">
@@ -98,9 +98,9 @@ function Index() {
           </svg>
           <div className="relative"><RegistrationFlow /></div>
         </aside>
-      </main>
+      </div>
 
-      <section className="mx-auto max-w-7xl px-6 pb-16">
+      <section className="mx-auto max-w-7xl px-5 pb-16">
         <div className="border-t border-border pt-16">
           <p className="font-mono text-xs font-medium tracking-[0.14em] text-primary">LIVE CRYPTO TRADING CLASS</p>
           <h2 className="mt-4 font-display text-4xl tracking-tight sm:text-5xl">Learn directly. Put understanding into practice.</h2>
@@ -193,7 +193,7 @@ function Index() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-6 pb-12"><StatusPreviews /></section>
+      <section className="mx-auto max-w-7xl px-5 pb-12"><StatusPreviews /></section>
 
       {!formVisible && (
         <div className="sticky bottom-0 z-20 border-t border-border bg-card/95 p-4 backdrop-blur lg:hidden">

@@ -44,7 +44,7 @@ function LinkAccount() {
   }
 
   return (
-    <div className="mx-auto max-w-md px-5 py-20">
+    <div className="mx-auto max-w-7xl px-5 py-20 [&>*]:max-w-md">
       <div className="rounded-sm border border-primary/40 bg-card px-6 py-7">
         <p className="font-mono text-xs uppercase tracking-widest text-primary">Link your older account</p>
         {state === "done" ? (

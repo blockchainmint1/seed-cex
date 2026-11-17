@@ -112,7 +112,7 @@ function TradesPage() {
               to place one.
             </p>
           ) : (
-            <table className="w-full font-mono text-xs">
+            <div className="overflow-x-auto"><table className="w-full min-w-[560px] font-mono text-xs">
               <thead>
                 <tr className="border-b border-border text-[10px] tracking-[0.16em] text-muted-foreground uppercase">
                   <th className="px-4 py-2 text-left">Market</th>
@@ -155,7 +155,7 @@ function TradesPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           )}
         </Panel>
 
@@ -204,7 +204,7 @@ function TradesPage() {
 
         {pastOrders.length > 0 ? (
           <Panel title="Closed orders">
-            <table className="w-full font-mono text-xs">
+            <div className="overflow-x-auto"><table className="w-full min-w-[560px] font-mono text-xs">
               <thead>
                 <tr className="border-b border-border text-[10px] tracking-[0.16em] text-muted-foreground uppercase">
                   <th className="px-4 py-2 text-left">Market</th>
@@ -231,7 +231,7 @@ function TradesPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </Panel>
         ) : null}
       </div>

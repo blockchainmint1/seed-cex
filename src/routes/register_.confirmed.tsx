@@ -26,7 +26,9 @@ export const Route = createFileRoute("/register_/confirmed")({
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="ignite-theme seed-lines min-h-screen">
-      <main className="mx-auto max-w-3xl px-6 pb-20 pt-10 lg:pt-16">{children}</main>
+      <div className="mx-auto max-w-7xl px-5 pb-20 pt-10 lg:pt-16">
+        <div className="max-w-3xl">{children}</div>
+      </div>
     </div>
   );
 }
