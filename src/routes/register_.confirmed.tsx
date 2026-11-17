@@ -5,7 +5,7 @@ import { useState } from "react";
 import { CalendarDays, Check, Copy, Mail, Users, Video } from "lucide-react";
 import { useSession } from "@/hooks/use-session";
 import { getIgniteConfirmation } from "@/lib/ignite.functions";
-import { SCHEDULE_DATES, SCHEDULE_TIME, SCHEDULE_SESSIONS, RECORDING_NOTE } from "@/lib/ignite-registration";
+import { SCHEDULE_DATES, SCHEDULE_TIME, SCHEDULE_SESSIONS, RECORDING_NOTE, paidInLabel } from "@/lib/ignite-registration";
 
 export const Route = createFileRoute("/register_/confirmed")({
   staticData: { sitemap: false },
@@ -105,6 +105,7 @@ function ConfirmedPage() {
     );
   }
 
+  const paidWith = paidInLabel(d.paidAsset, d.paidChain);
   return (
     <Shell>
       <p className="text-xs font-bold tracking-[0.3em] text-primary">SEAT RESERVED</p>
@@ -118,7 +119,7 @@ function ConfirmedPage() {
           <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground"><Check className="size-5" aria-hidden /></span>
           <div>
             <h2 className="font-display text-2xl">Your seat is reserved</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Payment verified{d.paidChain ? ` (paid in ${d.paidChain.toUpperCase()})` : ""}.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Payment confirmed{paidWith ? ` (${paidWith})` : ""}.</p>
           </div>
         </div>
         <dl className="mt-6 divide-y divide-border rounded-2xl border border-border text-sm">

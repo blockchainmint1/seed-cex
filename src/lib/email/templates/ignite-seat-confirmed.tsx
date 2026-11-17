@@ -6,6 +6,7 @@ export type IgniteSeatConfirmedProps = {
   name: string;
   amount: number;
   paidBy: string | null;
+  paidWith: string | null;
   confirmedAt: string;
   timezone: string;
   referralUrl: string | null;
@@ -19,12 +20,13 @@ export function IgniteSeatConfirmedEmail(p: IgniteSeatConfirmedProps) {
       title={`You're in, ${p.name}.`}
       footer="transactional"
     >
-      <P>Thank you for reserving your place in Ignite. {p.paidBy ? `${p.paidBy} paid your deposit through Peer Pay, and the` : "Your"} payment has been verified, so your seat is reserved.</P>
+      <P>Thank you for reserving your place in Ignite. {p.paidBy ? `${p.paidBy} paid your deposit through Peer Pay, and the` : "Your"} payment has been confirmed, so your seat is reserved.</P>
       <Details rows={[
         ["Class", "Ignite live crypto trading class"],
         ["Dates", "November 30 – December 4, 2026"],
         ["Time", "Daily 5:00–6:30 PM CST"],
         ["Deposit", usd(p.amount)],
+        ...(p.paidWith ? [["Paid with", p.paidWith] as [string, string]] : []),
         ...(p.paidBy ? [["Paid by", p.paidBy] as [string, string]] : []),
         ["Confirmed", when(p.confirmedAt, p.timezone)],
       ]} />

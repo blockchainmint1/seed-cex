@@ -23,7 +23,7 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 export type NectarInvoice = {
   id: string; status: string; checkout_url: string; expires_at: string;
-  fiat_amount: number; order_id?: string | null; chain?: string | null;
+  fiat_amount: number; order_id?: string | null; chain?: string | null; address?: string | null;
 };
 
 export function createInvoice(body: { amount: number; order_id: string; description: string; redirect_url: string; buyer_email: string; expires_in_seconds: number }) {

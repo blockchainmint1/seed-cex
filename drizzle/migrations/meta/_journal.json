@@ -92,6 +92,13 @@
       "when": 1794941761883,
       "tag": "0012_ignite_registration_ref_code",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1794942484588,
+      "tag": "0013_ignite_paid_asset",
+      "breakpoints": true
     }
   ]
 }

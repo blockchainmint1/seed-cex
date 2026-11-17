@@ -1,0 +1,2 @@
+ALTER TABLE public.ignite_registrations ADD COLUMN IF NOT EXISTS paid_asset text;
+COMMENT ON COLUMN public.ignite_registrations.paid_asset IS 'Asset actually paid (e.g. TSD). paid_chain is the chain it settled on, not the asset.';

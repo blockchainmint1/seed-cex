@@ -3,7 +3,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { DEPOSIT_USD, SEAT_CAPACITY, cleanRefCode, referralUrl, seatsLeft, validateDetails, normalizeEmail, type Details } from "./ignite-registration";
 import { emailsLeft, peerLinkState, peerToken, selfCheckoutBlock } from "./ignite-peer";
 
-const COLS = "id, payment_method, status, full_name, email, country_code, phone, amount_usd, checkout_url, invoice_expires_at, confirmed_at, paid_chain";
+const COLS = "id, payment_method, status, full_name, email, country_code, phone, amount_usd, checkout_url, invoice_expires_at, confirmed_at, paid_chain, paid_asset";
 
 /** The signed-in member's registration (if any), prefill from their HME profile, and whether crypto checkout is open. */
 export const getMyIgnite = createServerFn({ method: "GET" })
@@ -105,7 +105,7 @@ export const getIgniteConfirmation = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { reconcileIgniteRegistration } = await import("./ignite-confirm.server");
-    const cols = "status, invoice_id, invoice_expires_at, updated_at, full_name, email, paid_chain, confirmed_at, payment_method, hm_member_id, id";
+    const cols = "status, invoice_id, invoice_expires_at, updated_at, full_name, email, paid_chain, paid_asset, confirmed_at, payment_method, hm_member_id, id";
     let { data: reg } = await context.supabase.from("ignite_registrations").select(cols).eq("user_id", context.userId).maybeSingle();
     if (reg && (await reconcileIgniteRegistration(reg)))
       ({ data: reg } = await context.supabase.from("ignite_registrations").select(cols).eq("user_id", context.userId).maybeSingle());
@@ -124,7 +124,7 @@ export const getIgniteConfirmation = createServerFn({ method: "GET" })
       const code = await hmeReferralCode(reg.hm_member_id);
       return {
         state: "confirmed" as const, seatsLeft: left, capacity: SEAT_CAPACITY, firstName, email: reg.email,
-        paidChain: reg.paid_chain, confirmedAt: reg.confirmed_at, paidBy, referralUrl: code ? referralUrl(code) : null,
+        paidChain: reg.paid_chain, paidAsset: reg.paid_asset, confirmedAt: reg.confirmed_at, paidBy, referralUrl: code ? referralUrl(code) : null,
       };
     }
     if (reg.status === "underpaid") return { state: "underpaid" as const, seatsLeft: left, capacity: SEAT_CAPACITY, firstName };

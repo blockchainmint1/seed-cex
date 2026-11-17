@@ -61,3 +61,15 @@ export function invoiceBelongs(orderId: string | null | undefined, registrationI
   if (!orderId) return false;
   return orderId === `ignite-${registrationId}` || (!!peerLinkId && orderId === `ignite-peer-${peerLinkId}`);
 }
+
+/**
+ * How the payment reads to a member: "TSD on TXC" when the asset is known and
+ * differs from the chain, "TXC" for a native payment, or the chain alone when the
+ * asset couldn't be read. Null when neither is known.
+ */
+export function paidInLabel(asset: string | null | undefined, chain: string | null | undefined): string | null {
+  const a = asset?.trim();
+  const c = chain?.trim().toUpperCase();
+  if (a && c && a.toUpperCase() !== c) return `${a} on ${c}`;
+  return a ?? c ?? null;
+}

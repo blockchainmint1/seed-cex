@@ -112,7 +112,7 @@ export const TEMPLATES: { [K in TemplateName]: Def<K> } = {
     category: "receipt",
     subject: () => "Your Ignite seat is reserved",
     render: (p) => <IgniteSeatConfirmedEmail {...p} />,
-    sample: { name: "Alex", amount: 400, paidBy: null, confirmedAt: "2026-11-18T15:10:00Z", timezone: "America/Chicago", referralUrl: "https://honest.money/r/alex?to=https%3A%2F%2Fseeds.honest.money%2Fregister" },
+    sample: { name: "Alex", amount: 400, paidBy: null, paidWith: "TSD on TXC", confirmedAt: "2026-11-18T15:10:00Z", timezone: "America/Chicago", referralUrl: "https://honest.money/r/alex?to=https%3A%2F%2Fseeds.honest.money%2Fregister" },
   },
 };
 

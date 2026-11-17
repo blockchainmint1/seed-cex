@@ -25,6 +25,14 @@ async function get<T>(path: string, timeoutMs = 6000): Promise<T | null> {
   }
 }
 
+export type AddressTxOut = { scriptpubkey: string; scriptpubkey_type?: string; scriptpubkey_address?: string; value: number };
+export type AddressTx = { txid: string; vout?: AddressTxOut[] };
+
+/** Transactions that touched an address, newest first. Null when the chain can't be read. */
+export function fetchAddressTxs(address: string): Promise<AddressTx[] | null> {
+  return get<AddressTx[]>(`/api/address/${encodeURIComponent(address)}/txs`);
+}
+
 export type ChainSnapshot = {
   height: number | null;
   lastBlockAt: string | null;

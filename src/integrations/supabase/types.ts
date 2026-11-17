@@ -433,6 +433,7 @@ export type Database = {
           invoice_id: string | null
           marketing_opt_in: boolean
           paid_amount_usd: number | null
+          paid_asset: string | null
           paid_chain: string | null
           payment_method: string
           phone: string
@@ -455,6 +456,7 @@ export type Database = {
           invoice_id?: string | null
           marketing_opt_in?: boolean
           paid_amount_usd?: number | null
+          paid_asset?: string | null
           paid_chain?: string | null
           payment_method?: string
           phone: string
@@ -477,6 +479,7 @@ export type Database = {
           invoice_id?: string | null
           marketing_opt_in?: boolean
           paid_amount_usd?: number | null
+          paid_asset?: string | null
           paid_chain?: string | null
           payment_method?: string
           phone?: string

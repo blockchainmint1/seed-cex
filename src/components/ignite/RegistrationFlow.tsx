@@ -5,7 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useSession } from "@/hooks/use-session";
 import { getMyIgnite, startIgniteCheckout } from "@/lib/ignite.functions";
 import { PeerPayPanel } from "./PeerPayPanel";
-import { SCHEDULE_DATES, SCHEDULE_SESSIONS, SCHEDULE_TIME, RECORDING_NOTE, DEPOSIT_USD, validateDetails, type Details, type Errors } from "@/lib/ignite-registration";
+import { SCHEDULE_DATES, SCHEDULE_SESSIONS, SCHEDULE_TIME, RECORDING_NOTE, DEPOSIT_USD, paidInLabel, validateDetails, type Details, type Errors } from "@/lib/ignite-registration";
 
 const COUNTRY_CODES = ["+1", "+44", "+61", "+64", "+353", "+49", "+33", "+34", "+39", "+31", "+41", "+46", "+47", "+45", "+52", "+55", "+57", "+27", "+234", "+254", "+971", "+65", "+60", "+63", "+91", "+81", "+82"];
 
@@ -55,11 +55,12 @@ export function RegistrationFlow() {
   const peerActive = mine.data?.peer?.state === "active";
   const peerCheckoutOpen = reg?.payment_method === "peer" && !!reg.invoice_expires_at && new Date(reg.invoice_expires_at).getTime() > Date.now() + 60_000 && reg.status === "pending";
   if (reg?.status === "confirmed") {
+    const paidWith = paidInLabel(reg.paid_asset, reg.paid_chain);
     return (
       <div className="rounded-3xl border border-border bg-card p-6 shadow-glow sm:p-8" role="status">
         <p className="text-xs font-semibold uppercase tracking-widest text-primary">Seat confirmed</p>
         <h2 className="mt-2 font-display text-3xl">You're in, {((n) => n.charAt(0).toUpperCase() + n.slice(1))(reg.full_name.trim().split(/\s+/)[0] ?? "")}.</h2>
-        <p className="mt-2 text-sm text-muted-foreground">Payment verified{reg.paid_chain ? ` (${reg.paid_chain.toUpperCase()})` : ""}{mine.data?.peer?.state === "paid" && mine.data.peer.payerName ? `, paid by ${mine.data.peer.payerName} through Peer Pay` : ""}. Ignite runs {SCHEDULE_DATES}, {SCHEDULE_TIME.replace(/^Daily/, "daily")}. We'll send reminders to {reg.email}.</p>
+        <p className="mt-2 text-sm text-muted-foreground">Payment confirmed{paidWith ? ` (${paidWith})` : ""}{mine.data?.peer?.state === "paid" && mine.data.peer.payerName ? `, paid by ${mine.data.peer.payerName} through Peer Pay` : ""}. Ignite runs {SCHEDULE_DATES}, {SCHEDULE_TIME.replace(/^Daily/, "daily")}. We'll send reminders to {reg.email}.</p>
         <Link to="/register/confirmed" className="seed-btn mt-6 inline-flex justify-center">See your confirmation & referral link</Link>
       </div>
     );
