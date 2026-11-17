@@ -290,3 +290,6 @@
     radial-gradient(40rem 30rem at -10% 110%, oklch(0.83 0.24 145 / 8%), transparent 60%);
 }
 .ignite-theme .font-display, .ignite-theme h1, .ignite-theme h2, .ignite-theme h3, .ignite-theme h4 { font-family: "Fraunces", Georgia, serif; }
+
+/* Ignite registration card: green rim + soft glow, as on the original page. */
+.ignite-theme .shadow-glow { box-shadow: var(--glow); }
