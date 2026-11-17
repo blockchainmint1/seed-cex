@@ -60,6 +60,15 @@ function Code({ children }: { children: string }) {
   );
 }
 
+/** Render `code` spans inside short table notes. */
+function Note({ text }: { text: string }) {
+  return (
+    <>
+      {text.split("`").map((part, i) => (i % 2 ? <C key={i}>{part}</C> : <span key={i}>{part}</span>))}
+    </>
+  );
+}
+
 function C({ children }: { children: ReactNode }) {
   return <code className="rounded bg-muted/60 px-1 py-0.5 font-mono text-[12px] text-foreground">{children}</code>;
 }
@@ -359,7 +368,7 @@ print(signed("GET", "/account"))`}</Code>
                   <td className="py-2 pr-3 text-primary">{m}</td>
                   <td className="py-2 pr-3 whitespace-nowrap text-foreground">{p}</td>
                   <td className="py-2 pr-3 tabular-nums">{w}</td>
-                  <td className="py-2 font-sans">{note}</td>
+                  <td className="py-2 font-sans"><Note text={note} /></td>
                 </tr>
               ))}
             </tbody>
@@ -461,12 +470,12 @@ data: {"symbol":"${EXAMPLE}","lastPrice":"0.05000000", ...}`}</Code>
           <C>BASE_QUOTE</C> form, for example <C>TXC_TSD</C>.
         </p>
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse font-mono text-xs">
+          <table className="w-full min-w-[40rem] border-collapse font-mono text-xs">
             <tbody>
               {CMC.map(([p, note]) => (
                 <tr key={p} className="border-b border-border/50 align-top">
                   <td className="py-2 pr-3 whitespace-nowrap text-foreground">{p}</td>
-                  <td className="py-2 font-sans text-muted-foreground">{note}</td>
+                  <td className="py-2 font-sans text-muted-foreground"><Note text={note} /></td>
                 </tr>
               ))}
             </tbody>
