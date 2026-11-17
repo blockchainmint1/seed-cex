@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useLocation } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
@@ -64,6 +64,7 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
   const pair = getPair(pairId);
   const PAIR = pair.id;
   const { user } = useSession();
+  const here = useLocation({ select: (l) => l.href });
   const queryClient = useQueryClient();
 
   const book = useQuery({
@@ -280,7 +281,8 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
           <Panel title="Your escrows">
             {!user ? (
               <p className="p-4 font-mono text-xs text-muted-foreground">
-                <Link to="/auth" className="text-primary underline-offset-4 hover:underline">
+                <Link to="/auth"
+                  search={{ redirect: here }} className="text-primary underline-offset-4 hover:underline">
                   Sign in
                 </Link>{" "}
                 to see your escrowed trades.
@@ -479,6 +481,7 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
               ) : (
                 <Link
                   to="/auth"
+                  search={{ redirect: here }}
                   className="block w-full rounded-md bg-action px-4 py-3 text-center text-sm font-semibold text-action-foreground"
                 >
                   Sign in to trade

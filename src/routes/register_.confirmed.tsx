@@ -55,7 +55,7 @@ function ConfirmedPage() {
         <Card>
           <h1 className="font-display text-3xl">Sign in to see your seat</h1>
           <p className="mt-2 text-sm text-muted-foreground">Your Ignite confirmation is tied to your Honest.Money account.</p>
-          <Link to="/auth" onClick={() => { try { sessionStorage.setItem("seeds-after-signin", "/register/confirmed"); } catch { /* ignore */ } }} className="seed-btn mt-6 inline-flex justify-center">Sign in with Honest.Money</Link>
+          <Link to="/auth" search={{ redirect: "/register/confirmed" }} className="seed-btn mt-6 inline-flex justify-center">Sign in with Honest.Money</Link>
         </Card>
       </Shell>
     );

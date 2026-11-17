@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useLocation } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useSession } from "@/hooks/use-session";
@@ -12,6 +12,7 @@ const COUNTRY_CODES = ["+1", "+44", "+61", "+64", "+353", "+49", "+33", "+34", "
 type Step = "details" | "review";
 
 export function RegistrationFlow() {
+  const here = useLocation({ select: (l) => l.href });
   const [step, setStep] = useState<Step>("details");
   const [details, setDetails] = useState<Details>({ fullName: "", email: "", countryCode: "+1", phone: "", marketingOptIn: false });
   const [errors, setErrors] = useState<Errors>({});
@@ -47,7 +48,7 @@ export function RegistrationFlow() {
       <div className="rounded-3xl border border-border bg-card p-6 shadow-glow sm:p-8">
         <h2 className="font-display text-3xl">Reserve your seat</h2>
         <p className="mt-2 text-sm text-muted-foreground">Sign in with your Honest.Money account to reserve. Your seat, receipt and class reminders stay tied to your HME profile. New to Honest.Money? You can create a free account in the same step.</p>
-        <Link to="/auth" onClick={() => { try { sessionStorage.setItem("seeds-after-signin", "/register"); } catch { /* ignore */ } }} className="seed-btn mt-6 inline-flex justify-center">Sign in with Honest.Money</Link>
+        <Link to="/auth" search={{ redirect: here }} className="seed-btn mt-6 inline-flex justify-center">Sign in with Honest.Money</Link>
       </div>
     );
   }

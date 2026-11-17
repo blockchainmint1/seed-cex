@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { redeemHonestMoneyToken } from "@/lib/hm-sso.functions";
+import { takeReturnPath } from "@/lib/return-path";
 
 export const Route = createFileRoute("/sso")({
   staticData: { sitemap: false },
@@ -49,7 +50,7 @@ function Sso() {
           window.close();
           return;
         }
-        navigate({ to: afterSignIn() as "/wallet" });
+        navigate({ href: takeReturnPath(), replace: true });
       } catch (e) {
         setError(e instanceof Error ? e.message : "Sign-in failed");
       }
@@ -87,10 +88,3 @@ function LegacyNotice({ state, to }: { state: "sent" | "limited" | "failed"; to:
   );
 }
 
-function afterSignIn() {
-  try {
-    const n = sessionStorage.getItem("seeds-after-signin");
-    if (n) { sessionStorage.removeItem("seeds-after-signin"); if (/^\/[a-z0-9/-]*$/i.test(n)) return n; }
-  } catch { /* ignore */ }
-  return "/wallet";
-}

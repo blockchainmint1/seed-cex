@@ -1,9 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useSession } from "@/hooks/use-session";
+import { rememberReturnPath, takeReturnPath } from "@/lib/return-path";
 
 export const Route = createFileRoute("/auth")({
   staticData: { sitemap: false },
+  validateSearch: (s: Record<string, unknown>): { redirect?: string } => ({
+    redirect: typeof s.redirect === "string" ? s.redirect : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Sign In — Seeds Non-Custodial Exchange" },
@@ -28,13 +32,21 @@ function Auth() {
   const [error, setError] = useState<string | null>(null);
   const { user, loading } = useSession();
   const navigate = useNavigate();
+  const { redirect } = Route.useSearch();
+
+  // The page the visitor came from (e.g. /register) rides along as
+  // ?redirect= and is remembered before they leave for Honest.Money.
+  useEffect(() => {
+    if (redirect) rememberReturnPath(redirect);
+  }, [redirect]);
 
   useEffect(() => {
-    if (!loading && user) navigate({ to: afterSignIn() as "/wallet" });
+    if (!loading && user) navigate({ href: takeReturnPath(), replace: true });
   }, [loading, user, navigate]);
 
   function honestMoney() {
     setError(null);
+    if (redirect) rememberReturnPath(redirect);
     const returnTo = `${window.location.origin}/sso`;
     // After a deliberate sign-out, force the sign-in box even if an
     // honest.money session somehow survives (HME sign-out rule #2).
@@ -56,7 +68,7 @@ function Auth() {
     const onMsg = (ev: MessageEvent) => {
       if (ev.origin !== window.location.origin || ev.data?.type !== "seeds-sso-done") return;
       window.removeEventListener("message", onMsg);
-      navigate({ to: afterSignIn() as "/wallet" });
+      navigate({ href: takeReturnPath(), replace: true });
     };
     window.addEventListener("message", onMsg);
   }
@@ -93,11 +105,3 @@ function Auth() {
   );
 }
 
-
-function afterSignIn() {
-  try {
-    const n = sessionStorage.getItem("seeds-after-signin");
-    if (n) { sessionStorage.removeItem("seeds-after-signin"); if (/^\/[a-z0-9/-]*$/i.test(n)) return n; }
-  } catch { /* ignore */ }
-  return "/wallet";
-}

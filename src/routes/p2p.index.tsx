@@ -189,7 +189,7 @@ function BuyDialog({ offer, onClose }: { offer: Offer; onClose: () => void }) {
         {!user ? (
           <div className="space-y-3 text-sm">
             <p>Sign in to start a trade.</p>
-            <Link to="/auth"><Button>Sign in with Honest.Money</Button></Link>
+            <Link to="/auth" search={{ redirect: "/p2p" }}><Button>Sign in with Honest.Money</Button></Link>
           </div>
         ) : (
           <div className="space-y-4 text-sm">

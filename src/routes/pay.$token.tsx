@@ -83,7 +83,7 @@ function PayPage() {
         {loading ? <p className="text-sm text-muted-foreground">Loading…</p> : !user ? (
           <>
             <p className="text-sm text-muted-foreground">Sign in with Honest.Money to pay, so {data.forName} can see who paid. New to Honest.Money? You can create a free account in the same step.</p>
-            <Link to="/auth" onClick={() => { try { sessionStorage.setItem("seeds-after-signin", `/pay/${token}`); } catch { /* ignore */ } }} className="seed-btn">Sign in with Honest.Money</Link>
+            <Link to="/auth" search={{ redirect: `/pay/${token}` }} className="seed-btn">Sign in with Honest.Money</Link>
           </>
         ) : (
           <>

@@ -51,17 +51,10 @@ export function SiteHeader() {
   const { theme, toggle } = useTheme();
   const qc = useQueryClient();
   const pathname = useLocation({ select: (l) => l.pathname });
-
-  // Signing in from a public page (e.g. /register) should bring the visitor
-  // back to that page instead of dropping them on their profile.
-  function rememberReturnPath() {
-    if (pathname === "/auth" || pathname === "/sso") return;
-    try {
-      sessionStorage.setItem("seeds-after-signin", pathname);
-    } catch {
-      /* private mode — best effort */
-    }
-  }
+  // Signing in from any page (e.g. /register?ref=…) brings the visitor back
+  // to that exact page; /auth remembers it before leaving for Honest.Money.
+  const here = useLocation({ select: (l) => l.href });
+  const signInSearch = pathname === "/auth" || pathname === "/sso" ? undefined : { redirect: here };
 
   async function signOut() {
     await qc.cancelQueries();
@@ -158,7 +151,7 @@ export function SiteHeader() {
           ) : (
             <Link
               to="/auth"
-              onClick={rememberReturnPath}
+              search={signInSearch}
               className="whitespace-nowrap rounded-sm bg-action px-3 py-2 tracking-[0.04em] sm:px-3.5 text-action-foreground uppercase transition-[filter] hover:brightness-105"
             >
               Sign in
