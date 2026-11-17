@@ -54,6 +54,10 @@ function Index() {
               <li key={b} className="rounded-full border border-primary/40 px-4 py-2 text-sm font-semibold">{b}</li>
             ))}
           </ul>
+          <p className="mt-4 max-w-xl rounded-2xl border border-primary/40 bg-card/60 px-5 py-4 text-sm">
+            <span className="font-semibold">Your deposit comes back to you.</span>{" "}
+            <span className="text-muted-foreground">The $400 reservation deposit is returned to you during the class for trading activity, so you trade with it during the program.</span>
+          </p>
           <div className="mt-6 inline-flex flex-col gap-1 rounded-2xl border border-border bg-card/60 px-5 py-4">
             <p className="text-xs font-bold tracking-[0.25em] text-primary">EVENT SCHEDULE</p>
             <p className="font-display text-xl sm:text-2xl">{SCHEDULE_DATES}</p>
@@ -145,7 +149,7 @@ function Index() {
             <div className="rounded-2xl border border-primary/40 bg-card/60 p-6">
               <p className="text-xs font-bold tracking-[0.25em] text-primary">YOUR $400 TRADING COMMITMENT</p>
               <p className="mt-3 text-muted-foreground">
-                Come prepared to commit $400 of your own funds to trading activity during the program. This is your trading capital, not tuition or a course registration fee. Trading involves risk, and the value of assets you buy can fall.
+                Come prepared to commit $400 of your own funds to trading activity during the program. This is your trading capital, not tuition or a course registration fee. Your $400 reservation deposit is returned to you during the class for this trading activity. Trading involves risk, and the value of assets you buy can fall.
               </p>
             </div>
             <div className="rounded-2xl border border-border p-6">

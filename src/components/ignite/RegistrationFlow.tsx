@@ -144,6 +144,10 @@ export function RegistrationFlow() {
             <Row k="Time" v={SCHEDULE_TIME} />
             <Row k="Deposit" v={<strong className="text-base">${DEPOSIT_USD} USD</strong>} />
           </dl>
+          <p className="mt-3 rounded-2xl border border-primary/40 bg-primary/5 px-4 py-3 text-sm">
+            <span className="font-semibold">Returned during class:</span>{" "}
+            <span className="text-muted-foreground">{`your $${DEPOSIT_USD} deposit comes back to you during the class for trading activity, so you can trade with it.`}</span>
+          </p>
           <p className="mt-2 text-xs text-muted-foreground">{RECORDING_NOTE}</p>
           <div className="mt-4 rounded-2xl border border-border p-4 text-sm">
             <div className="flex items-start justify-between gap-3">
@@ -156,7 +160,7 @@ export function RegistrationFlow() {
             </div>
           </div>
           <p className="mt-4 text-sm text-muted-foreground">
-            This payment is a reservation deposit for the Ignite class. It is not trading funds and does not open, fund, or grant ownership in a Seeds exchange account.
+            This payment is a reservation deposit for the Ignite class. It is returned to you during the class for trading activity, and it does not open, fund, or grant ownership in a Seeds exchange account.
           </p>
 
           {reg && (reg.status === "underpaid" || (reg.status === "pending" && !!reg.invoice_expires_at && new Date(reg.invoice_expires_at).getTime() > Date.now())) && (
