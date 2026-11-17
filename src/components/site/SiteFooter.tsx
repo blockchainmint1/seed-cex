@@ -59,8 +59,8 @@ export function SiteFooter() {
           </a>
         </nav>
       </div>
-      <div className="border-t border-border/60 px-5 py-4">
-        <p className="mx-auto max-w-7xl font-mono text-[11px] text-muted-foreground">
+      <div className="border-t border-border/60 py-4">
+        <p className="mx-auto max-w-7xl px-5 font-mono text-[11px] text-muted-foreground">
           © {new Date().getFullYear()} Seeds. Trading digital assets carries risk. Seeds never
           stores an unencrypted recovery phrase.
         </p>

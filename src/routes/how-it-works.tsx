@@ -94,7 +94,7 @@ const contrasts = [
 
 function HowItWorks() {
   return (
-    <main className="mx-auto max-w-7xl px-5 py-16">
+    <div className="mx-auto max-w-7xl px-5 py-16">
       {/* Hero */}
       <header className="max-w-3xl space-y-5">
         <p className="font-mono text-xs tracking-[0.3em] text-primary uppercase">How it works</p>
@@ -234,6 +234,6 @@ function HowItWorks() {
           <Clock className="mr-2 inline h-3.5 w-3.5" /> Watch the custody ledger
         </Link>
       </section>
-    </main>
+    </div>
   );
 }

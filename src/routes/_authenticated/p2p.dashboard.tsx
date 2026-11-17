@@ -56,11 +56,11 @@ function Desk() {
   const fetch = useServerFn(getMyP2p);
   const q = useQuery({ queryKey: ["p2p-me"], queryFn: () => fetch(), refetchInterval: 20_000 });
   const [editing, setEditing] = useState<OfferRow | "new" | null>(null);
-  if (q.isLoading || !q.data) return <main className="mx-auto max-w-7xl px-5 py-10 text-muted-foreground">Loading…</main>;
+  if (q.isLoading || !q.data) return <div className="mx-auto max-w-7xl px-5 py-10 text-muted-foreground">Loading…</div>;
   const d = q.data;
   const live = d.trades.filter((t) => ["open", "paid", "disputed"].includes(t.status));
   return (
-    <main className="mx-auto max-w-7xl space-y-6 px-5 py-10">
+    <div className="mx-auto max-w-7xl space-y-6 px-5 py-10">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-3xl font-extrabold">My P2P desk</h1>
@@ -114,7 +114,7 @@ function Desk() {
       <Panel title="All my P2P trades">
         {d.trades.length ? <TradeList trades={d.trades} /> : <p className="text-sm text-muted-foreground">No trades yet.</p>}
       </Panel>
-    </main>
+    </div>
   );
 }
 

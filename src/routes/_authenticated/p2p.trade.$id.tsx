@@ -73,14 +73,14 @@ function TradeRoom() {
   const rule = useMutation({ mutationFn: (outcome: "release" | "refund") => resolve({ data: { id, outcome } }), onSuccess: refresh, onError: err });
   const t = q.data;
   const left = useCountdown(t?.expiresAt ?? new Date().toISOString());
-  if (!t) return <main className="mx-auto max-w-7xl px-5 py-10 text-muted-foreground">{q.error ? (q.error as Error).message : "Loading…"}</main>;
+  if (!t) return <div className="mx-auto max-w-7xl px-5 py-10 text-muted-foreground">{q.error ? (q.error as Error).message : q.isLoading ? "Loading…" : "This trade couldn’t be found. It may have been removed, or the link is incomplete."}</div>;
 
   const buyer = t.role === "buyer";
   const seller = t.role === "seller";
   const ended = t.status === "released" || t.status === "cancelled";
 
   return (
-    <main className="mx-auto grid max-w-7xl gap-6 px-5 py-10 lg:grid-cols-[1.2fr_1fr]">
+    <div className="mx-auto grid max-w-7xl gap-6 px-5 py-10 lg:grid-cols-[1.2fr_1fr]">
       <div className="space-y-5">
         <Link to="/p2p/dashboard" className="font-mono text-xs text-muted-foreground hover:text-primary">← My P2P desk</Link>
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -243,6 +243,6 @@ function TradeRoom() {
           </form>
         ) : null}
       </section>
-    </main>
+    </div>
   );
 }

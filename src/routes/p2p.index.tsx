@@ -49,7 +49,7 @@ function Market() {
   });
 
   return (
-    <main className="mx-auto max-w-7xl px-5 py-10">
+    <div className="mx-auto max-w-7xl px-5 py-10">
       <section className="mb-8 grid gap-6 md:grid-cols-[1.4fr_1fr] md:items-end">
         <div>
           <p className="font-mono text-xs tracking-widest text-primary uppercase">Peer to peer</p>
@@ -162,7 +162,7 @@ function Market() {
       </p>
 
       {buying ? <BuyDialog offer={buying} onClose={() => setBuying(null)} /> : null}
-    </main>
+    </div>
   );
 }
 

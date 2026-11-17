@@ -35,13 +35,13 @@ function SellerPage() {
   const { handle } = Route.useParams();
   const fetch = useServerFn(getSellerProfile);
   const q = useQuery({ queryKey: ["p2p-seller", handle], queryFn: () => fetch({ data: { handle } }) });
-  if (q.isLoading) return <main className="mx-auto max-w-7xl px-5 py-10 text-muted-foreground">Loading…</main>;
+  if (q.isLoading) return <div className="mx-auto max-w-7xl px-5 py-10 text-muted-foreground">Loading…</div>;
   const p = q.data;
-  if (!p) return <main className="mx-auto max-w-7xl px-5 py-10">No seller called {handle}. <Link to="/p2p" className="text-primary">Back to market</Link></main>;
+  if (!p) return <div className="mx-auto max-w-7xl px-5 py-10">No seller called {handle}. <Link to="/p2p" className="text-primary">Back to market</Link></div>;
   const s = p.stats;
   const fb = s.positive + s.negative;
   return (
-    <main className="mx-auto max-w-7xl px-5 py-10">
+    <div className="mx-auto max-w-7xl px-5 py-10">
       <Link to="/p2p" className="font-mono text-xs text-muted-foreground hover:text-primary">← Marketplace</Link>
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <h1 className="font-display text-4xl font-extrabold">{p.handle}</h1>
@@ -118,6 +118,6 @@ function SellerPage() {
           {p.history.length === 0 ? <p className="text-sm text-muted-foreground">No finished trades yet.</p> : null}
         </section>
       </div>
-    </main>
+    </div>
   );
 }

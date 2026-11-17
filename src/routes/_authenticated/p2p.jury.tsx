@@ -35,7 +35,7 @@ function Jury() {
   const r = useMutation({ mutationFn: (x: { id: string; outcome: "release" | "refund" }) => resolve({ data: x }), onSuccess: done, onError: err });
   const d = q.data;
   return (
-    <main className="mx-auto max-w-7xl px-5 py-10">
+    <div className="mx-auto max-w-7xl px-5 py-10">
       <Link to="/p2p" className="font-mono text-xs text-muted-foreground hover:text-primary">← Marketplace</Link>
       <h1 className="mt-2 font-display text-3xl font-extrabold">Community jury</h1>
       <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
@@ -87,6 +87,6 @@ function Jury() {
           </section>
         ))}
       </div>
-    </main>
+    </div>
   );
 }

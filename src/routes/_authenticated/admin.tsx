@@ -65,27 +65,27 @@ function AdminPage() {
 
   if (q.isLoading) {
     return (
-      <main className="mx-auto max-w-7xl px-5 py-10 font-mono text-xs text-muted-foreground">
+      <div className="mx-auto max-w-7xl px-5 py-10 font-mono text-xs text-muted-foreground">
         Loading admin console…
-      </main>
+      </div>
     );
   }
 
   if (q.error) {
     return (
-      <main className="mx-auto max-w-3xl px-5 py-16">
+      <div className="mx-auto max-w-3xl px-5 py-16">
         <h1 className="font-display text-2xl font-bold">Admin only</h1>
         <p className="mt-2 font-mono text-xs text-muted-foreground">
           This console requires the admin role on your account.
         </p>
-      </main>
+      </div>
     );
   }
 
   const d = q.data!;
 
   return (
-    <main className="mx-auto max-w-7xl space-y-6 px-5 py-8">
+    <div className="mx-auto max-w-7xl space-y-6 px-5 py-8">
       <header>
         <h1 className="font-display text-2xl font-bold tracking-tight">Admin console</h1>
         <p className="mt-1 font-mono text-[11px] text-muted-foreground">
@@ -205,7 +205,7 @@ function AdminPage() {
       <Panel title="Recent trades">
         <TradeTable rows={d.recentTrades} empty="No trades yet." />
       </Panel>
-    </main>
+    </div>
   );
 }
 
