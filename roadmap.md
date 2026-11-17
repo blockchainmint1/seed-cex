@@ -43,3 +43,5 @@
 - [x] Branded emails via AWS SES: welcome, trade confirmation, P2P order, "you changed X", weekly update; profile email switches; one-click unsubscribe
 - [ ] Weekly email schedule (Mondays) — scheduling tool unavailable this session; set up after publish
 - [ ] Email footer postal address (CAN-SPAM) — needs Bobby's business mailing address
+
+- [ ] AI basket builder: AI writes a member-approved rulebook, fixed engine executes it (concept in docs/ai-basket-strategy-concept.md; blocked: Bobby's detailed spec + linked-pocket settlement)
