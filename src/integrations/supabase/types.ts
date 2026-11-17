@@ -1224,6 +1224,87 @@ export type Database = {
         }
         Relationships: []
       }
+      swap_sends: {
+        Row: {
+          amount_in: number
+          amount_usd: number
+          approve_txid: string | null
+          checked_at: string | null
+          created_at: string
+          destination: string
+          error: string | null
+          expected_out: number | null
+          from_address: string
+          from_asset: string
+          id: string
+          link_id: string | null
+          memo: string
+          min_out: number | null
+          out_txid: string | null
+          pocket: string
+          protocol: string
+          router: string | null
+          status: string
+          to_asset: string
+          txid: string | null
+          updated_at: string
+          user_id: string
+          vault: string
+        }
+        Insert: {
+          amount_in: number
+          amount_usd: number
+          approve_txid?: string | null
+          checked_at?: string | null
+          created_at?: string
+          destination: string
+          error?: string | null
+          expected_out?: number | null
+          from_address: string
+          from_asset: string
+          id?: string
+          link_id?: string | null
+          memo: string
+          min_out?: number | null
+          out_txid?: string | null
+          pocket: string
+          protocol: string
+          router?: string | null
+          status?: string
+          to_asset: string
+          txid?: string | null
+          updated_at?: string
+          user_id: string
+          vault: string
+        }
+        Update: {
+          amount_in?: number
+          amount_usd?: number
+          approve_txid?: string | null
+          checked_at?: string | null
+          created_at?: string
+          destination?: string
+          error?: string | null
+          expected_out?: number | null
+          from_address?: string
+          from_asset?: string
+          id?: string
+          link_id?: string | null
+          memo?: string
+          min_out?: number | null
+          out_txid?: string | null
+          pocket?: string
+          protocol?: string
+          router?: string | null
+          status?: string
+          to_asset?: string
+          txid?: string | null
+          updated_at?: string
+          user_id?: string
+          vault?: string
+        }
+        Relationships: []
+      }
       trade_events: {
         Row: {
           actor_id: string | null
@@ -1686,6 +1767,28 @@ export type Database = {
       reserve_lock_outpoints: {
         Args: { _spend_ids: string[] }
         Returns: boolean
+      }
+      reserve_swap_send: {
+        Args: {
+          _amount_in: number
+          _amount_usd: number
+          _daily_max_usd: number
+          _destination: string
+          _expected_out: number
+          _from_address: string
+          _from_asset: string
+          _link_id: string
+          _memo: string
+          _min_out: number
+          _per_swap_max_usd: number
+          _pocket: string
+          _protocol: string
+          _router: string
+          _to_asset: string
+          _user_id: string
+          _vault: string
+        }
+        Returns: string
       }
     }
     Enums: {

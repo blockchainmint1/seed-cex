@@ -113,6 +113,13 @@
       "when": 1794947949220,
       "tag": "0015_trade_locks",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1794956508876,
+      "tag": "0016_swap_sends",
+      "breakpoints": true
     }
   ]
 }

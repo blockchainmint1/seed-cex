@@ -159,7 +159,16 @@ export type BuildBtcParams = {
   feeRate: number;
   /** send everything, fee deducted from the amount */
   sweep?: boolean;
+  /** Optional OP_RETURN text (THORChain swap memo), placed after change. Max 80 bytes. */
+  memo?: string;
 };
+
+/** OP_RETURN <memo>; THORChain reads the swap instruction from here. */
+export function opReturnScript(memo: string): Uint8Array {
+  const m = new TextEncoder().encode(memo);
+  if (m.length === 0 || m.length > 80) throw new Error("Memo must be 1–80 bytes");
+  return concat(Uint8Array.of(0x6a), m.length < 0x4c ? Uint8Array.of(m.length) : Uint8Array.of(0x4c, m.length), m);
+}
 
 /**
  * Select coins, build, and sign a P2WPKH spend with BIP-143 sighashes.
@@ -177,6 +186,9 @@ export function buildAndSignBtcTransfer(params: BuildBtcParams): BuiltBtcTx {
     throw new Error("The authorized key does not control the funding address");
   }
   const toScript = btcAddressToScript(params.toAddress);
+  if (params.memo && params.sweep) throw new Error("A memo send can't be a sweep");
+  const memoOut: TxOutput | null = params.memo ? { script: opReturnScript(params.memo), value: 0n } : null;
+  const memoVb = memoOut ? 9 + memoOut.script.length : 0;
 
   const spendable = [...params.utxos]
     .filter((u) => u.amount > 0)
@@ -208,7 +220,7 @@ export function buildAndSignBtcTransfer(params: BuildBtcParams): BuiltBtcTx {
     for (const u of spendable) {
       chosen.push(u);
       total += BigInt(Math.round(u.amount * SATS));
-      fee = BigInt(estimateVBytes(chosen.length, 2) * feeRate);
+      fee = BigInt((estimateVBytes(chosen.length, 2) + memoVb) * feeRate);
       if (total >= target + fee) break;
     }
     if (total < target + fee) {
@@ -223,9 +235,10 @@ export function buildAndSignBtcTransfer(params: BuildBtcParams): BuiltBtcTx {
     } else {
       fee += change;
       change = 0n;
-      const minFee = BigInt(estimateVBytes(chosen.length, 1) * feeRate);
+      const minFee = BigInt((estimateVBytes(chosen.length, 1) + memoVb) * feeRate);
       if (fee < minFee) throw new Error("Insufficient balance to cover the network fee");
     }
+    if (memoOut) outputs.push(memoOut);
   }
 
   // BIP-143 shared midstate

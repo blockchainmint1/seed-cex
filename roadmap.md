@@ -7,8 +7,11 @@
 - [ ] HME Wallet: send optional pocket keys per docs/hme-wallet-extra-pockets.md (blocked: HME team)
 - [ ] Zcash v5 (ZIP-244) signing
 - [ ] Per-coin "send out" for the new coins before taking deposits (HME Wallet can't move them)
-- [ ] Cross-chain swaps: wire pocket signers + broadcast into /swap behind existing safety gates and settle-guard (blocked: HME optional pockets + linked-pocket settlement)
-- [ ] Cross-chain swaps: Seeds fee — register a THORName/MAYAName and set the fee (blocked: Bobby's fee choice)
+- [x] Cross-chain swaps: Seeds fee — Bobby chose no fee for now (no THORName needed)
+- [x] Cross-chain swaps: send step built for BTC, LTC, ETH + Ethereum tokens, DOGE, BCH, XRP, TRX, SOL (THORChain, instant-access pockets, admin-only pilot, $250/swap, $1,000/day)
+- [ ] Swap pilot: first small real swap per coin (blocked: Bobby funds his pocket and presses Send)
+- [ ] Swap pilot: open to members + confirm limits (blocked: Bobby's limits choice, attorney/auditor sign-off)
+- [ ] DOGE/BCH/XRP/TRX/SOL sending: no member has linked those keys yet (needs a seed-based pocket or HME Wallet support)
 
 - [x] Import the supplied 21-page brand guidelines faithfully at /brand, with original PDF access and desktop/mobile verification
 

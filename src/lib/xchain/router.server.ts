@@ -262,8 +262,12 @@ async function vaultAnswers(p: Protocol, chain: string) {
   return Promise.all(def.nodes.map(ask));
 }
 
+/** Server-only details needed to sign; never returned to the browser. */
+export type SendPlan = { vault: string; router: string | null; expiry: number; memo: string };
+
 async function quoteOne(
   p: Protocol, from: SwapCoin, to: SwapCoin, amount: bigint, destination: string | null, prices: Map<string, number>,
+  capture?: { plan: SendPlan | null },
 ): Promise<RouteQuote> {
   const label = PROTOCOL_LABEL[p];
   const empty: RouteQuote = {
@@ -347,6 +351,9 @@ async function quoteOne(
     }
 
     const failed = checks.find((c) => !c.pass);
+    if (capture && !failed && memo && q.inbound_address) {
+      capture.plan = { vault: q.inbound_address, router: q.router ?? null, expiry: Number(q.expiry), memo };
+    }
     return {
       ...empty,
       ok: expectedOut > 0 && bigEnough,
@@ -396,4 +403,35 @@ export async function swapQuotes(from: SwapCoin, to: SwapCoin, amount: bigint, d
   const routes = await Promise.all((["thorchain", "maya"] as Protocol[]).map((p) => quoteOne(p, from, to, amount, destination, prices)));
   const inPx = prices.get(from.asset) ?? null;
   return { routes, inputUsd: inPx ? (Number(amount) / 1e8) * inPx : null, quotedAt: new Date().toISOString() };
+}
+
+async function livePrices(): Promise<Map<string, number>> {
+  const status = await swapStatus();
+  const prices = new Map<string, number>();
+  for (const c of status.coins) {
+    const coin = SWAP_COINS.find((x) => x.id === c.id);
+    if (coin && c.priceUsd) prices.set(coin.asset, c.priceUsd);
+  }
+  return prices;
+}
+
+/**
+ * Fresh quote for signing: the route plus the vault/router/expiry the send must
+ * use. plan is null unless every pre-send check passed.
+ */
+export async function quoteForSend(p: Protocol, from: SwapCoin, to: SwapCoin, amount: bigint, destination: string) {
+  const prices = await livePrices();
+  const capture: { plan: SendPlan | null } = { plan: null };
+  const route = await quoteOne(p, from, to, amount, destination, prices, capture);
+  const inPx = prices.get(from.asset) ?? null;
+  return { route, plan: route.sendReady ? capture.plan : null, inputUsd: inPx ? (Number(amount) / 1e8) * inPx : null };
+}
+
+/** THORNode's view of an inbound swap transaction; null if not seen yet. */
+export async function protocolTxStatus(p: Protocol, txid: string): Promise<unknown | null> {
+  try {
+    return await nodeGet<unknown>(p, `/tx/status/${encodeURIComponent(txid)}`);
+  } catch {
+    return null;
+  }
 }

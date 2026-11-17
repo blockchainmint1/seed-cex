@@ -1,0 +1,84 @@
+import { describe, expect, test } from "bun:test";
+import { swapCoin } from "./assets";
+import { approveData, depositWithExpiryData, roundTo1e8Units, selector, tokenContract, toTokenUnits } from "./evm-router";
+import { receivePocket, requoteOk, sendBlocker, sendSource, swapProgress, SWAP_LIMITS, thorTxId } from "./send-rules";
+
+const c = (id: string) => swapCoin(id)!;
+const link = { mode: "access", hasKey: true, pockets: ["BTC", "LTC", "EVM"] };
+
+describe("which coins Seeds can send", () => {
+  test("first batch: coins Seeds already signs", () => {
+    for (const id of ["BTC", "LTC", "ETH", "DOGE", "BCH", "XRP", "TRX", "SOL", "USDC", "USDT"]) expect(sendSource(c(id))).not.toBeNull();
+  });
+  test("Zcash, other networks and TRON tokens are not sendable yet", () => {
+    for (const id of ["ZEC", "BNB", "AVAX", "ETH.BASE", "USDT.TRON", "USDC.BSC", "ADA", "DASH"]) expect(sendSource(c(id))).toBeNull();
+  });
+  test("Ethereum tokens pay from the EVM pocket through the router", () => {
+    expect(sendSource(c("USDC"))).toEqual({ pocket: "EVM", kind: "erc20" });
+  });
+  test("EVM-network coins come back to the same EVM pocket", () => {
+    expect(receivePocket(c("USDC.BSC"))).toBe("EVM");
+    expect(receivePocket(c("BTC"))).toBe("BTC");
+    expect(receivePocket(c("ATOM"))).toBeNull();
+  });
+});
+
+describe("who can send", () => {
+  test("pilot: members who aren't admins are blocked", () => {
+    expect(sendBlocker({ from: c("BTC"), link, isAdmin: false, amountUsd: 50 })).toMatch(/test/);
+  });
+  test("approve-every-trade links can't send", () => {
+    expect(sendBlocker({ from: c("BTC"), link: { ...link, mode: "approve", hasKey: false }, isAdmin: true, amountUsd: 50 })).toMatch(/instant access/);
+  });
+  test("pocket must include the coin's network", () => {
+    expect(sendBlocker({ from: c("DOGE"), link, isAdmin: true, amountUsd: 50 })).toMatch(/doesn't include/);
+  });
+  test("$250 per swap during the pilot", () => {
+    expect(SWAP_LIMITS.perSwapUsd).toBe(250);
+    expect(SWAP_LIMITS.dailyUsd).toBe(1000);
+    expect(sendBlocker({ from: c("BTC"), link, isAdmin: true, amountUsd: 250 })).toBeNull();
+    expect(sendBlocker({ from: c("BTC"), link, isAdmin: true, amountUsd: 250.01 })).toMatch(/\$250/);
+  });
+  test("no price, no send", () => {
+    expect(sendBlocker({ from: c("BTC"), link, isAdmin: true, amountUsd: null })).toMatch(/price/);
+  });
+  test("a fresh quote may be at most 1% worse than the one shown", () => {
+    expect(requoteOk(100, 99)).toBe(true);
+    expect(requoteOk(100, 98.99)).toBe(false);
+  });
+});
+
+describe("THORChain router calldata", () => {
+  test("known selectors", () => {
+    expect(selector("depositWithExpiry(address,address,uint256,string,uint256)")).toBe("44bc937b");
+    expect(approveData("0x" + "11".repeat(20), 5n).slice(0, 10)).toBe("0x095ea7b3");
+  });
+  test("encodes the memo as a dynamic string after five head words", () => {
+    const d = depositWithExpiryData("0x" + "aa".repeat(20), "0x" + "00".repeat(20), 10n ** 16n, "=:b:bc1qxyz:0/1/0", 1_700_000_000n);
+    const body = d.slice(10);
+    expect(body.length % 64).toBe(0);
+    expect(BigInt("0x" + body.slice(192, 256))).toBe(160n);
+    expect(BigInt("0x" + body.slice(320, 384))).toBe(17n);
+    expect(Buffer.from(body.slice(384, 384 + 34), "hex").toString()).toBe("=:b:bc1qxyz:0/1/0");
+  });
+  test("token contract and decimals", () => {
+    expect(tokenContract("ETH.USDC-0XA0B86991C6218B36C1D19D4A2E9EB0CE3606EB48")).toBe("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48");
+    expect(tokenContract("ETH.ETH")).toBeNull();
+    expect(toTokenUnits(100_000_000n, 6)).toBe(1_000_000n);
+    expect(toTokenUnits(100_000_000n, 18)).toBe(10n ** 18n);
+    expect(roundTo1e8Units(123_456_789n, 6)).toBe(123_456_700n);
+  });
+});
+
+describe("swap progress", () => {
+  test("done only after the outbound is signed", () => {
+    expect(swapProgress({ out_txs: [{ id: "AB", memo: "OUT:XYZ" }], stages: { outbound_signed: { completed: true } } })).toEqual({ status: "done", outTxid: "AB" });
+    expect(swapProgress({ out_txs: [{ id: "AB", memo: "OUT:XYZ" }], stages: { outbound_signed: { completed: false } } }).status).toBe("sent");
+  });
+  test("refunds are reported as refunds", () => {
+    expect(swapProgress({ out_txs: [{ id: "CD", memo: "REFUND:XYZ" }], stages: { outbound_signed: { completed: true } } }).status).toBe("refunded");
+  });
+  test("EVM hashes lose 0x for THORNode", () => {
+    expect(thorTxId("0xabc")).toBe("ABC");
+  });
+});

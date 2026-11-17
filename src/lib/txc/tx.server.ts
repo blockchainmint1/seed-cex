@@ -177,6 +177,10 @@ export type BuildParams = {
   p2pkhVersion?: number;
   /** ticker used in error messages */
   symbol?: string;
+  /** Pre-decoded recipient script (e.g. a Litecoin bech32 vault); overrides toAddress decoding. */
+  toScript?: Uint8Array;
+  /** Optional OP_RETURN text (THORChain swap memo), placed after change. Max 80 bytes. */
+  memo?: string;
 };
 
 /**
@@ -199,7 +203,14 @@ export function buildAndSignTransfer(params: BuildParams): BuiltTx {
     throw new Error("The authorized key does not control the funding address");
   }
 
-  const toScript = addressToScriptFor(params.toAddress, version);
+  const toScript = params.toScript ?? addressToScriptFor(params.toAddress, version);
+  let memoOut: TxOutput | null = null;
+  if (params.memo) {
+    const m = new TextEncoder().encode(params.memo);
+    if (m.length === 0 || m.length > 80) throw new Error("Memo must be 1–80 bytes");
+    memoOut = { script: concat(Uint8Array.of(0x6a), m.length < 0x4c ? Uint8Array.of(m.length) : Uint8Array.of(0x4c, m.length), m), value: 0n };
+  }
+  const memoVb = memoOut ? 9 + memoOut.script.length : 0;
   const target = BigInt(Math.round(params.amount * SATS));
   if (target < BigInt(DUST_SATS)) throw new Error("Amount is below the dust limit");
 
@@ -215,7 +226,7 @@ export function buildAndSignTransfer(params: BuildParams): BuiltTx {
   for (const u of spendable) {
     chosen.push(u);
     total += BigInt(Math.round(u.amount * SATS));
-    fee = BigInt(estimateVBytes(chosen.length, 2) * feeRate);
+    fee = BigInt((estimateVBytes(chosen.length, 2) + memoVb) * feeRate);
     if (total >= target + fee) break;
   }
 
@@ -233,9 +244,10 @@ export function buildAndSignTransfer(params: BuildParams): BuiltTx {
     fee += change;
     change = 0n;
     // one output only — recompute the fee floor so we never underpay
-    const minFee = BigInt(estimateVBytes(chosen.length, 1) * feeRate);
+    const minFee = BigInt((estimateVBytes(chosen.length, 1) + memoVb) * feeRate);
     if (fee < minFee) throw new Error("Insufficient balance to cover the network fee");
   }
+  if (memoOut) outputs.push(memoOut);
 
   // Sign every input with SIGHASH_ALL over the tx with only that input scripted.
   const scripts: Uint8Array[] = chosen.map(() => new Uint8Array(0));

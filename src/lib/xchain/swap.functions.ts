@@ -1,5 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { SEND_PILOT_ADMIN_ONLY, SWAP_LIMITS } from "./send-rules";
 import { SWAP_COIN_IDS, swapCoin } from "./assets";
 import { destinationValid, toBaseUnits } from "./safety";
 
@@ -34,4 +36,38 @@ export const getSwapQuotes = createServerFn({ method: "POST" })
     }
     const { swapQuotes } = await import("./router.server");
     return swapQuotes(from, to, amount, destination);
+  });
+
+async function callerIsAdmin(supabase: { from: (t: "user_roles") => any }, userId: string): Promise<boolean> {
+  const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId).eq("role", "admin").maybeSingle();
+  return Boolean(data);
+}
+
+/** Signed-in: the member's linked pocket (addresses only), limits and their recent swaps. */
+export const getSwapSendContext = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const isAdmin = await callerIsAdmin(context.supabase as never, context.userId);
+    const { swapSendContext, refreshSwapSends, listSwapSends } = await import("./send.server");
+    await refreshSwapSends(context.userId).catch((e) => console.error("swap refresh failed", e));
+    const [ctx, sends] = await Promise.all([swapSendContext(context.userId), listSwapSends(context.userId)]);
+    return { isAdmin, pilotAdminOnly: SEND_PILOT_ADMIN_ONLY, limits: SWAP_LIMITS, link: ctx.link, sends };
+  });
+
+const sendInput = z.object({
+  from: z.enum(SWAP_COIN_IDS),
+  to: z.enum(SWAP_COIN_IDS),
+  amount: z.string().trim().min(1).max(32),
+  destination: z.string().trim().min(10).max(128),
+  shownOut: z.number().positive(),
+});
+
+/** Signed-in: send a THORChain swap from the member's instant-access trading pocket. */
+export const sendSwap = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => sendInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const isAdmin = await callerIsAdmin(context.supabase as never, context.userId);
+    const { sendSwapFromPocket } = await import("./send.server");
+    return sendSwapFromPocket(context.userId, isAdmin, data);
   });

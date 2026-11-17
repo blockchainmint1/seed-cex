@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowDownUp, Check, Clock, ShieldCheck, X } from "lucide-react";
+import { ArrowDownUp, Check, Clock, ExternalLink, ShieldCheck, Wallet, X } from "lucide-react";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PROTOCOL_LABEL, SWAP_COINS, swapCoin, swapCoinGroup, type Protocol, type SwapCoin, type SwapCoinId } from "@/lib/xchain/assets";
-import { getSwapQuotes, getSwapStatus } from "@/lib/xchain/swap.functions";
+import { getSwapQuotes, getSwapSendContext, getSwapStatus, sendSwap } from "@/lib/xchain/swap.functions";
+import { receivePocket, sendBlocker, sendSource, SWAP_LIMITS } from "@/lib/xchain/send-rules";
+import { useSession } from "@/hooks/use-session";
 import { fmtCompact } from "@/lib/format";
 
 export const Route = createFileRoute("/swap")({
@@ -98,8 +100,19 @@ function SwapPage() {
     mutationFn: () => fetchQuotes({ data: { from, to, amount, destination } }),
   });
 
+  const { user } = useSession();
+  const fetchSendCtx = useServerFn(getSwapSendContext);
+  const { data: sendCtx } = useQuery({
+    queryKey: ["swap-send-ctx", user?.id ?? null],
+    queryFn: () => fetchSendCtx(),
+    enabled: Boolean(user),
+    refetchInterval: 30_000,
+  });
+
   const fromCoin = swapCoin(from)!;
   const toCoin = swapCoin(to)!;
+  const ownPocket = receivePocket(toCoin);
+  const ownAddress = ownPocket ? (sendCtx?.link?.addresses as Record<string, string> | undefined)?.[ownPocket] ?? null : null;
   const fromPrice = status.coins.find((c) => c.id === from)?.priceUsd ?? null;
   const amountNum = Number(amount);
   const routes = quote.data?.routes ?? [];
@@ -126,7 +139,7 @@ function SwapPage() {
         </p>
         <p className="inline-flex items-center gap-2 rounded-sm border border-primary/40 bg-primary/10 px-3 py-1.5 font-mono text-[11px] text-foreground">
           <ShieldCheck className="h-3.5 w-3.5 text-primary" />
-          Price preview — sending isn't switched on yet. Nothing on this page moves funds.
+          Anyone can compare prices. Sending from your trading pocket is in a small test with the Seeds team first.
         </p>
       </header>
 
@@ -219,6 +232,19 @@ function SwapPage() {
               <p className="text-xs text-muted-foreground">
                 Add it to run the full send checks: the swap instruction is verified to pay exactly this address.
               </p>
+              {ownAddress && destination !== ownAddress ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDestination(ownAddress);
+                    quote.reset();
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-sm border border-border px-2.5 py-1 font-mono text-[11px] text-foreground transition-colors hover:border-primary hover:text-primary"
+                >
+                  <Wallet className="h-3.5 w-3.5" />
+                  Send it to my trading pocket
+                </button>
+              ) : null}
             </div>
 
             <button
@@ -294,10 +320,22 @@ function SwapPage() {
                           ))}
                         </ul>
                         <p className="font-mono text-[11px] text-muted-foreground">
-                          {r.sendReady
-                            ? "All send checks passed. Sending isn't switched on yet."
-                            : `Not send-ready: ${r.blockedReason}`}
+                          {r.sendReady ? "All send checks passed." : `Not send-ready: ${r.blockedReason}`}
                         </p>
+                        {r.sendReady && r.protocol === "thorchain" ? (
+                          <SendPanel
+                            signedIn={Boolean(user)}
+                            ctx={sendCtx ?? null}
+                            from={fromCoin}
+                            to={toCoin}
+                            amount={amount}
+                            destination={destination}
+                            expectedOut={r.expectedOut}
+                            minOut={r.minOut}
+                            inputUsd={quote.data?.inputUsd ?? null}
+                            onSent={() => quote.reset()}
+                          />
+                        ) : null}
                       </>
                     ) : (
                       <p className="text-sm text-muted-foreground">{r.error ?? "No route."}</p>
@@ -307,6 +345,7 @@ function SwapPage() {
               })}
             </div>
           ) : null}
+          {sendCtx?.sends?.length ? <MySwaps sends={sendCtx.sends} /> : null}
         </section>
 
         <aside className="space-y-4">
@@ -379,8 +418,8 @@ function SwapPage() {
             d: "Before any coin could move, the swap instruction must pay exactly your address and coin, carry price protection, and point at a vault confirmed by two independent servers.",
           },
           {
-            t: "3 · Send from your wallet",
-            d: "You send from your own HME Wallet. The protocol swaps through its pools and delivers native coins to your address — Seeds never holds them.",
+            t: "3 · Send from your pocket",
+            d: "Seeds re-checks everything, then sends from your instant-access trading pocket with per-swap and daily limits. THORChain swaps through its pools and delivers native coins to your address — or refunds you if the price slips.",
           },
         ].map((s) => (
           <div key={s.t} className="rounded-sm border border-border bg-surface p-5">
@@ -397,6 +436,153 @@ function SwapPage() {
         the two-server check yet. Want to trade into Texas
         Stable Dollar? See <Link to="/tsd" className="text-primary underline-offset-2 hover:underline">TSD</Link>.
       </p>
+    </div>
+  );
+}
+
+type SendCtx = Awaited<ReturnType<typeof getSwapSendContext>>;
+
+const TRACKER = (txid: string) => `https://runescan.io/tx/${txid.replace(/^0x/i, "").toUpperCase()}`;
+
+function SendPanel(props: {
+  signedIn: boolean;
+  ctx: SendCtx | null;
+  from: SwapCoin;
+  to: SwapCoin;
+  amount: string;
+  destination: string;
+  expectedOut: number;
+  minOut: number | null;
+  inputUsd: number | null;
+  onSent: () => void;
+}) {
+  const qc = useQueryClient();
+  const send = useServerFn(sendSwap);
+  const [agree, setAgree] = useState(false);
+  const mutation = useMutation({
+    mutationFn: () =>
+      send({ data: { from: props.from.id, to: props.to.id, amount: props.amount, destination: props.destination, shownOut: props.expectedOut } }),
+    onSettled: () => qc.invalidateQueries({ queryKey: ["swap-send-ctx"] }),
+  });
+
+  if (mutation.data) {
+    return (
+      <div className="space-y-2 rounded-sm border border-primary bg-primary/10 p-3 text-xs">
+        <p className="font-semibold">Sent. THORChain is swapping it now.</p>
+        <p className="text-muted-foreground">
+          You'll get about {coins(mutation.data.expectedOut)} {props.to.symbol}
+          {mutation.data.minOut != null ? `, or a refund if it would be under ${coins(mutation.data.minOut)}` : ""}. Progress shows under “My swaps”.
+        </p>
+        <a href={TRACKER(mutation.data.txid)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-mono text-primary underline">
+          Track on RuneScan <ExternalLink className="h-3 w-3" />
+        </a>
+      </div>
+    );
+  }
+
+  if (!props.signedIn) {
+    return (
+      <p className="border-t border-border pt-3 text-xs text-muted-foreground">
+        <Link to="/auth" search={{ redirect: "/swap" }} className="text-primary underline">Sign in</Link> to send this from your trading pocket.
+      </p>
+    );
+  }
+  if (!props.ctx) return null;
+  const link = props.ctx.link ? { mode: props.ctx.link.mode, hasKey: props.ctx.link.hasKey, pockets: props.ctx.link.pockets as string[] } : null;
+  const blocker = sendBlocker({ from: props.from, link, isAdmin: props.ctx.isAdmin, amountUsd: props.inputUsd });
+  if (blocker) return <p className="border-t border-border pt-3 text-xs text-muted-foreground">{blocker}</p>;
+  const src = sendSource(props.from)!;
+  const fromAddr = (props.ctx.link?.addresses as Record<string, string> | undefined)?.[src.pocket];
+
+  return (
+    <div className="space-y-3 border-t border-border pt-3">
+      <p className="text-xs">
+        Send <span className="num font-semibold">{props.amount} {props.from.symbol}</span> ({usd(props.inputUsd)}) from your trading pocket
+        {fromAddr ? <span className="block truncate font-mono text-[10px] text-muted-foreground">{fromAddr}</span> : null}
+      </p>
+      <p className="text-xs">
+        To <span className="block truncate font-mono text-[10px] text-muted-foreground">{props.destination}</span>
+      </p>
+      <label className="flex items-start gap-2 text-xs text-muted-foreground">
+        <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-0.5 accent-primary" />
+        <span>
+          I checked the receiving address. Blockchain sends can't be undone. Limits during the test: ${SWAP_LIMITS.perSwapUsd} per swap, ${SWAP_LIMITS.dailyUsd} a day.
+        </span>
+      </label>
+      <button
+        type="button"
+        disabled={!agree || mutation.isPending}
+        onClick={() => mutation.mutate()}
+        className="h-10 w-full rounded-md bg-action text-sm font-semibold text-action-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+      >
+        {mutation.isPending ? "Re-checking and sending…" : `Send ${props.amount} ${props.from.symbol}`}
+      </button>
+      {mutation.error ? (
+        <p role="alert" className="font-mono text-xs text-destructive">
+          {(mutation.error as Error).message}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+const STATUS_LABEL: Record<string, string> = {
+  signing: "Sending…",
+  sent: "Swapping",
+  done: "Delivered",
+  refunded: "Refunded",
+  failed: "Not sent",
+  unknown: "Checking",
+};
+
+function assetLabel(asset: string) {
+  const c = SWAP_COINS.find((x) => x.asset === asset);
+  return c ? `${c.symbol} · ${c.network}` : asset;
+}
+
+function MySwaps({ sends }: { sends: SendCtx["sends"] }) {
+  return (
+    <div className="rounded-sm border border-border bg-surface">
+      <h2 className="border-b border-border px-4 py-3 font-mono text-[11px] tracking-[0.2em] uppercase">My swaps</h2>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[40rem] font-mono text-xs">
+          <thead>
+            <tr className="text-left text-[10px] tracking-wider text-muted-foreground uppercase">
+              <th className="px-4 py-2 font-normal">When</th>
+              <th className="px-2 py-2 font-normal">Sent</th>
+              <th className="px-2 py-2 font-normal">For</th>
+              <th className="px-2 py-2 font-normal">Status</th>
+              <th className="px-4 py-2 font-normal">Track</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sends.map((s) => (
+              <tr key={s.id} className="border-t border-border align-top">
+                <td className="px-4 py-2 whitespace-nowrap">{new Date(s.created_at).toLocaleString("en-US", { dateStyle: "short", timeStyle: "short" })}</td>
+                <td className="px-2 py-2">
+                  {coins(Number(s.amount_in))} <span className="block text-[10px] text-muted-foreground">{assetLabel(s.from_asset)}</span>
+                </td>
+                <td className="px-2 py-2">
+                  ~{coins(Number(s.expected_out))} <span className="block text-[10px] text-muted-foreground">{assetLabel(s.to_asset)}</span>
+                </td>
+                <td className="px-2 py-2">
+                  <span className={s.status === "failed" ? "text-destructive" : s.status === "done" ? "text-primary" : ""}>{STATUS_LABEL[s.status] ?? s.status}</span>
+                  {s.error ? <span className="block max-w-56 text-[10px] text-muted-foreground">{s.error}</span> : null}
+                </td>
+                <td className="px-4 py-2">
+                  {s.txid && s.status !== "failed" ? (
+                    <a href={TRACKER(s.txid)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary underline">
+                      RuneScan <ExternalLink className="h-3 w-3" />
+                    </a>
+                  ) : (
+                    "—"
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

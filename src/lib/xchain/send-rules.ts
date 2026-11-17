@@ -1,0 +1,95 @@
+/**
+ * Rules for sending a THORChain swap from a member's trading pocket (pure, tested).
+ *
+ * Sending is THORChain-only: Maya has one public server, so its vaults can't be
+ * confirmed by two independent servers and its routes never become send-ready.
+ * During the pilot only admins can send, with per-swap and daily dollar caps
+ * enforced again inside the database (reserve_swap_send).
+ */
+import type { PocketCoin } from "@/lib/pockets/coins";
+import type { Protocol, SwapCoin } from "./assets";
+
+export const SEND_PROTOCOL: Protocol = "thorchain";
+/** Pilot switch: until each coin has had a small real-money test, only admins can send. */
+export const SEND_PILOT_ADMIN_ONLY = true;
+export const SWAP_LIMITS = { perSwapUsd: 250, dailyUsd: 1000 } as const;
+/** A quote must have at least this long left when we sign. */
+export const MIN_SEND_QUOTE_SECONDS = 120;
+/** The fresh quote we sign may be at most this much worse than the one the member saw. */
+export const REQUOTE_TOLERANCE = 0.01;
+
+export type SendKind = "btc" | "ltc" | "evm" | "erc20" | "doge" | "bch" | "xrp" | "trx" | "sol";
+
+const NATIVE: Record<string, { pocket: PocketCoin; kind: SendKind }> = {
+  "BTC.BTC": { pocket: "BTC", kind: "btc" },
+  "LTC.LTC": { pocket: "LTC", kind: "ltc" },
+  "ETH.ETH": { pocket: "EVM", kind: "evm" },
+  "DOGE.DOGE": { pocket: "DOGE", kind: "doge" },
+  "BCH.BCH": { pocket: "BCH", kind: "bch" },
+  "XRP.XRP": { pocket: "XRP", kind: "xrp" },
+  "TRON.TRX": { pocket: "TRX", kind: "trx" },
+  "SOL.SOL": { pocket: "SOL", kind: "sol" },
+};
+
+/** Which pocket key pays for this coin, and how — or null when Seeds can't send it yet. */
+export function sendSource(c: SwapCoin): { pocket: PocketCoin; kind: SendKind } | null {
+  if (!c.protocols.includes(SEND_PROTOCOL)) return null;
+  const n = NATIVE[c.asset];
+  if (n) return n;
+  if (c.chain === "ETH" && c.token && /-0X[0-9A-F]{40}$/i.test(c.asset)) return { pocket: "EVM", kind: "erc20" };
+  return null;
+}
+
+const RECEIVE_BY_CHAIN: Record<string, PocketCoin> = {
+  BTC: "BTC", LTC: "LTC", DOGE: "DOGE", BCH: "BCH", XRP: "XRP", TRON: "TRX", SOL: "SOL", ZEC: "ZEC",
+  ETH: "EVM", BSC: "EVM", AVAX: "EVM", BASE: "EVM", ARB: "EVM",
+};
+/** The pocket whose own address can receive this coin ("send it back to my pocket"). */
+export function receivePocket(c: SwapCoin): PocketCoin | null {
+  return RECEIVE_BY_CHAIN[c.chain] ?? null;
+}
+
+export function requoteOk(shownOut: number, freshOut: number): boolean {
+  return Number.isFinite(shownOut) && shownOut > 0 && freshOut >= shownOut * (1 - REQUOTE_TOLERANCE);
+}
+
+export type LinkLike = { mode: string; hasKey: boolean; pockets: string[] } | null;
+
+/** First reason a member can't send this swap right now, or null. */
+export function sendBlocker(p: {
+  from: SwapCoin;
+  link: LinkLike;
+  isAdmin: boolean;
+  amountUsd: number | null;
+}): string | null {
+  const src = sendSource(p.from);
+  if (!src) return `Seeds can't send ${p.from.symbol} on ${p.from.network} yet.`;
+  if (SEND_PILOT_ADMIN_ONLY && !p.isAdmin) return "Sending is in a small test with the Seeds team first. It opens to members after that.";
+  if (!p.link) return "Link your HME Wallet trading pocket first (Profile).";
+  if (p.link.mode !== "access" || !p.link.hasKey) return "Your pocket is linked in approve-every-trade mode. Swaps need instant access for now.";
+  if (!p.link.pockets.includes(src.pocket)) return `Your linked pocket doesn't include ${p.from.network}.`;
+  if (p.amountUsd == null) return "No live price for this coin, so the limit can't be checked.";
+  if (p.amountUsd > SWAP_LIMITS.perSwapUsd) return `Swaps are limited to $${SWAP_LIMITS.perSwapUsd} each during the test.`;
+  return null;
+}
+
+export type ThorTxStatus = {
+  out_txs?: Array<{ id?: string; memo?: string }>;
+  planned_out_txs?: Array<{ refund?: boolean }>;
+  stages?: { outbound_signed?: { completed?: boolean }; inbound_observed?: { completed?: boolean } };
+};
+
+/** Map THORNode /tx/status to our row status. */
+export function swapProgress(s: ThorTxStatus | null): { status: "sent" | "done" | "refunded"; outTxid: string | null } {
+  const outs = s?.out_txs ?? [];
+  const refund = outs.find((o) => /^REFUND/i.test(o.memo ?? ""));
+  if (refund && s?.stages?.outbound_signed?.completed) return { status: "refunded", outTxid: refund.id ?? null };
+  const out = outs.find((o) => /^OUT/i.test(o.memo ?? ""));
+  if (out && s?.stages?.outbound_signed?.completed) return { status: "done", outTxid: out.id ?? null };
+  return { status: "sent", outTxid: null };
+}
+
+/** THORNode wants EVM hashes without 0x, upper-case. */
+export function thorTxId(txid: string): string {
+  return txid.replace(/^0x/i, "").toUpperCase();
+}
