@@ -21,6 +21,7 @@ import { Route as LinkAccountRouteImport } from './routes/link-account'
 import { Route as ManifestoRouteImport } from './routes/manifesto'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as RegisterRouteImport } from './routes/register'
+import { Route as RiskRouteImport } from './routes/risk'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SsoRouteImport } from './routes/sso'
 import { Route as StatsRouteImport } from './routes/stats'
@@ -139,6 +140,11 @@ const PrivacyRoute = PrivacyRouteImport.update({
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
   path: '/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RiskRoute = RiskRouteImport.update({
+  id: '/risk',
+  path: '/risk',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -463,6 +469,7 @@ export interface FileRoutesByFullPath {
   '/manifesto': typeof ManifestoRoute
   '/privacy': typeof PrivacyRoute
   '/register': typeof RegisterRoute
+  '/risk': typeof RiskRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sso': typeof SsoRoute
   '/stats': typeof StatsRoute
@@ -536,6 +543,7 @@ export interface FileRoutesByTo {
   '/manifesto': typeof ManifestoRoute
   '/privacy': typeof PrivacyRoute
   '/register': typeof RegisterRoute
+  '/risk': typeof RiskRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sso': typeof SsoRoute
   '/stats': typeof StatsRoute
@@ -611,6 +619,7 @@ export interface FileRoutesById {
   '/manifesto': typeof ManifestoRoute
   '/privacy': typeof PrivacyRoute
   '/register': typeof RegisterRoute
+  '/risk': typeof RiskRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sso': typeof SsoRoute
   '/stats': typeof StatsRoute
@@ -686,6 +695,7 @@ export interface FileRouteTypes {
     | '/manifesto'
     | '/privacy'
     | '/register'
+    | '/risk'
     | '/sitemap.xml'
     | '/sso'
     | '/stats'
@@ -759,6 +769,7 @@ export interface FileRouteTypes {
     | '/manifesto'
     | '/privacy'
     | '/register'
+    | '/risk'
     | '/sitemap.xml'
     | '/sso'
     | '/stats'
@@ -833,6 +844,7 @@ export interface FileRouteTypes {
     | '/manifesto'
     | '/privacy'
     | '/register'
+    | '/risk'
     | '/sitemap.xml'
     | '/sso'
     | '/stats'
@@ -908,6 +920,7 @@ export interface RootRouteChildren {
   ManifestoRoute: typeof ManifestoRoute
   PrivacyRoute: typeof PrivacyRoute
   RegisterRoute: typeof RegisterRoute
+  RiskRoute: typeof RiskRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   SsoRoute: typeof SsoRoute
   StatsRoute: typeof StatsRoute
@@ -1045,6 +1058,13 @@ declare module '@tanstack/react-router' {
       path: '/register'
       fullPath: '/register'
       preLoaderRoute: typeof RegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/risk': {
+      id: '/risk'
+      path: '/risk'
+      fullPath: '/risk'
+      preLoaderRoute: typeof RiskRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sitemap.xml': {
@@ -1522,6 +1542,7 @@ const rootRouteChildren: RootRouteChildren = {
   ManifestoRoute: ManifestoRoute,
   PrivacyRoute: PrivacyRoute,
   RegisterRoute: RegisterRoute,
+  RiskRoute: RiskRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   SsoRoute: SsoRoute,
   StatsRoute: StatsRoute,

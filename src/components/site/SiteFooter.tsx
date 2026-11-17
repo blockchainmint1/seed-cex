@@ -11,6 +11,7 @@ const links = [
   { label: "Custody Ledger", to: "/custody" },
   { label: "Stats", to: "/stats" },
   { label: "Terms", to: "/terms" },
+  { label: "Risk", to: "/risk" },
   { label: "Privacy", to: "/privacy" },
 ] as const;
 
