@@ -203,7 +203,7 @@ function Row({ k, v }: { k: string; v: ReactNode }) {
 
 const STATES: { key: string; title: string; body: string }[] = [
   { key: "Pending", title: "Payment pending", body: "We're waiting for your payment to be verified. Crypto payments stay pending until confirmed on-chain. Your seat isn't confirmed yet." },
-  { key: "Confirmed", title: "Your Ignite seat is confirmed", body: "Payment verified. Ignite runs November 30–December 4, 2026, daily from 5:00–6:30 PM CST." },
+  { key: "Confirmed", title: "Your Ignite seat is confirmed", body: "Payment confirmed. Ignite runs November 30–December 4, 2026, daily from 5:00–6:30 PM CST." },
   { key: "Canceled", title: "Checkout canceled", body: "No payment was taken. You can return to review whenever you're ready." },
   { key: "Failed", title: "Payment didn't go through", body: "No seat was reserved. You can try again — retrying won't create a duplicate charge or seat." },
   { key: "Sold out", title: "Ignite is fully reserved", body: "All 100 seats are taken." },
