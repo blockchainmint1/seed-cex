@@ -1,6 +1,6 @@
 import { describe, expect, test as it } from "bun:test";
 import { createHmac } from "node:crypto";
-import { verifyNectarSignature } from "./nectarpay.server";
+import { verifyNectarSignature, webhookNeedsWork } from "./nectarpay.server";
 
 const secret = "whsec_test";
 const body = '{"id":"e1","type":"invoice.confirmed"}';
@@ -12,4 +12,10 @@ describe("NectarPay webhook signature", () => {
   it("rejects a tampered body", async () => expect(await verifyNectarSignature(sign(now / 1000), body + " ", secret, now)).toBe(false));
   it("rejects signatures older than 5 minutes", async () => expect(await verifyNectarSignature(sign(now / 1000 - 301), body, secret, now)).toBe(false));
   it("rejects a missing header", async () => expect(await verifyNectarSignature(null, body, secret, now)).toBe(false));
+});
+
+describe("NectarPay repeated deliveries", () => {
+  it("a repeated invoice.confirmed is still processed (an earlier attempt may have been cut off)", () => expect(webhookNeedsWork("invoice.confirmed")).toBe(true));
+  it("a repeated invoice.paid is just acknowledged", () => expect(webhookNeedsWork("invoice.paid")).toBe(false));
+  it("a repeated invoice.underpaid is just acknowledged", () => expect(webhookNeedsWork("invoice.underpaid")).toBe(false));
 });

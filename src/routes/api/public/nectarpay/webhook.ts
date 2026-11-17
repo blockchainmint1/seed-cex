@@ -16,7 +16,10 @@ export const Route = createFileRoute("/api/public/nectarpay/webhook")({
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { error: dup } = await supabaseAdmin.from("nectarpay_events").insert({ event_id: ev.id, type: ev.type, invoice_id: ev.data.invoice_id, payload: ev as never });
-        if (dup) return Response.json({ ok: true, duplicate: true });
+        // A repeat is answered 2xx, but a settling event is still re-run: an earlier attempt may have been
+        // cut off after recording the id. Confirmation is compare-and-set, so re-running is harmless.
+        const { webhookNeedsWork } = await import("@/lib/nectarpay.server");
+        if (dup && !webhookNeedsWork(ev.type)) return Response.json({ ok: true, duplicate: true });
 
         try {
           const { processIgniteInvoiceEvent } = await import("@/lib/ignite-confirm.server");
@@ -24,7 +27,7 @@ export const Route = createFileRoute("/api/public/nectarpay/webhook")({
           return Response.json({ ok: true, result });
         } catch (e) {
           // Let NectarPay's retry reprocess this event.
-          await supabaseAdmin.from("nectarpay_events").delete().eq("event_id", ev.id);
+          if (!dup) await supabaseAdmin.from("nectarpay_events").delete().eq("event_id", ev.id);
           console.error("NectarPay webhook failed", e);
           return new Response("Retry", { status: 500 });
         }

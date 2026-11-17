@@ -37,6 +37,9 @@ export function getInvoice(id: string) {
 const hex = (b: ArrayBuffer) => Array.from(new Uint8Array(b), (x) => x.toString(16).padStart(2, "0")).join("");
 
 /** Verifies X-TXCPay-Signature "t=<unix>,v1=<hex>" = HMAC-SHA256(secret, `${t}.${rawBody}`), rejecting >5 min old. */
+/** Events that can settle a seat; these are re-run even when NectarPay repeats a delivery. */
+export const webhookNeedsWork = (type: string) => type === "invoice.confirmed";
+
 export async function verifyNectarSignature(header: string | null, rawBody: string, secret: string, nowMs = Date.now()) {
   if (!header || !secret) return false;
   const t = header.match(/t=(\d+)/)?.[1];
