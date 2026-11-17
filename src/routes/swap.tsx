@@ -3,8 +3,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ArrowDownUp, Check, Clock, ShieldCheck, X } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { PROTOCOL_LABEL, SWAP_COINS, swapCoin, type Protocol, type SwapCoinId } from "@/lib/xchain/assets";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PROTOCOL_LABEL, SWAP_COINS, swapCoin, swapCoinGroup, type Protocol, type SwapCoin, type SwapCoinId } from "@/lib/xchain/assets";
 import { getSwapQuotes, getSwapStatus } from "@/lib/xchain/swap.functions";
 import { fmtCompact } from "@/lib/format";
 
@@ -12,11 +12,11 @@ export const Route = createFileRoute("/swap")({
   staticData: { sitemap: true },
   head: () => ({
     meta: [
-      { title: "Cross-Chain Swap — BTC, ETH, SOL, XRP & more | Seeds" },
+      { title: "Cross-Chain Swap — 46 coins on THORChain & Maya | Seeds" },
       {
         name: "description",
         content:
-          "Live cross-chain swap prices through THORChain and Maya Protocol for BTC, ETH, LTC, DOGE, BCH, XRP, SOL, ZEC, BNB and TRX — native coins, no wrapped tokens.",
+          "Live cross-chain swap prices through THORChain and Maya Protocol for every coin they trade: BTC, ETH, SOL, XRP, ADA, AVAX, ATOM, DOGE, stablecoins on six networks and more.",
       },
       { property: "og:title", content: "Cross-Chain Swap — Seeds" },
       {
@@ -47,17 +47,32 @@ const coins = (n: number | null | undefined, digits = 8) =>
   n == null || !Number.isFinite(n) ? "—" : n.toLocaleString("en-US", { maximumFractionDigits: digits });
 const minutes = (s: number | null) => (s == null ? "—" : s < 90 ? `~${Math.max(1, Math.round(s))}s` : `~${Math.round(s / 60)} min`);
 
+const COIN_GROUPS: Array<[string, SwapCoin[]]> = (() => {
+  const m = new Map<string, SwapCoin[]>();
+  for (const c of SWAP_COINS) {
+    const g = swapCoinGroup(c);
+    m.set(g, [...(m.get(g) ?? []), c]);
+  }
+  const order = ["Coins", "Stablecoins", "Bitcoin & Ether on other networks", "Other tokens"];
+  return [...m.entries()].sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]));
+})();
+
 function CoinSelect({ value, onChange, label }: { value: SwapCoinId; onChange: (v: SwapCoinId) => void; label: string }) {
   return (
     <Select value={value} onValueChange={(v) => onChange(v as SwapCoinId)}>
       <SelectTrigger aria-label={label} className="h-12 w-36 shrink-0 rounded-sm font-mono sm:w-44 [&>span]:truncate">
         <SelectValue />
       </SelectTrigger>
-      <SelectContent>
-        {SWAP_COINS.map((c) => (
-          <SelectItem key={c.id} value={c.id} className="font-mono">
-            {c.symbol} <span className="text-muted-foreground">· {c.network}</span>
-          </SelectItem>
+      <SelectContent className="max-h-80">
+        {COIN_GROUPS.map(([group, list]) => (
+          <SelectGroup key={group}>
+            <SelectLabel className="font-mono text-[10px] tracking-[0.18em] text-primary uppercase">{group}</SelectLabel>
+            {list.map((c) => (
+              <SelectItem key={c.id} value={c.id} className="font-mono">
+                {c.symbol} <span className="text-muted-foreground">· {c.network}</span>
+              </SelectItem>
+            ))}
+          </SelectGroup>
         ))}
       </SelectContent>
     </Select>
@@ -105,12 +120,13 @@ function SwapPage() {
           Real coins, chain to chain.
         </h1>
         <p className="max-w-2xl text-muted-foreground">
-          Live prices through THORChain and Maya Protocol for Bitcoin, Ether, Litecoin, Dogecoin, Bitcoin Cash, XRP,
-          Solana, Zcash, BNB and TRON. Native coins only — no wrapped tokens, and Seeds never holds your coins.
+          Live prices through THORChain and Maya Protocol for every coin they trade — {SWAP_COINS.length} in all, from
+          Bitcoin, Ether, Solana and XRP to Cardano, Avalanche, Cosmos and stablecoins on six networks. Seeds never
+          holds your coins.
         </p>
         <p className="inline-flex items-center gap-2 rounded-sm border border-primary/40 bg-primary/10 px-3 py-1.5 font-mono text-[11px] text-foreground">
           <ShieldCheck className="h-3.5 w-3.5 text-primary" />
-          Price preview — sending opens once HME Wallet can sign for each coin. Nothing on this page moves funds.
+          Price preview — sending isn't switched on yet. Nothing on this page moves funds.
         </p>
       </header>
 
@@ -279,7 +295,7 @@ function SwapPage() {
                         </ul>
                         <p className="font-mono text-[11px] text-muted-foreground">
                           {r.sendReady
-                            ? "All send checks passed. Sending opens with HME Wallet support."
+                            ? "All send checks passed. Sending isn't switched on yet."
                             : `Not send-ready: ${r.blockedReason}`}
                         </p>
                       </>
@@ -302,8 +318,9 @@ function SwapPage() {
                 {new Date(status.generatedAt).toLocaleTimeString("en-US", { hour12: false })}
               </span>
             </div>
+            <div className="max-h-[40rem] overflow-y-auto">
             <table className="w-full font-mono text-xs">
-              <thead>
+              <thead className="sticky top-0 bg-surface">
                 <tr className="text-left text-[10px] tracking-wider text-muted-foreground uppercase">
                   <th className="px-4 py-2 font-normal">Coin</th>
                   <th className="px-2 py-2 text-right font-normal">Price</th>
@@ -340,8 +357,9 @@ function SwapPage() {
                 })}
               </tbody>
             </table>
+            </div>
             <p className="border-t border-border px-4 py-3 text-[11px] text-muted-foreground">
-              ● live, with pool depth. Prices from THORChain pools.{" "}
+              ● live, with pool depth. Scroll for all {status.coins.length} coins. Prices from THORChain pools; Maya-only coins are priced through Maya.{" "}
               {PROTOCOLS.filter((p) => !status.protocols[p].reachable)
                 .map((p) => `${PROTOCOL_LABEL[p]} is not answering right now.`)
                 .join(" ")}
@@ -374,8 +392,9 @@ function SwapPage() {
 
       <p className="max-w-3xl text-xs text-muted-foreground">
         THORChain and Maya Protocol are independent networks; Seeds does not run them. Quotes expire within minutes and
-        large trades move the price. Maya currently offers BTC, ETH, ZEC, USDC and USDT from this list, and publishes one
-        public server, so Maya routes show prices but cannot pass the two-server check yet. Want to trade into Texas
+        large trades move the price. Tokens such as WBTC or USDC on BNB Chain are issued by third parties on those
+        networks, not by THORChain or Maya. Maya publishes one public server, so Maya routes show prices but cannot pass
+        the two-server check yet. Want to trade into Texas
         Stable Dollar? See <Link to="/tsd" className="text-primary underline-offset-2 hover:underline">TSD</Link>.
       </p>
     </div>

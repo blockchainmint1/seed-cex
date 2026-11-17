@@ -4,7 +4,7 @@
  * and generalised to every coin in assets.ts. A wrong memo or vault is an
  * unrecoverable loss, so every rule fails closed.
  */
-import type { SwapCoin } from "./assets";
+import type { Protocol, SwapCoin } from "./assets";
 
 /** Bitcoin-family OP_RETURN limit. */
 export const OP_RETURN_BYTES = 80;
@@ -47,8 +47,12 @@ function sameAddress(coin: SwapCoin, a: string, b: string): boolean {
   return a === b;
 }
 
-/** True when a memo's asset token names exactly `coin` (shortcode, short or full notation). */
-export function memoAssetMatches(token: string, coin: SwapCoin): boolean {
+/**
+ * True when a memo's asset token names exactly `coin` on protocol `p`: its verified
+ * shortcode for that protocol, or its ticker / full / contract-suffix notation.
+ */
+export function memoAssetMatches(token: string, coin: SwapCoin, p: Protocol): boolean {
+  if (coin.shortcodes[p] === token) return true;
   if (coin.memoNames.includes(token)) return true;
   const up = token.toUpperCase();
   if (up === coin.asset) return true;
@@ -62,6 +66,8 @@ export function memoAssetMatches(token: string, coin: SwapCoin): boolean {
 }
 
 export type MemoCheck = {
+  /** Protocol that produced the memo (shortcodes are protocol-specific). */
+  protocol: Protocol;
   /** Coin that will receive the payout. */
   to: SwapCoin;
   /** Coin being sent (decides the memo byte limit). */
@@ -86,7 +92,7 @@ export function memoSafe(memo: string, c: MemoCheck): { ok: boolean; reason: str
   if (parts.length < 4) return fail("memo has no price limit");
   const [action, asset, dest, limit] = parts as [string, string, string, string];
   if (action !== "=" && action !== "SWAP" && action !== "swap" && action !== "s") return fail("memo is not a swap");
-  if (!memoAssetMatches(asset, c.to)) return fail(`memo pays ${asset}, not ${c.to.symbol}`);
+  if (!memoAssetMatches(asset, c.to, c.protocol)) return fail(`memo pays ${asset}, not ${c.to.symbol}`);
   if (!sameAddress(c.to, dest, c.destination.trim())) return fail("memo pays a different address");
   const m = /^([1-9][0-9]*(?:e[0-9]+)?)(?:\/([0-9]+)\/([0-9]+))?$/.exec(limit);
   if (!m) return fail("memo has no positive price limit");

@@ -80,7 +80,7 @@ type InboundRow = {
   chain: string; address: string; router?: string; halted: boolean;
   global_trading_paused?: boolean; chain_trading_paused?: boolean;
 };
-type PoolRow = { asset: string; status: string; balance_asset: string; asset_tor_price?: string };
+type PoolRow = { asset: string; status: string; balance_asset: string; asset_tor_price?: string; balance_cacao?: string };
 type AsgardVault = { status?: string; addresses?: Array<{ chain: string; address: string }>; routers?: Array<{ chain: string; router: string }> };
 
 const paused = (x: InboundRow | undefined) => !x || x.halted || !!x.global_trading_paused || !!x.chain_trading_paused;
@@ -124,12 +124,30 @@ async function readProtocol(p: Protocol) {
   }
 }
 
-/** USD prices come from THORChain pools (THORChain publishes asset_tor_price; Maya does not). */
-function priceMap(thorPools: PoolRow[]): Map<string, number> {
+/**
+ * USD prices: THORChain publishes asset_tor_price per pool. Maya does not, so a
+ * Maya-only coin is priced through CACAO: its CACAO price in Maya's pool, times
+ * CACAO's dollar price implied by Maya's BTC pool and THORChain's BTC price.
+ * Display only — prices never decide what is sent.
+ */
+function priceMap(thorPools: PoolRow[], mayaPools: PoolRow[]): Map<string, number> {
   const m = new Map<string, number>();
   for (const pool of thorPools) {
     const px = pool.asset_tor_price ? Number(pool.asset_tor_price) / 1e8 : NaN;
     if (Number.isFinite(px) && px > 0) m.set(pool.asset, px);
+  }
+  const cacaoPer = (pool: PoolRow | undefined) => {
+    const a = Number(pool?.balance_asset), c = Number(pool?.balance_cacao);
+    return a > 0 && c > 0 ? c / a : NaN;
+  };
+  const btcUsd = m.get("BTC.BTC");
+  const perBtc = cacaoPer(mayaPools.find((x) => x.asset === "BTC.BTC" && x.status === "Available"));
+  if (btcUsd && Number.isFinite(perBtc)) {
+    for (const pool of mayaPools) {
+      if (m.has(pool.asset) || pool.status !== "Available") continue;
+      const per = cacaoPer(pool);
+      if (Number.isFinite(per)) m.set(pool.asset, (btcUsd * per) / perBtc);
+    }
   }
   return m;
 }
@@ -137,7 +155,7 @@ function priceMap(thorPools: PoolRow[]): Map<string, number> {
 export async function swapStatus(): Promise<SwapStatus> {
   if (statusCache && Date.now() - statusCache.at < STATUS_TTL_MS) return statusCache.value;
   const [thor, maya] = await Promise.all([readProtocol("thorchain"), readProtocol("maya")]);
-  const prices = priceMap(thor.pools);
+  const prices = priceMap(thor.pools, maya.pools);
   const reads: Record<Protocol, typeof thor> = { thorchain: thor, maya };
   const coins: CoinStatus[] = SWAP_COINS.map((c) => {
     const priceUsd = prices.get(c.asset) ?? null;
@@ -296,7 +314,7 @@ async function quoteOne(
     if (destination) {
       memo = q.memo ?? null;
       const ms = memo
-        ? memoSafe(memo, { from, to, destination, maxStreaming: Number(q.max_streaming_quantity ?? 1) || 1, affiliate: SEEDS_AFFILIATE[p] })
+        ? memoSafe(memo, { protocol: p, from, to, destination, maxStreaming: Number(q.max_streaming_quantity ?? 1) || 1, affiliate: SEEDS_AFFILIATE[p] })
         : { ok: false, reason: "quote returned no memo" };
       checks.push({ label: "Swap instruction pays exactly your address and coin", pass: ms.ok, detail: ms.reason ?? "Memo validated" });
       const lim = memo ? limitOk(memo, Number(q.expected_amount_out), tol) : false;
@@ -360,6 +378,7 @@ async function quoteOne(
 }
 
 function friendlyError(label: string, msg: string): string {
+  if (/memo too long/i.test(msg)) return `${label} can't fit this swap's instruction on the sending network. Try sending a different coin.`;
   if (/not enough asset to pay for fees|less than|amount.*too small|dust/i.test(msg)) return `Amount too small for ${label} to cover network fees.`;
   if (/destination|address/i.test(msg)) return `${label} rejected the receiving address.`;
   if (/trading.*halt|halted|paused/i.test(msg)) return `${label} has paused this route.`;
