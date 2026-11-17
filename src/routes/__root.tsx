@@ -4,7 +4,6 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
-  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -142,8 +141,6 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const router = useRouter();
-  // /register is the standalone Ignite landing page and keeps its own header/footer.
-  const bare = useRouterState({ select: (s) => s.location.pathname === "/register" });
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
@@ -157,12 +154,12 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <div className="flex min-h-screen flex-col bg-background">
-        {!bare && <SiteHeader />}
+        <SiteHeader />
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <main className="flex-1">
           <Outlet />
         </main>
-        {!bare && <SiteFooter />}
+        <SiteFooter />
       </div>
     </QueryClientProvider>
   );

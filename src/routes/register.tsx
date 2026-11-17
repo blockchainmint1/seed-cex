@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import logo from "@/assets/seeds-logo.png.asset.json";
 import { SCHEDULE_DATES, SCHEDULE_SESSIONS, SCHEDULE_TIME, RECORDING_NOTE } from "@/lib/ignite-registration";
 import { RegistrationFlow, StatusPreviews } from "@/components/ignite/RegistrationFlow";
 
@@ -32,10 +31,6 @@ function Index() {
 
   return (
     <div className="ignite-theme seed-lines min-h-screen pb-28 lg:pb-0">
-      <header className="mx-auto flex max-w-7xl items-center px-6 py-6">
-        <img src={logo.url} alt="Seeds" className="h-9 w-auto mix-blend-lighten sm:h-10" />
-      </header>
-
       <main className="mx-auto grid max-w-7xl gap-12 px-6 pt-6 pb-16 lg:grid-cols-[1.15fr_1fr] lg:gap-16 lg:pt-16">
         <section>
           <p className="text-xs font-bold tracking-[0.3em] text-primary">INTRODUCING SEEDS</p>
@@ -82,7 +77,7 @@ function Index() {
           </div>
         </section>
 
-        <aside id="reserve" ref={formRef} className="scroll-mt-6 lg:sticky lg:top-8 lg:self-start">
+        <aside id="reserve" ref={formRef} className="scroll-mt-20 lg:sticky lg:top-20 lg:self-start">
           <p className="mb-3 text-center text-sm text-muted-foreground">Limited to 100 seats · {SCHEDULE_DATES}</p>
           <RegistrationFlow />
         </aside>
@@ -181,15 +176,8 @@ function Index() {
 
       <section className="mx-auto max-w-7xl px-6 pb-12"><StatusPreviews /></section>
 
-      <footer className="border-t border-border">
-        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-6 py-8 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-          <img src={logo.url} alt="Seeds" className="h-6 w-auto self-start mix-blend-lighten" />
-          <div className="space-y-1 sm:text-right"><p>{RECORDING_NOTE}</p><p>Crypto involves risk. Education does not guarantee trading results.</p></div>
-        </div>
-      </footer>
-
       {!formVisible && (
-        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-card/95 p-4 backdrop-blur lg:hidden">
+        <div className="sticky bottom-0 z-20 border-t border-border bg-card/95 p-4 backdrop-blur lg:hidden">
           <a href="#reserve" className="seed-btn">Reserve my Ignite seat</a>
         </div>
       )}
