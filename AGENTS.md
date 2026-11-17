@@ -17,3 +17,4 @@
 - orders/trades/escrows/profiles are server-written only (no client INSERT/UPDATE grants); leg amounts are derived from immutable trade terms. Why: audit C1/C3 — settlement must never trust browser-editable rows.
 - Every key-spending path goes through src/lib/settle-guard.server.ts (cumulative cap reserve, single claim per leg, payer-only send) and autosettle preflights both legs before sending anything. Why: audit C2/H2/H6.
 - Ignite registration lives in src/lib/ignite.functions.ts + nectarpay.server.ts; rows are server-written, seats are confirmed only by a signed NectarPay invoice.confirmed webhook re-checked against the invoice API. Why: payment state must never come from the browser.
+- /brand preserves the supplied PDF as CDN-backed page images with extracted accessible text and the original PDF; do not treat illustrative brand examples as implemented exchange features. Why: faithful document reproduction must not change trading or authentication behavior.
