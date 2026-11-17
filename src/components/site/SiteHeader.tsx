@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useLocation } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, Moon, Sun } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -48,6 +48,18 @@ export function SiteHeader() {
   const { user, loading } = useSession();
   const { theme, toggle } = useTheme();
   const qc = useQueryClient();
+  const pathname = useLocation({ select: (l) => l.pathname });
+
+  // Signing in from a public page (e.g. /register) should bring the visitor
+  // back to that page instead of dropping them on their profile.
+  function rememberReturnPath() {
+    if (pathname === "/auth" || pathname === "/sso") return;
+    try {
+      sessionStorage.setItem("seeds-after-signin", pathname);
+    } catch {
+      /* private mode — best effort */
+    }
+  }
 
   async function signOut() {
     await qc.cancelQueries();
@@ -140,6 +152,7 @@ export function SiteHeader() {
           ) : (
             <Link
               to="/auth"
+              onClick={rememberReturnPath}
               className="rounded-sm bg-primary px-3 py-1.5 font-semibold tracking-wider text-primary-foreground uppercase transition-opacity hover:opacity-90"
             >
               Sign in
