@@ -4,6 +4,7 @@ import { SCHEDULE_DATES, SCHEDULE_SESSIONS, SCHEDULE_TIME, RECORDING_NOTE } from
 import { RegistrationFlow, StatusPreviews } from "@/components/ignite/RegistrationFlow";
 import { useQuery } from "@tanstack/react-query";
 import { getIgniteSeats } from "@/lib/ignite.functions";
+import { BobbyLetter } from "@/components/ignite/BobbyLetter";
 
 export const Route = createFileRoute("/register")({
   staticData: { sitemap: true },
@@ -184,6 +185,8 @@ function Index() {
             </p>
             <a href="#reserve" className="seed-btn mt-6 w-auto">Reserve my Ignite seat</a>
           </div>
+
+          <BobbyLetter />
         </div>
       </section>
 
