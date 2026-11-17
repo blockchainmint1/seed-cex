@@ -21,6 +21,7 @@
 - Desktop 1280 × 1800 and mobile 390 × 844 screenshots visually checked; mobile page has no horizontal overflow.
 - First PDF-request check used a relative URL with the request client and failed; repeated with the localhost origin and confirmed success. No application change was needed.
 - No new dependencies, server functions, external scripts or user-data collection.
+- Follow-up review inspected all 21 rendered pages on desktop and phone in both themes, and opened/closed the final page's enlargement. Moved enlargement controls below the artwork so they do not obscure the document's page numbers.
 
 ## Review considerations
 - Public brand document includes illustrative product flows that differ from current HME-only onboarding. Their source-document draft/illustrative labels are preserved.

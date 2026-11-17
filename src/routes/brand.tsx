@@ -48,7 +48,7 @@ function BrandPage() {
       <div className="space-y-5 sm:space-y-8">
         {pages.map((page, index) => (
           <section key={page.number} aria-label={`Brand guidelines page ${page.number}`}>
-            <div className="relative">
+            <div>
               <img
                 src={page.url}
                 alt={`Seeds brand guidelines, page ${page.number} of 21`}
@@ -58,10 +58,12 @@ function BrandPage() {
                 decoding="async"
                 className="block aspect-video w-full"
               />
+            </div>
+            <div className="mt-1 flex justify-end">
               <Button
                 variant="secondary"
                 size="icon"
-                className="absolute right-2 bottom-2"
+                className="text-foreground"
                 aria-label={`Enlarge page ${page.number}`}
                 title={`Enlarge page ${page.number}`}
                 onClick={() => setSelected(index)}
