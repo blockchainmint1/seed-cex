@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { SEEDS_BOT_URL, SEEDS_BOT_USERNAME } from "@/lib/telegram-bot";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -275,6 +276,13 @@ function AccountPage() {
             >
               Unlink
             </Button>
+            <p className="basis-full font-mono text-[11px] text-muted-foreground">
+              Not getting alerts? Open{" "}
+              <a href={SEEDS_BOT_URL} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-4">
+                @{SEEDS_BOT_USERNAME}
+              </a>{" "}
+              and tap Start, then Send test.
+            </p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -308,10 +316,23 @@ function AccountPage() {
                 Verify
               </Button>
             </div>
-            <p className="font-mono text-[11px] text-muted-foreground">
-              Find your chat ID by messaging @userinfobot on Telegram, then start a chat with the
-              Seeds bot so it is allowed to message you.
-            </p>
+            <ol className="list-decimal space-y-1 pl-4 font-mono text-[11px] text-muted-foreground">
+              <li>
+                Open{" "}
+                <a href={SEEDS_BOT_URL} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-4">
+                  @{SEEDS_BOT_USERNAME}
+                </a>{" "}
+                in Telegram and tap <b>Start</b>. Telegram blocks bots until you do.
+              </li>
+              <li>
+                Get your chat ID by messaging{" "}
+                <a href="https://t.me/userinfobot" target="_blank" rel="noreferrer" className="text-primary underline underline-offset-4">
+                  @userinfobot
+                </a>
+                , paste it above and tap Send code.
+              </li>
+              <li>Enter the 6-digit code the Seeds bot sends you.</li>
+            </ol>
           </div>
         )}
       </div>

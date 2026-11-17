@@ -1,5 +1,7 @@
 /** Telegram alert delivery through the Lovable connector gateway. Server-only. */
 
+import { friendlyTelegramError } from "./telegram-bot";
+
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/telegram";
 
 export function telegramConfigured(): boolean {
@@ -26,13 +28,13 @@ export async function sendTelegram(chatId: string, text: string): Promise<void> 
   if (!res.ok) {
     const body = await res.text();
     console.error(`Telegram gateway failed [${res.status}]: ${body}`);
-    throw new Error(`Telegram request failed [${res.status}]: ${body}`);
+    throw new Error(friendlyTelegramError(res.status, body));
   }
 
   const json = (await res.json()) as { ok?: boolean; description?: string };
   if (json.ok === false) {
     console.error(`Telegram API error: ${json.description}`);
-    throw new Error(json.description ?? "Telegram rejected the message.");
+    throw new Error(friendlyTelegramError(200, json.description ?? ""));
   }
 }
 
