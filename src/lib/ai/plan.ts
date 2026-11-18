@@ -25,7 +25,7 @@ export type PlanSettings = {
 export const defaultPlan: PlanSettings = {
   mode: "basket", weights: {}, drift: 5,
   coins: ["bitcoin", "ethereum", "litecoin"], start: "2021-01-01", end: "", rebalance: "weekly",
-  lookback: 30, topK: 2, trendMA: 50, cap: 50, reserve: 0, feeBps: 10, stopLoss: 0, holdout: 30, amount: 500, weeklyAdd: 0,
+  lookback: 30, topK: 2, trendMA: 50, cap: 50, reserve: 0, feeBps: 25, stopLoss: 0, holdout: 30, amount: 500, weeklyAdd: 0,
 };
 
 export type Point = { day: string; plan: number; hold: number; btc: number; cash: number };
