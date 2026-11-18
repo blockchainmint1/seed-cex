@@ -38,6 +38,7 @@ const columns: { heading: string; links: FooterLink[] }[] = [
       { label: "Terms", to: "/terms" },
       { label: "Privacy", to: "/privacy" },
       { label: "Risk", to: "/risk" },
+      { label: "No KYC", to: "/about/kyc" },
     ],
   },
 ];

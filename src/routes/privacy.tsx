@@ -99,6 +99,7 @@ function Privacy() {
             <><B>The keys to your savings.</B> HME Wallet keeps your savings separate from your trading pocket, and Seeds never receives keys to savings.</>,
             <><B>Your Honest.Money password or sign-in codes.</B> You enter those on Honest.Money, not on Seeds.</>,
             <><B>Card or bank numbers.</B> Seeds doesn&rsquo;t take card payments. Ignite payments go through NectarPay.</>,
+            <><B>Identity documents.</B> No passport, no selfie, no proof of address. See <Link to="/about/kyc" className={linkCls}>No KYC</Link> for why we never need them.</>,
           ]}
         />
       </Section>

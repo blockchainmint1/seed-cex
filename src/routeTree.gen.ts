@@ -33,6 +33,7 @@ import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedApiKeysRouteImport } from './routes/_authenticated/api-keys'
 import { Route as AuthenticatedTradesRouteImport } from './routes/_authenticated/trades'
 import { Route as AuthenticatedWalletRouteImport } from './routes/_authenticated/wallet'
+import { Route as AboutKycRouteImport } from './routes/about.kyc'
 import { Route as AiIndexRouteImport } from './routes/ai.index'
 import { Route as ApiIndexRouteImport } from './routes/api/index'
 import { Route as InviteCodeRouteImport } from './routes/invite.$code'
@@ -226,6 +227,11 @@ const AuthenticatedWalletRoute = AuthenticatedWalletRouteImport.update({
   id: '/wallet',
   path: '/wallet',
   getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AboutKycRoute = AboutKycRouteImport.update({
+  id: '/about/kyc',
+  path: '/about/kyc',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AiIndexRoute = AiIndexRouteImport.update({
   id: '/ai/',
@@ -645,6 +651,7 @@ export interface FileRoutesByFullPath {
   '/api-keys': typeof AuthenticatedApiKeysRoute
   '/trades': typeof AuthenticatedTradesRoute
   '/wallet': typeof AuthenticatedWalletRoute
+  '/about/kyc': typeof AboutKycRoute
   '/invite/$code': typeof InviteCodeRoute
   '/pay/$token': typeof PayTokenRoute
   '/proof/code': typeof ProofCodeRoute
@@ -742,6 +749,7 @@ export interface FileRoutesByTo {
   '/api-keys': typeof AuthenticatedApiKeysRoute
   '/trades': typeof AuthenticatedTradesRoute
   '/wallet': typeof AuthenticatedWalletRoute
+  '/about/kyc': typeof AboutKycRoute
   '/invite/$code': typeof InviteCodeRoute
   '/pay/$token': typeof PayTokenRoute
   '/proof/code': typeof ProofCodeRoute
@@ -842,6 +850,7 @@ export interface FileRoutesById {
   '/_authenticated/api-keys': typeof AuthenticatedApiKeysRoute
   '/_authenticated/trades': typeof AuthenticatedTradesRoute
   '/_authenticated/wallet': typeof AuthenticatedWalletRoute
+  '/about/kyc': typeof AboutKycRoute
   '/invite/$code': typeof InviteCodeRoute
   '/pay/$token': typeof PayTokenRoute
   '/proof/code': typeof ProofCodeRoute
@@ -943,6 +952,7 @@ export interface FileRouteTypes {
     | '/api-keys'
     | '/trades'
     | '/wallet'
+    | '/about/kyc'
     | '/invite/$code'
     | '/pay/$token'
     | '/proof/code'
@@ -1040,6 +1050,7 @@ export interface FileRouteTypes {
     | '/api-keys'
     | '/trades'
     | '/wallet'
+    | '/about/kyc'
     | '/invite/$code'
     | '/pay/$token'
     | '/proof/code'
@@ -1139,6 +1150,7 @@ export interface FileRouteTypes {
     | '/_authenticated/api-keys'
     | '/_authenticated/trades'
     | '/_authenticated/wallet'
+    | '/about/kyc'
     | '/invite/$code'
     | '/pay/$token'
     | '/proof/code'
@@ -1235,6 +1247,7 @@ export interface RootRouteChildren {
   SwapRoute: typeof SwapRoute
   TermsRoute: typeof TermsRoute
   TsdRoute: typeof TsdRoute
+  AboutKycRoute: typeof AboutKycRoute
   InviteCodeRoute: typeof InviteCodeRoute
   PayTokenRoute: typeof PayTokenRoute
   ProofCodeRoute: typeof ProofCodeRoute
@@ -1459,6 +1472,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/wallet'
       preLoaderRoute: typeof AuthenticatedWalletRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/about/kyc': {
+      id: '/about/kyc'
+      path: '/about/kyc'
+      fullPath: '/about/kyc'
+      preLoaderRoute: typeof AboutKycRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/ai/': {
       id: '/ai/'
@@ -2108,6 +2128,7 @@ const rootRouteChildren: RootRouteChildren = {
   SwapRoute: SwapRoute,
   TermsRoute: TermsRoute,
   TsdRoute: TsdRoute,
+  AboutKycRoute: AboutKycRoute,
   InviteCodeRoute: InviteCodeRoute,
   PayTokenRoute: PayTokenRoute,
   ProofCodeRoute: ProofCodeRoute,
