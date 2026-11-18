@@ -4,7 +4,10 @@
 - [x] Cross-chain swaps: every live THORChain + Maya pool (46 coins, 17 networks) quotable on /swap with per-protocol memo shortcodes
 - [x] Cross-chain swaps: add Maya Protocol as second route with best-price comparison (price-only until a second independent Maya server exists)
 - [x] Multichain pockets: Seeds-side keys/addresses/balances/signing for DOGE, BCH, XRP, TRX, SOL (+ ZEC addresses/balances); HME link accepts optional pockets
-- [ ] HME Wallet: send optional pocket keys per docs/hme-wallet-extra-pockets.md (blocked: HME team)
+- [ ] HME Wallet extra pocket keys: built and audited on HME's side, not published; members must re-link from Seeds to share them (blocked: HME publish)
+- [ ] HME Wallet revoke: sweeps TXC before TSD/tokens, leaving TSD with no TXC for fees — ask HME to move tokens first (blocked: HME team)
+- [ ] DASH/ATOM/RUNE/ADA pockets: only accept in submit once Seeds can read and sign them; ADA must use the Icarus master-key method HME uses (blocked: Seeds signers not built)
+- [x] Warn members HME Wallet can't hold DOGE/BCH/ZEC/XRP/TRX/SOL: swap back to TSD before revoking (Profile, revoke dialog, swap page, Telegram, revoke email); TSD swaps never buy a coin Seeds can't sell back
 - [ ] Zcash v5 (ZIP-244) signing
 - [ ] Per-coin "send out" for the new coins before taking deposits (HME Wallet can't move them)
 - [x] Cross-chain swaps: Seeds fee — Bobby chose no fee for now (no THORName needed)

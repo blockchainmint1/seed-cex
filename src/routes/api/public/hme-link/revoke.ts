@@ -16,7 +16,7 @@ export const Route = createFileRoute("/api/public/hme-link/revoke")({
         if (!verifyTxcMessage(b.identity_address, b.message, b.signature)) return json({ error: "bad signature" }, 401);
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const { data: link } = await supabaseAdmin.from("hme_links").select("id, user_id, identity_address, status").eq("id", b.link_id).maybeSingle();
+        const { data: link } = await supabaseAdmin.from("hme_links").select("id, user_id, identity_address, status, account, paths, xpubs").eq("id", b.link_id).maybeSingle();
         if (!link || link.identity_address !== b.identity_address) return json({ error: "unknown link" }, 404);
         if (link.status === "active") {
           await supabaseAdmin.from("hme_links")
@@ -24,10 +24,24 @@ export const Route = createFileRoute("/api/public/hme-link/revoke")({
             .eq("id", link.id);
           await supabaseAdmin.from("hme_trade_proposals").update({ status: "expired" }).eq("link_id", link.id).eq("status", "pending");
           const { emailAccountChange } = await import("@/lib/email/send.server");
-          await emailAccountChange(link.user_id, "HME Wallet link", ["Revoked from HME Wallet. Seeds deleted its access to your trading pocket."]);
+          const { extraPocketAddresses } = await import("@/lib/pockets/extra-addresses.server");
+          const { recoveryLines } = await import("@/lib/pockets/hme-support");
+          await emailAccountChange(link.user_id, "HME Wallet link", [
+            "Revoked from HME Wallet. Seeds deleted its access to your trading pocket.",
+            ...strandedNotice(recoveryLines(link.account, extraPocketAddresses(link))),
+          ]);
         }
         return json({ revoked: true });
       },
     },
   },
 });
+
+/** Extra-coin pockets HME Wallet can't move back: tell the member exactly where they were. */
+function strandedNotice(lines: string[]): string[] {
+  if (!lines.length) return [];
+  return [
+    "HME Wallet can't hold or move these coins. If you left any in them, import your recovery phrase into a wallet that supports that coin and use the path shown:",
+    ...lines,
+  ];
+}

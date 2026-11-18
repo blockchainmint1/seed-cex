@@ -7,6 +7,7 @@
  * enforced again inside the database (reserve_swap_send).
  */
 import type { PocketCoin } from "@/lib/pockets/coins";
+import { hmeWalletCanHold } from "@/lib/pockets/hme-support";
 import type { Protocol, SwapCoin } from "./assets";
 
 export const SEND_PROTOCOL: Protocol = "thorchain";
@@ -47,6 +48,12 @@ const RECEIVE_BY_CHAIN: Record<string, PocketCoin> = {
 /** The pocket whose own address can receive this coin ("send it back to my pocket"). */
 export function receivePocket(c: SwapCoin): PocketCoin | null {
   return RECEIVE_BY_CHAIN[c.chain] ?? null;
+}
+
+/** True when this coin would land in a pocket HME Wallet can't hold (DOGE, SOL, …): members must swap it back to TSD before revoking. */
+export function landsOutsideHmeWallet(c: SwapCoin): boolean {
+  const p = receivePocket(c);
+  return p !== null && !hmeWalletCanHold(p);
 }
 
 export function requoteOk(shownOut: number, freshOut: number, tolerance: number = REQUOTE_TOLERANCE): boolean {

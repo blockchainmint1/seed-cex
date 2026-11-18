@@ -5,7 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { ArrowRight, Check, Circle, Coins, Loader2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SWAP_COINS, swapCoin, type SwapCoinId } from "@/lib/xchain/assets";
-import { SWAP_LIMITS } from "@/lib/xchain/send-rules";
+import { landsOutsideHmeWallet, SWAP_LIMITS } from "@/lib/xchain/send-rules";
 import { answerTsdSwap, getTsdRouteQuote, getTsdRoutes, startTsdSwap } from "@/lib/xchain/tsd-route.functions";
 import { isTerminal, routeBlocker, routeCoinProblem, routeSteps, stepIndex, type RouteDirection } from "@/lib/xchain/tsd-route";
 
@@ -148,6 +148,11 @@ export function TsdSwapPanel({ signedIn, link, isAdmin }: { signedIn: boolean; l
         </button>
       </form>
       {quote.error ? <p role="alert" className="font-mono text-xs text-destructive">{(quote.error as Error).message}</p> : null}
+      {direction === "buy" && landsOutsideHmeWallet(coin) ? (
+        <p className="border-l-2 border-warn pl-3 text-sm text-foreground">
+          HME Wallet can’t hold {coin.symbol}. It stays in your Seeds trading pocket — swap it back to TSD here before you revoke Seeds’ access.
+        </p>
+      ) : null}
 
       {q ? (
         q.ok ? (

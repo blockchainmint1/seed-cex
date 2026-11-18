@@ -84,6 +84,8 @@ export function routeCoinProblem(direction: RouteDirection, coin: SwapCoin): str
   if (coin.id === BRIDGE_USDC_ID) return null;
   if (!coin.protocols.includes("thorchain")) return `${coin.symbol} on ${coin.network} isn't on THORChain.`;
   if (direction === "buy" && !receivePocket(coin)) return `Your trading pocket can't hold ${coin.symbol} on ${coin.network} yet.`;
+  // Never sell a one-way trip: whatever a member buys, Seeds must be able to swap back to TSD.
+  if (direction === "buy" && !sendSource(coin)) return `Seeds can't swap ${coin.symbol} on ${coin.network} back to TSD yet, so it isn't offered.`;
   if (direction === "sell" && !sendSource(coin)) return `Seeds can't send ${coin.symbol} on ${coin.network} yet.`;
   return null;
 }

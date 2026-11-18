@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { swapCoin } from "./assets";
 import { approveData, depositWithExpiryData, roundTo1e8Units, selector, tokenContract, toTokenUnits } from "./evm-router";
-import { receivePocket, requoteOk, sendBlocker, sendSource, swapProgress, SWAP_LIMITS, thorTxId } from "./send-rules";
+import { landsOutsideHmeWallet, receivePocket, requoteOk, sendBlocker, sendSource, swapProgress, SWAP_LIMITS, thorTxId } from "./send-rules";
 
 const c = (id: string) => swapCoin(id)!;
 const link = { mode: "access", hasKey: true, pockets: ["BTC", "LTC", "EVM"] };
@@ -80,5 +80,12 @@ describe("swap progress", () => {
   });
   test("EVM hashes lose 0x for THORNode", () => {
     expect(thorTxId("0xabc")).toBe("ABC");
+  });
+});
+
+describe("coins that land outside HME Wallet", () => {
+  test("DOGE, SOL, XRP, TRX, BCH and ZEC are flagged; BTC, LTC and ETH are not", () => {
+    for (const id of ["DOGE", "SOL", "XRP", "TRX", "BCH", "ZEC"]) expect(landsOutsideHmeWallet(swapCoin(id)!)).toBe(true);
+    for (const id of ["BTC", "LTC", "ETH"]) expect(landsOutsideHmeWallet(swapCoin(id)!)).toBe(false);
   });
 });

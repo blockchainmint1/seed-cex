@@ -12,6 +12,8 @@ import { getBtcBalance } from "@/lib/wrap.functions";
 import { getEvmPortfolio } from "@/lib/evm.functions";
 import { getMyExtraPocketBalances } from "@/lib/pockets/pockets.functions";
 import { POCKET_SPECS, type PocketCoin } from "@/lib/pockets/coins";
+import { HME_WALLET_CANT_HOLD, listCoins, revokeCheck } from "@/lib/pockets/hme-support";
+import { Link } from "@tanstack/react-router";
 
 export function HmePocketBalances({ addresses, linkId }: { addresses: Record<string, string>; linkId: string }) {
   const txcRead = useServerFn(getAddressStats);
@@ -56,12 +58,13 @@ export function HmePocketBalances({ addresses, linkId }: { addresses: Record<str
       const b = d?.utxo.find((r) => r.symbol === symbol);
       return { symbol, network: symbol === "LTC" ? "Litecoin" : "Iskandercoin", address: addresses[symbol], balance: b?.online ? b.balance : null };
     }),
-    ...(["DOGE", "BCH", "ZEC", "XRP", "TRX", "SOL"] as PocketCoin[]).map((c) => ({
-      symbol: c, network: POCKET_SPECS[c].name, address: addresses[c],
+    ...HME_WALLET_CANT_HOLD.map((c: PocketCoin) => ({
+      symbol: c, network: POCKET_SPECS[c].name, address: addresses[c], notInHme: true,
       balance: d?.extra.find((r) => r.coin === c)?.balance ?? null,
     })),
     ...(d?.evm ?? []).map((r) => ({ symbol: r.symbol, network: `${r.chainName} · EVM`, address: addresses.EVM, balance: r.online ? r.balance : null })),
   ].filter((r) => Boolean(r.address));
+  const stranded = revokeCheck(d?.extra ?? []).stranded;
   const visibleRows = rows.filter((r, i) => showAll || i < 5 || r.balance === null || r.balance > 0);
 
   return <div className="mt-7">
@@ -75,14 +78,20 @@ export function HmePocketBalances({ addresses, linkId }: { addresses: Record<str
       <table className="w-full text-left text-sm">
         <thead className="border-y border-border font-mono text-xs text-muted-foreground"><tr><th className="py-3 pr-3">Asset</th><th className="py-3 pr-3">Network</th><th className="py-3 text-right">In pocket</th><th className="py-3 text-right">Receive</th></tr></thead>
         <tbody>{visibleRows.map((r) => <tr key={`${r.symbol}-${r.network}`} className="border-b border-border/60">
-          <td className="py-3 pr-3 font-semibold">{r.symbol}</td><td className="py-3 pr-3 text-muted-foreground">{r.network}</td>
+          <td className="py-3 pr-3 font-semibold">{r.symbol}</td><td className="py-3 pr-3 text-muted-foreground">{r.network}{"notInHme" in r && r.notInHme ? <span className="ml-2 whitespace-nowrap rounded-sm border border-warn/60 px-1.5 py-0.5 font-mono text-[10px] text-foreground">Not in HME Wallet</span> : null}</td>
           <td className="py-3 text-right num text-xs">{r.balance === null ? (query.isFetching ? "Checking…" : "Not available") : r.balance.toLocaleString("en-US", { maximumFractionDigits: 8 })}</td>
           <td className="py-2 pl-3 text-right"><Button variant="ghost" size="icon" title={`Receive ${r.symbol} on ${r.network}`} aria-label={`Receive ${r.symbol} on ${r.network}`} onClick={() => { if (r.address) { setCopied(false); setReceive({ ...r, address: r.address }); } }}><QrCode /></Button></td>
         </tr>)}</tbody>
       </table>
     </div>
     {rows.length > 5 ? <Button variant="ghost" size="sm" className="mt-2" onClick={() => setShowAll((v) => !v)}>{showAll ? "Hide empty EVM balances" : "Show all networks"}</Button> : null}
-    <p className="mt-3 text-xs text-muted-foreground">Confirmed funds at this pocket’s receive addresses. Native BTC, LTC and ETH are separate from their exchange-settlement tokens.</p>
+    {stranded.length ? (
+      <p role="status" className="mt-3 border-l-2 border-warn pl-3 text-sm text-foreground">
+        You have {listCoins(stranded.map((r) => r.coin))} here. HME Wallet can’t hold {stranded.length > 1 ? "these coins" : "this coin"}, so{" "}
+        <Link to="/swap" className="text-primary underline">swap {stranded.length > 1 ? "them" : "it"} back to TSD</Link> before you revoke Seeds’ access.
+      </p>
+    ) : null}
+    <p className="mt-3 text-xs text-muted-foreground">Confirmed funds at this pocket’s receive addresses. Native BTC, LTC and ETH are separate from their exchange-settlement tokens.{hasExtra ? " Coins marked “Not in HME Wallet” live only in this Seeds pocket." : ""}</p>
     {query.isError ? <p role="alert" className="mt-2 text-sm text-destructive">Balances could not be synced. Refresh to retry.</p> : null}
     <Dialog open={Boolean(receive)} onOpenChange={(open) => { if (!open) setReceive(null); }}>
       <DialogContent className="w-[calc(100%-2rem)] max-w-sm">

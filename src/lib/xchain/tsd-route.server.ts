@@ -15,7 +15,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Database } from "@/integrations/supabase/types";
 import { swapCoin, type SwapCoin } from "./assets";
 import { toBaseUnits } from "./safety";
-import { receivePocket, requoteOk, sendSource, SWAP_LIMITS } from "./send-rules";
+import { landsOutsideHmeWallet, receivePocket, requoteOk, sendSource, SWAP_LIMITS } from "./send-rules";
 import {
   afterBridgeFee, BRIDGE_USDC_CONTRACT, BRIDGE_USDC_ID, bridgeProgress, isTerminal, legPriceOk, mintOrderProblem,
   redeemOrderProblem, routeBlocker, TSD_ROUTE, type RouteDirection, type RouteStage,
@@ -467,7 +467,8 @@ async function followLeg(r: Row, coin: SwapCoin, go: (p: Partial<Row>) => Promis
   const buy = r.direction === "buy";
   if (s.status === "done") {
     if (buy) {
-      void notify(r, `Done: your ${coin.symbol} is in your trading pocket. Tx ${s.out_txid ?? s.txid}`);
+      const hmeNote = landsOutsideHmeWallet(coin) ? ` HME Wallet can't hold ${coin.symbol} — swap it back to TSD on Seeds before you revoke Seeds' access.` : "";
+      void notify(r, `Done: your ${coin.symbol} is in your trading pocket. Tx ${s.out_txid ?? s.txid}.${hmeNote}`);
       return go(move("done", { amount_out: s.expected_out }));
     }
     const out = await legOutputUsdc(s.txid!);

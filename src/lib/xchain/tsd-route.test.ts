@@ -22,6 +22,10 @@ describe("which coins a TSD swap can reach", () => {
   test("buy: a coin the pocket can't hold is refused", () => {
     expect(routeCoinProblem("buy", c("ATOM"))).toMatch(/can't hold/);
   });
+  test("buy: a coin Seeds can't swap back to TSD is refused (no one-way trips)", () => {
+    expect(routeCoinProblem("buy", c("ZEC"))).toMatch(/back to TSD/);
+    expect(routeCoinProblem("buy", c("USDC.BSC"))).toMatch(/back to TSD/);
+  });
   test("sell: only coins Seeds can send from the pocket", () => {
     expect(routeCoinProblem("sell", c("BTC"))).toBeNull();
     expect(routeCoinProblem("sell", c("ZEC"))).toMatch(/can't send/);

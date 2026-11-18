@@ -1,0 +1,3 @@
+# Locked trading balances
+
+- Locked trading balances live in src/lib/lock/: script.ts (exact template; token locks are P2SH only — live test showed TXC Omni ignores P2WSH recipients), rules.ts (auditor conditions: deposit depth, sweep-every-confirmed-coin, fee reserve, Omni-decode match, pair readiness; tested), lock.server.ts (node I/O, insert-only co-sign ledger via reserve_lock_outpoints), kms.server.ts (Seeds' half in AWS KMS, one secp256k1 key per chain, low-S + verify; seedsSigner uses KMS whenever configured for that chain). Seeds co-signs only transactions it built and stored. Why: a lock the member can refund alone, a coin signed twice, or an ambiguous Omni sender would reopen double-spends.

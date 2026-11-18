@@ -1,13 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { getMyHmeLink, revokeMyHmeLink, startHmeLink } from "@/lib/hme-link.functions";
 import { Button } from "@/components/ui/button";
 import { HmePocketBalances } from "./HmePocketBalances";
+import { RevokeSeedsDialog } from "./RevokeSeedsDialog";
+import { HME_WALLET_CANT_HOLD, hmeCantHoldWarning } from "@/lib/pockets/hme-support";
 import { Link2, ShieldCheck, ExternalLink } from "lucide-react";
 
-const CHAIN_NAME: Record<string, string> = { "696969": "TXC + TSD", "969696": "ISK", "0": "Bitcoin", "2": "Litecoin", "60": "ETH / USDC / USDT" };
+const CHAIN_NAME: Record<string, string> = {
+  "696969": "TXC + TSD", "969696": "ISK", "0": "Bitcoin", "2": "Litecoin", "60": "ETH / USDC / USDT",
+  "3": "Dogecoin", "145": "Bitcoin Cash", "133": "Zcash", "144": "XRP", "195": "TRON", "501": "Solana",
+};
 
 export function HmeWalletLinkCard() {
   const qc = useQueryClient();
@@ -40,6 +46,8 @@ export function HmeWalletLinkCard() {
   });
 
   const l = link.data;
+  const extraCoins = l ? Object.keys(l.addresses).filter((c) => (HME_WALLET_CANT_HOLD as string[]).includes(c)) : [];
+  const extraWarning = hmeCantHoldWarning(extraCoins);
   return (
     <section className="border-y border-border py-7">
       <div className="flex items-center gap-3"><ShieldCheck className="h-5 w-5 text-primary" /><h2 className="font-display text-xl font-bold text-foreground">HME Wallet trading pocket</h2></div>
@@ -89,17 +97,16 @@ export function HmeWalletLinkCard() {
           {l.mode === "approve" && l.pending > 0 ? (
             <p className="text-foreground">{l.pending} trade(s) waiting for your approval in the HME Wallet.</p>
           ) : null}
-          <Button
-            variant="outline"
-            onClick={() => { if (window.confirm("Revoke Seeds access? This deletes Seeds’ trading key but does not move your funds. Use Revoke in HME Wallet to move funds back and retire this pocket.")) stop.mutate(); }}
-            disabled={stop.isPending}
-            className="text-destructive"
-          >
-            {stop.isPending ? "Revoking…" : "Revoke on Seeds"}
-          </Button>
+          <RevokeSeedsDialog extraCoins={extraCoins} pending={stop.isPending} onConfirm={() => stop.mutate()} />
           <Button asChild variant="ghost"><a href="https://mobile.honest.money" target="_blank" rel="noreferrer"><ExternalLink /> Open HME Wallet</a></Button>
           <p className="text-xs">Move funds into this pocket in HME Wallet. Its first number is 1106; Seeds follows the new number whenever your wallet retires a pocket.</p>
           <p className="text-xs">Revoking here removes Seeds access only. Revoking in HME Wallet also retires the pocket; check TSD and USDC separately before moving on.</p>
+          {extraWarning ? (
+            <p className="border-l-2 border-warn pl-3 text-sm text-foreground">
+              {extraWarning}{" "}
+              <Link to="/swap" className="text-primary underline">Swap to TSD</Link>
+            </p>
+          ) : null}
           <p className="border-l-2 border-warn pl-3 text-sm text-foreground">Wallet linking and balance sync work. Exchange and P2P settlement from linked pockets is not connected yet—do not fund this pocket for a Seeds trade yet.</p>
           <HmePocketBalances addresses={l.addresses} linkId={l.id} />
         </div>

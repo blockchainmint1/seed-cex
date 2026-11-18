@@ -13,17 +13,10 @@ export const getMyExtraPocketBalances = createServerFn({ method: "GET" })
     const { data } = await supabaseAdmin.from("hme_links").select("account, paths, xpubs")
       .eq("user_id", context.userId).eq("status", "active").maybeSingle();
     if (!data) return [];
-    const { chainForPath } = await import("@/lib/hme-link.server");
-    const { pocketReceiveAddress } = await import("./derive");
-    const { EXTRA_COINS, fetchExtraBalance } = await import("./io.server");
-    const xpubs = data.xpubs as Record<string, string>;
-    const rows: { coin: string; address: string; balance: number | null }[] = [];
-    for (const path of data.paths as string[]) {
-      const info = chainForPath(path);
-      if (!info || info.account !== data.account || !xpubs[info.chain]) continue;
-      if (!(EXTRA_COINS as string[]).includes(info.chain)) continue;
-      try { rows.push({ coin: info.chain, address: pocketReceiveAddress(info.chain, xpubs[info.chain]), balance: null }); } catch { /* skip */ }
-    }
+    const { extraPocketAddresses } = await import("./extra-addresses.server");
+    const { fetchExtraBalance } = await import("./io.server");
+    const rows: { coin: string; address: string; balance: number | null }[] = Object.entries(extraPocketAddresses(data))
+      .map(([coin, address]) => ({ coin, address: address!, balance: null }));
     await Promise.all(rows.map(async (r) => { r.balance = await fetchExtraBalance(r.coin as never, r.address); }));
     return rows;
   });

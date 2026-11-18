@@ -6,7 +6,7 @@ import { ArrowDownUp, Check, Clock, ExternalLink, ShieldCheck, Wallet, X } from 
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PROTOCOL_LABEL, SWAP_COINS, swapCoin, swapCoinGroup, type Protocol, type SwapCoin, type SwapCoinId } from "@/lib/xchain/assets";
 import { getSwapQuotes, getSwapSendContext, getSwapStatus, sendSwap } from "@/lib/xchain/swap.functions";
-import { receivePocket, sendBlocker, sendSource, SWAP_LIMITS } from "@/lib/xchain/send-rules";
+import { landsOutsideHmeWallet, receivePocket, sendBlocker, sendSource, SWAP_LIMITS } from "@/lib/xchain/send-rules";
 import { useSession } from "@/hooks/use-session";
 import { TsdSwapPanel } from "@/components/swap/TsdSwapPanel";
 import { fmtCompact } from "@/lib/format";
@@ -251,6 +251,11 @@ function SwapPage() {
                   <Wallet className="h-3.5 w-3.5" />
                   Send it to my trading pocket
                 </button>
+              ) : null}
+              {ownAddress && destination === ownAddress && landsOutsideHmeWallet(toCoin) ? (
+                <p className="border-l-2 border-warn pl-3 text-xs text-foreground">
+                  HME Wallet can’t hold {toCoin.symbol}. It stays in your Seeds trading pocket — swap it back to TSD before you revoke Seeds’ access.
+                </p>
               ) : null}
             </div>
 
