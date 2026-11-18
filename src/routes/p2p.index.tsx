@@ -90,7 +90,7 @@ function Market() {
         ))}
       </div>
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <div className="flex rounded-sm border border-border">
+        <div className="flex max-w-full flex-wrap rounded-sm border border-border">
           {[undefined, ...P2P_ASSET_IDS].map((a) => (
             <button
               key={a ?? "all"}

@@ -61,7 +61,7 @@ function Overview() {
               {!l ? "—" : balances.isPending ? "…" : fmtUsd(total)}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              {!l ? "Link your trading pocket to see balances." : `Pocket #${l.account} · CoinMarketCap prices, TSD at $1${unpriced ? " · some coins have no price yet" : ""}`}
+              {!l ? "Link your trading pocket to see balances." : `Pocket #${l.account} · live market prices, TSD at $1${unpriced ? " · some coins have no price yet" : ""}`}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">

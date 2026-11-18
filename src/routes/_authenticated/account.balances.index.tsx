@@ -8,6 +8,9 @@ import { fmtCoin, fmtUsd, usePocketBalances, usePocketLink } from "@/components/
 import { revokeCheck, listCoins } from "@/lib/pockets/hme-support";
 import { withdrawRoute } from "@/lib/account/deposit-options";
 
+/** Coins with no THORChain/Maya pool: trade them on their Seeds TSD market instead. */
+const NO_SWAP = new Set(["PLS", "HEX", "pHEX"]);
+
 export const Route = createFileRoute("/_authenticated/account/balances/")({
   staticData: { sitemap: false },
   head: () => ({
@@ -55,7 +58,7 @@ function SpotBalances() {
             <p className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">Estimated value</p>
             <p className="num mt-1 font-display text-3xl font-extrabold">{balances.isPending ? "…" : fmtUsd(total)}</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Pocket #{l.account} · confirmed on-chain balances · CoinMarketCap prices, TSD at $1{unpriced ? " · coins without a price aren't counted" : ""}
+              Pocket #{l.account} · confirmed on-chain balances · live market prices, TSD at $1{unpriced ? " · coins without a price aren't counted" : ""}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -98,7 +101,7 @@ function SpotBalances() {
               <Link to="/account/balances/deposit" search={{ coin: r.asset.symbol, network: r.net.id }}>Deposit</Link>
               <Link to="/account/balances/withdraw" search={{ coin: r.asset.symbol, network: r.net.id }}>Withdraw</Link>
               {r.asset.market ? <Link to={r.asset.market}>Trade</Link> : null}
-              <Link to="/swap">Swap</Link>
+              {NO_SWAP.has(r.asset.symbol) ? null : <Link to="/swap">Swap</Link>}
             </div>
           </li>
         ))}
@@ -135,7 +138,7 @@ function SpotBalances() {
                     <Link to="/account/balances/deposit" search={{ coin: r.asset.symbol, network: r.net.id }} className="px-2 text-xs font-semibold text-primary hover:underline">Deposit</Link>
                     <Link to="/account/balances/withdraw" search={{ coin: r.asset.symbol, network: r.net.id }} className="px-2 text-xs font-semibold text-primary hover:underline">Withdraw</Link>
                     {r.asset.market ? <Link to={r.asset.market} className="px-2 text-xs font-semibold text-primary hover:underline">Trade</Link> : null}
-                    <Link to="/swap" className="px-2 text-xs font-semibold text-primary hover:underline">Swap</Link>
+                    {NO_SWAP.has(r.asset.symbol) ? null : <Link to="/swap" className="px-2 text-xs font-semibold text-primary hover:underline">Swap</Link>}
                   </td>
                 </tr>
               );

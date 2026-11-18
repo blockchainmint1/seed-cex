@@ -80,7 +80,7 @@ function Deposit() {
                     <p className="text-xs text-muted-foreground">In your pocket now: <span className="num text-foreground">{fmtCoin(balance)} {asset!.symbol}</span></p>
                     <ul className="space-y-1.5">
                       {[`Only send ${asset!.symbol} on ${net.label} to this address.`, ...net.notes].map((n) => (
-                        <li key={n} className="flex gap-2 text-sm"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warn" /> <span>{n}</span></li>
+                        <li key={n} className="flex gap-2 text-sm"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warn" /> <span className="min-w-0 [overflow-wrap:anywhere]">{n}</span></li>
                       ))}
                     </ul>
                     {withdrawRoute(net) === "swap" ? <Note tone="warn">This coin can only leave your pocket by swapping it to TSD on Seeds — HME Wallet can't send it.</Note> : null}
