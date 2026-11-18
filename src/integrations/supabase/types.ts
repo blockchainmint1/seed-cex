@@ -2120,6 +2120,102 @@ export type Database = {
         }
         Relationships: []
       }
+      withdrawal_limit_events: {
+        Row: {
+          action: string
+          actor_id: string
+          created_at: string
+          detail: Json
+          id: string
+          target_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          created_at?: string
+          detail?: Json
+          id?: string
+          target_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          created_at?: string
+          detail?: Json
+          id?: string
+          target_id?: string | null
+        }
+        Relationships: []
+      }
+      withdrawal_limit_overrides: {
+        Row: {
+          frozen: boolean
+          note: string
+          set_by: string
+          tier_level: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          frozen?: boolean
+          note: string
+          set_by: string
+          tier_level?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          frozen?: boolean
+          note?: string
+          set_by?: string
+          tier_level?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      withdrawal_tiers: {
+        Row: {
+          daily_usd: number
+          hold_hours: number
+          level: number
+          min_account_days: number
+          min_trades: number
+          min_withdrawals: number
+          min_withdrawn_usd: number
+          name: string
+          per_withdrawal_usd: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          daily_usd: number
+          hold_hours: number
+          level: number
+          min_account_days?: number
+          min_trades?: number
+          min_withdrawals?: number
+          min_withdrawn_usd?: number
+          name: string
+          per_withdrawal_usd: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          daily_usd?: number
+          hold_hours?: number
+          level?: number
+          min_account_days?: number
+          min_trades?: number
+          min_withdrawals?: number
+          min_withdrawn_usd?: number
+          name?: string
+          per_withdrawal_usd?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       withdrawals: {
         Row: {
           amount: number
@@ -2356,8 +2452,23 @@ export type Database = {
         }
         Returns: string
       }
+      save_withdrawal_tiers: {
+        Args: { _actor: string; _tiers: Json }
+        Returns: string
+      }
       set_admin_role: {
         Args: { _actor: string; _grant: boolean; _target: string }
+        Returns: string
+      }
+      set_withdrawal_override: {
+        Args: {
+          _actor: string
+          _clear: boolean
+          _frozen: boolean
+          _note: string
+          _target: string
+          _tier: number
+        }
         Returns: string
       }
     }

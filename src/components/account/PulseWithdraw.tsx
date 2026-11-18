@@ -73,9 +73,17 @@ export function PulseWithdraw({ coin, from, balance }: { coin: PulseCoin; from: 
             <input type="checkbox" className="mt-1 h-4 w-4 accent-[var(--primary)]" checked={checked} onChange={(e) => setChecked(e.target.checked)} />
             <span>I checked the address. It's on <b>PulseChain</b>, and coins sent to a wrong address can't be brought back.</span>
           </label>
-          <p className="text-xs text-muted-foreground">
-            Limits during the test: ${d.limits.perWithdrawalUsd} per withdrawal, ${d.limits.dailyUsd.toLocaleString("en-US")} a day, {d.limits.maxWaiting} waiting at once.
-          </p>
+          <div className="rounded-sm border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+            <p>
+              <span className="font-semibold text-foreground">Your withdrawal level: {d.level.name}</span>
+              {" "}· up to ${d.limits.perWithdrawalUsd.toLocaleString("en-US")} each, ${d.limits.dailyUsd.toLocaleString("en-US")} a day,
+              {" "}{d.holdHours}-hour wait, {d.limits.maxWaiting} waiting at once.
+            </p>
+            <p className="mt-0.5">
+              {d.level.next ?? (d.level.setByAdmin ? "Set by the Seeds team." : "You're on the top level.")}
+              {!d.level.setByAdmin ? " New members start low; limits rise on their own as you build history." : ""}
+            </p>
+          </div>
           {submit.error ? <Note tone="error">{submit.error.message}</Note> : null}
           {done ? <Note tone="ok">{done}</Note> : null}
           <Button type="submit" disabled={!checked || !amount.trim() || !to.trim() || Boolean(toProblem) || submit.isPending}>

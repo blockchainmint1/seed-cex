@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
-  destinationProblem, feeTooHigh, parseUnits, PULSE_HOLD_HOURS, PULSE_WITHDRAW_LIMITS, pulseSendBlocker, withdrawalProblem,
+  destinationProblem, feeTooHigh, parseUnits, PULSE_MAX_WAITING, pulseSendBlocker, withdrawalProblem,
 } from "./withdraw-rules";
 
 const PLS = 10n ** 18n;
@@ -14,27 +14,25 @@ describe("who Seeds can send PulseChain coins for", () => {
   test("not without a linked pocket", () => expect(pulseSendBlocker({ link: null, isAdmin: true })).toContain("Link"));
 });
 
-describe("limits Bobby's pilot uses", () => {
-  test("$250 per withdrawal, $1,000 a day, 24-hour hold", () => {
-    expect(PULSE_WITHDRAW_LIMITS.perWithdrawalUsd).toBe(250);
-    expect(PULSE_WITHDRAW_LIMITS.dailyUsd).toBe(1000);
-    expect(PULSE_HOLD_HOURS).toBe(24);
-  });
-  test("refuses $251", () =>
-    expect(withdrawalProblem({ coin: "PLS", units: 1000n * PLS, balanceUnits: 10_000n * PLS, plsBalanceWei: 10_000n * PLS, amountUsd: 251 })).toContain("$250"));
-  test("allows $250", () =>
-    expect(withdrawalProblem({ coin: "PLS", units: 1000n * PLS, balanceUnits: 10_000n * PLS, plsBalanceWei: 10_000n * PLS, amountUsd: 250 })).toBeNull());
+describe("the member's per-withdrawal limit (from their level)", () => {
+  test("3 withdrawals may wait at once", () => expect(PULSE_MAX_WAITING).toBe(3));
+  test("refuses $251 on a $250 level", () =>
+    expect(withdrawalProblem({ coin: "PLS", units: 1000n * PLS, balanceUnits: 10_000n * PLS, plsBalanceWei: 10_000n * PLS, amountUsd: 251, perWithdrawalUsd: 250 })).toContain("$250"));
+  test("allows $250 on a $250 level", () =>
+    expect(withdrawalProblem({ coin: "PLS", units: 1000n * PLS, balanceUnits: 10_000n * PLS, plsBalanceWei: 10_000n * PLS, amountUsd: 250, perWithdrawalUsd: 250 })).toBeNull());
+  test("refuses $101 on a new member's $100 level", () =>
+    expect(withdrawalProblem({ coin: "PLS", units: 1000n * PLS, balanceUnits: 10_000n * PLS, plsBalanceWei: 10_000n * PLS, amountUsd: 101, perWithdrawalUsd: 100 })).toContain("$100"));
 });
 
 describe("amounts and balances", () => {
   test("PLS needs 500 PLS left for the fee", () =>
-    expect(withdrawalProblem({ coin: "PLS", units: 600n * PLS, balanceUnits: 1000n * PLS, plsBalanceWei: 1000n * PLS, amountUsd: 1 })).toContain("500 PLS"));
+    expect(withdrawalProblem({ coin: "PLS", units: 600n * PLS, balanceUnits: 1000n * PLS, plsBalanceWei: 1000n * PLS, amountUsd: 1, perWithdrawalUsd: 100 })).toContain("500 PLS"));
   test("pHEX needs PLS in the pocket for the fee", () =>
-    expect(withdrawalProblem({ coin: "pHEX", units: 100n, balanceUnits: 1000n, plsBalanceWei: 0n, amountUsd: 1 })).toContain("PLS"));
+    expect(withdrawalProblem({ coin: "pHEX", units: 100n, balanceUnits: 1000n, plsBalanceWei: 0n, amountUsd: 1, perWithdrawalUsd: 100 })).toContain("PLS"));
   test("no more than the pocket holds", () =>
-    expect(withdrawalProblem({ coin: "pHEX", units: 2000n, balanceUnits: 1000n, plsBalanceWei: 1000n * PLS, amountUsd: 1 })).toContain("holds"));
+    expect(withdrawalProblem({ coin: "pHEX", units: 2000n, balanceUnits: 1000n, plsBalanceWei: 1000n * PLS, amountUsd: 1, perWithdrawalUsd: 100 })).toContain("holds"));
   test("no price, no withdrawal", () =>
-    expect(withdrawalProblem({ coin: "pHEX", units: 100n, balanceUnits: 1000n, plsBalanceWei: 1000n * PLS, amountUsd: null })).toContain("price"));
+    expect(withdrawalProblem({ coin: "pHEX", units: 100n, balanceUnits: 1000n, plsBalanceWei: 1000n * PLS, amountUsd: null, perWithdrawalUsd: 100 })).toContain("price"));
   test("parses exact base units without float drift", () => {
     expect(parseUnits("1.5", 8)).toBe(150_000_000n);
     expect(parseUnits("0.1", 18)).toBe(100_000_000_000_000_000n);

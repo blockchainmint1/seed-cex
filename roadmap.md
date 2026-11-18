@@ -1,5 +1,8 @@
 # Roadmap
 
+- [x] /admin/settings withdrawal levels: low limits for new members, automatic step-ups from history, per-member set level / pause with notes, logged (Nov 18)
+- [ ] Confirm the starting withdrawal levels (blocked: Bobby's numbers)
+
 - [x] Cross-chain swaps: THORChain routes for BTC, ETH, LTC, DOGE, BCH, XRP, SOL, ZEC, BNB, TRX (+ USDC/USDT on Ethereum) — live quotes, safety checks, /swap page
 - [x] Cross-chain swaps: every live THORChain + Maya pool (46 coins, 17 networks) quotable on /swap with per-protocol memo shortcodes
 - [x] Cross-chain swaps: add Maya Protocol as second route with best-price comparison (price-only until a second independent Maya server exists)

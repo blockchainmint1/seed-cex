@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, CandlestickChart, ExternalLink, Flame, LayoutDashboard, ShieldCheck, Sparkles, UserCog, Users } from "lucide-react";
+import { ArrowLeft, CandlestickChart, ExternalLink, Flame, LayoutDashboard, Settings, ShieldCheck, Sparkles, UserCog, Users } from "lucide-react";
 import { amIAdmin } from "@/lib/admin.functions";
 import { getMyProfile } from "@/lib/profile.functions";
 import { useSession } from "@/hooks/use-session";
@@ -12,9 +12,9 @@ export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
     meta: [
       { title: "Admin Console — Seeds" },
-      { name: "description", content: "Operator view of Seeds: Ignite registrations, accounts, orders and trades, Seeds AI and admin access." },
+      { name: "description", content: "Operator view of Seeds: Ignite registrations, accounts, orders and trades, Seeds AI, admin access and withdrawal settings." },
       { property: "og:title", content: "Admin Console — Seeds" },
-      { property: "og:description", content: "Operator view of Seeds: Ignite registrations, accounts, orders and trades, Seeds AI and admin access." },
+      { property: "og:description", content: "Operator view of Seeds: Ignite registrations, accounts, orders and trades, Seeds AI, admin access and withdrawal settings." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex" },
@@ -30,6 +30,7 @@ const NAV = [
   { to: "/admin/markets", label: "Orders & trades", icon: CandlestickChart },
   { to: "/admin/ai", label: "Seeds AI", icon: Sparkles },
   { to: "/admin/users", label: "Admin access", icon: UserCog },
+  { to: "/admin/settings", label: "Settings", icon: Settings },
 ] as const;
 
 const ELSEWHERE = [

@@ -21,9 +21,12 @@ export function isPulseCoin(c: unknown): c is PulseCoin {
 
 /** Pilot switch: until the first small real-money withdrawals pass, only admins can use this. */
 export const PULSE_WITHDRAW_PILOT_ADMIN_ONLY = true;
-export const PULSE_WITHDRAW_LIMITS = { perWithdrawalUsd: 250, dailyUsd: 1000, maxWaiting: 3 } as const;
-/** Time between asking and sending, so a hijacked account can be stopped. */
-export const PULSE_HOLD_HOURS = 24;
+/**
+ * Dollar caps and the wait before sending come from the member's withdrawal
+ * level (src/lib/withdraw-limits.ts, edited in /admin/settings). Only the
+ * number of withdrawals waiting at once is fixed here.
+ */
+export const PULSE_MAX_WAITING = 3;
 /** Never pay more than this in network fees for one withdrawal (normally well under 100 PLS). */
 export const PULSE_MAX_FEE_PLS = 5000;
 /** PLS that must stay behind for the network fee (a transfer is ~25–100 PLS, a fraction of a cent). */
@@ -73,6 +76,7 @@ export function withdrawalProblem(p: {
   balanceUnits: bigint | null;
   plsBalanceWei: bigint | null;
   amountUsd: number | null;
+  perWithdrawalUsd: number;
 }): string | null {
   const d = PULSE_COINS[p.coin].decimals;
   if (p.units == null) return `Enter an amount with at most ${d} decimal places.`;
@@ -82,7 +86,7 @@ export function withdrawalProblem(p: {
   if (p.coin === "PLS" && p.units + gasWei > p.balanceUnits) return `Leave at least ${PULSE_MIN_GAS_PLS} PLS behind for the network fee.`;
   if (p.coin === "pHEX" && p.plsBalanceWei < gasWei) return `Keep at least ${PULSE_MIN_GAS_PLS} PLS in your pocket to pay the network fee.`;
   if (p.amountUsd == null) return "No live price for this coin right now, so the limit can't be checked.";
-  if (p.amountUsd > PULSE_WITHDRAW_LIMITS.perWithdrawalUsd) return `Withdrawals are limited to $${PULSE_WITHDRAW_LIMITS.perWithdrawalUsd} each during the test.`;
+  if (p.amountUsd > p.perWithdrawalUsd) return `Your withdrawal level allows up to $${p.perWithdrawalUsd.toLocaleString("en-US")} per withdrawal.`;
   return null;
 }
 

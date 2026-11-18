@@ -3,7 +3,7 @@
  *
  * Order is fixed and fails closed:
  *  1. Request: server re-reads balances and price, checks the destination, then
- *     reserve_pocket_withdrawal (database) enforces caps and puts it on a 24-hour
+ *     reserve_pocket_withdrawal (database) enforces the member's level caps and puts it on the level's
  *     hold. The member gets an email (always) and Telegram (if linked) with a
  *     way to cancel. No key is touched.
  *  2. Release (scheduled job): claim_pocket_withdrawal moves only a held row
@@ -14,9 +14,11 @@
  *     The key is wiped after. A crashed send is never re-signed automatically.
  */
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { limitsFor } from "@/lib/withdraw-limits.server";
+import { nextLevelText } from "@/lib/withdraw-limits";
 import {
-  destinationProblem, feeTooHigh, isPulseCoin, parseUnits, PULSE_CHAIN_ID, PULSE_COINS, PULSE_CONFIRMATIONS, PULSE_HOLD_HOURS,
-  PULSE_WITHDRAW_LIMITS, PULSE_WITHDRAW_PILOT_ADMIN_ONLY, pulseSendBlocker, unitsToNumber, withdrawalProblem, type PulseCoin,
+  destinationProblem, feeTooHigh, isPulseCoin, parseUnits, PULSE_CHAIN_ID, PULSE_COINS, PULSE_CONFIRMATIONS,
+  PULSE_MAX_WAITING, PULSE_WITHDRAW_PILOT_ADMIN_ONLY, pulseSendBlocker, unitsToNumber, withdrawalProblem, type PulseCoin,
 } from "./withdraw-rules";
 
 const CHAIN = "pulsechain" as const;
@@ -72,17 +74,23 @@ async function tell(userId: string, telegram: string, thing: string, lines: stri
   }
 }
 
+const FROZEN = "Withdrawals are paused on your account while the Seeds team takes a look. Contact support@honest.money if you didn't expect this.";
+
 const ROW_FIELDS = "id, coin, amount, amount_usd, to_address, from_address, status, release_at, txid, error, confirmations, created_at, sent_at, cancelled_at";
 
 /** What the withdraw screen needs: can Seeds send for this member, the rules, and their recent withdrawals. */
 export async function pulseWithdrawContext(userId: string, isAdmin: boolean) {
-  const link = await loadLinkSafe(userId);
-  const { data } = await supabaseAdmin.from("pocket_withdrawals").select(ROW_FIELDS).eq("user_id", userId).order("created_at", { ascending: false }).limit(20);
+  const [link, lim, { data }] = await Promise.all([
+    loadLinkSafe(userId),
+    limitsFor(userId),
+    supabaseAdmin.from("pocket_withdrawals").select(ROW_FIELDS).eq("user_id", userId).order("created_at", { ascending: false }).limit(20),
+  ]);
   return {
-    blocker: pulseSendBlocker({ link: linkLike(link), isAdmin }),
+    blocker: lim.frozen ? FROZEN : pulseSendBlocker({ link: linkLike(link), isAdmin }),
     pilotAdminOnly: PULSE_WITHDRAW_PILOT_ADMIN_ONLY,
-    limits: PULSE_WITHDRAW_LIMITS,
-    holdHours: PULSE_HOLD_HOURS,
+    limits: { perWithdrawalUsd: lim.perWithdrawalUsd, dailyUsd: lim.dailyUsd, maxWaiting: PULSE_MAX_WAITING },
+    level: { name: lim.tier.name, number: lim.tier.level, setByAdmin: lim.source === "admin", next: nextLevelText(lim) },
+    holdHours: lim.holdHours,
     withdrawals: data ?? [],
   };
 }
@@ -94,6 +102,8 @@ export async function requestPulseWithdrawal(userId: string, isAdmin: boolean, i
   const coin = input.coin;
   const spec = PULSE_COINS[coin];
   const link = await loadLinkSafe(userId);
+  const lim = await limitsFor(userId);
+  if (lim.frozen) throw new Error(FROZEN);
   const blocker = pulseSendBlocker({ link: linkLike(link), isAdmin });
   if (blocker) throw new Error(blocker);
   const from = link!.addresses.EVM!;
@@ -104,25 +114,25 @@ export async function requestPulseWithdrawal(userId: string, isAdmin: boolean, i
   const [bal, plsBal, price] = await Promise.all([rawBalance(coin, from), coin === "PLS" ? null : rawBalance("PLS", from), usdPrice(coin)]);
   const amount = units == null ? 0 : unitsToNumber(units, spec.decimals);
   const amountUsd = price == null ? null : Math.round(amount * price * 100) / 100;
-  const problem = withdrawalProblem({ coin, units, balanceUnits: bal, plsBalanceWei: coin === "PLS" ? bal : plsBal, amountUsd });
+  const problem = withdrawalProblem({ coin, units, balanceUnits: bal, plsBalanceWei: coin === "PLS" ? bal : plsBal, amountUsd, perWithdrawalUsd: lim.perWithdrawalUsd });
   if (problem) throw new Error(problem);
 
   const { data: id, error } = await supabaseAdmin.rpc("reserve_pocket_withdrawal", {
     _user_id: userId, _link_id: link!.id, _coin: coin, _amount: amount, _amount_units: units!.toString(), _amount_usd: amountUsd!,
-    _from_address: from, _to_address: to, _hold_hours: PULSE_HOLD_HOURS,
-    _per_max_usd: PULSE_WITHDRAW_LIMITS.perWithdrawalUsd, _daily_max_usd: PULSE_WITHDRAW_LIMITS.dailyUsd, _max_held: PULSE_WITHDRAW_LIMITS.maxWaiting,
+    _from_address: from, _to_address: to, _hold_hours: lim.holdHours,
+    _per_max_usd: lim.perWithdrawalUsd, _daily_max_usd: lim.dailyUsd, _max_held: PULSE_MAX_WAITING,
   });
   if (error || !id) throw new Error(cleanDbError(error?.message ?? "Could not set up this withdrawal."));
 
   void tell(userId,
-    `⏳ <b>PulseChain withdrawal requested</b>\n${amount} ${coin} (about $${amountUsd}) to ${to}\nSeeds sends it in ${PULSE_HOLD_HOURS} hours. Not you? <a href="${cancelUrl(coin)}">Cancel it now</a>.`,
+    `⏳ <b>PulseChain withdrawal requested</b>\n${amount} ${coin} (about $${amountUsd}) to ${to}\nSeeds sends it in ${lim.holdHours} hours. Not you? <a href="${cancelUrl(coin)}">Cancel it now</a>.`,
     "PulseChain withdrawal request",
     [
       `Withdraw ${amount} ${coin} (about $${amountUsd}) from your trading pocket`,
       `To ${to} on PulseChain`,
-      `Seeds sends it in ${PULSE_HOLD_HOURS} hours unless you cancel: ${cancelUrl(coin)}`,
+      `Seeds sends it in ${lim.holdHours} hours unless you cancel: ${cancelUrl(coin)}`,
     ]);
-  return { id: id as string, amount, amountUsd, holdHours: PULSE_HOLD_HOURS };
+  return { id: id as string, amount, amountUsd, holdHours: lim.holdHours };
 }
 
 export async function cancelPulseWithdrawal(userId: string, id: string) {
@@ -150,6 +160,9 @@ async function sendOne(r: Row): Promise<"sent" | "failed" | "unknown"> {
     const link = await loadLinkSafe(r.user_id);
     const blocker = pulseSendBlocker({ link: linkLike(link), isAdmin: await isAdminUser(r.user_id) });
     if (blocker) throw new Error(blocker);
+    // A pause set by an admin during the hold stops the send too.
+    const { data: ov } = await supabaseAdmin.from("withdrawal_limit_overrides").select("frozen").eq("user_id", r.user_id).maybeSingle();
+    if (ov?.frozen) throw new Error("Withdrawals were paused on your account during the wait, so nothing was sent.");
     if (link!.id !== r.link_id) throw new Error("Your trading pocket link changed since you asked, so nothing was sent. Ask again from the new pocket.");
     const from = link!.addresses.EVM!;
     if (from.toLowerCase() !== r.from_address.toLowerCase()) throw new Error("Your pocket address changed since you asked. Nothing was sent.");
