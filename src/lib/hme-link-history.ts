@@ -17,7 +17,7 @@ export type LinkRow = {
   revoked_by: string | null;
 };
 
-export type LinkEventKind = "linked" | "updated" | "revoked_seeds" | "revoked_wallet" | "replaced" | "revoked";
+export type LinkEventKind = "linked" | "updated" | "revoked_seeds" | "revoked_telegram" | "revoked_wallet" | "replaced" | "revoked";
 
 export type LinkEvent = {
   id: string;
@@ -87,7 +87,7 @@ export function buildLinkHistory(rows: LinkRow[]): LinkEvent[] {
   for (const row of sorted) {
     if (row.status !== "revoked" || usedReplaced.has(row.id)) continue;
     const kind: LinkEventKind =
-      row.revoked_by === "seeds" ? "revoked_seeds" : row.revoked_by === "wallet" ? "revoked_wallet" : row.revoked_by === "replaced" ? "replaced" : "revoked";
+      row.revoked_by === "seeds" ? "revoked_seeds" : row.revoked_by === "telegram" ? "revoked_telegram" : row.revoked_by === "wallet" ? "revoked_wallet" : row.revoked_by === "replaced" ? "replaced" : "revoked";
     events.push({
       id: `${row.id}:close`,
       at: row.revoked_at ?? row.created_at,
@@ -112,6 +112,7 @@ export function linkEventTitle(e: LinkEvent): string {
     case "linked": return "Linked";
     case "updated": return e.added.length ? "Updated: new coins added" : "Updated";
     case "revoked_seeds": return "Revoked on Seeds";
+    case "revoked_telegram": return "Revoked from Telegram";
     case "revoked_wallet": return "Revoked in HME Wallet";
     case "replaced": return "Replaced by a new link";
     default: return "Revoked";

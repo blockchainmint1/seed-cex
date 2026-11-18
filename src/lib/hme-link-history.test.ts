@@ -57,3 +57,12 @@ describe("wallet link history", () => {
     expect(buildLinkHistory([])).toEqual([]);
   });
 });
+
+describe("revoked from a Telegram alert", () => {
+  test("shows as its own entry, not as a Seeds-page revoke", () => {
+    const h = buildLinkHistory([row({ id: "t", created_at: "2026-11-01T10:00:00Z", revoked_at: "2026-11-02T10:00:00Z", revoked_by: "telegram" })]);
+    const close = h.find((e) => e.id === "t:close")!;
+    expect(close.kind).toBe("revoked_telegram");
+    expect(linkEventTitle(close)).toBe("Revoked from Telegram");
+  });
+});

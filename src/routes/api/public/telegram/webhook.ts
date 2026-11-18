@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-// Updates from @seeds_notify_bot. Only Telegram knows the secret header; "/start <code>" links a member's chat.
+// Updates from @seeds_notify_bot. Only Telegram knows the secret header; "/start <code>" links a member's chat, button taps run one-tap actions (revoke).
 export const Route = createFileRoute("/api/public/telegram/webhook")({
   staticData: { sitemap: false },
   server: {

@@ -28,6 +28,7 @@ function detail(e: LinkEvent): string {
     return bits.length ? `${bits.join(". ")}. Same pocket, no coins moved.` : "Same pocket and coins, no coins moved.";
   }
   if (e.kind === "revoked_seeds") return "You revoked it here. Seeds deleted its trading key.";
+  if (e.kind === "revoked_telegram") return "You tapped Revoke in a Seeds Telegram alert. Seeds deleted its trading key.";
   if (e.kind === "revoked_wallet") return "Revoked from your HME Wallet app. Seeds deleted its trading key.";
   if (e.kind === "replaced") return "A newer link took its place. Seeds deleted this link's trading key.";
   if (e.kind === "revoked") return "Seeds deleted its trading key.";

@@ -85,26 +85,8 @@ export const getMyHmeLink = createServerFn({ method: "GET" })
 export const revokeMyHmeLink = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data } = await supabaseAdmin.from("hme_links")
-      .update({ status: "revoked", revoked_at: new Date().toISOString(), revoked_by: "seeds", key_ciphertext: null })
-      .eq("user_id", context.userId).eq("status", "active").select("id, account, paths, xpubs");
-    for (const l of data ?? []) {
-      await supabaseAdmin.from("hme_trade_proposals").update({ status: "expired" }).eq("link_id", l.id).eq("status", "pending");
-    }
-    if (data?.length) {
-      const { emailAccountChange } = await import("@/lib/email/send.server");
-      const { extraPocketAddresses } = await import("@/lib/pockets/extra-addresses.server");
-      const { recoveryLines } = await import("@/lib/pockets/hme-support");
-      const recovery = data.flatMap((l) => recoveryLines(l.account, extraPocketAddresses(l)));
-      await emailAccountChange(context.userId, "HME Wallet link", [
-        "Revoked on Seeds. Seeds deleted its access to your trading pocket.",
-        ...(recovery.length
-          ? ["HME Wallet can't hold or move these coins. If you left any in them, import your recovery phrase into a wallet that supports that coin and use the path shown:", ...recovery]
-          : []),
-      ],
-        "link your HME Wallet again from your profile only if you trust the device you're using, and contact support@honest.money.");
-    }
+    const { revokeActiveHmeLinks } = await import("./hme-link-revoke.server");
+    await revokeActiveHmeLinks(context.userId, "seeds");
     return { ok: true };
   });
 

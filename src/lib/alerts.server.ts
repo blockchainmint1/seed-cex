@@ -92,12 +92,33 @@ export async function alertSettlementFailed(input: {
   }
 }
 
-/** A sign-in through Honest.Money single sign-on. */
+/** A sign-in through Honest.Money single sign-on. With an active wallet link, the alert carries a
+ *  one-tap "Revoke Seeds' access" button so the member doesn't have to sign in to cut Seeds off. */
 export async function alertSignIn(input: { userId: string; email?: string | null }): Promise<void> {
+  const who = `New sign-in${input.email ? ` as <b>${esc(input.email)}</b>` : ""}.`;
+  const { data: link } = await supabaseAdmin.from("hme_links").select("id")
+    .eq("user_id", input.userId).eq("status", "active").maybeSingle();
+  const { revokeButtonData } = await import("@/lib/telegram-actions");
+  const { telegramActionKey } = await import("@/lib/telegram.server");
+  const key = await telegramActionKey();
+  if (link?.id && key) {
+    await notifyUser(
+      input.userId,
+      "notify_login",
+      `🔐 <b>Seeds</b>\n${who}\nIf that wasn't you, tap <b>Revoke Seeds' access</b> below. Seeds deletes its key to your trading pocket right away, no sign-in needed. Your coins stay in your HME Wallet.`,
+      {
+        inline_keyboard: [
+          [{ text: "🚫 Revoke Seeds' access", callback_data: await revokeButtonData(key, "ask", link.id, input.userId) }],
+          [{ text: "Open Security", url: `${SITE}/account/security` }],
+        ],
+      },
+    );
+    return;
+  }
   await notifyUser(
     input.userId,
     "notify_login",
-    `🔐 <b>Seeds</b>\nNew sign-in${input.email ? ` as <b>${esc(input.email)}</b>` : ""}.\nIf that wasn't you, revoke Seeds' access to your trading pocket under Profile → Security.\n\n<a href="${SITE}/account/security">Open Security</a>`,
+    `🔐 <b>Seeds</b>\n${who}\nNo HME Wallet is linked, so Seeds can't trade from any pocket of yours. If that wasn't you, sign out of Honest.Money everywhere and contact support@honest.money.\n\n<a href="${SITE}/account/security">Open Security</a>`,
   );
 }
 
