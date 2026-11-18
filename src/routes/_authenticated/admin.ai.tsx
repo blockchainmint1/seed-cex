@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
+import { TabTitle } from "@/components/account/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { adminAiRefresh, adminAiRunChecks, adminAiSaveSettings, adminAiSetCoin, getAdminAi } from "@/lib/ai/ai.functions";
 import { Panel, inputCls } from "@/components/ai/ui";
 
-export const Route = createFileRoute("/_authenticated/admin_/ai")({
+export const Route = createFileRoute("/_authenticated/admin/ai")({
   staticData: { sitemap: false },
   head: () => ({
     meta: [
@@ -40,12 +41,8 @@ function AdminAiPage() {
   const settingsM = useMutation({ mutationFn: () => saveSettings({ data: { oneTapLimitUsd: Number(limit), maxCommitTsd: Number(maxCommit) } }), onSuccess: reload });
 
   return (
-    <div className="mx-auto max-w-7xl space-y-8 px-5 py-14">
-      <header className="space-y-2">
-        <Link to="/admin" className="text-sm text-muted-foreground hover:text-primary">← Admin</Link>
-        <h1 className="font-display text-3xl font-extrabold tracking-tight">Seeds AI admin</h1>
-        <p className="max-w-2xl text-sm text-muted-foreground">Coins members can plan with, price-history health, and every locked plan.</p>
-      </header>
+    <div className="space-y-8">
+      <TabTitle title="Seeds AI" desc="Coins members can plan with, price-history health, and every locked plan." />
 
       {q.isLoading ? <p className="text-sm text-muted-foreground">Loading…</p> : q.error ? (
         <p role="alert" className="text-sm text-destructive">{(q.error as Error).message}</p>

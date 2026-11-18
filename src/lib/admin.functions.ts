@@ -262,6 +262,10 @@ export type AdminIgniteRow = {
   hmLinked: boolean;
   createdAt: string;
   confirmedAt: string | null;
+  marketingOptIn: boolean;
+  lastEmailedAt: string | null;
+  lastReminderAt: string | null;
+  emails: { kind: string; subject: string; status: string; sentAt: string }[];
 };
 
 export const getAdminIgnite = createServerFn({ method: "GET" })
@@ -270,23 +274,36 @@ export const getAdminIgnite = createServerFn({ method: "GET" })
     await assertAdmin(context.supabase as never, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { SEAT_CAPACITY } = await import("./ignite-registration");
-    const [{ data: regs }, { data: links }] = await Promise.all([
+    const { SCHEDULE_DATES, SCHEDULE_TIME, DEPOSIT_USD } = await import("./ignite-registration");
+    const [{ data: regs }, { data: links }, { data: mails }] = await Promise.all([
       supabaseAdmin.from("ignite_registrations")
-        .select("id, full_name, email, country_code, phone, status, payment_method, paid_asset, paid_chain, paid_amount_usd, invoice_id, ref_code, hm_member_id, created_at, confirmed_at")
+        .select("id, full_name, email, country_code, phone, status, payment_method, paid_asset, paid_chain, paid_amount_usd, invoice_id, ref_code, hm_member_id, created_at, confirmed_at, marketing_opt_in")
         .order("created_at", { ascending: false }),
       supabaseAdmin.from("ignite_peer_links").select("registration_id, payer_name, status").eq("status", "paid"),
+      supabaseAdmin.from("ignite_admin_emails").select("registration_id, kind, subject, status, sent_at").order("sent_at", { ascending: false }).limit(2000),
     ]);
     const payer = new Map((links ?? []).map((l) => [l.registration_id, l.payer_name]));
+    const mailsBy = new Map<string, { kind: string; subject: string; status: string; sentAt: string }[]>();
+    for (const m of mails ?? []) {
+      const list = mailsBy.get(m.registration_id) ?? [];
+      list.push({ kind: m.kind, subject: m.subject, status: m.status, sentAt: m.sent_at });
+      mailsBy.set(m.registration_id, list);
+    }
     const rows: AdminIgniteRow[] = (regs ?? []).map((r) => ({
       id: r.id, fullName: r.full_name, email: r.email, phone: `${r.country_code} ${r.phone}`, status: r.status,
       method: r.payment_method, paidAsset: r.paid_asset, paidChain: r.paid_chain,
       paidUsd: r.paid_amount_usd == null ? null : Number(r.paid_amount_usd), invoiceId: r.invoice_id,
       payerName: payer.get(r.id) ?? null, refCode: r.ref_code, hmLinked: !!r.hm_member_id,
-      createdAt: r.created_at, confirmedAt: r.confirmed_at,
+      createdAt: r.created_at, confirmedAt: r.confirmed_at, marketingOptIn: !!r.marketing_opt_in,
+      lastEmailedAt: mailsBy.get(r.id)?.find((m) => m.status === "sent")?.sentAt ?? null,
+      lastReminderAt: mailsBy.get(r.id)?.find((m) => m.kind === "reminder" && m.status === "sent")?.sentAt ?? null,
+      emails: (mailsBy.get(r.id) ?? []).slice(0, 10),
     }));
     const confirmed = rows.filter((r) => r.status === "confirmed").length;
     return {
       capacity: SEAT_CAPACITY,
+      schedule: { dates: SCHEDULE_DATES, time: SCHEDULE_TIME },
+      deposit: DEPOSIT_USD,
       confirmed,
       seatsLeft: Math.max(0, SEAT_CAPACITY - confirmed),
       pending: rows.filter((r) => r.status === "pending" || r.status === "underpaid").length,

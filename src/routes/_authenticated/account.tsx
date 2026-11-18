@@ -5,6 +5,7 @@ import {
   ArrowDownToLine, ArrowUpFromLine, Bell, ExternalLink, Gift, KeyRound, LayoutDashboard, ShieldCheck, Sparkles, User, Wallet,
 } from "lucide-react";
 import { getMyProfile } from "@/lib/profile.functions";
+import { amIAdmin } from "@/lib/admin.functions";
 import { useSession } from "@/hooks/use-session";
 import { Button } from "@/components/ui/button";
 import { usePocketLink } from "@/components/account/use-pocket";
@@ -53,6 +54,8 @@ function AccountLayout() {
   const load = useServerFn(getMyProfile);
   const profile = useQuery({ queryKey: ["my-profile"], queryFn: () => load() });
   const link = usePocketLink();
+  const checkAdmin = useServerFn(amIAdmin);
+  const admin = useQuery({ queryKey: ["am-i-admin"], queryFn: () => checkAdmin(), retry: false, staleTime: 60_000 });
   const p = profile.data;
   const l = link.data;
   const active = p?.hm_status === "active" || p?.hm_status === "oceanfront";
@@ -109,6 +112,13 @@ function AccountLayout() {
                   </Link>
                 </li>
               ))}
+              {admin.data ? (
+                <li>
+                  <Link to="/admin" className="flex items-center justify-between rounded-sm px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">
+                    Admin console <ShieldCheck className="h-3 w-3" />
+                  </Link>
+                </li>
+              ) : null}
             </ul>
           </div>
         </nav>

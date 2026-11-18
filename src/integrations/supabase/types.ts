@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_role_events: {
+        Row: {
+          action: string
+          actor_id: string
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          target_id: string
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          target_id: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          target_id?: string
+        }
+        Relationships: []
+      }
       ai_coins: {
         Row: {
           active: boolean
@@ -588,6 +615,47 @@ export type Database = {
             columns: ["link_id"]
             isOneToOne: false
             referencedRelation: "hme_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ignite_admin_emails: {
+        Row: {
+          id: string
+          kind: string
+          registration_id: string
+          sent_at: string
+          sent_by: string
+          status: string
+          subject: string
+          to_email: string
+        }
+        Insert: {
+          id?: string
+          kind: string
+          registration_id: string
+          sent_at?: string
+          sent_by: string
+          status?: string
+          subject: string
+          to_email: string
+        }
+        Update: {
+          id?: string
+          kind?: string
+          registration_id?: string
+          sent_at?: string
+          sent_by?: string
+          status?: string
+          subject?: string
+          to_email?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ignite_admin_emails_registration_id_fkey"
+            columns: ["registration_id"]
+            isOneToOne: false
+            referencedRelation: "ignite_registrations"
             referencedColumns: ["id"]
           },
         ]
@@ -2286,6 +2354,10 @@ export type Database = {
           _txc_address: string
           _user_id: string
         }
+        Returns: string
+      }
+      set_admin_role: {
+        Args: { _actor: string; _grant: boolean; _target: string }
         Returns: string
       }
     }

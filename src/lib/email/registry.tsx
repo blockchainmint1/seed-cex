@@ -12,6 +12,8 @@ import { PeerPayRequestEmail, type PeerPayRequestProps } from "./templates/peer-
 import { PeerPayPaidEmail, type PeerPayPaidProps } from "./templates/peer-pay-paid";
 import { IgniteSeatConfirmedEmail, type IgniteSeatConfirmedProps } from "./templates/ignite-seat-confirmed";
 import { LegacyLinkEmail, type LegacyLinkProps } from "./templates/legacy-link";
+import { IgniteReminderEmail, type IgniteReminderProps } from "./templates/ignite-reminder";
+import { IgniteMessageEmail, type IgniteMessageProps } from "./templates/ignite-message";
 import { fmt, usd } from "./components";
 
 export type TemplateProps = {
@@ -24,10 +26,12 @@ export type TemplateProps = {
   "peer-pay-paid": PeerPayPaidProps;
   "ignite-seat-confirmed": IgniteSeatConfirmedProps;
   "legacy-link": LegacyLinkProps;
+  "ignite-reminder": IgniteReminderProps;
+  "ignite-message": IgniteMessageProps;
 };
 export type TemplateName = keyof TemplateProps;
-/** security = always sent; trades = email_trade_confirmations; weekly = email_weekly_update; welcome = once; receipt = always (payment receipts); invite = to a non-member, sent by direct delivery. */
-export type Category = "welcome" | "trades" | "security" | "weekly" | "receipt" | "invite";
+/** security = always sent; trades = email_trade_confirmations; weekly = email_weekly_update; welcome = once; receipt = always (payment receipts); invite = to a non-member, sent by direct delivery; ignite = sent by an admin to an Ignite registrant's registration email. */
+export type Category = "welcome" | "trades" | "security" | "weekly" | "receipt" | "invite" | "ignite";
 
 type Def<K extends TemplateName> = {
   label: string;
@@ -72,7 +76,7 @@ export const TEMPLATES: { [K in TemplateName]: Def<K> } = {
   "account-change": {
     label: "You changed X",
     category: "security",
-    subject: (p) => `You changed your ${p.thing}`,
+    subject: (p) => p.headline ?? `You changed your ${p.thing}`,
     render: (p) => <AccountChangeEmail {...p} />,
     sample: {
       name: "Alex", thing: "trading preferences", changes: ["Default market: TXC/TSD → BTC/TSD", "Confirm before every order: on → off"],
@@ -122,6 +126,20 @@ export const TEMPLATES: { [K in TemplateName]: Def<K> } = {
     subject: () => "Confirm your older Seeds account",
     render: (p) => <LegacyLinkEmail {...p} />,
     sample: { name: "Alex", linkUrl: "https://seeds.honest.money/link-account?token=sample", expiresAt: "2026-11-18T15:40:00Z", timezone: "America/Chicago" },
+  },
+  "ignite-reminder": {
+    label: "Ignite: finish your registration",
+    category: "ignite",
+    subject: () => "Finish reserving your Ignite seat",
+    render: (p) => <IgniteReminderEmail {...p} />,
+    sample: { name: "Alex", amount: 400, dates: "November 30–December 4, 2026", time: "Daily from 5:00–6:30 PM CST", seatsLeft: 42 },
+  },
+  "ignite-message": {
+    label: "Ignite: message from Seeds",
+    category: "ignite",
+    subject: (p) => p.subject,
+    render: (p) => <IgniteMessageEmail {...p} />,
+    sample: { subject: "Your Zoom link for Monday", paragraphs: ["Hi Alex,", "Here's everything you need for the first session.\nSee you Monday."] },
   },
 };
 

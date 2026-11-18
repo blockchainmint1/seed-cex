@@ -58,7 +58,12 @@ import { Route as AuthenticatedAccountBalancesRouteImport } from './routes/_auth
 import { Route as AuthenticatedAccountProfileRouteImport } from './routes/_authenticated/account.profile'
 import { Route as AuthenticatedAccountReferralsRouteImport } from './routes/_authenticated/account.referrals'
 import { Route as AuthenticatedAccountSecurityRouteImport } from './routes/_authenticated/account.security'
-import { Route as AuthenticatedAdminAiRouteImport } from './routes/_authenticated/admin_.ai'
+import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
+import { Route as AuthenticatedAdminAccountsRouteImport } from './routes/_authenticated/admin.accounts'
+import { Route as AuthenticatedAdminAiRouteImport } from './routes/_authenticated/admin.ai'
+import { Route as AuthenticatedAdminIgniteRouteImport } from './routes/_authenticated/admin.ignite'
+import { Route as AuthenticatedAdminMarketsRouteImport } from './routes/_authenticated/admin.markets'
+import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
 import { Route as AuthenticatedP2pDashboardRouteImport } from './routes/_authenticated/p2p.dashboard'
 import { Route as AuthenticatedP2pJuryRouteImport } from './routes/_authenticated/p2p.jury'
 import { Route as AiCoinIdRouteImport } from './routes/ai.coin.$id'
@@ -354,10 +359,38 @@ const AuthenticatedAccountSecurityRoute =
     path: '/security',
     getParentRoute: () => AuthenticatedAccountRoute,
   } as any)
+const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
+const AuthenticatedAdminAccountsRoute =
+  AuthenticatedAdminAccountsRouteImport.update({
+    id: '/accounts',
+    path: '/accounts',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminAiRoute = AuthenticatedAdminAiRouteImport.update({
-  id: '/admin_/ai',
-  path: '/admin/ai',
-  getParentRoute: () => AuthenticatedRouteRoute,
+  id: '/ai',
+  path: '/ai',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
+const AuthenticatedAdminIgniteRoute =
+  AuthenticatedAdminIgniteRouteImport.update({
+    id: '/ignite',
+    path: '/ignite',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminMarketsRoute =
+  AuthenticatedAdminMarketsRouteImport.update({
+    id: '/markets',
+    path: '/markets',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminUsersRoute = AuthenticatedAdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
 const AuthenticatedP2pDashboardRoute =
   AuthenticatedP2pDashboardRouteImport.update({
@@ -608,7 +641,7 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/tsd': typeof TsdRoute
   '/account': typeof AuthenticatedAccountRouteWithChildren
-  '/admin': typeof AuthenticatedAdminRoute
+  '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/api-keys': typeof AuthenticatedApiKeysRoute
   '/trades': typeof AuthenticatedTradesRoute
   '/wallet': typeof AuthenticatedWalletRoute
@@ -636,12 +669,17 @@ export interface FileRoutesByFullPath {
   '/account/profile': typeof AuthenticatedAccountProfileRoute
   '/account/referrals': typeof AuthenticatedAccountReferralsRoute
   '/account/security': typeof AuthenticatedAccountSecurityRoute
+  '/admin/accounts': typeof AuthenticatedAdminAccountsRoute
   '/admin/ai': typeof AuthenticatedAdminAiRoute
+  '/admin/ignite': typeof AuthenticatedAdminIgniteRoute
+  '/admin/markets': typeof AuthenticatedAdminMarketsRoute
+  '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/p2p/dashboard': typeof AuthenticatedP2pDashboardRoute
   '/p2p/jury': typeof AuthenticatedP2pJuryRoute
   '/ai/coin/$id': typeof AiCoinIdRoute
   '/p2p/seller/$handle': typeof P2pSellerHandleRoute
   '/account/': typeof AuthenticatedAccountIndexRoute
+  '/admin/': typeof AuthenticatedAdminIndexRoute
   '/account/balances/deposit': typeof AuthenticatedAccountBalancesDepositRoute
   '/account/balances/withdraw': typeof AuthenticatedAccountBalancesWithdrawRoute
   '/p2p/trade/$id': typeof AuthenticatedP2pTradeIdRoute
@@ -701,7 +739,6 @@ export interface FileRoutesByTo {
   '/swap': typeof SwapRoute
   '/terms': typeof TermsRoute
   '/tsd': typeof TsdRoute
-  '/admin': typeof AuthenticatedAdminRoute
   '/api-keys': typeof AuthenticatedApiKeysRoute
   '/trades': typeof AuthenticatedTradesRoute
   '/wallet': typeof AuthenticatedWalletRoute
@@ -728,12 +765,17 @@ export interface FileRoutesByTo {
   '/account/profile': typeof AuthenticatedAccountProfileRoute
   '/account/referrals': typeof AuthenticatedAccountReferralsRoute
   '/account/security': typeof AuthenticatedAccountSecurityRoute
+  '/admin/accounts': typeof AuthenticatedAdminAccountsRoute
   '/admin/ai': typeof AuthenticatedAdminAiRoute
+  '/admin/ignite': typeof AuthenticatedAdminIgniteRoute
+  '/admin/markets': typeof AuthenticatedAdminMarketsRoute
+  '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/p2p/dashboard': typeof AuthenticatedP2pDashboardRoute
   '/p2p/jury': typeof AuthenticatedP2pJuryRoute
   '/ai/coin/$id': typeof AiCoinIdRoute
   '/p2p/seller/$handle': typeof P2pSellerHandleRoute
   '/account': typeof AuthenticatedAccountIndexRoute
+  '/admin': typeof AuthenticatedAdminIndexRoute
   '/account/balances/deposit': typeof AuthenticatedAccountBalancesDepositRoute
   '/account/balances/withdraw': typeof AuthenticatedAccountBalancesWithdrawRoute
   '/p2p/trade/$id': typeof AuthenticatedP2pTradeIdRoute
@@ -796,7 +838,7 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/tsd': typeof TsdRoute
   '/_authenticated/account': typeof AuthenticatedAccountRouteWithChildren
-  '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/api-keys': typeof AuthenticatedApiKeysRoute
   '/_authenticated/trades': typeof AuthenticatedTradesRoute
   '/_authenticated/wallet': typeof AuthenticatedWalletRoute
@@ -824,12 +866,17 @@ export interface FileRoutesById {
   '/_authenticated/account/profile': typeof AuthenticatedAccountProfileRoute
   '/_authenticated/account/referrals': typeof AuthenticatedAccountReferralsRoute
   '/_authenticated/account/security': typeof AuthenticatedAccountSecurityRoute
-  '/_authenticated/admin_/ai': typeof AuthenticatedAdminAiRoute
+  '/_authenticated/admin/accounts': typeof AuthenticatedAdminAccountsRoute
+  '/_authenticated/admin/ai': typeof AuthenticatedAdminAiRoute
+  '/_authenticated/admin/ignite': typeof AuthenticatedAdminIgniteRoute
+  '/_authenticated/admin/markets': typeof AuthenticatedAdminMarketsRoute
+  '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
   '/_authenticated/p2p/dashboard': typeof AuthenticatedP2pDashboardRoute
   '/_authenticated/p2p/jury': typeof AuthenticatedP2pJuryRoute
   '/ai/coin/$id': typeof AiCoinIdRoute
   '/p2p/seller/$handle': typeof P2pSellerHandleRoute
   '/_authenticated/account/': typeof AuthenticatedAccountIndexRoute
+  '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/account/balances/deposit': typeof AuthenticatedAccountBalancesDepositRoute
   '/_authenticated/account/balances/withdraw': typeof AuthenticatedAccountBalancesWithdrawRoute
   '/_authenticated/p2p/trade/$id': typeof AuthenticatedP2pTradeIdRoute
@@ -920,12 +967,17 @@ export interface FileRouteTypes {
     | '/account/profile'
     | '/account/referrals'
     | '/account/security'
+    | '/admin/accounts'
     | '/admin/ai'
+    | '/admin/ignite'
+    | '/admin/markets'
+    | '/admin/users'
     | '/p2p/dashboard'
     | '/p2p/jury'
     | '/ai/coin/$id'
     | '/p2p/seller/$handle'
     | '/account/'
+    | '/admin/'
     | '/account/balances/deposit'
     | '/account/balances/withdraw'
     | '/p2p/trade/$id'
@@ -985,7 +1037,6 @@ export interface FileRouteTypes {
     | '/swap'
     | '/terms'
     | '/tsd'
-    | '/admin'
     | '/api-keys'
     | '/trades'
     | '/wallet'
@@ -1012,12 +1063,17 @@ export interface FileRouteTypes {
     | '/account/profile'
     | '/account/referrals'
     | '/account/security'
+    | '/admin/accounts'
     | '/admin/ai'
+    | '/admin/ignite'
+    | '/admin/markets'
+    | '/admin/users'
     | '/p2p/dashboard'
     | '/p2p/jury'
     | '/ai/coin/$id'
     | '/p2p/seller/$handle'
     | '/account'
+    | '/admin'
     | '/account/balances/deposit'
     | '/account/balances/withdraw'
     | '/p2p/trade/$id'
@@ -1107,12 +1163,17 @@ export interface FileRouteTypes {
     | '/_authenticated/account/profile'
     | '/_authenticated/account/referrals'
     | '/_authenticated/account/security'
-    | '/_authenticated/admin_/ai'
+    | '/_authenticated/admin/accounts'
+    | '/_authenticated/admin/ai'
+    | '/_authenticated/admin/ignite'
+    | '/_authenticated/admin/markets'
+    | '/_authenticated/admin/users'
     | '/_authenticated/p2p/dashboard'
     | '/_authenticated/p2p/jury'
     | '/ai/coin/$id'
     | '/p2p/seller/$handle'
     | '/_authenticated/account/'
+    | '/_authenticated/admin/'
     | '/_authenticated/account/balances/deposit'
     | '/_authenticated/account/balances/withdraw'
     | '/_authenticated/p2p/trade/$id'
@@ -1574,12 +1635,47 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAccountSecurityRouteImport
       parentRoute: typeof AuthenticatedAccountRoute
     }
-    '/_authenticated/admin_/ai': {
-      id: '/_authenticated/admin_/ai'
-      path: '/admin/ai'
+    '/_authenticated/admin/': {
+      id: '/_authenticated/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/accounts': {
+      id: '/_authenticated/admin/accounts'
+      path: '/accounts'
+      fullPath: '/admin/accounts'
+      preLoaderRoute: typeof AuthenticatedAdminAccountsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/ai': {
+      id: '/_authenticated/admin/ai'
+      path: '/ai'
       fullPath: '/admin/ai'
       preLoaderRoute: typeof AuthenticatedAdminAiRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/ignite': {
+      id: '/_authenticated/admin/ignite'
+      path: '/ignite'
+      fullPath: '/admin/ignite'
+      preLoaderRoute: typeof AuthenticatedAdminIgniteRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/markets': {
+      id: '/_authenticated/admin/markets'
+      path: '/markets'
+      fullPath: '/admin/markets'
+      preLoaderRoute: typeof AuthenticatedAdminMarketsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/users': {
+      id: '/_authenticated/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AuthenticatedAdminUsersRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/p2p/dashboard': {
       id: '/_authenticated/p2p/dashboard'
@@ -1932,13 +2028,33 @@ const AuthenticatedAccountRouteChildren: AuthenticatedAccountRouteChildren = {
 const AuthenticatedAccountRouteWithChildren =
   AuthenticatedAccountRoute._addFileChildren(AuthenticatedAccountRouteChildren)
 
+interface AuthenticatedAdminRouteChildren {
+  AuthenticatedAdminAccountsRoute: typeof AuthenticatedAdminAccountsRoute
+  AuthenticatedAdminAiRoute: typeof AuthenticatedAdminAiRoute
+  AuthenticatedAdminIgniteRoute: typeof AuthenticatedAdminIgniteRoute
+  AuthenticatedAdminMarketsRoute: typeof AuthenticatedAdminMarketsRoute
+  AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
+  AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
+}
+
+const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
+  AuthenticatedAdminAccountsRoute: AuthenticatedAdminAccountsRoute,
+  AuthenticatedAdminAiRoute: AuthenticatedAdminAiRoute,
+  AuthenticatedAdminIgniteRoute: AuthenticatedAdminIgniteRoute,
+  AuthenticatedAdminMarketsRoute: AuthenticatedAdminMarketsRoute,
+  AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
+  AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
+}
+
+const AuthenticatedAdminRouteWithChildren =
+  AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
+
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAccountRoute: typeof AuthenticatedAccountRouteWithChildren
-  AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
   AuthenticatedApiKeysRoute: typeof AuthenticatedApiKeysRoute
   AuthenticatedTradesRoute: typeof AuthenticatedTradesRoute
   AuthenticatedWalletRoute: typeof AuthenticatedWalletRoute
-  AuthenticatedAdminAiRoute: typeof AuthenticatedAdminAiRoute
   AuthenticatedP2pDashboardRoute: typeof AuthenticatedP2pDashboardRoute
   AuthenticatedP2pJuryRoute: typeof AuthenticatedP2pJuryRoute
   AuthenticatedP2pTradeIdRoute: typeof AuthenticatedP2pTradeIdRoute
@@ -1946,11 +2062,10 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAccountRoute: AuthenticatedAccountRouteWithChildren,
-  AuthenticatedAdminRoute: AuthenticatedAdminRoute,
+  AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
   AuthenticatedApiKeysRoute: AuthenticatedApiKeysRoute,
   AuthenticatedTradesRoute: AuthenticatedTradesRoute,
   AuthenticatedWalletRoute: AuthenticatedWalletRoute,
-  AuthenticatedAdminAiRoute: AuthenticatedAdminAiRoute,
   AuthenticatedP2pDashboardRoute: AuthenticatedP2pDashboardRoute,
   AuthenticatedP2pJuryRoute: AuthenticatedP2pJuryRoute,
   AuthenticatedP2pTradeIdRoute: AuthenticatedP2pTradeIdRoute,

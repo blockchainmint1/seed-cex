@@ -11,12 +11,14 @@ export type AccountChangeProps = {
   timezone: string;
   /** Wording of the safest next step if it wasn't them. */
   ifNotYou?: string;
+  /** Replaces "You changed your …" when someone else made the change (e.g. an admin). */
+  headline?: string;
 };
 
 export function AccountChangeEmail(p: AccountChangeProps) {
   return (
-    <Layout preview={`You changed your ${p.thing} on Seeds. If that wasn't you, act now.`} eyebrow="Account change" title={`You changed your ${p.thing}.`} footer="security">
-      <P>We're confirming a change made while signed in to your Seeds account.</P>
+    <Layout preview={p.headline ?? `You changed your ${p.thing} on Seeds. If that wasn't you, act now.`} eyebrow="Account change" title={p.headline ?? `You changed your ${p.thing}.`} footer="security">
+      <P>{p.headline ? "We're letting you know about a change to your Seeds account." : "We're confirming a change made while signed in to your Seeds account."}</P>
       <Details rows={[
         ["What changed", p.thing],
         ...p.changes.map((c, i): [string, React.ReactNode] => [i === 0 ? "Details" : "", c]),

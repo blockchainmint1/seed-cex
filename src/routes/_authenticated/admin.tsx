@@ -1,364 +1,115 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { cancelIgniteSeat, getAdminIgnite, getAdminOverview } from "@/lib/admin.functions";
-import { fmtAgo, fmtAmount, fmtPrice } from "@/lib/format";
+import { ArrowLeft, CandlestickChart, ExternalLink, Flame, LayoutDashboard, ShieldCheck, Sparkles, UserCog, Users } from "lucide-react";
+import { amIAdmin } from "@/lib/admin.functions";
+import { getMyProfile } from "@/lib/profile.functions";
+import { useSession } from "@/hooks/use-session";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   staticData: { sitemap: false },
   head: () => ({
     meta: [
       { title: "Admin Console — Seeds" },
-      {
-        name: "description",
-        content:
-          "Operator view of Seeds accounts, authorizations, open orders, live trades and settlement health.",
-      },
+      { name: "description", content: "Operator view of Seeds: Ignite registrations, accounts, orders and trades, Seeds AI and admin access." },
       { property: "og:title", content: "Admin Console — Seeds" },
-      {
-        property: "og:description",
-        content:
-          "Operator view of Seeds accounts, authorizations, open orders, live trades and settlement health.",
-      },
+      { property: "og:description", content: "Operator view of Seeds: Ignite registrations, accounts, orders and trades, Seeds AI and admin access." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+      { name: "robots", content: "noindex" },
     ],
   }),
-  component: AdminPage,
+  component: AdminLayout,
 });
 
-function Panel({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="rounded-sm border border-border bg-surface">
-      <header className="border-b border-border px-4 py-2.5">
-        <h2 className="font-display text-[11px] font-bold tracking-[0.18em] text-foreground uppercase">
-          {title}
-        </h2>
-      </header>
-      <div className="overflow-x-auto">{children}</div>
-    </section>
-  );
-}
+const NAV = [
+  { to: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
+  { to: "/admin/ignite", label: "Ignite class", icon: Flame },
+  { to: "/admin/accounts", label: "Accounts", icon: Users },
+  { to: "/admin/markets", label: "Orders & trades", icon: CandlestickChart },
+  { to: "/admin/ai", label: "Seeds AI", icon: Sparkles },
+  { to: "/admin/users", label: "Admin access", icon: UserCog },
+] as const;
 
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-sm border border-border bg-surface px-3 py-2.5">
-      <div className="font-mono text-[10px] tracking-[0.16em] text-muted-foreground uppercase">
-        {label}
-      </div>
-      <div className="mt-1 font-display text-lg font-bold text-foreground">{value}</div>
-    </div>
-  );
-}
+const ELSEWHERE = [
+  { to: "/p2p/jury", label: "P2P jury" },
+  { to: "/swap", label: "Swaps" },
+  { to: "/account", label: "My account" },
+] as const;
 
-const short = (v: string | null) => (v ? `${v.slice(0, 6)}…${v.slice(-4)}` : "—");
+function AdminLayout() {
+  const { user } = useSession();
+  const check = useServerFn(amIAdmin);
+  const admin = useQuery({ queryKey: ["am-i-admin"], queryFn: () => check(), retry: false, staleTime: 60_000 });
+  const load = useServerFn(getMyProfile);
+  const profile = useQuery({ queryKey: ["my-profile"], queryFn: () => load(), enabled: admin.data === true });
 
-function AdminPage() {
-  const fetchOverview = useServerFn(getAdminOverview);
-  const q = useQuery({
-    queryKey: ["admin-overview"],
-    queryFn: () => fetchOverview(),
-    refetchInterval: 30_000,
-    retry: false,
-  });
-
-  if (q.isLoading) {
+  if (admin.isPending) {
+    return <div className="mx-auto max-w-7xl px-5 py-10 font-mono text-xs text-muted-foreground">Checking admin access…</div>;
+  }
+  if (!admin.data) {
     return (
-      <div className="mx-auto max-w-7xl px-5 py-10 font-mono text-xs text-muted-foreground">
-        Loading admin console…
+      <div className="mx-auto max-w-7xl px-5 py-16">
+        <div className="max-w-xl">
+          <p className="font-mono text-[11px] tracking-[0.28em] text-primary uppercase">Admin</p>
+          <h1 className="mt-1 font-display text-2xl font-extrabold">Admin only</h1>
+          <p className="mt-2 text-sm text-muted-foreground">This area is for the Seeds team. An existing admin can give your account access from Admin access.</p>
+          <Button asChild size="sm" variant="outline" className="mt-5"><Link to="/account"><ArrowLeft /> Back to my account</Link></Button>
+        </div>
       </div>
     );
   }
 
-  if (q.error) {
-    return (
-      <div className="mx-auto max-w-3xl px-5 py-16">
-        <h1 className="font-display text-2xl font-bold">Admin only</h1>
-        <p className="mt-2 font-mono text-xs text-muted-foreground">
-          This console requires the admin role on your account.
-        </p>
-      </div>
-    );
-  }
-
-  const d = q.data!;
-
   return (
-    <div className="mx-auto max-w-7xl space-y-6 px-5 py-8">
-      <header>
-        <h1 className="font-display text-2xl font-bold tracking-tight">Admin console</h1>
-        <p className="mt-1 font-mono text-[11px] text-muted-foreground">
-          Snapshot {fmtAgo(d.generatedAt)} · auto-refreshes every 30s ·{" "}
-          <Link to="/admin/ai" className="text-primary underline">Seeds AI admin</Link>
-        </p>
+    <div className="mx-auto max-w-7xl px-5 py-10">
+      <header className="flex flex-wrap items-center gap-4 border-b border-border pb-6">
+        <div aria-hidden className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-action text-action-foreground">
+          <ShieldCheck className="h-6 w-6" />
+        </div>
+        <div className="min-w-[12rem] flex-1">
+          <p className="font-mono text-[11px] tracking-[0.28em] text-primary uppercase">Admin</p>
+          <h1 className="font-display text-2xl font-extrabold md:text-3xl">Admin console</h1>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <span>Signed in as {profile.data?.display_name || user?.email || "admin"}</span>
+            <span className="rounded-sm bg-primary/15 px-1.5 py-0.5 font-mono text-[10px] text-primary uppercase">admin</span>
+          </div>
+        </div>
+        <Button asChild size="sm" variant="outline"><Link to="/account"><ArrowLeft /> My account</Link></Button>
       </header>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-6">
-        <Stat label="Accounts" value={String(d.totals.accounts)} />
-        <Stat label="Vaults" value={String(d.totals.vaults)} />
-        <Stat label="Live auths" value={String(d.totals.activeAuthorizations)} />
-        <Stat label="Authorized cap" value={fmtAmount(d.totals.authorizedCapTotal)} />
-        <Stat label="Open orders" value={String(d.totals.openOrders)} />
-        <Stat label="Open trades" value={String(d.totals.openTrades)} />
-        <Stat label="Trades 24h" value={String(d.totals.trades24h)} />
-        <Stat label="Trades all" value={String(d.totals.tradesAll)} />
-        <Stat label="Volume 24h (quote)" value={fmtAmount(d.totals.tradedQuoteValue24h)} />
-        <Stat label="Volume all (quote)" value={fmtAmount(d.totals.tradedQuoteValueAll)} />
-        <Stat label="Failed legs" value={String(d.totals.failedLegs)} />
-        <Stat label="API keys" value={String(d.totals.apiKeys)} />
-      </div>
-
-      <IgnitePanel />
-
-      <Panel title="Accounts">
-        <table className="w-full font-mono text-[11px]">
-          <thead className="text-muted-foreground">
-            <tr className="border-b border-border">
-              <th className="px-4 py-2 text-left">User</th>
-              <th className="px-4 py-2 text-left">Vault</th>
-              <th className="px-4 py-2 text-left">TXC</th>
-              <th className="px-4 py-2 text-left">EVM</th>
-              <th className="px-4 py-2 text-right">Auths</th>
-              <th className="px-4 py-2 text-right">Cap</th>
-              <th className="px-4 py-2 text-right">Open</th>
-              <th className="px-4 py-2 text-right">Trades</th>
-              <th className="px-4 py-2 text-right">Value</th>
-              <th className="px-4 py-2 text-right">Last activity</th>
-            </tr>
-          </thead>
-          <tbody>
-            {d.accounts.map((a) => (
-              <tr key={a.userId} className="border-b border-border/50">
-                <td className="px-4 py-2 text-foreground">{a.displayName}</td>
-                <td className="px-4 py-2">{a.hasVault ? "yes" : "—"}</td>
-                <td className="px-4 py-2">{short(a.txcAddress)}</td>
-                <td className="px-4 py-2">{short(a.evmAddress)}</td>
-                <td className="px-4 py-2 text-right">{a.activeAuthorizations}</td>
-                <td className="px-4 py-2 text-right">{fmtAmount(a.authorizedCap)}</td>
-                <td className="px-4 py-2 text-right">{a.openOrders}</td>
-                <td className="px-4 py-2 text-right">{a.trades}</td>
-                <td className="px-4 py-2 text-right">{fmtAmount(a.tradedQuoteValue)}</td>
-                <td className="px-4 py-2 text-right text-muted-foreground">
-                  {a.lastActivity ? fmtAgo(a.lastActivity) : "—"}
-                </td>
-              </tr>
-            ))}
-            {d.accounts.length === 0 ? (
-              <tr>
-                <td className="px-4 py-6 text-muted-foreground" colSpan={10}>
-                  No accounts yet.
-                </td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
-      </Panel>
-
-      <Panel title="Open trades">
-        <TradeTable rows={d.openTrades} empty="No trades awaiting settlement." />
-      </Panel>
-
-      <Panel title="Open orders">
-        <table className="w-full font-mono text-[11px]">
-          <thead className="text-muted-foreground">
-            <tr className="border-b border-border">
-              <th className="px-4 py-2 text-left">Pair</th>
-              <th className="px-4 py-2 text-left">Side</th>
-              <th className="px-4 py-2 text-right">Price</th>
-              <th className="px-4 py-2 text-right">Amount</th>
-              <th className="px-4 py-2 text-right">Filled</th>
-              <th className="px-4 py-2 text-left">Status</th>
-              <th className="px-4 py-2 text-left">User</th>
-              <th className="px-4 py-2 text-right">Age</th>
-            </tr>
-          </thead>
-          <tbody>
-            {d.openOrders.map((o) => (
-              <tr key={o.id} className="border-b border-border/50">
-                <td className="px-4 py-2 text-foreground">{o.pair.replace("_", " / ")}</td>
-                <td
-                  className={`px-4 py-2 uppercase ${o.side === "buy" ? "text-primary" : "text-destructive"}`}
+      <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[13rem_minmax(0,1fr)]">
+        <nav aria-label="Admin sections" className="min-w-0 lg:sticky lg:top-24 lg:self-start">
+          <ul className="-mx-5 flex gap-1 overflow-x-auto border-b border-border px-5 pb-2 lg:mx-0 lg:flex-col lg:border-b-0 lg:px-0 lg:pb-0">
+            {NAV.map((n) => (
+              <li key={n.to} className="shrink-0">
+                <Link
+                  to={n.to}
+                  activeOptions={{ exact: "exact" in n && n.exact }}
+                  className="flex items-center gap-2.5 whitespace-nowrap rounded-sm px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground data-[status=active]:bg-primary/10 data-[status=active]:font-semibold data-[status=active]:text-primary"
                 >
-                  {o.side}
-                </td>
-                <td className="px-4 py-2 text-right">{fmtPrice(o.price)}</td>
-                <td className="px-4 py-2 text-right">{fmtAmount(o.amount)}</td>
-                <td className="px-4 py-2 text-right">{fmtAmount(o.filled)}</td>
-                <td className="px-4 py-2">{o.status}</td>
-                <td className="px-4 py-2">{short(o.userId)}</td>
-                <td className="px-4 py-2 text-right text-muted-foreground">
-                  {fmtAgo(o.createdAt)}
-                </td>
-              </tr>
+                  <n.icon className="h-4 w-4" /> {n.label}
+                </Link>
+              </li>
             ))}
-            {d.openOrders.length === 0 ? (
-              <tr>
-                <td className="px-4 py-6 text-muted-foreground" colSpan={8}>
-                  Order book is empty.
-                </td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
-      </Panel>
-
-      <Panel title="Recent trades">
-        <TradeTable rows={d.recentTrades} empty="No trades yet." />
-      </Panel>
+          </ul>
+          <div className="mt-6 hidden border-t border-border pt-4 lg:block">
+            <p className="px-3 font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">Elsewhere</p>
+            <ul className="mt-2">
+              {ELSEWHERE.map((n) => (
+                <li key={n.to}>
+                  <Link to={n.to} className="flex items-center justify-between rounded-sm px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">
+                    {n.label} <ExternalLink className="h-3 w-3" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </nav>
+        <div className="min-w-0">
+          <Outlet />
+        </div>
+      </div>
     </div>
-  );
-}
-
-function TradeTable({
-  rows,
-  empty,
-}: {
-  rows: {
-    id: string;
-    pair: string;
-    side: string;
-    price: number;
-    amount: number;
-    status: string;
-    makerId: string | null;
-    takerId: string | null;
-    createdAt: string;
-    legs: { leg: string; status: string; txid: string | null }[];
-  }[];
-  empty: string;
-}) {
-  return (
-    <table className="w-full font-mono text-[11px]">
-      <thead className="text-muted-foreground">
-        <tr className="border-b border-border">
-          <th className="px-4 py-2 text-left">Pair</th>
-          <th className="px-4 py-2 text-left">Side</th>
-          <th className="px-4 py-2 text-right">Price</th>
-          <th className="px-4 py-2 text-right">Amount</th>
-          <th className="px-4 py-2 text-left">Status</th>
-          <th className="px-4 py-2 text-left">Legs</th>
-          <th className="px-4 py-2 text-left">Maker</th>
-          <th className="px-4 py-2 text-left">Taker</th>
-          <th className="px-4 py-2 text-right">Age</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((t) => (
-          <tr key={t.id} className="border-b border-border/50">
-            <td className="px-4 py-2 text-foreground">{t.pair.replace("_", " / ")}</td>
-            <td
-              className={`px-4 py-2 uppercase ${t.side === "buy" ? "text-primary" : "text-destructive"}`}
-            >
-              {t.side}
-            </td>
-            <td className="px-4 py-2 text-right">{fmtPrice(t.price)}</td>
-            <td className="px-4 py-2 text-right">{fmtAmount(t.amount)}</td>
-            <td className="px-4 py-2">{t.status}</td>
-            <td className="px-4 py-2">
-              {t.legs.length
-                ? t.legs.map((l) => `${l.leg}:${l.status}`).join(" · ")
-                : "—"}
-            </td>
-            <td className="px-4 py-2">{short(t.makerId)}</td>
-            <td className="px-4 py-2">{short(t.takerId)}</td>
-            <td className="px-4 py-2 text-right text-muted-foreground">{fmtAgo(t.createdAt)}</td>
-          </tr>
-        ))}
-        {rows.length === 0 ? (
-          <tr>
-            <td className="px-4 py-6 text-muted-foreground" colSpan={9}>
-              {empty}
-            </td>
-          </tr>
-        ) : null}
-      </tbody>
-    </table>
-  );
-}
-
-const STATUS_TONE: Record<string, string> = {
-  confirmed: "text-primary",
-  pending: "text-warning",
-  underpaid: "text-warning",
-  canceled: "text-muted-foreground line-through",
-  expired: "text-muted-foreground",
-};
-
-function IgnitePanel() {
-  const fetchIgnite = useServerFn(getAdminIgnite);
-  const cancel = useServerFn(cancelIgniteSeat);
-  const qc = useQueryClient();
-  const [busy, setBusy] = useState<string | null>(null);
-  const q = useQuery({ queryKey: ["admin-ignite"], queryFn: () => fetchIgnite(), refetchInterval: 30_000, retry: false });
-  if (!q.data) return null;
-  const d = q.data;
-
-  async function onCancel(id: string, name: string) {
-    if (!window.confirm(`Cancel ${name}'s Ignite seat? This frees the seat. Refund the payment in NectarPay separately.`)) return;
-    setBusy(id);
-    try {
-      await cancel({ data: { id } });
-      await qc.invalidateQueries({ queryKey: ["admin-ignite"] });
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  return (
-    <Panel title={`Ignite class registrations · ${d.confirmed} confirmed · ${d.seatsLeft} of ${d.capacity} seats left · ${d.pending} pending · ${d.canceled} cancelled`}>
-      <table className="w-full whitespace-nowrap font-mono text-[11px]">
-        <thead className="text-muted-foreground">
-          <tr className="border-b border-border">
-            <th className="px-4 py-2 text-left">Name</th>
-            <th className="px-4 py-2 text-left">Email</th>
-            <th className="px-4 py-2 text-left">Phone</th>
-            <th className="px-4 py-2 text-left">Status</th>
-            <th className="px-4 py-2 text-left">Paid with</th>
-            <th className="px-4 py-2 text-left">Paid by</th>
-            <th className="px-4 py-2 text-left">Invoice</th>
-            <th className="px-4 py-2 text-left">Referred by</th>
-            <th className="px-4 py-2 text-right">Registered</th>
-            <th className="px-4 py-2 text-right" />
-          </tr>
-        </thead>
-        <tbody>
-          {d.rows.map((r) => (
-            <tr key={r.id} className="border-b border-border/50">
-              <td className="px-4 py-2 text-foreground">{r.fullName}</td>
-              <td className="px-4 py-2">{r.email}</td>
-              <td className="px-4 py-2">{r.phone}</td>
-              <td className={`px-4 py-2 ${STATUS_TONE[r.status] ?? ""}`}>{r.status === "canceled" ? "cancelled" : r.status}</td>
-              <td className="px-4 py-2">
-                {r.status === "confirmed" || r.paidAsset
-                  ? `${r.paidUsd != null ? `$${r.paidUsd} ` : ""}${r.paidAsset ?? r.paidChain ?? ""}${r.method === "peer" ? " · Peer Pay" : ""}`
-                  : r.method === "peer" ? "Peer Pay" : "crypto"}
-              </td>
-              <td className="px-4 py-2">{r.payerName ?? (r.method === "peer" ? "—" : "self")}</td>
-              <td className="px-4 py-2" title={r.invoiceId ?? undefined}>{short(r.invoiceId)}</td>
-              <td className="px-4 py-2">{r.refCode ?? "—"}</td>
-              <td className="px-4 py-2 text-right text-muted-foreground">{fmtAgo(r.createdAt)}</td>
-              <td className="px-4 py-2 text-right">
-                {r.status !== "canceled" ? (
-                  <button
-                    type="button"
-                    className="rounded-sm border border-border px-2 py-0.5 text-destructive hover:bg-destructive/10 disabled:opacity-50"
-                    disabled={busy === r.id}
-                    onClick={() => onCancel(r.id, r.fullName)}
-                  >
-                    {busy === r.id ? "Cancelling…" : "Cancel seat"}
-                  </button>
-                ) : null}
-              </td>
-            </tr>
-          ))}
-          {d.rows.length === 0 ? (
-            <tr>
-              <td className="px-4 py-6 text-muted-foreground" colSpan={10}>No registrations yet.</td>
-            </tr>
-          ) : null}
-        </tbody>
-      </table>
-    </Panel>
   );
 }

@@ -110,3 +110,6 @@
 - [ ] PulseChain withdrawals open to members + deposits open for them (blocked: pilot result, auditor sign-off)
 - [ ] Seeds AI buying PLS/HEX/pHEX through their TSD markets depends on sellers on the book (blocked: AI execution not built; linked-pocket market settlement not connected)
 - [x] Seeds AI "Find my playbook": tries 231 rule combos, ranks on older history only, fresh-data held-up/faded check, optional AI write-up (signed-in, 10/day)
+
+- [x] Admin: /admin sub-nav (account-style) + /admin/users to give or remove admin access (HME members only, can't remove yourself or the last admin, history + email notice)
+- [x] Admin: /admin/ignite — registrants per class, searchable + sortable table, email a registrant, re-send payment link
