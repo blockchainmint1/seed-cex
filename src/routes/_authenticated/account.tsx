@@ -8,6 +8,7 @@ import { getMyProfile } from "@/lib/profile.functions";
 import { useSession } from "@/hooks/use-session";
 import { Button } from "@/components/ui/button";
 import { usePocketLink } from "@/components/account/use-pocket";
+import { IgniteReminder } from "@/components/ignite/IgniteReminder";
 
 export const Route = createFileRoute("/_authenticated/account")({
   staticData: { sitemap: false },
@@ -113,6 +114,7 @@ function AccountLayout() {
         </nav>
         <div className="min-w-0">
           {profile.error ? <p role="alert" className="mb-4 text-sm text-destructive">Could not load your account. Refresh to retry.</p> : null}
+          <IgniteReminder />
           <Outlet />
         </div>
       </div>

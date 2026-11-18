@@ -37,7 +37,14 @@ export function safeReturnPath(raw: unknown): string | null {
   return `${u.pathname}${u.search}${u.hash}`;
 }
 
-type Stored = { p: string; t: number };
+/**
+ * After the remembered page is used it stays readable for 2 minutes, because
+ * the Honest.Money popup and the tab that opened it both finish sign-in and
+ * both ask where to go. Without this, whichever asked second got Profile.
+ */
+export const USED_GRACE_MS = 2 * 60 * 1000;
+
+type Stored = { p: string; t: number; u?: number };
 
 /** Remember where to come back to. Ignores unsafe or sign-in paths. */
 export function rememberReturnPath(raw: unknown, now = Date.now()): void {
@@ -66,6 +73,7 @@ export function parseStored(v: string | null, now = Date.now()): string | null {
   try {
     const o = JSON.parse(v) as Partial<Stored>;
     if (typeof o.t !== "number" || now - o.t > TTL_MS || o.t > now + 60_000) return null;
+    if (typeof o.u === "number" && now - o.u > USED_GRACE_MS) return null;
     return safeReturnPath(o.p);
   } catch {
     // Older builds stored a bare path in sessionStorage.
@@ -73,14 +81,34 @@ export function parseStored(v: string | null, now = Date.now()): string | null {
   }
 }
 
-/** Use (and forget) the remembered page; falls back to Profile. */
-export function takeReturnPath(fallback = DEFAULT_AFTER_SIGNIN): string {
+/** Mark a stored value as used now (kept for USED_GRACE_MS); exported for tests. */
+export function markUsed(v: string | null, now = Date.now()): string | null {
+  const p = parseStored(v, now);
+  if (!p) return null;
+  let t = now;
+  let u = now;
+  try {
+    const o = JSON.parse(v as string) as Partial<Stored>;
+    if (typeof o.t === "number") t = o.t;
+    if (typeof o.u === "number") u = o.u; // first use starts the clock
+  } catch { /* bare path */ }
+  return JSON.stringify({ p, t, u } satisfies Stored);
+}
+
+/**
+ * Use the remembered page; falls back to Profile. Every window that finishes
+ * the same sign-in within 2 minutes gets the same answer.
+ */
+export function takeReturnPath(fallback = DEFAULT_AFTER_SIGNIN, now = Date.now()): string {
   let found: string | null = null;
   for (const store of [safeStore("session"), safeStore("local")]) {
     if (!store) continue;
     try {
-      found = found ?? parseStored(store.getItem(KEY));
-      store.removeItem(KEY);
+      const raw = store.getItem(KEY);
+      found = found ?? parseStored(raw, now);
+      const used = markUsed(raw, now);
+      if (used) store.setItem(KEY, used);
+      else store.removeItem(KEY);
     } catch { /* ignore */ }
   }
   return found ?? fallback;

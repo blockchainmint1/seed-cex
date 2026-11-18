@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "@/hooks/use-session";
 import { rememberReturnPath, takeReturnPath } from "@/lib/return-path";
 
@@ -40,9 +40,24 @@ function Auth() {
     if (redirect) rememberReturnPath(redirect);
   }, [redirect]);
 
+  // Two signals say "signed in": this tab seeing the new session, and the
+  // popup's "done" message. Leave exactly once, or the second one would
+  // overwrite the first (that is how /register visitors ended up on Profile).
+  const left = useRef(false);
+  const msgListener = useRef<((ev: MessageEvent) => void) | null>(null);
+  const goBack = useCallback(() => {
+    if (left.current) return;
+    left.current = true;
+    if (msgListener.current) window.removeEventListener("message", msgListener.current);
+    navigate({ href: takeReturnPath(), replace: true });
+  }, [navigate]);
+  useEffect(() => () => {
+    if (msgListener.current) window.removeEventListener("message", msgListener.current);
+  }, []);
+
   useEffect(() => {
-    if (!loading && user) navigate({ href: takeReturnPath(), replace: true });
-  }, [loading, user, navigate]);
+    if (!loading && user) goBack();
+  }, [loading, user, goBack]);
 
   function honestMoney() {
     setError(null);
@@ -67,9 +82,10 @@ function Auth() {
     }
     const onMsg = (ev: MessageEvent) => {
       if (ev.origin !== window.location.origin || ev.data?.type !== "seeds-sso-done") return;
-      window.removeEventListener("message", onMsg);
-      navigate({ href: takeReturnPath(), replace: true });
+      goBack();
     };
+    if (msgListener.current) window.removeEventListener("message", msgListener.current);
+    msgListener.current = onMsg;
     window.addEventListener("message", onMsg);
   }
 

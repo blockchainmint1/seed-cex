@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseStored, safeReturnPath, shouldReplace } from "./return-path";
+import { markUsed, parseStored, safeReturnPath, shouldReplace, USED_GRACE_MS } from "./return-path";
 
 describe("safeReturnPath", () => {
   test("keeps /register", () => expect(safeReturnPath("/register")).toBe("/register"));
@@ -39,4 +39,21 @@ describe("shouldReplace", () => {
     expect(shouldReplace("/register", "/p2p")).toBe(true));
   test("home page is remembered when nothing else is", () =>
     expect(shouldReplace(null, "/")).toBe(true));
+});
+
+describe("used page stays readable briefly", () => {
+  const now = 1_800_000_000_000;
+  const fresh = JSON.stringify({ p: "/register", t: now - 60_000 });
+  test("popup and opener both get /register within 2 minutes", () => {
+    const used = markUsed(fresh, now);
+    expect(parseStored(used, now + 30_000)).toBe("/register");
+    expect(parseStored(markUsed(used, now + 30_000), now + USED_GRACE_MS)).toBe("/register");
+  });
+  test("forgotten 2 minutes after first use", () => {
+    const used = markUsed(fresh, now);
+    // a second read does not restart the 2-minute clock
+    const again = markUsed(used, now + 90_000);
+    expect(parseStored(again, now + USED_GRACE_MS + 1)).toBeNull();
+  });
+  test("grace is 2 minutes", () => expect(USED_GRACE_MS).toBe(120_000));
 });
