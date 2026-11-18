@@ -141,27 +141,6 @@ export function PlanBuilder({ coins, settings, onChange, signedIn }: {
           <Panel>{run.error}</Panel>
         ) : (
           <>
-            <div className="grid gap-3 rounded-sm border border-border bg-surface p-4 text-sm sm:grid-cols-3">
-              <div>
-                <div className="label-caps">Total put in</div>
-                <div className="num font-display text-2xl font-bold">{fmtUsd(run.plan.totalIn)}</div>
-                <div className="num text-xs text-muted-foreground">{fmtUsd(s.amount)} start + {fmtUsd(run.plan.totalIn - s.amount)} top-ups</div>
-              </div>
-              <div>
-                <div className="label-caps">Worth on {run.points.at(-1)?.day}</div>
-                <div className="num font-display text-2xl font-bold">{fmtUsd(run.plan.finalValue)}</div>
-              </div>
-              <div>
-                <div className="label-caps">Gain / loss</div>
-                <div className={`num font-display text-2xl font-bold ${tone(run.plan.finalValue - run.plan.totalIn)}`}>{fmtUsd(run.plan.finalValue - run.plan.totalIn)}</div>
-                <div className="num text-xs text-muted-foreground">{fmtPct(run.plan.totalReturn)} on money put in</div>
-              </div>
-            </div>
-
-            <HoldNow run={run} symbol={symbol} />
-
-            <LockPanel settings={s} signedIn={signedIn} />
-
             <div className="grid gap-3 sm:grid-cols-3">
               {([["Your plan", run.plan], ["Buy & hold these coins", run.hold], ["Just Bitcoin", run.btc]] as const).map(([label, r]) => (
                 <div key={label} className="rounded-sm border border-border bg-surface p-4">
@@ -188,6 +167,27 @@ export function PlanBuilder({ coins, settings, onChange, signedIn }: {
                 </LineChart>
               </ResponsiveContainer>
             </div>
+
+            <div className="grid gap-3 rounded-sm border border-border bg-surface p-4 text-sm sm:grid-cols-3">
+              <div>
+                <div className="label-caps">Total put in</div>
+                <div className="num font-display text-2xl font-bold">{fmtUsd(run.plan.totalIn)}</div>
+                <div className="num text-xs text-muted-foreground">{fmtUsd(s.amount)} start + {fmtUsd(run.plan.totalIn - s.amount)} top-ups</div>
+              </div>
+              <div>
+                <div className="label-caps">Worth on {run.points.at(-1)?.day}</div>
+                <div className="num font-display text-2xl font-bold">{fmtUsd(run.plan.finalValue)}</div>
+              </div>
+              <div>
+                <div className="label-caps">Gain / loss</div>
+                <div className={`num font-display text-2xl font-bold ${tone(run.plan.finalValue - run.plan.totalIn)}`}>{fmtUsd(run.plan.finalValue - run.plan.totalIn)}</div>
+                <div className="num text-xs text-muted-foreground">{fmtPct(run.plan.totalReturn)} on money put in</div>
+              </div>
+            </div>
+
+            <HoldNow run={run} symbol={symbol} />
+
+            <LockPanel settings={s} signedIn={signedIn} />
 
             <div className="grid gap-3 sm:grid-cols-2">
               <Panel title="Costs & activity">
