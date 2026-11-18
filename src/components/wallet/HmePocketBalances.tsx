@@ -41,7 +41,7 @@ export function HmePocketBalances({ addresses, linkId }: { addresses: Record<str
         utxo: utxo.status === "fulfilled" ? utxo.value : [],
         btc: btc.status === "fulfilled" ? btc.value : null,
         evm: evm.status === "fulfilled" ? evm.value : [],
-        extra: extra.status === "fulfilled" ? extra.value : [],
+        extra: extra.status === "fulfilled" && Array.isArray(extra.value) ? extra.value : [],
       };
     },
     refetchInterval: 60_000,
@@ -60,7 +60,7 @@ export function HmePocketBalances({ addresses, linkId }: { addresses: Record<str
     }),
     ...HME_WALLET_CANT_HOLD.map((c: PocketCoin) => ({
       symbol: c, network: POCKET_SPECS[c].name, address: addresses[c], notInHme: true,
-      balance: d?.extra.find((r) => r.coin === c)?.balance ?? null,
+      balance: (d?.extra ?? []).find((r) => r.coin === c)?.balance ?? null,
     })),
     ...(d?.evm ?? []).map((r) => ({ symbol: r.symbol, network: `${r.chainName} · EVM`, address: addresses.EVM, balance: r.online ? r.balance : null })),
   ].filter((r) => Boolean(r.address));

@@ -30,6 +30,7 @@ export function RevokeSeedsDialog({ extraCoins, pending, onConfirm }: { extraCoi
   });
   const check = revokeCheck(balances.data ?? []);
   const checking = extraCoins.length > 0 && balances.isFetching;
+  const unread = balances.isError ? extraCoins : check.unknown;
   const needsAck = extraCoins.length > 0 && (check.stranded.length > 0 || check.unknown.length > 0 || balances.isError);
 
   return (
@@ -65,8 +66,8 @@ export function RevokeSeedsDialog({ extraCoins, pending, onConfirm }: { extraCoi
             </div>
           ) : check.unknown.length > 0 || balances.isError ? (
             <p className="border-l-2 border-warn pl-3 text-sm text-foreground">
-              We couldn’t read {balances.isError ? listCoins(extraCoins) : listCoins(check.unknown)} right now. HME Wallet can’t hold
-              these, so if any are in your pocket, <Link to="/swap" className="text-primary underline">swap them to TSD</Link> before you revoke.
+              We couldn’t read {listCoins(unread)} right now. HME Wallet can’t hold {unread.length > 1 ? "these coins" : "this coin"}, so if you
+              have any in your pocket, <Link to="/swap" className="text-primary underline">swap {unread.length > 1 ? "them" : "it"} to TSD</Link> before you revoke.
             </p>
           ) : (
             <p className="text-sm text-muted-foreground">Your {listCoins(extraCoins)} pockets are empty, so nothing is left behind.</p>
