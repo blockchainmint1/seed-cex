@@ -224,7 +224,7 @@ export const getAdminOverview = createServerFn({ method: "GET" })
         apiKeys: apiKeys.count ?? 0,
         withdrawals: withdrawals.count ?? 0,
       },
-      accounts: accounts.slice(0, 200),
+      accounts,
       openTrades: openTradeRows.slice(0, 100).map(mapTrade),
       recentTrades: tradeRows.slice(0, 50).map(mapTrade),
       openOrders: orderRows

@@ -58,6 +58,34 @@ export function SortHeader<K extends string>({ label, k, sort, onSort, align = "
   );
 }
 
+/** Page controls for long admin tables: rows-per-page picker + first/prev/next/last. */
+export function Pager({ page, pages, from, to, total, size, sizes, onPage, onSize }: {
+  page: number; pages: number; from: number; to: number; total: number; size: number;
+  sizes: readonly number[]; onPage: (p: number) => void; onSize: (n: number) => void;
+}) {
+  const btn = "rounded-sm border border-border px-2.5 py-1 text-xs font-semibold disabled:opacity-40 hover:border-primary disabled:hover:border-border";
+  return (
+    <nav aria-label="Pages" className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-2.5 text-xs text-muted-foreground">
+      <div className="flex items-center gap-3">
+        <span className="num">{total ? `${from}–${to} of ${total}` : "0 of 0"}</span>
+        <label className="flex items-center gap-1.5">
+          <span>Rows</span>
+          <select value={size} onChange={(e) => onSize(Number(e.target.value))} className="rounded-sm border border-border bg-background px-1.5 py-1 text-xs text-foreground">
+            {sizes.map((n) => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </label>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <button type="button" className={btn} disabled={page === 0} onClick={() => onPage(0)}>First</button>
+        <button type="button" className={btn} disabled={page === 0} onClick={() => onPage(page - 1)}>Prev</button>
+        <span className="num px-1">Page {page + 1} of {pages}</span>
+        <button type="button" className={btn} disabled={page >= pages - 1} onClick={() => onPage(page + 1)}>Next</button>
+        <button type="button" className={btn} disabled={page >= pages - 1} onClick={() => onPage(pages - 1)}>Last</button>
+      </div>
+    </nav>
+  );
+}
+
 export type TradeRow = {
   id: string; pair: string; side: string; price: number; amount: number; status: string;
   makerId: string | null; takerId: string | null; createdAt: string; legs: { leg: string; status: string; txid: string | null }[];
