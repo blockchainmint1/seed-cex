@@ -14,7 +14,7 @@ import { TEMPLATES, renderTemplate, type TemplateName, type TemplateProps } from
 import { sesConfigured, sesSend } from "./ses.server";
 
 /** honest.money is a verified SES identity; seeds.honest.money is a subdomain of it. */
-export const EMAIL_FROM = "Seeds <hello@seeds.honest.money>";
+export const EMAIL_FROM = "Seeds <no-reply@seeds.honest.money>";
 export const EMAIL_REPLY_TO = "support@honest.money";
 
 export type Recipient = { userId: string; email: string; name: string; timezone: string; tradeEmails: boolean; weeklyEmails: boolean };

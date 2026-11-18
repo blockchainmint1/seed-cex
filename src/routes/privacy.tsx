@@ -227,9 +227,10 @@ function Privacy() {
       <Section id="alerts" n={9} title="Email and Telegram">
         <Sub title="Email">
           <p>
-            We send emails through Amazon Web Services from hello@seeds.honest.money: welcome
+            We send emails through Amazon Web Services from no-reply@seeds.honest.money: welcome
             messages, trade and P2P confirmations, change notices, registration confirmations and,
-            if you want them, weekly updates. We keep a log of which notices we sent and when, so
+            if you want them, weekly updates. That mailbox isn&rsquo;t watched &mdash; replies go to
+            support@honest.money. We keep a log of which notices we sent and when, so
             you don&rsquo;t get duplicates. You can turn off trade receipts and weekly updates on
             your Profile or with the unsubscribe link. Security notices &mdash; such as a change to
             your account &mdash; are always sent.
