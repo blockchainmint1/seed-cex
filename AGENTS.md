@@ -32,3 +32,4 @@
 - Seeds sends member coins outside only on PulseChain (src/lib/pulse/AGENTS.md). Why: HME Wallet can't.
 - Seeds AI rules live in src/lib/ai/AGENTS.md. Why: the engine and playbook have their own constraints.
 - /admin is a layout (side menu) with child-route tabs; each child server fn still checks admin. Admin access changes only via set_admin_role (admin-users.functions.ts; rules in admin-users-rules.ts, tested): locked, HME members only, no self or last-admin removal, logged. Ignite admin emails (ignite-admin*.ts) are logged in ignite_admin_emails; payment links point to /ignite, never an old checkout. Why: access and payment emails must never be silent or repeatable.
+- The demo-mode banner (src/components/site/DemoBanner.tsx) renders once in __root.tsx above the sticky header and links to /coming-soon; remove it there when trading goes live. Why: one switch, and it scrolls away instead of shifting sticky offsets.

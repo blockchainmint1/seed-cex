@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as ApiDocsRouteImport } from './routes/api-docs'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as BrandRouteImport } from './routes/brand'
+import { Route as ComingSoonRouteImport } from './routes/coming-soon'
 import { Route as CustodyRouteImport } from './routes/custody'
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
 import { Route as IgniteRouteImport } from './routes/ignite'
@@ -133,6 +134,11 @@ const AuthRoute = AuthRouteImport.update({
 const BrandRoute = BrandRouteImport.update({
   id: '/brand',
   path: '/brand',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ComingSoonRoute = ComingSoonRouteImport.update({
+  id: '/coming-soon',
+  path: '/coming-soon',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CustodyRoute = CustodyRouteImport.update({
@@ -644,6 +650,7 @@ export interface FileRoutesByFullPath {
   '/api-docs': typeof ApiDocsRoute
   '/auth': typeof AuthRoute
   '/brand': typeof BrandRoute
+  '/coming-soon': typeof ComingSoonRoute
   '/custody': typeof CustodyRoute
   '/how-it-works': typeof HowItWorksRoute
   '/ignite': typeof IgniteRoute
@@ -746,6 +753,7 @@ export interface FileRoutesByTo {
   '/api-docs': typeof ApiDocsRoute
   '/auth': typeof AuthRoute
   '/brand': typeof BrandRoute
+  '/coming-soon': typeof ComingSoonRoute
   '/custody': typeof CustodyRoute
   '/how-it-works': typeof HowItWorksRoute
   '/ignite': typeof IgniteRoute
@@ -847,6 +855,7 @@ export interface FileRoutesById {
   '/api-docs': typeof ApiDocsRoute
   '/auth': typeof AuthRoute
   '/brand': typeof BrandRoute
+  '/coming-soon': typeof ComingSoonRoute
   '/custody': typeof CustodyRoute
   '/how-it-works': typeof HowItWorksRoute
   '/ignite': typeof IgniteRoute
@@ -951,6 +960,7 @@ export interface FileRouteTypes {
     | '/api-docs'
     | '/auth'
     | '/brand'
+    | '/coming-soon'
     | '/custody'
     | '/how-it-works'
     | '/ignite'
@@ -1053,6 +1063,7 @@ export interface FileRouteTypes {
     | '/api-docs'
     | '/auth'
     | '/brand'
+    | '/coming-soon'
     | '/custody'
     | '/how-it-works'
     | '/ignite'
@@ -1153,6 +1164,7 @@ export interface FileRouteTypes {
     | '/api-docs'
     | '/auth'
     | '/brand'
+    | '/coming-soon'
     | '/custody'
     | '/how-it-works'
     | '/ignite'
@@ -1257,6 +1269,7 @@ export interface RootRouteChildren {
   ApiDocsRoute: typeof ApiDocsRoute
   AuthRoute: typeof AuthRoute
   BrandRoute: typeof BrandRoute
+  ComingSoonRoute: typeof ComingSoonRoute
   CustodyRoute: typeof CustodyRoute
   HowItWorksRoute: typeof HowItWorksRoute
   IgniteRoute: typeof IgniteRoute
@@ -1364,6 +1377,13 @@ declare module '@tanstack/react-router' {
       path: '/brand'
       fullPath: '/brand'
       preLoaderRoute: typeof BrandRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/coming-soon': {
+      id: '/coming-soon'
+      path: '/coming-soon'
+      fullPath: '/coming-soon'
+      preLoaderRoute: typeof ComingSoonRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/custody': {
@@ -2154,6 +2174,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiDocsRoute: ApiDocsRoute,
   AuthRoute: AuthRoute,
   BrandRoute: BrandRoute,
+  ComingSoonRoute: ComingSoonRoute,
   CustodyRoute: CustodyRoute,
   HowItWorksRoute: HowItWorksRoute,
   IgniteRoute: IgniteRoute,
