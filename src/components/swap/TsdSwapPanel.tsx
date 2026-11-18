@@ -101,7 +101,7 @@ export function TsdSwapPanel({ signedIn, link, isAdmin }: { signedIn: boolean; l
           quote.mutate();
         }}
       >
-        <label className="block space-y-1.5">
+        <label className="flex flex-col gap-1.5">
           <span className="font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">You spend</span>
           <div className="flex h-12 items-center rounded-sm border border-input bg-background focus-within:border-primary">
             <input
@@ -118,7 +118,7 @@ export function TsdSwapPanel({ signedIn, link, isAdmin }: { signedIn: boolean; l
           </div>
         </label>
         <ArrowRight className="mx-auto hidden h-4 w-4 text-muted-foreground sm:mb-4 sm:block" />
-        <div className="space-y-1.5">
+        <div className="flex flex-col gap-1.5">
           <span className="font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">{direction === "buy" ? "You get" : "Coin you sell"}</span>
           <Select
             value={coinId}
