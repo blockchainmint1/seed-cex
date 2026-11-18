@@ -26,14 +26,16 @@ export function Field({ label, hint, children }: { label: string; hint?: string;
 
 export const inputCls = "num h-9 w-full rounded-sm border border-input bg-background px-2.5 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-ring";
 
-export function Chip({ on, onClick, children, disabled }: { on: boolean; onClick: () => void; children: ReactNode; disabled?: boolean }) {
+export function Chip({ on, onClick, children, disabled, small }: { on: boolean; onClick: () => void; children: ReactNode; disabled?: boolean; small?: boolean }) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
       aria-pressed={on}
-      className={`rounded-sm border px-2.5 py-1 text-xs font-semibold uppercase transition-colors disabled:opacity-40 ${
+      className={`rounded-sm border font-semibold uppercase transition-colors disabled:opacity-40 ${
+        small ? "px-1.5 py-0.5 text-[11px]" : "px-2.5 py-1 text-xs"
+      } ${
         on ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary hover:text-foreground"
       }`}
     >

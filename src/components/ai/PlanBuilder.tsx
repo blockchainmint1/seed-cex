@@ -13,6 +13,17 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 const RANGES = [["3 mo", 3], ["6 mo", 6], ["1 yr", 12], ["2 yr", 24], ["3 yr", 36], ["5 yr", 60]] as const;
 const monthsAgo = (m: number) => { const d = new Date(); d.setUTCMonth(d.getUTCMonth() - m); return d.toISOString().slice(0, 10); };
 
+/** One-tap starting points for the cash rules: the same three rules, set together. */
+const CASH_PRESETS = [
+  { label: "Off", days: 0, stopLoss: 0, reserve: 0, blurb: "No cash rules — every coin stays invested." },
+  { label: "Cash buffer", days: 0, stopLoss: 0, reserve: 10, blurb: "Keep 10% in TSD at all times; nothing is ever sold on a rule." },
+  { label: "Balanced", days: 50, stopLoss: 20, reserve: 10, blurb: "Sell a coin below its 50-day average, stop out after a 20% drop, keep 10% in TSD." },
+  { label: "Defensive", days: 50, stopLoss: 15, reserve: 25, blurb: "Sell a coin below its 50-day average, stop out after a 15% drop, keep 25% in TSD." },
+] as const;
+const MA_CHOICES = [20, 50, 200];
+const STOP_CHOICES = [10, 20, 30];
+const RESERVE_CHOICES = [0, 10, 25, 50];
+
 export function PlanBuilder({ coins, settings, onChange, signedIn, editing, onStopEditing, started, onStart }: {
   coins: AiCoin[];
   settings: PlanSettings;
@@ -29,6 +40,12 @@ export function PlanBuilder({ coins, settings, onChange, signedIn, editing, onSt
   const set = <K extends keyof PlanSettings>(k: K, v: PlanSettings[K]) => onChange({ ...s, [k]: v });
   const num = (k: keyof PlanSettings) => (e: React.ChangeEvent<HTMLInputElement>) => set(k, Number(e.target.value) as never);
   const symbol = (id: string) => (id === "tsd" ? "TSD" : coins.find((c) => c.id === id)?.symbol.toUpperCase() ?? id);
+
+  /** The cash-rule field the current kind of plan uses, so a preset can light up correctly either way. */
+  const cashDays = s.mode === "basket" ? s.exitMA : s.trendMA;
+  const presetOn = (p: (typeof CASH_PRESETS)[number]) => cashDays === p.days && s.stopLoss === p.stopLoss && s.reserve === p.reserve;
+  const activePreset = CASH_PRESETS.find(presetOn);
+  const applyPreset = (p: (typeof CASH_PRESETS)[number]) => onChange({ ...s, exitMA: p.days, trendMA: p.days, stopLoss: p.stopLoss, reserve: p.reserve });
 
   const ids = useMemo(() => Array.from(new Set(["bitcoin", ...s.coins.filter((id) => !isStable(id))])), [s.coins]);
   const qs = useQueries({ queries: ids.map((id) => aiSeriesQuery(id)) });
@@ -119,28 +136,45 @@ export function PlanBuilder({ coins, settings, onChange, signedIn, editing, onSt
         <div className="space-y-3 rounded-sm border border-border p-3">
           <div>
             <h3 className="font-semibold">Go to cash (TSD) when…</h3>
-            <p className="text-xs text-muted-foreground">Rules that sell to TSD in a bad market. Set a rule to 0 to turn it off.</p>
+            <p className="text-xs text-muted-foreground">Rules that sell to TSD in a bad market. Pick a starting point, or set each rule yourself. 0 turns a rule off.</p>
+          </div>
+          <div>
+            <div className="flex flex-wrap gap-1">
+              {CASH_PRESETS.map((p) => (
+                <Chip key={p.label} small on={presetOn(p)} onClick={() => applyPreset(p)}>{p.label}</Chip>
+              ))}
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">{activePreset ? activePreset.blurb : "Set by hand — the rules below don't match a preset."}</p>
           </div>
           <div className="grid grid-cols-2 gap-3">
             {s.mode === "basket" ? (
-              <Field label="Below average (days)" hint="Sell a coin that closes below its average over this many days; buy back when it's above">
-                <input type="number" min={0} max={365} className={inputCls} value={s.exitMA ?? 0} onChange={num("exitMA")} />
-              </Field>
+              <NumField
+                label="Below average (days)"
+                hint="Sell a coin that closes below its average over this many days; buy back when it's above"
+                value={s.exitMA ?? 0} max={365} choices={MA_CHOICES} offLabel="Off"
+                onChange={(v) => set("exitMA", v)}
+              />
             ) : (
-              <Field label="Below average (days)" hint="Skip coins below their average over this many days">
-                <input type="number" min={0} max={365} className={inputCls} value={s.trendMA} onChange={num("trendMA")} />
-              </Field>
+              <NumField
+                label="Below average (days)"
+                hint="Skip coins below their average over this many days"
+                value={s.trendMA} max={365} choices={MA_CHOICES} offLabel="Off"
+                onChange={(v) => set("trendMA", v)}
+              />
             )}
-            <Field label="Stop-loss %" hint={`Sell if down this much from its high; buy back once above its ${(s.mode === "basket" ? s.exitMA : s.trendMA) || STOP_REENTRY_MA}-day average`}>
-              <input type="number" min={0} max={90} className={inputCls} value={s.stopLoss} onChange={num("stopLoss")} />
-            </Field>
-            <Field label="Always keep in TSD %" hint="Never invested"><input type="number" min={0} max={90} className={inputCls} value={s.reserve} onChange={num("reserve")} /></Field>
+            <NumField
+              label="Stop-loss %"
+              hint={`Sell if down this much from its high; buy back once above its ${cashDays || STOP_REENTRY_MA}-day average`}
+              value={s.stopLoss} max={90} choices={STOP_CHOICES} offLabel="Off"
+              onChange={(v) => set("stopLoss", v)}
+            />
+            <NumField
+              label="Always keep in TSD %"
+              hint="Never invested"
+              value={s.reserve} max={90} choices={RESERVE_CHOICES}
+              onChange={(v) => set("reserve", v)}
+            />
           </div>
-          {s.mode === "basket" && !s.exitMA && !s.stopLoss ? (
-            <button type="button" onClick={() => onChange({ ...s, exitMA: 50 })} className="text-xs font-semibold text-primary underline-offset-2 hover:underline">
-              Try it: sell below the 50-day average
-            </button>
-          ) : null}
         </div>
 
         <button type="button" onClick={() => onChange({ ...defaultPlan })} className="text-xs text-muted-foreground underline-offset-2 hover:underline">Reset to the starter plan</button>
@@ -230,6 +264,21 @@ export function PlanBuilder({ coins, settings, onChange, signedIn, editing, onSt
         )}
       </section>
     </div>
+  );
+}
+
+/** A number field with one-tap preset values under the box, so no one has to type a guess. */
+function NumField({ label, hint, value, max, choices, offLabel, onChange }: {
+  label: string; hint?: string; value: number; max: number; choices: number[]; offLabel?: string; onChange: (v: number) => void;
+}) {
+  return (
+    <Field label={label} hint={hint}>
+      <input type="number" min={0} max={max} className={inputCls} value={value} onChange={(e) => onChange(Number(e.target.value))} />
+      <div className="mt-1 flex flex-wrap gap-1">
+        {choices.map((c) => <Chip key={c} small on={value === c} onClick={() => onChange(c)}>{c}</Chip>)}
+        {offLabel ? <Chip small on={value === 0} onClick={() => onChange(0)}>{offLabel}</Chip> : null}
+      </div>
+    </Field>
   );
 }
 
