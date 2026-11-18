@@ -5,6 +5,7 @@
 - [x] Two-factor sign-in (authenticator app) in Account → Security; required for withdrawal levels 2+; code on every withdrawal; admin reset with own code + note (Nov 18)
 - [x] Admins must use Seeds two-factor: console locked until set up, code every 12 hours, enforced on every admin action (Nov 18)
 - [ ] Bobby to confirm the 12-hour admin unlock window (agent-chosen)
+- [ ] Bobby to set up two-factor at /admin in the preview before publishing, so admins aren't locked out (blocked: needs Bobby's real sign-in + phone)
 - [ ] Two-factor: first real setup on a real Honest.Money sign-in (blocked: Bobby tries it; test sign-ins can't enroll)
 
 - [x] Cross-chain swaps: THORChain routes for BTC, ETH, LTC, DOGE, BCH, XRP, SOL, ZEC, BNB, TRX (+ USDC/USDT on Ethereum) — live quotes, safety checks, /swap page
