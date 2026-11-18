@@ -142,9 +142,16 @@ function TokensSwapPage() {
             </div>
 
             <CoinRow label="You get" coin={to} network={network} onPick={() => setPicking("to")}>
-              <div className="h-12 min-w-0 flex-1 truncate py-2 text-2xl font-semibold tabular-nums" aria-live="polite">
-                {q.isFetching && !d ? <span className="text-muted-foreground">…</span> : d?.best ? fmtNum(d.best.amountOut) : <span className="text-muted-foreground">—</span>}
-              </div>
+              {(() => {
+                const out = d?.best ? fmtNum(d.best.amountOut) : null;
+                // Long numbers (e.g. hundreds of millions of a meme coin) shrink instead of being cut off.
+                const size = out && out.length > 13 ? "text-base sm:text-2xl" : out && out.length > 9 ? "text-lg sm:text-2xl" : "text-2xl";
+                return (
+                  <div className={`flex h-12 min-w-0 flex-1 items-center truncate font-semibold tabular-nums ${size}`} aria-live="polite">
+                    {q.isFetching && !d ? <span className="text-muted-foreground">…</span> : out ?? <span className="text-muted-foreground">—</span>}
+                  </div>
+                );
+              })()}
             </CoinRow>
             {d ? (
               <p className="font-mono text-[11px] text-muted-foreground">
@@ -282,8 +289,11 @@ function CoinPicker({ open, network, onClose, onPick }: { open: boolean; network
     staleTime: 60_000,
   });
   useEffect(() => { if (!open) setText(""); }, [open]);
-  const rows: Coin[] = q.length >= 2
-    ? (res.data ?? []).map((t) => ({ address: t.address, symbol: t.symbol, name: t.name, liquidityUsd: t.liquidityUsd, ageDays: t.ageDays }))
+  // Search mode follows what's typed right now, so a starter coin can't be tapped by accident mid-typing.
+  const searching = text.trim().length >= 2;
+  const settled = searching && q === text.trim() && !res.isFetching;
+  const rows: Coin[] = searching
+    ? (settled ? (res.data ?? []) : []).map((t) => ({ address: t.address, symbol: t.symbol, name: t.name, liquidityUsd: t.liquidityUsd, ageDays: t.ageDays }))
     : [...STARTER_COINS[network]];
 
   return (
@@ -303,8 +313,8 @@ function CoinPicker({ open, network, onClose, onPick }: { open: boolean; network
           <Input autoFocus value={text} onChange={(e) => setText(e.target.value)} placeholder="e.g. PEPE or 0x…" className="pl-9" aria-label="Search coins" />
         </div>
         <ul className="max-h-[50vh] space-y-1 overflow-y-auto">
-          {q.length >= 2 && res.isFetching && !res.data ? <li className="p-2 text-sm text-muted-foreground">Searching…</li> : null}
-          {q.length >= 2 && res.data && rows.length === 0 ? (
+          {searching && !settled ? <li className="p-2 text-sm text-muted-foreground">Searching…</li> : null}
+          {settled && rows.length === 0 ? (
             <li className="p-2 text-sm text-muted-foreground">No pools on {DEX_NETWORKS[network].name} trade that coin. Try another network or paste its address.</li>
           ) : null}
           {rows.map((c) => {
