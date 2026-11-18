@@ -54,3 +54,25 @@ describe("code box", () => {
     expect(cleanCode("12a456")).toBeNull();
   });
 });
+
+import { withdrawLinkProblem, withdrawLinkState } from "./two-factor";
+describe("withdrawals need a wallet link made after two-factor was on", () => {
+  const on = Date.parse("2026-11-18T20:00:00Z");
+  test("no two-factor: no withdrawals, even with a wallet linked", () =>
+    expect(withdrawLinkState({ twoFactorSinceMs: null, linkCreatedMs: on })).toBe("needs_2fa"));
+  test("wallet linked before two-factor was turned on: must re-link", () =>
+    expect(withdrawLinkState({ twoFactorSinceMs: on, linkCreatedMs: on - 60_000 })).toBe("needs_relink"));
+  test("linked at the very same moment doesn't count as after", () =>
+    expect(withdrawLinkState({ twoFactorSinceMs: on, linkCreatedMs: on })).toBe("needs_relink"));
+  test("wallet linked after two-factor was on: withdrawals allowed", () =>
+    expect(withdrawLinkState({ twoFactorSinceMs: on, linkCreatedMs: on + 60_000 })).toBe("ready"));
+  test("a new authenticator added after the link (lost phone, reset) means re-link again", () =>
+    expect(withdrawLinkState({ twoFactorSinceMs: on + 3_600_000, linkCreatedMs: on + 60_000 })).toBe("needs_relink"));
+  test("an unreadable link date never allows withdrawals", () =>
+    expect(withdrawLinkState({ twoFactorSinceMs: on, linkCreatedMs: Number.NaN })).toBe("needs_relink"));
+  test("the blocking messages tell the member what to do", () => {
+    expect(withdrawLinkProblem("needs_2fa")).toContain("Turn it on");
+    expect(withdrawLinkProblem("needs_relink")).toContain("Re-link");
+    expect(withdrawLinkProblem("ready")).toBeNull();
+  });
+});

@@ -137,7 +137,7 @@ function TierEditor({ tiers, members, maxWaiting }: { tiers: WithdrawTier[]; mem
           <p className="mt-0.5 max-w-2xl text-xs text-muted-foreground">
             Everyone starts on level 1. A member moves up on their own once they meet <b>every</b> requirement for the next level.
             Requirements are days on Seeds, finished withdrawals, dollars withdrawn, finished trades and, if ticked, two-factor sign-in.
-            A level that needs two-factor is never given to someone without it, even when you set it by hand.
+            A level that needs two-factor is never given to someone without it, even when you set it by hand. Separately, every withdrawal on every level needs two-factor and a wallet link made after it was turned on.
             The "per day" limit counts the last 24 hours, the wait is 24–168 hours, and up to {maxWaiting} withdrawals can wait at once.
           </p>
         </div>

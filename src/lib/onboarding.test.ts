@@ -10,14 +10,14 @@ describe("new-member setup guide", () => {
     expect(needsOnboarding("done")).toBe(false);
     expect(needsOnboarding("skipped")).toBe(false);
   });
-  test("the steps run welcome → name → wallet → alerts → two-factor → Ignite → all set", () => {
+  test("the steps run welcome → name → two-factor → wallet → alerts → Ignite (two-factor before linking, so the link can withdraw) → all set", () => {
     const seen = ["welcome"];
     let s = cleanStep("welcome");
     while (s !== "done") { s = nextStep(s); seen.push(s); }
-    expect(seen).toEqual(["welcome", "name", "wallet", "alerts", "security", "ignite", "done"]);
+    expect(seen).toEqual(["welcome", "name", "security", "wallet", "alerts", "ignite", "done"]);
     expect(nextStep("done")).toBe("done");
     expect(prevStep("welcome")).toBeNull();
-    expect(prevStep("wallet")).toBe("name");
+    expect(prevStep("wallet")).toBe("security");
   });
   test("there are 6 counted steps", () => {
     expect(stepNumber("welcome")).toEqual({ n: 1, of: 6 });

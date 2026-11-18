@@ -41,8 +41,8 @@ function SecurityTab() {
 
   const checks = [
     { ok: true, label: "Sign-in through Honest.Money", hint: "Seeds stores no password. Use a strong one and two-step sign-in on Honest.Money." },
-    { ok: Boolean(twoFactor.data), label: "Two-factor sign-in on Seeds", hint: twoFactor.data ? "Withdrawals ask for a code from your phone." : "Set it up below. Needed for withdrawal levels above New." },
-    { ok: Boolean(l), label: "HME Wallet trading pocket linked", hint: l ? `Pocket #${l.account}, ${l.mode === "access" ? "instant trades" : "you approve every trade"}.` : "Link it below." },
+    { ok: Boolean(twoFactor.data), label: "Two-factor sign-in on Seeds", hint: twoFactor.data ? "Withdrawals ask for a code from your phone." : "Set it up below. Needed for every withdrawal." },
+    { ok: Boolean(l), label: "HME Wallet trading pocket linked", hint: l ? `Pocket #${l.account}, ${l.mode === "access" ? "instant trades" : "you approve every trade"}.${l.mode === "access" && l.withdrawals === "needs_relink" ? " Re-link it below to allow withdrawals." : l.mode === "access" && l.withdrawals === "needs_2fa" ? " Withdrawals need two-factor, then a re-link." : ""}` : "Link it below, after turning on two-factor." },
     { ok: Boolean(p?.telegram_verified && p?.notify_login), label: "Sign-in alerts on Telegram", hint: p?.telegram_verified ? (p.notify_login ? "You'll hear about every new sign-in." : "Turn on “New sign-in” in Alerts.") : "Connect Telegram in Alerts." },
     { ok: tradeKeys === 0 || (keys.data ?? []).every((k) => !k.enabled || (k.ip_allowlist ?? []).length > 0), label: "Trading API keys locked to IP addresses", hint: tradeKeys ? `${tradeKeys} key(s) can trade. Add an IP allowlist to each.` : "No trading keys." },
   ];

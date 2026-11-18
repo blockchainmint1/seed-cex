@@ -255,12 +255,16 @@ function StepName({ onNext }: { onNext: () => void }) {
 
 function StepWallet() {
   const link = usePocketLink();
+  const tf = useMyTwoFactor();
   return (
     <>
       <Heading title="Link your HME Wallet">
         Seeds trades from a separate <b className="text-foreground">trading pocket</b> inside your HME Wallet, never your savings. Linking lets Seeds see that pocket and, if you choose, trade from it. Linking moves no coins, and you can revoke it any time.
       </Heading>
       {link.data ? <div className="mb-4"><Note tone="ok">Linked: trading pocket #{link.data.account}. You're good to continue.</Note></div> : null}
+      {!link.data && tf.isSuccess && !tf.data ? (
+        <div className="mb-4"><Note tone="warn">Two-factor isn't on yet. You can link and trade, but to withdraw later you'll need to turn on two-factor and re-link. Go back a step to set it up first.</Note></div>
+      ) : null}
       <div className="rounded-md border border-border bg-surface px-5">
         <HmeWalletLinkCard showBalances={false} className="py-6" />
       </div>
@@ -287,7 +291,7 @@ function StepSecurity() {
   return (
     <>
       <Heading title="Protect withdrawals with two-factor">
-        A 6-digit code from an app on your phone. With it on, someone who gets into your Honest.Money account still can't withdraw. Optional for now, but you'll need it to raise your withdrawal limits.
+        A 6-digit code from an app on your phone. You need it for any withdrawal, and Seeds only sends withdrawals from a wallet link made <b className="text-foreground">after</b> it's on, so do this before linking your wallet. If your wallet is already linked, re-link it afterwards (Account → Security).
       </Heading>
       {tf.data ? <div className="mb-4"><Note tone="ok">Two-factor is on.</Note></div> : null}
       <TwoFactorCard />

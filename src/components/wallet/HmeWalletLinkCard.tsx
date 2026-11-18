@@ -143,6 +143,30 @@ export function HmeWalletLinkCard({ showBalances = true, className = "border-y b
               {begin.error ? <p className="mt-2 text-xs text-destructive">Couldn't start the update. Try again.</p> : null}
             </div>
           ) : null}
+          {l.mode === "access" && (l.withdrawals === "needs_2fa" || l.withdrawals === "needs_relink") ? (
+            <div className="rounded-md border border-warn/60 bg-surface px-3 py-3" role="status">
+              <p className="font-semibold text-foreground">
+                {l.withdrawals === "needs_2fa" ? "Withdrawals are off: turn on two-factor first" : "Re-link to turn on withdrawals"}
+              </p>
+              <p className="mt-1 text-xs">
+                {l.withdrawals === "needs_2fa"
+                  ? "Seeds only sends withdrawals from a wallet link made after two-factor sign-in is on. Turn on two-factor sign-in first (Account → Security), then re-link here. Trading isn't affected."
+                  : "This link was made before two-factor was on, so Seeds won't send withdrawals from it. Re-link once with HME Wallet: same pocket, same coins, nothing moves. Trading isn't affected."}
+              </p>
+              {l.withdrawals === "needs_relink" ? (
+                toAdd.length ? (
+                  <p className="mt-2 text-xs text-foreground">Tap <b>Add new coins</b> above. That re-links too.</p>
+                ) : manifest ? (
+                  <LinkQr manifest={manifest} updating onCancel={() => { setManifest(null); setExpiresAt(null); }} />
+                ) : (
+                  <Button onClick={() => begin.mutate()} disabled={begin.isPending} size="sm" className="mt-3">
+                    <Link2 />
+                    {begin.isPending ? "Preparing…" : "Re-link HME Wallet"}
+                  </Button>
+                )
+              ) : null}
+            </div>
+          ) : null}
           {l.mode === "approve" && l.pending > 0 ? (
             <p className="text-foreground">{l.pending} trade(s) waiting for your approval in the HME Wallet.</p>
           ) : null}

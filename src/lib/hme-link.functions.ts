@@ -62,6 +62,15 @@ export const getMyHmeLink = createServerFn({ method: "GET" })
         try { addresses[info.chain] = pocketReceiveAddress(info.chain, xpubs[info.chain]); } catch { /* skip malformed legacy row */ }
       }
     }
+    // Withdrawals only go out from a link made after two-factor was turned on.
+    let withdrawals: "ready" | "needs_2fa" | "needs_relink" | "unknown" = "unknown";
+    if (data) {
+      try {
+        const { twoFactorSinceMs } = await import("./two-factor.server");
+        const { withdrawLinkState } = await import("./two-factor");
+        withdrawals = withdrawLinkState({ twoFactorSinceMs: await twoFactorSinceMs(context.userId), linkCreatedMs: Date.parse(data.created_at) });
+      } catch { /* shown as unknown; withdrawals re-check on the server anyway */ }
+    }
     let pending = 0;
     if (data) {
       const { count } = await supabaseAdmin.from("hme_trade_proposals").select("id", { count: "exact", head: true })
@@ -75,6 +84,7 @@ export const getMyHmeLink = createServerFn({ method: "GET" })
           identityAddress: data.identity_address as string,
           keyHeld: Boolean(data.key_ciphertext),
           justUpdated,
+          withdrawals,
           previous: prior && prior.identity_address !== data.identity_address
             ? { identityAddress: prior.identity_address as string, account: prior.account, revokedAt: prior.revoked_at as string, createdAt: prior.created_at as string }
             : null,

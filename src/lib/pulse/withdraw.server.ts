@@ -16,7 +16,8 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { limitsFor } from "@/lib/withdraw-limits.server";
 import { nextLevelText } from "@/lib/withdraw-limits";
-import { freshTwoFactor, withdrawalTwoFactorProblem, type SessionClaims } from "@/lib/two-factor";
+import { freshTwoFactor, withdrawalTwoFactorProblem, withdrawLinkProblem, type SessionClaims } from "@/lib/two-factor";
+import { withdrawLinkStateFor } from "@/lib/two-factor.server";
 import {
   destinationProblem, feeTooHigh, isPulseCoin, parseUnits, PULSE_CHAIN_ID, PULSE_COINS, PULSE_CONFIRMATIONS,
   PULSE_MAX_WAITING, PULSE_WITHDRAW_PILOT_ADMIN_ONLY, pulseSendBlocker, unitsToNumber, withdrawalProblem, type PulseCoin,
@@ -86,8 +87,11 @@ export async function pulseWithdrawContext(userId: string, isAdmin: boolean) {
     limitsFor(userId),
     supabaseAdmin.from("pocket_withdrawals").select(ROW_FIELDS).eq("user_id", userId).order("created_at", { ascending: false }).limit(20),
   ]);
+  const sendBlock = lim.frozen ? FROZEN : pulseSendBlocker({ link: linkLike(link), isAdmin });
+  const linkState = link ? await withdrawLinkStateFor(userId, link.id) : null;
   return {
-    blocker: lim.frozen ? FROZEN : pulseSendBlocker({ link: linkLike(link), isAdmin }),
+    blocker: sendBlock ?? (linkState ? withdrawLinkProblem(linkState) : null),
+    linkState,
     pilotAdminOnly: PULSE_WITHDRAW_PILOT_ADMIN_ONLY,
     limits: { perWithdrawalUsd: lim.perWithdrawalUsd, dailyUsd: lim.dailyUsd, maxWaiting: PULSE_MAX_WAITING },
     level: { name: lim.tier.name, number: lim.tier.level, setByAdmin: lim.source === "admin", next: nextLevelText(lim) },
@@ -108,6 +112,9 @@ export async function requestPulseWithdrawal(userId: string, isAdmin: boolean, i
   if (lim.frozen) throw new Error(FROZEN);
   const blocker = pulseSendBlocker({ link: linkLike(link), isAdmin });
   if (blocker) throw new Error(blocker);
+  // Only a link made after two-factor was on can withdraw (a hijacked sign-in can't add its own phone and withdraw).
+  const linkProblem = withdrawLinkProblem(await withdrawLinkStateFor(userId, link!.id));
+  if (linkProblem) throw new Error(linkProblem);
   // Members with two-factor on approve every withdrawal with a fresh authenticator code (read from the signed session).
   const tf = withdrawalTwoFactorProblem({ on: lim.history.twoFactor, fresh: freshTwoFactor(claims, Math.floor(Date.now() / 1000)), levelNeeds2fa: lim.tier.requires2fa });
   if (tf) throw new Error(tf);
@@ -169,6 +176,10 @@ async function sendOne(r: Row): Promise<"sent" | "failed" | "unknown"> {
     const { data: ov } = await supabaseAdmin.from("withdrawal_limit_overrides").select("frozen").eq("user_id", r.user_id).maybeSingle();
     if (ov?.frozen) throw new Error("Withdrawals were paused on your account during the wait, so nothing was sent.");
     if (link!.id !== r.link_id) throw new Error("Your trading pocket link changed since you asked, so nothing was sent. Ask again from the new pocket.");
+    // Two-factor turned off, reset or replaced during the hold stops the send too.
+    if (withdrawLinkProblem(await withdrawLinkStateFor(r.user_id, r.link_id))) {
+      throw new Error("Two-factor sign-in changed during the wait, so nothing was sent. Turn it on, re-link your HME Wallet and ask again.");
+    }
     const from = link!.addresses.EVM!;
     if (from.toLowerCase() !== r.from_address.toLowerCase()) throw new Error("Your pocket address changed since you asked. Nothing was sent.");
     if (destinationProblem(r.to_address, from)) throw new Error("The destination is no longer allowed. Nothing was sent.");

@@ -11,6 +11,26 @@ export async function hasTwoFactor(userId: string): Promise<boolean> {
   return (data?.factors ?? []).some((f) => f.status === "verified");
 }
 
+/** When the member's newest confirmed authenticator was added (ms), or null. Fails closed (throws) if it can't be read.
+ *  The newest one counts, so adding or replacing an authenticator also needs a fresh wallet link before withdrawing. */
+export async function twoFactorSinceMs(userId: string): Promise<number | null> {
+  const { data, error } = await supabaseAdmin.auth.admin.mfa.listFactors({ userId });
+  if (error) throw new Error("Couldn't check two-factor sign-in. Try again.");
+  const times = (data?.factors ?? []).filter((f) => f.status === "verified").map((f) => Date.parse(f.created_at)).filter(Number.isFinite);
+  return times.length ? Math.max(...times) : null;
+}
+
+/** Can Seeds send withdrawals from this link? Reads the link's creation time and the member's two-factor. */
+export async function withdrawLinkStateFor(userId: string, linkId: string) {
+  const { withdrawLinkState } = await import("./two-factor");
+  const [{ data: link, error }, since] = await Promise.all([
+    supabaseAdmin.from("hme_links").select("created_at").eq("id", linkId).eq("user_id", userId).maybeSingle(),
+    twoFactorSinceMs(userId),
+  ]);
+  if (error) throw new Error("Couldn't read your wallet link. Try again.");
+  return withdrawLinkState({ twoFactorSinceMs: since, linkCreatedMs: link ? Date.parse(link.created_at) : null });
+}
+
 /** Everyone with a confirmed authenticator, for the admin table. */
 export async function twoFactorUserIds(): Promise<Set<string>> {
   const out = new Set<string>();
@@ -35,8 +55,8 @@ export async function syncTwoFactor(userId: string): Promise<boolean> {
     try {
       const { emailAccountChange } = await import("@/lib/email/send.server");
       void emailAccountChange(userId, "Two-factor sign-in",
-        on ? ["Two-factor sign-in is now on for your Seeds account", "Withdrawals now ask for a code from your authenticator app"]
-           : ["Two-factor sign-in was turned off for your Seeds account", "Your withdrawal level may have dropped"],
+        on ? ["Two-factor sign-in is now on for your Seeds account", "Re-link your HME Wallet in Account → Security to allow withdrawals", "Every withdrawal asks for a code from your authenticator app"]
+           : ["Two-factor sign-in was turned off for your Seeds account", "Withdrawals are off until you turn it back on and re-link your HME Wallet"],
         "sign out of Honest.Money everywhere, revoke your trading pocket in HME Wallet, then contact support@honest.money.");
     } catch (e) {
       console.error("two-factor email failed", e);

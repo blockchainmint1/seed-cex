@@ -56,3 +56,27 @@ export function resetProblem(input: { actorId: string; targetId: string; note: s
   if (!input.targetOn) return "They don't have two-factor turned on.";
   return null;
 }
+
+/**
+ * Withdrawals only go out from a wallet link made while two-factor was already on.
+ * Someone who gets into a member's Honest.Money account and turns on two-factor
+ * with their own phone still can't withdraw: they would have to re-link the
+ * member's HME Wallet, which needs the wallet itself.
+ */
+export type WithdrawLinkState = "ready" | "needs_2fa" | "needs_relink";
+
+export const NEEDS_2FA_TO_WITHDRAW =
+  "Withdrawals need two-factor sign-in. Turn it on in Account → Security, then re-link your HME Wallet there. Same pocket, same coins, nothing moves.";
+export const NEEDS_RELINK_TO_WITHDRAW =
+  "Your HME Wallet was linked before two-factor was turned on, so Seeds won't send withdrawals from it. Re-link it in Account → Security. Same pocket, same coins, nothing moves.";
+
+/** `twoFactorSinceMs` = when the newest confirmed authenticator was added (null = none). */
+export function withdrawLinkState(i: { twoFactorSinceMs: number | null; linkCreatedMs: number | null }): WithdrawLinkState {
+  if (i.twoFactorSinceMs == null || !Number.isFinite(i.twoFactorSinceMs)) return "needs_2fa";
+  if (i.linkCreatedMs == null || !Number.isFinite(i.linkCreatedMs) || i.linkCreatedMs <= i.twoFactorSinceMs) return "needs_relink";
+  return "ready";
+}
+
+export function withdrawLinkProblem(state: WithdrawLinkState): string | null {
+  return state === "needs_2fa" ? NEEDS_2FA_TO_WITHDRAW : state === "needs_relink" ? NEEDS_RELINK_TO_WITHDRAW : null;
+}
