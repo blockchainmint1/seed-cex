@@ -68,7 +68,7 @@ function NoKyc() {
             <>No documents, no selfie, no proof of address, no ID number. We have never asked, and we don&rsquo;t plan to.</>,
             <>No card or bank numbers. Seeds doesn&rsquo;t take card payments.</>,
             <>No recovery phrase, ever. Not on the site, not by email, not on Telegram.</>,
-            <>No trading fee, no deposit fee, no withdrawal fee, no listing fee, no cut of your P2P deal.</>,
+            <>No trading fee, no deposit fee, no withdrawal fee, no cut of your P2P deal.</>,
             <>You are not our customer. You are the owner of the coins, using software we built.</>,
           ]}
         />
@@ -148,7 +148,7 @@ function NoKyc() {
       <Section id="no-fees" n={5} title="We don't make money from you">
         <p>
           There is no fee from us. Not on trades, not on deposits, not on withdrawals, not on
-          listings, not on the AI tools, not on the API. Our public market data reports a 0% maker
+          the AI tools, not on the API. Our public market data reports a 0% maker
           fee and a 0% taker fee because that is what we charge. We don&rsquo;t take a spread
           between your buy and sell price, we don&rsquo;t take a cut of a P2P deal, and we don&rsquo;t
           sell your order flow.
@@ -172,6 +172,14 @@ function NoKyc() {
           <p>
             And one in our direction: on TSD routes, Seeds pays the Ethereum network fee out of its
             own gas wallet so you don&rsquo;t have to hold ETH just to move coins.
+          </p>
+        </Sub>
+        <Sub title="Where Seeds will make money">
+          <p>
+            <B>Coin listing fees.</B> In the future, teams that want their coin listed on Seeds
+            may pay us a listing fee. That fee is paid by the coin&rsquo;s team, not by the people
+            trading it. It doesn&rsquo;t add anything to your trades, deposits or withdrawals, and
+            a listed coin is not a recommendation from us to buy it.
           </p>
         </Sub>
       </Section>
@@ -235,7 +243,7 @@ function NoKyc() {
           If that day comes, we will tell signed-in members before it takes effect and update this
           page and the <Link to="/privacy" className={linkCls}>Privacy Policy</Link> on the same
           day. Until then, this page describes what actually happens: no ID, no selfie, no proof of
-          address, and no fee from us.
+          address, and no fee from us on your trades, deposits or withdrawals.
         </p>
       </Section>
 
