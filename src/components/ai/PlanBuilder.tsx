@@ -235,7 +235,10 @@ function SharesField({ coins, weights, targets, symbol, onChange }: {
 }) {
   const [open, setOpen] = useState(false);
   const custom = coins.some((id) => weights[id] != null);
-  const pct = (id: string) => `${(targets[id]! * 100).toFixed(0)}%`;
+  const pct = (id: string) => {
+    const v = targets[id]! * 100;
+    return `${Math.abs(v - Math.round(v)) < 0.05 ? v.toFixed(0) : v.toFixed(1)}%`;
+  };
   return (
     <div className="text-sm">
       <div className="flex items-baseline justify-between gap-2">
@@ -266,7 +269,7 @@ function SharesField({ coins, weights, targets, symbol, onChange }: {
                 <input
                   aria-label={`${symbol(id)} share in percent`}
                   type="number" min={0} max={100} className={inputCls}
-                  placeholder={(targets[id]! * 100).toFixed(0)}
+                  placeholder={pct(id).slice(0, -1)}
                   value={weights[id] ?? ""}
                   onChange={(e) => {
                     const w = { ...weights };
