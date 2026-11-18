@@ -18,7 +18,7 @@ export function PeerPayPaidEmail(p: PeerPayPaidProps) {
         ["Confirmed", when(p.paidAt, p.timezone)],
         ["Class", "November 30 – December 4, 2026 · 5:00–6:30 PM CST"],
       ]} />
-      <Cta href={`${SITE}/register`}>View your registration</Cta>
+      <Cta href={`${SITE}/ignite`}>View your registration</Cta>
       <P muted>Any repayment between you and {p.payerName} is your own arrangement. Seeds doesn't handle it.</P>
     </Layout>
   );

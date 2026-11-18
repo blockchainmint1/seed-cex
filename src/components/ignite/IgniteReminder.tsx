@@ -12,7 +12,7 @@ const DISMISS_KEY = "seeds-ignite-reminder-dismissed";
 /**
  * Safety net for members who signed in to register for Ignite but landed on
  * their Profile instead (another browser, closed popup, etc.). Linking a
- * wallet does not reserve a seat, so say so plainly and link to /register.
+ * wallet does not reserve a seat, so say so plainly and link to /ignite.
  */
 export function IgniteReminder() {
   const { user } = useSession();
@@ -44,7 +44,7 @@ export function IgniteReminder() {
             ? "You started registering but haven't finished paying. Linking a wallet doesn't reserve a seat."
             : `Signing in and linking a wallet doesn't reserve a seat. Ignite runs ${SCHEDULE_DATES}; ${seats.data.seatsLeft} of ${seats.data.capacity} seats left.`}
         </p>
-        <Link to="/register" className="mt-3 inline-flex rounded-md bg-action px-4 py-2 text-sm font-semibold text-action-foreground">
+        <Link to="/ignite" className="mt-3 inline-flex rounded-md bg-action px-4 py-2 text-sm font-semibold text-action-foreground">
           {started ? "Finish registration" : "Reserve your seat"}
         </Link>
       </div>

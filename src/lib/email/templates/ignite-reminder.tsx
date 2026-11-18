@@ -18,7 +18,7 @@ export function IgniteReminderEmail(p: IgniteReminderProps) {
         ["Deposit", usd(p.amount)],
         ["Seats left", String(p.seatsLeft)],
       ]} />
-      <Cta href={`${SITE}/register`}>Finish my registration</Cta>
+      <Cta href={`${SITE}/ignite`}>Finish my registration</Cta>
       <P muted>Sign in with your Honest.Money account. Your details are saved, so you only need to pay. A fresh payment link opens each time, so an older link that ran out is fine to ignore.</P>
       <Note>If you already paid in the last few minutes, NectarPay may still be confirming it. Open the link above and Seeds will check again.</Note>
     </Layout>

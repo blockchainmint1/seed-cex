@@ -82,7 +82,7 @@ export const startIgniteCheckout = createServerFn({ method: "POST" })
 
     const inv = await createInvoice({
       amount: DEPOSIT_USD, order_id: `ignite-${row.id}`, description: "Seeds Ignite class reservation",
-      redirect_url: `${origin}/register/confirmed`, buyer_email: email, expires_in_seconds: 3600,
+      redirect_url: `${origin}/ignite/confirmed`, buyer_email: email, expires_in_seconds: 3600,
     });
     await supabaseAdmin.from("ignite_registrations").update({ invoice_id: inv.id, checkout_url: inv.checkout_url, invoice_expires_at: inv.expires_at }).eq("id", row.id);
     return { checkoutUrl: inv.checkout_url };

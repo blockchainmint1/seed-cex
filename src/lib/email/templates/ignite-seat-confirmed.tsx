@@ -40,7 +40,7 @@ export function IgniteSeatConfirmedEmail(p: IgniteSeatConfirmedProps) {
           </Section>
         </>
       )}
-      <Cta href={`${SITE}/register/confirmed`}>View your confirmation</Cta>
+      <Cta href={`${SITE}/ignite/confirmed`}>View your confirmation</Cta>
       {p.paidBy && <P muted>Any repayment between you and {p.paidBy} is your own arrangement. Seeds doesn't handle it.</P>}
       <P muted>This deposit reserves a class seat. It doesn't open or fund a Seeds exchange account.</P>
     </Layout>

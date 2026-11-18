@@ -287,7 +287,7 @@
   background-size: 48px 48px;
 }
 
-/* Ignite pages (/register, /register/confirmed, /pay): same brand tokens as the
+/* Ignite pages (/ignite, /ignite/confirmed, /pay): same brand tokens as the
    rest of Seeds, so they follow light/dark mode; only larger sheet radii. */
 .ignite-theme {
   --radius: 0.75rem;
@@ -296,6 +296,12 @@
   font-family: var(--font-sans);
 }
 .ignite-theme :focus-visible { outline: 3px solid var(--ring); outline-offset: 3px; border-radius: 6px; }
+/* Homepage Ignite popup: always the night-green of the supplied Ignite artwork,
+   in both themes, so the glow art blends into the panel edge. */
+.ignite-promo {
+  --promo-night: oklch(0.244 0.061 152.4);
+  --background: var(--promo-night);
+}
 
 @utility seed-field {
   background-color: var(--background);
@@ -345,4 +351,12 @@
 @layer base {
   /* Brand type scale: headings Manrope 600 (display 700, set per element). */
   h1, h2, h3, h4, .font-display { font-weight: 600; }
+}
+
+/* Ignite popup: soft green halo around the panel and its main button. */
+@utility shadow-promo {
+  box-shadow: 0 40px 120px -30px color-mix(in oklab, var(--action) 45%, transparent), 0 0 0 1px color-mix(in oklab, var(--action) 25%, transparent);
+}
+@utility shadow-promo-btn {
+  box-shadow: 0 10px 40px -8px color-mix(in oklab, var(--action) 70%, transparent);
 }

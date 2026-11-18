@@ -16,6 +16,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as BrandRouteImport } from './routes/brand'
 import { Route as CustodyRouteImport } from './routes/custody'
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
+import { Route as IgniteRouteImport } from './routes/ignite'
 import { Route as LbtcRouteImport } from './routes/lbtc'
 import { Route as LinkAccountRouteImport } from './routes/link-account'
 import { Route as ManifestoRouteImport } from './routes/manifesto'
@@ -36,6 +37,7 @@ import { Route as AuthenticatedWalletRouteImport } from './routes/_authenticated
 import { Route as AboutKycRouteImport } from './routes/about.kyc'
 import { Route as AiIndexRouteImport } from './routes/ai.index'
 import { Route as ApiIndexRouteImport } from './routes/api/index'
+import { Route as IgniteConfirmedRouteImport } from './routes/ignite_.confirmed'
 import { Route as InviteCodeRouteImport } from './routes/invite.$code'
 import { Route as P2pIndexRouteImport } from './routes/p2p.index'
 import { Route as PayTokenRouteImport } from './routes/pay.$token'
@@ -143,6 +145,11 @@ const HowItWorksRoute = HowItWorksRouteImport.update({
   path: '/how-it-works',
   getParentRoute: () => rootRouteImport,
 } as any)
+const IgniteRoute = IgniteRouteImport.update({
+  id: '/ignite',
+  path: '/ignite',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LbtcRoute = LbtcRouteImport.update({
   id: '/lbtc',
   path: '/lbtc',
@@ -241,6 +248,11 @@ const AiIndexRoute = AiIndexRouteImport.update({
 const ApiIndexRoute = ApiIndexRouteImport.update({
   id: '/api/',
   path: '/api/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IgniteConfirmedRoute = IgniteConfirmedRouteImport.update({
+  id: '/ignite_/confirmed',
+  path: '/ignite/confirmed',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InviteCodeRoute = InviteCodeRouteImport.update({
@@ -634,6 +646,7 @@ export interface FileRoutesByFullPath {
   '/brand': typeof BrandRoute
   '/custody': typeof CustodyRoute
   '/how-it-works': typeof HowItWorksRoute
+  '/ignite': typeof IgniteRoute
   '/lbtc': typeof LbtcRoute
   '/link-account': typeof LinkAccountRoute
   '/manifesto': typeof ManifestoRoute
@@ -652,6 +665,7 @@ export interface FileRoutesByFullPath {
   '/trades': typeof AuthenticatedTradesRoute
   '/wallet': typeof AuthenticatedWalletRoute
   '/about/kyc': typeof AboutKycRoute
+  '/ignite/confirmed': typeof IgniteConfirmedRoute
   '/invite/$code': typeof InviteCodeRoute
   '/pay/$token': typeof PayTokenRoute
   '/proof/code': typeof ProofCodeRoute
@@ -734,6 +748,7 @@ export interface FileRoutesByTo {
   '/brand': typeof BrandRoute
   '/custody': typeof CustodyRoute
   '/how-it-works': typeof HowItWorksRoute
+  '/ignite': typeof IgniteRoute
   '/lbtc': typeof LbtcRoute
   '/link-account': typeof LinkAccountRoute
   '/manifesto': typeof ManifestoRoute
@@ -750,6 +765,7 @@ export interface FileRoutesByTo {
   '/trades': typeof AuthenticatedTradesRoute
   '/wallet': typeof AuthenticatedWalletRoute
   '/about/kyc': typeof AboutKycRoute
+  '/ignite/confirmed': typeof IgniteConfirmedRoute
   '/invite/$code': typeof InviteCodeRoute
   '/pay/$token': typeof PayTokenRoute
   '/proof/code': typeof ProofCodeRoute
@@ -833,6 +849,7 @@ export interface FileRoutesById {
   '/brand': typeof BrandRoute
   '/custody': typeof CustodyRoute
   '/how-it-works': typeof HowItWorksRoute
+  '/ignite': typeof IgniteRoute
   '/lbtc': typeof LbtcRoute
   '/link-account': typeof LinkAccountRoute
   '/manifesto': typeof ManifestoRoute
@@ -851,6 +868,7 @@ export interface FileRoutesById {
   '/_authenticated/trades': typeof AuthenticatedTradesRoute
   '/_authenticated/wallet': typeof AuthenticatedWalletRoute
   '/about/kyc': typeof AboutKycRoute
+  '/ignite_/confirmed': typeof IgniteConfirmedRoute
   '/invite/$code': typeof InviteCodeRoute
   '/pay/$token': typeof PayTokenRoute
   '/proof/code': typeof ProofCodeRoute
@@ -935,6 +953,7 @@ export interface FileRouteTypes {
     | '/brand'
     | '/custody'
     | '/how-it-works'
+    | '/ignite'
     | '/lbtc'
     | '/link-account'
     | '/manifesto'
@@ -953,6 +972,7 @@ export interface FileRouteTypes {
     | '/trades'
     | '/wallet'
     | '/about/kyc'
+    | '/ignite/confirmed'
     | '/invite/$code'
     | '/pay/$token'
     | '/proof/code'
@@ -1035,6 +1055,7 @@ export interface FileRouteTypes {
     | '/brand'
     | '/custody'
     | '/how-it-works'
+    | '/ignite'
     | '/lbtc'
     | '/link-account'
     | '/manifesto'
@@ -1051,6 +1072,7 @@ export interface FileRouteTypes {
     | '/trades'
     | '/wallet'
     | '/about/kyc'
+    | '/ignite/confirmed'
     | '/invite/$code'
     | '/pay/$token'
     | '/proof/code'
@@ -1133,6 +1155,7 @@ export interface FileRouteTypes {
     | '/brand'
     | '/custody'
     | '/how-it-works'
+    | '/ignite'
     | '/lbtc'
     | '/link-account'
     | '/manifesto'
@@ -1151,6 +1174,7 @@ export interface FileRouteTypes {
     | '/_authenticated/trades'
     | '/_authenticated/wallet'
     | '/about/kyc'
+    | '/ignite_/confirmed'
     | '/invite/$code'
     | '/pay/$token'
     | '/proof/code'
@@ -1235,6 +1259,7 @@ export interface RootRouteChildren {
   BrandRoute: typeof BrandRoute
   CustodyRoute: typeof CustodyRoute
   HowItWorksRoute: typeof HowItWorksRoute
+  IgniteRoute: typeof IgniteRoute
   LbtcRoute: typeof LbtcRoute
   LinkAccountRoute: typeof LinkAccountRoute
   ManifestoRoute: typeof ManifestoRoute
@@ -1248,6 +1273,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   TsdRoute: typeof TsdRoute
   AboutKycRoute: typeof AboutKycRoute
+  IgniteConfirmedRoute: typeof IgniteConfirmedRoute
   InviteCodeRoute: typeof InviteCodeRoute
   PayTokenRoute: typeof PayTokenRoute
   ProofCodeRoute: typeof ProofCodeRoute
@@ -1352,6 +1378,13 @@ declare module '@tanstack/react-router' {
       path: '/how-it-works'
       fullPath: '/how-it-works'
       preLoaderRoute: typeof HowItWorksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ignite': {
+      id: '/ignite'
+      path: '/ignite'
+      fullPath: '/ignite'
+      preLoaderRoute: typeof IgniteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/lbtc': {
@@ -1492,6 +1525,13 @@ declare module '@tanstack/react-router' {
       path: '/api'
       fullPath: '/api/'
       preLoaderRoute: typeof ApiIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ignite_/confirmed': {
+      id: '/ignite_/confirmed'
+      path: '/ignite/confirmed'
+      fullPath: '/ignite/confirmed'
+      preLoaderRoute: typeof IgniteConfirmedRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/invite/$code': {
@@ -2116,6 +2156,7 @@ const rootRouteChildren: RootRouteChildren = {
   BrandRoute: BrandRoute,
   CustodyRoute: CustodyRoute,
   HowItWorksRoute: HowItWorksRoute,
+  IgniteRoute: IgniteRoute,
   LbtcRoute: LbtcRoute,
   LinkAccountRoute: LinkAccountRoute,
   ManifestoRoute: ManifestoRoute,
@@ -2129,6 +2170,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   TsdRoute: TsdRoute,
   AboutKycRoute: AboutKycRoute,
+  IgniteConfirmedRoute: IgniteConfirmedRoute,
   InviteCodeRoute: InviteCodeRoute,
   PayTokenRoute: PayTokenRoute,
   ProofCodeRoute: ProofCodeRoute,

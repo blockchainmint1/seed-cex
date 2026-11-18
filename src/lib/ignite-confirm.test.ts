@@ -28,7 +28,7 @@ describe("referral link", () => {
   it("the invite link reads without https://", () =>
     expect(inviteLabel("https://seeds.honest.money/invite/CryptoCoryency")).toBe("seeds.honest.money/invite/CryptoCoryency"));
   it("sends friends through honest.money to the Seeds registration page", () =>
-    expect(referralUrl("Murdock")).toBe("https://honest.money/r/Murdock?to=https%3A%2F%2Fseeds.honest.money%2Fregister"));
+    expect(referralUrl("Murdock")).toBe("https://honest.money/r/Murdock?to=https%3A%2F%2Fseeds.honest.money%2Fignite"));
   it("accepts normal codes and rejects junk", () => {
     expect(cleanRefCode(" janedoe ")).toBe("janedoe");
     expect(cleanRefCode("a b")).toBeNull();

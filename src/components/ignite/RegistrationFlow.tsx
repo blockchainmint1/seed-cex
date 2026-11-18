@@ -62,7 +62,7 @@ export function RegistrationFlow() {
         <p className="text-xs font-semibold uppercase tracking-widest text-primary">Seat confirmed</p>
         <h2 className="mt-2 font-display text-3xl">You're in, {((n) => n.charAt(0).toUpperCase() + n.slice(1))(reg.full_name.trim().split(/\s+/)[0] ?? "")}.</h2>
         <p className="mt-2 text-sm text-muted-foreground">Payment confirmed{paidWith ? ` (${paidWith})` : ""}{mine.data?.peer?.state === "paid" && mine.data.peer.payerName ? `, paid by ${mine.data.peer.payerName} through Peer Pay` : ""}. Ignite runs {SCHEDULE_DATES}, {SCHEDULE_TIME.replace(/^Daily/, "daily")}. We'll send reminders to {reg.email}.</p>
-        <Link to="/register/confirmed" className="seed-btn mt-6 inline-flex justify-center">See your confirmation & referral link</Link>
+        <Link to="/ignite/confirmed" className="seed-btn mt-6 inline-flex justify-center">See your confirmation & referral link</Link>
       </div>
     );
   }

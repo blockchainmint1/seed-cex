@@ -114,3 +114,4 @@
 
 - [x] Admin: /admin sub-nav (account-style) + /admin/users to give or remove admin access (HME members only, can't remove yourself or the last admin, history + email notice)
 - [x] Admin: /admin/ignite — registrants per class, searchable + sortable table, email a registrant, re-send payment link
+- [x] Homepage Ignite popup (flyer style) driving to /ignite; /register and /register/confirmed 301 to /ignite

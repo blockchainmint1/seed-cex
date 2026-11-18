@@ -19,7 +19,7 @@ async function inChunks<T>(items: T[], size: number, fn: (t: T) => Promise<void>
 
 /**
  * Emails a "finish your registration" link to unpaid registrants. The link goes
- * to /register, which opens a fresh NectarPay checkout for the amount Seeds sets
+ * to /ignite, which opens a fresh NectarPay checkout for the amount Seeds sets
  * — old checkout links expire after an hour, so they're never resent.
  */
 export const sendIgniteReminders = createServerFn({ method: "POST" })

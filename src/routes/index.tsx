@@ -5,6 +5,7 @@ import { getCmcSummary } from "@/lib/cmc.functions";
 import { fmtAmount, fmtPrice } from "@/lib/format";
 import { PAIRS } from "@/lib/chains";
 import seedsCoin from "@/assets/seeds-cold-storage-coin.jpg.asset.json";
+import { IgnitePromo } from "@/components/ignite/IgnitePromo";
 
 export const Route = createFileRoute("/")({
   staticData: { sitemap: true },
@@ -64,6 +65,7 @@ function Index() {
 
   return (
     <>
+      <IgnitePromo />
       <section className="relative overflow-hidden border-b border-border">
         <div
           className="pointer-events-none absolute inset-0 opacity-[0.12]"

@@ -48,7 +48,7 @@ export function seatsLeft(held: number, capacity = SEAT_CAPACITY) {
  * the referrer and forwards to the Seeds registration page with ?ref={code}.
  */
 export function referralUrl(code: string, site = "https://seeds.honest.money") {
-  return `https://honest.money/r/${encodeURIComponent(code)}?to=${encodeURIComponent(`${site}/register`)}`;
+  return `https://honest.money/r/${encodeURIComponent(code)}?to=${encodeURIComponent(`${site}/ignite`)}`;
 }
 
 /**
@@ -94,3 +94,27 @@ export const CONFIRMABLE_STATUSES = ["pending", "underpaid", "expired"] as const
 export const canConfirmSeat = (status: string) => (CONFIRMABLE_STATUSES as readonly string[]).includes(status);
 /** An operator may cancel any seat that isn't already cancelled (e.g. a test or a refund). */
 export const canCancelSeat = (status: string) => status !== "canceled";
+
+// ---- Homepage Ignite popup (pure, tested) ----
+
+/** After "Maybe later" or the close button, the popup stays away this long. */
+export const PROMO_SNOOZE_MS = 3 * 24 * 3600_000;
+
+/**
+ * Whether the homepage Ignite popup may open. Never once the class has
+ * started, never when every seat is held, never for someone whose seat is
+ * already paid, and not again for 3 days after they closed it.
+ */
+export function shouldShowIgnitePromo(o: {
+  now: number;
+  dismissedAt: number | null;
+  seatsLeft: number | null;
+  myStatus?: string | null;
+  startUtc?: string;
+}) {
+  if (o.now >= new Date(o.startUtc ?? SCHEDULE_START_UTC).getTime()) return false;
+  if (o.dismissedAt != null && o.now - o.dismissedAt < PROMO_SNOOZE_MS) return false;
+  if (o.seatsLeft != null && o.seatsLeft <= 0) return false;
+  if (o.myStatus === "confirmed") return false;
+  return true;
+}
