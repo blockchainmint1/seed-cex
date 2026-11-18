@@ -52,6 +52,8 @@
 - [ ] Weekly email schedule (Mondays) — scheduling tool unavailable this session; set up after publish
 - [ ] Email footer postal address (CAN-SPAM) — needs Bobby's business mailing address
 
+- [x] /ai: shares start even, editable in a popup (blank coins split what's left); THOR added (10 coins)
+- [ ] /ai more coins: BNB, AVAX (needs BNB Chain/Avalanche sending), ATOM (Cosmos signer), ZEC (v5 signer), Maya coins ADA/DASH/RUNE (needs a 2nd independent Maya server) (blocked: Bobby picks which to build)
 - [ ] AI basket builder: AI writes a member-approved rulebook, fixed engine executes it (concept in docs/ai-basket-strategy-concept.md; blocked: Bobby's detailed spec + linked-pocket settlement)
 - [x] /register Peer Pay: 7-day copy/email link, payer signs in with Honest.Money, registrant can cancel, no discount
 - [ ] Peer Pay: full friend-pays test with a second Honest.Money account (blocked: Bobby picks a test account)

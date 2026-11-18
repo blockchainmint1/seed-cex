@@ -51,12 +51,27 @@ function summarise(vals: number[], idx: number[], totalIn = START, trades = 0, f
 const isRebalance = (d: string, prev: string | undefined, r: PlanSettings["rebalance"]) =>
   !prev || r === "daily" || (r === "weekly" ? new Date(`${d}T00:00:00Z`).getUTCDay() === 1 : d.slice(0, 7) !== prev.slice(0, 7));
 
-/** Basket targets as fractions of the invested part, normalised to 1. */
+/**
+ * Basket targets as fractions of the invested part, summing to 1.
+ * No shares typed = even split. Typed shares are percentages; coins left blank
+ * share whatever is left evenly. If the typed shares leave nothing over (or
+ * every coin has one), the typed shares are scaled to add up to 100%.
+ */
 export function basketTargets(s: Pick<PlanSettings, "coins" | "weights">): Record<string, number> {
   const coins = s.coins.filter((id) => !isStable(id));
-  const raw = coins.map((id) => Math.max(0, Number(s.weights?.[id]) || 0));
-  const sum = raw.reduce((a, b) => a + b, 0);
-  return Object.fromEntries(coins.map((id, i) => [id, sum > 0 ? raw[i]! / sum : 1 / coins.length]));
+  const typed = (id: string) => {
+    const w = Number(s.weights?.[id]);
+    return s.weights?.[id] != null && Number.isFinite(w) ? Math.max(0, w) : null;
+  };
+  const set = coins.filter((id) => typed(id) != null);
+  const blank = coins.filter((id) => typed(id) == null);
+  if (!set.length) return Object.fromEntries(coins.map((id) => [id, 1 / coins.length]));
+  const sum = set.reduce((a, id) => a + typed(id)!, 0);
+  if (blank.length && sum < 100) {
+    const each = (100 - sum) / blank.length / 100;
+    return Object.fromEntries(coins.map((id) => [id, typed(id) != null ? typed(id)! / 100 : each]));
+  }
+  return Object.fromEntries(coins.map((id) => [id, sum > 0 ? (typed(id) ?? 0) / sum : 1 / coins.length]));
 }
 
 export function runPlan(series: Record<string, Series>, s: PlanSettings, opts: { minDays?: number } = {}): PlanRun {

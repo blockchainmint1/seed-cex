@@ -17,7 +17,7 @@ export function cleanSettings(raw: Partial<PlanSettings>, activeCoins: string[])
   const weights: Record<string, number> = {};
   for (const c of coins) {
     const w = Number(raw.weights?.[c]);
-    if (Number.isFinite(w) && w > 0) weights[c] = Math.min(100, w);
+    if (raw.weights?.[c] != null && Number.isFinite(w) && w >= 0) weights[c] = Math.min(100, w); // 0 = deliberately none
   }
   const mode = raw.mode === "momentum" ? "momentum" : "basket";
   const rebalance = raw.rebalance === "daily" || raw.rebalance === "monthly" ? raw.rebalance : "weekly";

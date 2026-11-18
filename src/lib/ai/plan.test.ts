@@ -46,6 +46,23 @@ describe("basket plan ($500 into BTC / ETH / LTC)", () => {
     expect(t["bitcoin"]).toBeCloseTo(0.5, 9);
     expect(t["litecoin"]).toBeCloseTo(0.2, 9);
   });
+  it("gives blank coins an even share of what's left (BTC 60% → ETH 20%, LTC 20%)", () => {
+    const t = basketTargets({ coins: basket.coins, weights: { bitcoin: 60 } });
+    expect(t["bitcoin"]).toBeCloseTo(0.6, 9);
+    expect(t["ethereum"]).toBeCloseTo(0.2, 9);
+    expect(t["litecoin"]).toBeCloseTo(0.2, 9);
+  });
+  it("scales typed shares down when they add up to more than 100", () => {
+    const t = basketTargets({ coins: basket.coins, weights: { bitcoin: 90, ethereum: 60 } });
+    expect(t["bitcoin"]).toBeCloseTo(0.6, 9);
+    expect(t["ethereum"]).toBeCloseTo(0.4, 9);
+    expect(t["litecoin"]).toBe(0);
+  });
+  it("keeps a typed 0% at zero", () => {
+    const t = basketTargets({ coins: basket.coins, weights: { litecoin: 0 } });
+    expect(t["litecoin"]).toBe(0);
+    expect(t["bitcoin"]).toBeCloseTo(0.5, 9);
+  });
   it("buys the basket on day one and keeps $500 when prices don't move", () => {
     const run = runPlan({ bitcoin: flat, ethereum: flat, litecoin: flat }, basket);
     expect(run.log[0]!.reason).toBe("Bought the basket");

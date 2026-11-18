@@ -2,6 +2,7 @@
  * Coins Seeds AI may offer: only ones Seeds can actually buy and sell back
  * (THORChain route + a pocket key Seeds can sign for). Stablecoins are left
  * out — the plan's cash is TSD. Admins switch these on/off in /admin/ai.
+ * TGT and XRUNE are buyable but left out: no price source still tracks them, so they can't be tested.
  */
 import { swapCoin } from "@/lib/xchain/assets";
 import { receivePocket, sendSource } from "@/lib/xchain/send-rules";
@@ -21,8 +22,6 @@ export const AI_CATALOG: CatalogCoin[] = [
   { geckoId: "aave", swapCoin: "AAVE", symbol: "aave", name: "Aave", binance: "AAVEUSDT" },
   { geckoId: "wrapped-bitcoin", swapCoin: "WBTC", symbol: "wbtc", name: "Wrapped Bitcoin (Ethereum)", binance: "WBTCUSDT" },
   { geckoId: "thorswap", swapCoin: "THOR", symbol: "thor", name: "THORSwap", binance: "THORUSDT" },
-  { geckoId: "thorwallet", swapCoin: "TGT", symbol: "tgt", name: "THORWallet", binance: "TGTUSDT" },
-  { geckoId: "thorstarter", swapCoin: "XRUNE", symbol: "xrune", name: "Thorstarter", binance: "XRUNEUSDT" },
 ];
 
 export const catalogByGecko = (id: string) => AI_CATALOG.find((c) => c.geckoId === id) ?? null;

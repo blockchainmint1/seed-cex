@@ -7,6 +7,7 @@ import { basketTargets, defaultPlan, isStable, runPlan, stableSeries, type PlanS
 import { fmtPct, fmtUsd, type Series } from "@/lib/ai/series";
 import { Chip, Field, inputCls, Panel, tone } from "./ui";
 import { LockPanel } from "./LockPanel";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const RANGES = [["3 mo", 3], ["6 mo", 6], ["1 yr", 12], ["2 yr", 24], ["3 yr", 36], ["5 yr", 60]] as const;
 const monthsAgo = (m: number) => { const d = new Date(); d.setUTCMonth(d.getUTCMonth() - m); return d.toISOString().slice(0, 10); };
@@ -68,27 +69,7 @@ export function PlanBuilder({ coins, settings, onChange, signedIn }: {
         </Field>
 
         {s.mode === "basket" && s.coins.length ? (
-          <Field label="Shares" hint="Leave blank for an even split.">
-            <div className="space-y-1.5">
-              {s.coins.map((id) => (
-                <div key={id} className="flex items-center gap-2">
-                  <span className="w-14 font-mono text-xs uppercase">{symbol(id)}</span>
-                  <input
-                    aria-label={`${symbol(id)} share in percent`}
-                    type="number" min={0} max={100} className={inputCls}
-                    placeholder={(targets[id]! * 100).toFixed(0)}
-                    value={s.weights[id] ?? ""}
-                    onChange={(e) => {
-                      const w = { ...s.weights };
-                      if (e.target.value === "") delete w[id]; else w[id] = Number(e.target.value);
-                      set("weights", w);
-                    }}
-                  />
-                  <span className="num w-12 text-right text-xs text-muted-foreground">{(targets[id]! * 100).toFixed(0)}%</span>
-                </div>
-              ))}
-            </div>
-          </Field>
+          <SharesField coins={s.coins} weights={s.weights} targets={targets} symbol={symbol} onChange={(w) => set("weights", w)} />
         ) : null}
 
         <div className="grid grid-cols-2 gap-3">
@@ -241,5 +222,68 @@ function HoldNow({ run, symbol }: { run: NonNullable<ReturnType<typeof runPlan>>
         {cash > 0.001 ? <li className="flex justify-between text-muted-foreground"><span>TSD</span><span>{(cash * 100).toFixed(0)}% · {fmtUsd(cash * run.plan.finalValue)}</span></li> : null}
       </ul>
     </Panel>
+  );
+}
+
+/** Shares start even; a small popup lets members set their own starting split without filling the sidebar. */
+function SharesField({ coins, weights, targets, symbol, onChange }: {
+  coins: string[];
+  weights: Record<string, number>;
+  targets: Record<string, number>;
+  symbol: (id: string) => string;
+  onChange: (w: Record<string, number>) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const custom = coins.some((id) => weights[id] != null);
+  const pct = (id: string) => `${(targets[id]! * 100).toFixed(0)}%`;
+  return (
+    <div className="text-sm">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="font-semibold">Shares</span>
+        <button type="button" onClick={() => setOpen(true)} className="text-xs font-semibold text-primary underline-offset-2 hover:underline">
+          {custom ? "Edit shares" : "Change shares"}
+        </button>
+      </div>
+      <p className="num mt-0.5 text-xs text-muted-foreground">
+        {custom
+          ? coins.map((id) => `${symbol(id)} ${pct(id)}`).join(" · ")
+          : `Even split — ${pct(coins[0]!)} each`}
+      </p>
+      {custom ? (
+        <button type="button" onClick={() => onChange({})} className="mt-1 text-xs text-muted-foreground underline-offset-2 hover:underline">Back to even split</button>
+      ) : null}
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Starting shares</DialogTitle>
+            <DialogDescription>Type a percent for any coin you want to set. Coins left blank share whatever is left evenly. If your numbers add up to more than 100, they're scaled down to fit.</DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[55vh] space-y-1.5 overflow-y-auto pr-1">
+            {coins.map((id) => (
+              <div key={id} className="flex items-center gap-2">
+                <span className="w-14 font-mono text-xs uppercase">{symbol(id)}</span>
+                <input
+                  aria-label={`${symbol(id)} share in percent`}
+                  type="number" min={0} max={100} className={inputCls}
+                  placeholder={(targets[id]! * 100).toFixed(0)}
+                  value={weights[id] ?? ""}
+                  onChange={(e) => {
+                    const w = { ...weights };
+                    if (e.target.value === "") delete w[id]; else w[id] = Number(e.target.value);
+                    onChange(w);
+                  }}
+                />
+                <span className="num w-12 text-right text-xs text-muted-foreground">{pct(id)}</span>
+              </div>
+            ))}
+          </div>
+          <DialogFooter className="gap-2 sm:justify-between">
+            <button type="button" onClick={() => onChange({})} className="text-xs text-muted-foreground underline-offset-2 hover:underline">Even split</button>
+            <button type="button" onClick={() => setOpen(false)} className="rounded-sm bg-action px-4 py-2 text-sm font-semibold text-action-foreground">Done</button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }

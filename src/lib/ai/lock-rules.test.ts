@@ -14,6 +14,10 @@ describe("locking in a plan", () => {
   it("drops coins that aren't switched on (e.g. SHIB)", () => {
     expect(cleanSettings({ coins: ["bitcoin", "shiba-inu"] }, active).coins).toEqual(["bitcoin"]);
   });
+  it("keeps a typed 0% share when the plan is locked in", () => {
+    expect(cleanSettings({ coins: active, weights: { bitcoin: 60, litecoin: 0 } }, active).weights).toEqual({ bitcoin: 60, litecoin: 0 });
+  });
+  it("offers THORSwap (THOR), an Ethereum token Seeds can buy and sell back", () => expect(aiBuyable("THOR")).toBe(true));
   it("clamps out-of-range numbers", () => {
     const s = cleanSettings({ coins: active, reserve: 500, stopLoss: -4, feeBps: 99999 }, active);
     expect([s.reserve, s.stopLoss, s.feeBps]).toEqual([90, 0, 500]);
