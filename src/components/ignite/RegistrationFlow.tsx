@@ -205,29 +205,3 @@ function Field({ id, label, error, children }: { id: string; label: string; erro
 function Row({ k, v }: { k: string; v: ReactNode }) {
   return <div className="flex justify-between gap-4 px-4 py-3"><dt className="text-muted-foreground">{k}</dt><dd className="text-right">{v}</dd></div>;
 }
-
-const STATES: { key: string; title: string; body: string }[] = [
-  { key: "Pending", title: "Payment pending", body: "We're waiting for your payment to be verified. Crypto payments stay pending until confirmed on-chain. Your seat isn't confirmed yet." },
-  { key: "Confirmed", title: "Your Ignite seat is confirmed", body: "Payment confirmed. Ignite runs November 30–December 4, 2026, daily from 5:00–6:30 PM CST." },
-  { key: "Canceled", title: "Checkout canceled", body: "No payment was taken. You can return to review whenever you're ready." },
-  { key: "Failed", title: "Payment didn't go through", body: "No seat was reserved. You can try again — retrying won't create a duplicate charge or seat." },
-  { key: "Sold out", title: "Ignite is fully reserved", body: "All 100 seats are taken." },
-  { key: "Waitlist", title: "Join the waitlist", body: "We'll let you know if a seat opens up." },
-];
-
-export function StatusPreviews() {
-  return (
-    <details className="rounded-2xl border border-border p-5">
-      <summary className="cursor-pointer text-sm font-semibold">Design preview: status screens (samples only)</summary>
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {STATES.map((s) => (
-          <div key={s.key} className="rounded-2xl border border-border bg-card p-5">
-            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Sample · {s.key}</p>
-            <h3 className="mt-2 font-display text-xl">{s.title}</h3>
-            <p className="mt-1 text-sm text-muted-foreground">{s.body}</p>
-          </div>
-        ))}
-      </div>
-    </details>
-  );
-}

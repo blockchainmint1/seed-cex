@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { SCHEDULE_DATES, SCHEDULE_SESSIONS, SCHEDULE_TIME, RECORDING_NOTE } from "@/lib/ignite-registration";
-import { RegistrationFlow, StatusPreviews } from "@/components/ignite/RegistrationFlow";
+import { RegistrationFlow } from "@/components/ignite/RegistrationFlow";
 import { useQuery } from "@tanstack/react-query";
 import { getIgniteSeats } from "@/lib/ignite.functions";
 import { BobbyLetter } from "@/components/ignite/BobbyLetter";
@@ -192,8 +192,6 @@ function Index() {
           <BobbyLetter />
         </div>
       </section>
-
-      <section className="mx-auto max-w-7xl px-5 pb-12"><StatusPreviews /></section>
 
       {!formVisible && (
         <div className="sticky bottom-0 z-20 border-t border-border bg-card/95 p-4 backdrop-blur lg:hidden">

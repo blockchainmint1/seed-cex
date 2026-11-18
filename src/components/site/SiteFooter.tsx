@@ -17,6 +17,7 @@ const columns: { heading: string; links: FooterLink[] }[] = [
   {
     heading: "Learn",
     links: [
+      { label: "Ignite", to: "/register" },
       { label: "How it works", to: "/how-it-works" },
       { label: "Manifesto", to: "/manifesto" },
       { label: "API", to: "/api" },
