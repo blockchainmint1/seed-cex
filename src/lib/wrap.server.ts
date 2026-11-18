@@ -44,7 +44,7 @@ type IssuerOrder = {
   error?: string | null;
 };
 
-async function issuerFetch<T>(
+export async function issuerFetch<T>(
   path: string,
   init?: { method?: string; body?: unknown },
 ): Promise<T> {

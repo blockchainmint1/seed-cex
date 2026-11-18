@@ -398,6 +398,48 @@ export type Database = {
           },
         ]
       }
+      gas_topups: {
+        Row: {
+          created_at: string
+          error: string | null
+          id: string
+          route_id: string
+          status: string
+          to_address: string
+          txid: string | null
+          updated_at: string
+          usd: number
+          user_id: string
+          wei: number
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          id?: string
+          route_id: string
+          status?: string
+          to_address: string
+          txid?: string | null
+          updated_at?: string
+          usd: number
+          user_id: string
+          wei: number
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          id?: string
+          route_id?: string
+          status?: string
+          to_address?: string
+          txid?: string | null
+          updated_at?: string
+          usd?: number
+          user_id?: string
+          wei?: number
+        }
+        Relationships: []
+      }
       hme_link_requests: {
         Row: {
           challenge: string
@@ -1668,6 +1710,111 @@ export type Database = {
           },
         ]
       }
+      tsd_routes: {
+        Row: {
+          amount_in: number
+          amount_out: number | null
+          amount_usd: number
+          bridge_deposit: string | null
+          bridge_fee_bps: number
+          bridge_order_id: string | null
+          bridge_out_txid: string | null
+          checked_at: string | null
+          coin: string
+          coin_address: string
+          coin_asset: string
+          created_at: string
+          direction: string
+          error: string | null
+          evm_address: string
+          fresh_out: number | null
+          gas_txid: string | null
+          id: string
+          link_id: string | null
+          resume_stage: string | null
+          shown_out: number
+          shown_usdc: number
+          stage: string
+          step_at: string
+          swap_send_id: string | null
+          tsd_txid: string | null
+          txc_address: string
+          updated_at: string
+          usdc_amount: number | null
+          usdc_txid: string | null
+          user_id: string
+          working_until: string | null
+        }
+        Insert: {
+          amount_in: number
+          amount_out?: number | null
+          amount_usd: number
+          bridge_deposit?: string | null
+          bridge_fee_bps?: number
+          bridge_order_id?: string | null
+          bridge_out_txid?: string | null
+          checked_at?: string | null
+          coin: string
+          coin_address: string
+          coin_asset: string
+          created_at?: string
+          direction: string
+          error?: string | null
+          evm_address: string
+          fresh_out?: number | null
+          gas_txid?: string | null
+          id?: string
+          link_id?: string | null
+          resume_stage?: string | null
+          shown_out: number
+          shown_usdc: number
+          stage?: string
+          step_at?: string
+          swap_send_id?: string | null
+          tsd_txid?: string | null
+          txc_address: string
+          updated_at?: string
+          usdc_amount?: number | null
+          usdc_txid?: string | null
+          user_id: string
+          working_until?: string | null
+        }
+        Update: {
+          amount_in?: number
+          amount_out?: number | null
+          amount_usd?: number
+          bridge_deposit?: string | null
+          bridge_fee_bps?: number
+          bridge_order_id?: string | null
+          bridge_out_txid?: string | null
+          checked_at?: string | null
+          coin?: string
+          coin_address?: string
+          coin_asset?: string
+          created_at?: string
+          direction?: string
+          error?: string | null
+          evm_address?: string
+          fresh_out?: number | null
+          gas_txid?: string | null
+          id?: string
+          link_id?: string | null
+          resume_stage?: string | null
+          shown_out?: number
+          shown_usdc?: number
+          stage?: string
+          step_at?: string
+          swap_send_id?: string | null
+          tsd_txid?: string | null
+          txc_address?: string
+          updated_at?: string
+          usdc_amount?: number | null
+          usdc_txid?: string | null
+          user_id?: string
+          working_until?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -1974,6 +2121,18 @@ export type Database = {
         }
         Returns: string
       }
+      reserve_gas_topup: {
+        Args: {
+          _daily_max_usd: number
+          _per_route_max_usd: number
+          _route_id: string
+          _to_address: string
+          _usd: number
+          _user_id: string
+          _wei: number
+        }
+        Returns: string
+      }
       reserve_lock_outpoints: {
         Args: { _spend_ids: string[] }
         Returns: boolean
@@ -1997,6 +2156,26 @@ export type Database = {
           _to_asset: string
           _user_id: string
           _vault: string
+        }
+        Returns: string
+      }
+      reserve_tsd_route: {
+        Args: {
+          _amount_in: number
+          _amount_usd: number
+          _bridge_fee_bps: number
+          _coin: string
+          _coin_address: string
+          _coin_asset: string
+          _daily_max_usd: number
+          _direction: string
+          _evm_address: string
+          _link_id: string
+          _per_swap_max_usd: number
+          _shown_out: number
+          _shown_usdc: number
+          _txc_address: string
+          _user_id: string
         }
         Returns: string
       }

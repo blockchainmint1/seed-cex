@@ -86,3 +86,50 @@ export async function kmsSeedsSigner(chain: LockChain): Promise<SeedsSigner> {
     },
   };
 }
+
+/* ------------------- Seeds gas wallet (Ethereum network fees) ------------------- */
+
+const GAS_KEY_ENV = "SEEDS_GAS_KMS_KEY_ETH";
+
+export function kmsGasConfigured(): boolean {
+  return Boolean(process.env.SEEDS_KMS_ACCESS_KEY_ID && process.env.SEEDS_KMS_SECRET_ACCESS_KEY && process.env.SEEDS_KMS_REGION && process.env[GAS_KEY_ENV]);
+}
+
+/**
+ * Seeds' Ethereum gas wallet: a separate KMS key (never the lock keys) that only tops up
+ * members' pockets with the ETH a route's network fee needs. Returns the public key and a
+ * digest signer that yields low-S r/s plus the recovery bit Ethereum needs.
+ */
+export async function kmsGasSigner(): Promise<{ publicKey: Uint8Array; sign(digest: Uint8Array): Promise<{ r: bigint; s: bigint; recovery: number }> }> {
+  if (!kmsGasConfigured()) throw new Error("Seeds' gas wallet is not set up");
+  const keyId = process.env[GAS_KEY_ENV]!.trim();
+  let publicKey = pubCache.get(keyId);
+  if (!publicKey) {
+    const r = await kms<{ PublicKey: string; KeySpec: string; KeyUsage: string }>("GetPublicKey", { KeyId: keyId });
+    if (r.KeySpec !== "ECC_SECG_P256K1" || r.KeyUsage !== "SIGN_VERIFY") throw new Error("KMS key must be ECC_SECG_P256K1 / SIGN_VERIFY");
+    publicKey = spkiToCompressed(base64.decode(r.PublicKey));
+    pubCache.set(keyId, publicKey);
+  }
+  const pub = publicKey;
+  return {
+    publicKey: pub,
+    async sign(digest) {
+      if (digest.length !== 32) throw new Error("digest must be 32 bytes");
+      const r = await kms<{ Signature: string }>("Sign", { KeyId: keyId, Message: base64.encode(digest), MessageType: "DIGEST", SigningAlgorithm: "ECDSA_SHA_256" });
+      return recoverableFromDer(toLowSDer(base64.decode(r.Signature)), digest, pub);
+    },
+  };
+}
+
+/** Find the recovery bit that makes a DER signature recover to `pub` (Ethereum's v). */
+export function recoverableFromDer(der: Uint8Array, digest: Uint8Array, pub: Uint8Array): { r: bigint; s: bigint; recovery: number } {
+  const sig = secp256k1.Signature.fromBytes(der, "der");
+  const want = secp256k1.Point.fromBytes(pub).toBytes(true);
+  for (const bit of [0, 1]) {
+    try {
+      const got = sig.addRecoveryBit(bit).recoverPublicKey(digest).toBytes(true);
+      if (got.length === want.length && got.every((b, i) => b === want[i])) return { r: sig.r, s: sig.s, recovery: bit };
+    } catch { /* try the other bit */ }
+  }
+  throw new Error("KMS signature does not match the gas wallet key");
+}

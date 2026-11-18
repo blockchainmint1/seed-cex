@@ -63,6 +63,7 @@ import { Route as ApiPublicHmeLinkRevokeRouteImport } from './routes/api/public/
 import { Route as ApiPublicHmeLinkSubmitRouteImport } from './routes/api/public/hme-link/submit'
 import { Route as ApiPublicHmeLinkTradesRouteImport } from './routes/api/public/hme-link/trades'
 import { Route as ApiPublicJobsAiDailyRouteImport } from './routes/api/public/jobs/ai-daily'
+import { Route as ApiPublicJobsTsdRoutesRouteImport } from './routes/api/public/jobs/tsd-routes'
 import { Route as ApiPublicMinehmeProfileUpdateRouteImport } from './routes/api/public/minehme/profile-update'
 import { Route as ApiPublicNectarpayWebhookRouteImport } from './routes/api/public/nectarpay/webhook'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
@@ -358,6 +359,11 @@ const ApiPublicJobsAiDailyRoute = ApiPublicJobsAiDailyRouteImport.update({
   path: '/api/public/jobs/ai-daily',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicJobsTsdRoutesRoute = ApiPublicJobsTsdRoutesRouteImport.update({
+  id: '/api/public/jobs/tsd-routes',
+  path: '/api/public/jobs/tsd-routes',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicMinehmeProfileUpdateRoute =
   ApiPublicMinehmeProfileUpdateRouteImport.update({
     id: '/api/public/minehme/profile-update',
@@ -534,6 +540,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hme-link/submit': typeof ApiPublicHmeLinkSubmitRoute
   '/api/public/hme-link/trades': typeof ApiPublicHmeLinkTradesRouteWithChildren
   '/api/public/jobs/ai-daily': typeof ApiPublicJobsAiDailyRoute
+  '/api/public/jobs/tsd-routes': typeof ApiPublicJobsTsdRoutesRoute
   '/api/public/minehme/profile-update': typeof ApiPublicMinehmeProfileUpdateRoute
   '/api/public/nectarpay/webhook': typeof ApiPublicNectarpayWebhookRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
@@ -612,6 +619,7 @@ export interface FileRoutesByTo {
   '/api/public/hme-link/submit': typeof ApiPublicHmeLinkSubmitRoute
   '/api/public/hme-link/trades': typeof ApiPublicHmeLinkTradesRouteWithChildren
   '/api/public/jobs/ai-daily': typeof ApiPublicJobsAiDailyRoute
+  '/api/public/jobs/tsd-routes': typeof ApiPublicJobsTsdRoutesRoute
   '/api/public/minehme/profile-update': typeof ApiPublicMinehmeProfileUpdateRoute
   '/api/public/nectarpay/webhook': typeof ApiPublicNectarpayWebhookRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
@@ -692,6 +700,7 @@ export interface FileRoutesById {
   '/api/public/hme-link/submit': typeof ApiPublicHmeLinkSubmitRoute
   '/api/public/hme-link/trades': typeof ApiPublicHmeLinkTradesRouteWithChildren
   '/api/public/jobs/ai-daily': typeof ApiPublicJobsAiDailyRoute
+  '/api/public/jobs/tsd-routes': typeof ApiPublicJobsTsdRoutesRoute
   '/api/public/minehme/profile-update': typeof ApiPublicMinehmeProfileUpdateRoute
   '/api/public/nectarpay/webhook': typeof ApiPublicNectarpayWebhookRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
@@ -772,6 +781,7 @@ export interface FileRouteTypes {
     | '/api/public/hme-link/submit'
     | '/api/public/hme-link/trades'
     | '/api/public/jobs/ai-daily'
+    | '/api/public/jobs/tsd-routes'
     | '/api/public/minehme/profile-update'
     | '/api/public/nectarpay/webhook'
     | '/api/public/telegram/webhook'
@@ -850,6 +860,7 @@ export interface FileRouteTypes {
     | '/api/public/hme-link/submit'
     | '/api/public/hme-link/trades'
     | '/api/public/jobs/ai-daily'
+    | '/api/public/jobs/tsd-routes'
     | '/api/public/minehme/profile-update'
     | '/api/public/nectarpay/webhook'
     | '/api/public/telegram/webhook'
@@ -929,6 +940,7 @@ export interface FileRouteTypes {
     | '/api/public/hme-link/submit'
     | '/api/public/hme-link/trades'
     | '/api/public/jobs/ai-daily'
+    | '/api/public/jobs/tsd-routes'
     | '/api/public/minehme/profile-update'
     | '/api/public/nectarpay/webhook'
     | '/api/public/telegram/webhook'
@@ -1000,6 +1012,7 @@ export interface RootRouteChildren {
   ApiPublicHmeLinkSubmitRoute: typeof ApiPublicHmeLinkSubmitRoute
   ApiPublicHmeLinkTradesRoute: typeof ApiPublicHmeLinkTradesRouteWithChildren
   ApiPublicJobsAiDailyRoute: typeof ApiPublicJobsAiDailyRoute
+  ApiPublicJobsTsdRoutesRoute: typeof ApiPublicJobsTsdRoutesRoute
   ApiPublicMinehmeProfileUpdateRoute: typeof ApiPublicMinehmeProfileUpdateRoute
   ApiPublicNectarpayWebhookRoute: typeof ApiPublicNectarpayWebhookRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
@@ -1405,6 +1418,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicJobsAiDailyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/jobs/tsd-routes': {
+      id: '/api/public/jobs/tsd-routes'
+      path: '/api/public/jobs/tsd-routes'
+      fullPath: '/api/public/jobs/tsd-routes'
+      preLoaderRoute: typeof ApiPublicJobsTsdRoutesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/minehme/profile-update': {
       id: '/api/public/minehme/profile-update'
       path: '/api/public/minehme/profile-update'
@@ -1655,6 +1675,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHmeLinkSubmitRoute: ApiPublicHmeLinkSubmitRoute,
   ApiPublicHmeLinkTradesRoute: ApiPublicHmeLinkTradesRouteWithChildren,
   ApiPublicJobsAiDailyRoute: ApiPublicJobsAiDailyRoute,
+  ApiPublicJobsTsdRoutesRoute: ApiPublicJobsTsdRoutesRoute,
   ApiPublicMinehmeProfileUpdateRoute: ApiPublicMinehmeProfileUpdateRoute,
   ApiPublicNectarpayWebhookRoute: ApiPublicNectarpayWebhookRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,

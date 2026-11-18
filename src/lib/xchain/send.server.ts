@@ -28,7 +28,7 @@ import type { SendPlan } from "./router.server";
 
 export type SwapLink = { id: string; mode: string; account: number; hasKey: boolean; pockets: PocketCoin[]; addresses: Partial<Record<PocketCoin, string>> };
 
-async function loadLink(userId: string): Promise<(SwapLink & { xpubs: Record<string, string>; ciphertext: string | null }) | null> {
+export async function loadLink(userId: string): Promise<(SwapLink & { xpubs: Record<string, string>; ciphertext: string | null }) | null> {
   const { data, error } = await supabaseAdmin
     .from("hme_links")
     .select("id, mode, account, xpubs, key_ciphertext")
@@ -229,8 +229,16 @@ async function signAndBroadcast(
   }
 }
 
+/** The fresh quote is worse than allowed; carries the new expected output so a route can ask the member. */
+export class PriceMovedError extends Error {
+  constructor(public freshOut: number, message: string) {
+    super(message);
+    this.name = "PriceMovedError";
+  }
+}
+
 /** Telegram (if they opted in) plus an always-sent security email: coins left their pocket. */
-async function tellMember(userId: string, telegram: string, emailLines: string[]) {
+export async function tellMember(userId: string, telegram: string, emailLines: string[]) {
   try {
     const { notifyUser } = await import("@/lib/telegram.server");
     const { emailAccountChange } = await import("@/lib/email/send.server");
@@ -245,7 +253,30 @@ async function tellMember(userId: string, telegram: string, emailLines: string[]
 
 export type SendSwapInput = { from: string; to: string; amount: string; destination: string; shownOut: number };
 
-export async function sendSwapFromPocket(userId: string, isAdmin: boolean, input: SendSwapInput) {
+/**
+ * Decrypt one pocket key, prove it controls `address`, run `fn`, then wipe it.
+ * Used by TSD routes for the TSD send and the USDC hand-off to TSD Bridge.
+ */
+export async function withPocketKey<T>(ciphertext: string | null, pocket: PocketCoin, address: string, fn: (priv: Uint8Array) => Promise<T>): Promise<T> {
+  if (!ciphertext) throw new Error("Seeds doesn't hold this pocket's key.");
+  let priv: Uint8Array | null = null;
+  try {
+    const keys = JSON.parse(decryptDelegatedKey(ciphertext)) as Record<string, string>;
+    const xprv = keys[pocket];
+    for (const k of Object.keys(keys)) keys[k] = "";
+    if (!xprv) throw new Error(`Seeds doesn't hold the ${pocket} key for this pocket.`);
+    priv = receivePrivateKey(pocket, xprv);
+    if (addressOfKey(pocket, priv) !== address) throw new Error("The stored key doesn't match your pocket address. Nothing was sent.");
+    return await fn(priv);
+  } finally {
+    priv?.fill(0);
+  }
+}
+
+/** A TSD route's THORChain leg: the route was gated when it started; the leg allows more drift (it runs later). */
+export type RouteLegOptions = { routeId: string; tolerance: number };
+
+export async function sendSwapFromPocket(userId: string, isAdmin: boolean, input: SendSwapInput, leg?: RouteLegOptions) {
   const from = swapCoin(input.from);
   const to = swapCoin(input.to);
   if (!from || !to || from.id === to.id) throw new Error("Pick two different coins.");
@@ -257,7 +288,7 @@ export async function sendSwapFromPocket(userId: string, isAdmin: boolean, input
 
   const link = await loadLink(userId);
   // Early, cheap gate (no price yet) so non-pilot members never trigger quotes.
-  const early = sendBlocker({ from, link, isAdmin, amountUsd: 0 });
+  const early = sendBlocker({ from, link, isAdmin: isAdmin || Boolean(leg), amountUsd: 0 });
   if (early) throw new Error(early);
 
   if (src.kind === "erc20") amount = roundTo1e8Units(amount, await tokenDecimals(tokenContract(from.asset)!));
@@ -267,13 +298,13 @@ export async function sendSwapFromPocket(userId: string, isAdmin: boolean, input
 
   const { quoteForSend } = await import("./router.server");
   const { route, plan, inputUsd } = await quoteForSend(SEND_PROTOCOL, from, to, amount, input.destination);
-  const blocker = sendBlocker({ from, link, isAdmin, amountUsd: inputUsd });
+  const blocker = sendBlocker({ from, link, isAdmin: isAdmin || Boolean(leg), amountUsd: inputUsd });
   if (blocker) throw new Error(blocker);
   if (!route.ok) throw new Error(route.error ?? "THORChain has no route right now.");
   if (!plan) throw new Error(`Not safe to send right now: ${route.blockedReason ?? "a safety check failed"}.`);
   if (plan.expiry - Date.now() / 1000 < MIN_SEND_QUOTE_SECONDS) throw new Error("THORChain's quote is about to expire. Try again.");
-  if (!requoteOk(input.shownOut, route.expectedOut)) {
-    throw new Error(`The price moved more than 1% since you looked (now ${route.expectedOut} ${to.symbol}). Check the new quote and try again.`);
+  if (!requoteOk(input.shownOut, route.expectedOut, leg?.tolerance)) {
+    throw new PriceMovedError(route.expectedOut, `The price moved more than ${Math.round((leg?.tolerance ?? 0.01) * 100)}% since you looked (now ${route.expectedOut} ${to.symbol}). Check the new quote and try again.`);
   }
   if (from.evm && !plan.router) throw new Error("THORChain named no confirmed router contract.");
 

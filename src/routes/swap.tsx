@@ -8,6 +8,7 @@ import { PROTOCOL_LABEL, SWAP_COINS, swapCoin, swapCoinGroup, type Protocol, typ
 import { getSwapQuotes, getSwapSendContext, getSwapStatus, sendSwap } from "@/lib/xchain/swap.functions";
 import { receivePocket, sendBlocker, sendSource, SWAP_LIMITS } from "@/lib/xchain/send-rules";
 import { useSession } from "@/hooks/use-session";
+import { TsdSwapPanel } from "@/components/swap/TsdSwapPanel";
 import { fmtCompact } from "@/lib/format";
 
 export const Route = createFileRoute("/swap")({
@@ -142,6 +143,12 @@ function SwapPage() {
           Anyone can compare prices. Sending from your trading pocket is in a small test with the Seeds team first.
         </p>
       </header>
+
+      <TsdSwapPanel
+        signedIn={Boolean(user)}
+        isAdmin={Boolean(sendCtx?.isAdmin)}
+        link={sendCtx?.link ? { mode: sendCtx.link.mode, hasKey: sendCtx.link.hasKey, pockets: sendCtx.link.pockets as string[] } : null}
+      />
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
         <section className="min-w-0 space-y-6">
@@ -433,8 +440,8 @@ function SwapPage() {
         THORChain and Maya Protocol are independent networks; Seeds does not run them. Quotes expire within minutes and
         large trades move the price. Tokens such as WBTC or USDC on BNB Chain are issued by third parties on those
         networks, not by THORChain or Maya. Maya publishes one public server, so Maya routes show prices but cannot pass
-        the two-server check yet. Want to trade into Texas
-        Stable Dollar? See <Link to="/tsd" className="text-primary underline-offset-2 hover:underline">TSD</Link>.
+        the two-server check yet. TSD swaps convert through TSD Bridge, the single issuer of Texas Stable Dollar — see{" "}
+        <Link to="/tsd" className="text-primary underline-offset-2 hover:underline">TSD</Link>.
       </p>
     </div>
   );

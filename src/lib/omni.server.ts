@@ -166,6 +166,8 @@ export type OmniSendParams = {
   /** whole tokens, 8dp for a divisible property */
   amount: number;
   propertyId?: number;
+  /** Called with the txid after signing, before broadcast, so callers can record it first. */
+  beforeBroadcast?: (txid: string) => Promise<void>;
 };
 
 export type OmniSendResult = {
@@ -261,6 +263,7 @@ export async function omniSimpleSend(params: OmniSendParams): Promise<OmniSendRe
     throw new Error(`The node rejected the TSD transfer: ${accept[0]["reject-reason"] ?? "unknown"}`);
   }
 
+  if (params.beforeBroadcast) await params.beforeBroadcast(signed.txid);
   const txid = await rpc<string>("txc", "sendrawtransaction", [signed.hex]);
   return { txid, amount: params.amount, to: params.toAddress, from: params.fromAddress, propertyId };
 }

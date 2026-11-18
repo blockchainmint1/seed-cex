@@ -435,3 +435,11 @@ export async function protocolTxStatus(p: Protocol, txid: string): Promise<unkno
     return null;
   }
 }
+
+/** THORChain-only quote (no vault returned): used to price TSD routes. */
+export async function thorQuote(from: SwapCoin, to: SwapCoin, amount: bigint, destination: string | null) {
+  const prices = await livePrices();
+  const route = await quoteOne("thorchain", from, to, amount, destination, prices);
+  const inPx = prices.get(from.asset) ?? null;
+  return { route, inputUsd: inPx ? (Number(amount) / 1e8) * inPx : null };
+}

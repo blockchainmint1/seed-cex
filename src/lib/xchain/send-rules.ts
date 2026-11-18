@@ -49,8 +49,8 @@ export function receivePocket(c: SwapCoin): PocketCoin | null {
   return RECEIVE_BY_CHAIN[c.chain] ?? null;
 }
 
-export function requoteOk(shownOut: number, freshOut: number): boolean {
-  return Number.isFinite(shownOut) && shownOut > 0 && freshOut >= shownOut * (1 - REQUOTE_TOLERANCE);
+export function requoteOk(shownOut: number, freshOut: number, tolerance: number = REQUOTE_TOLERANCE): boolean {
+  return Number.isFinite(shownOut) && shownOut > 0 && freshOut >= shownOut * (1 - tolerance);
 }
 
 export type LinkLike = { mode: string; hasKey: boolean; pockets: string[] } | null;

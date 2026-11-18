@@ -136,3 +136,42 @@ export function signEip1559(params: EvmTxParams): SignedTx {
     from: addressFromPrivateKey(params.privateKeyHex),
   };
 }
+
+/* ----------------------- signing with an external key ----------------------- */
+
+export type DigestSigner = {
+  /** Lowercase 0x address of the signing key. */
+  address: string;
+  /** Sign a 32-byte keccak digest; return low-S r, s and the recovery bit. */
+  sign(digest: Uint8Array): Promise<{ r: bigint; s: bigint; recovery: number }>;
+};
+
+/** Same EIP-1559 payload as signEip1559, signed by a key that never leaves its vault (AWS KMS). */
+export async function signEip1559External(params: Omit<EvmTxParams, "privateKeyHex">, signer: DigestSigner): Promise<SignedTx> {
+  const data = hexToBytes((params.data || "0x").slice(2));
+  const fields: RlpInput[] = [
+    toMinimalBytes(BigInt(params.chainId)),
+    toMinimalBytes(BigInt(params.nonce)),
+    toMinimalBytes(params.maxPriorityFeePerGas),
+    toMinimalBytes(params.maxFeePerGas),
+    toMinimalBytes(params.gasLimit),
+    addressBytes(params.to),
+    toMinimalBytes(params.value),
+    data,
+    [],
+  ];
+  const unsigned = concat(Uint8Array.of(0x02), rlpEncode(fields));
+  const sig = await signer.sign(keccak_256(unsigned));
+  if (sig.recovery !== 0 && sig.recovery !== 1) throw new Error("Bad recovery bit");
+  const signed = concat(
+    Uint8Array.of(0x02),
+    rlpEncode([...fields, toMinimalBytes(BigInt(sig.recovery)), toMinimalBytes(sig.r), toMinimalBytes(sig.s)]),
+  );
+  return { raw: `0x${bytesToHex(signed)}`, hash: `0x${bytesToHex(keccak_256(signed))}`, from: signer.address };
+}
+
+/** 0x address of a secp256k1 public key (compressed or not). */
+export function addressFromPublicKey(pub: Uint8Array): string {
+  const full = secp256k1.Point.fromBytes(pub).toBytes(false);
+  return `0x${bytesToHex(keccak_256(full.subarray(1)).subarray(-20))}`;
+}

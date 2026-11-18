@@ -63,9 +63,14 @@
 - [x] NectarPay: explained the missed notice (follow-up work cut off, never retried); they now save + retry; Seeds re-runs repeated confirmations
 - [ ] NectarPay: confirm each retry is re-signed with a fresh timestamp (blocked: NectarPay team)
 
-## TSD <-> THORChain route (decision pending)
-- [ ] Choose route model: split (TSD Bridge redeem/mint + Seeds THORChain leg) vs one-stop at TSD Bridge
-- [ ] Get working TSD Bridge partner key (cashout scope), partner fee rate and >$5k lane — blocked on TSD Bridge team
+## TSD <-> THORChain route (one step for members)
+- [x] Route model chosen: go through TSD Bridge (single issuer) for TSD<->USDC, Seeds runs the THORChain leg; coins pass only through the member's own pockets
+- [x] Seeds' TSD Bridge key works with cash-out access; live: 0% fee both ways, 10–100,000 TSD per order
+- [x] Built: "Pay with TSD" on /swap (buy any THORChain coin with TSD, sell back to TSD), resumable step engine, every-minute job, progress tracker, price-moved pause, tests
+- [ ] Seeds gas wallet: Bobby creates one more AWS KMS key (SEEDS_GAS_KMS_KEY_ETH) and funds its address with a little ETH (blocked: Bobby) — until then members need ETH in their EVM pocket
+- [ ] First real $10–50 test each way (blocked: Bobby, pilot admin-only)
+- [ ] Ask TSD Bridge: pay USDC straight into THORChain (router deposit with our memo) and credit THORChain payouts to mint addresses — removes the gas step (blocked: TSD Bridge team)
+- [ ] Auditor review of TSD routes before opening to members (blocked: auditor)
 - [ ] View-only THORChain order book on market pages (waiting on Bobby's go-ahead)
 
 ## Locked trading balance (2-of-2 + 30-day refund, TXC/ISK)
