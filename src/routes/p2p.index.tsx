@@ -218,7 +218,7 @@ function BuyDialog({ offer, onClose }: { offer: Offer; onClose: () => void }) {
                 <span className="font-mono text-[11px] text-muted-foreground">Coins come from your HME trading pocket, stay reserved, and leave only when you tap Approve in Telegram.</span>
               </label>
             ) : (
-              <p className="text-xs text-muted-foreground">Coins go to your own Seeds wallet address. Payment instructions appear once the trade opens.</p>
+              <p className="text-xs text-muted-foreground">Coins go to your HME trading pocket. Payment instructions appear once the trade opens.</p>
             )}
             <Button className="w-full" disabled={m.isPending || n < offer.minFiat || n > offer.maxFiat} onClick={() => m.mutate()}>
               {m.isPending ? "Verifying funds…" : "Open trade"}
