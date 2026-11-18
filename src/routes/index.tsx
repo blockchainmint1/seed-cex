@@ -6,6 +6,7 @@ import { fmtAmount, fmtPrice } from "@/lib/format";
 import { PAIRS } from "@/lib/chains";
 import seedsCoin from "@/assets/seeds-cold-storage-coin.jpg.asset.json";
 import { IgnitePromo } from "@/components/ignite/IgnitePromo";
+import { TreeOfLife } from "@/components/home/TreeOfLife";
 
 export const Route = createFileRoute("/")({
   staticData: { sitemap: true },
@@ -66,7 +67,7 @@ function Index() {
   return (
     <>
       <IgnitePromo />
-      <section className="relative overflow-hidden border-b border-border">
+      <section className="relative border-b border-border">
         <div
           className="pointer-events-none absolute inset-0 opacity-[0.12]"
           style={{
@@ -77,6 +78,14 @@ function Index() {
           aria-hidden
         />
         <div className="relative mx-auto max-w-7xl px-5 py-20 md:py-28">
+          {/* Tree of Life: canopy up from the Seeds symbol, roots down past the hero. */}
+          <div
+            className="pointer-events-none absolute top-6 right-5 hidden w-[440px] opacity-60 lg:block xl:w-[540px] xl:opacity-100"
+            aria-hidden
+          >
+            <TreeOfLife className="h-auto w-full" />
+          </div>
+          <div className="relative z-10">
           <p className="font-mono text-[11px] tracking-[0.3em] text-primary uppercase">
             Not your keys, not your coins — until now
           </p>
@@ -128,6 +137,7 @@ function Index() {
               value="On-chain"
               hint="direct from your wallet"
             />
+          </div>
           </div>
         </div>
       </section>

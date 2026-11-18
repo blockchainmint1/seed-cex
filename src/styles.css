@@ -370,3 +370,69 @@
 @utility shadow-promo-btn {
   box-shadow: 0 10px 40px -8px color-mix(in oklab, var(--action) 70%, transparent);
 }
+
+/* Homepage Tree of Life (components/home/TreeOfLife.tsx): grows from the Seeds symbol. */
+:root {
+  --tol-bark: color-mix(in oklab, var(--primary) 55%, var(--foreground));
+  --tol-root: color-mix(in oklab, var(--primary) 30%, var(--muted-foreground));
+  --tol-leaf: var(--primary);
+  --tol-leaf-alt: color-mix(in oklab, var(--primary) 60%, var(--background));
+  --tol-glow: color-mix(in oklab, var(--primary) 10%, transparent);
+}
+.dark {
+  --tol-bark: color-mix(in oklab, var(--primary) 50%, var(--muted-foreground));
+  --tol-root: color-mix(in oklab, var(--primary) 30%, var(--muted-foreground));
+  --tol-leaf: var(--action);
+  --tol-leaf-alt: color-mix(in oklab, var(--action) 55%, var(--foreground));
+  --tol-glow: var(--growth-glow);
+}
+.tol { overflow: visible; }
+.tol-limb {
+  fill: none;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation-name: tol-draw;
+  animation-timing-function: cubic-bezier(0.3, 0.1, 0.4, 1);
+  animation-fill-mode: forwards;
+}
+.tol-branch { stroke: var(--tol-bark); }
+.tol-root { stroke: var(--tol-root); }
+.tol-leaf {
+  fill: var(--tol-leaf);
+  transform-box: view-box;
+  transform-origin: 0 0;
+  transform: scale(0);
+  animation: tol-leaf 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.tol-leaf-alt { fill: var(--tol-leaf-alt); }
+.tol-leaf-inner { fill: var(--tol-leaf-alt); fill-opacity: 0.6; }
+.tol-tip {
+  fill: var(--tol-leaf);
+  opacity: 0;
+  animation: tol-fade 0.5s ease-out forwards, tol-pulse 3.2s ease-in-out infinite;
+}
+.tol-seed {
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+  animation: tol-seed 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 0.05s forwards;
+}
+.tol-glow { opacity: 0; animation: tol-fade 2.4s ease-out 0.4s forwards; }
+.tol-canopy {
+  transform-box: view-box;
+  animation: tol-sway 11s ease-in-out 4.5s infinite;
+}
+@keyframes tol-draw { to { stroke-dashoffset: 0; } }
+@keyframes tol-leaf { to { transform: scale(1); } }
+@keyframes tol-fade { to { opacity: 1; } }
+@keyframes tol-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+@keyframes tol-seed { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: scale(1); } }
+@keyframes tol-sway { 0%, 100% { transform: rotate(0deg); } 30% { transform: rotate(0.7deg); } 70% { transform: rotate(-0.7deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .tol-limb { stroke-dashoffset: 0; animation: none; }
+  .tol-leaf { transform: scale(1); animation: none; }
+  .tol-tip, .tol-seed, .tol-glow { opacity: 1; animation: none; }
+  .tol-seed { transform: none; }
+  .tol-canopy { animation: none; }
+}
