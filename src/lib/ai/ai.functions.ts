@@ -1,18 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
+import { requireAdmin } from "@/lib/admin-guard";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { AI_CATALOG, aiPocketFor, catalogByGecko } from "./catalog";
 import { cleanSettings, lockBlocker } from "./lock-rules";
 import type { PlanSettings } from "./plan";
 
-type RoleClient = { from: (t: "user_roles") => any };
-async function isAdmin(supabase: RoleClient, userId: string): Promise<boolean> {
-  const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId).eq("role", "admin").maybeSingle();
-  return Boolean(data);
-}
-async function requireAdmin(supabase: RoleClient, userId: string) {
-  if (!(await isAdmin(supabase, userId))) throw new Error("Forbidden: admin role required");
-}
 const db = async () => (await import("@/integrations/supabase/client.server")).supabaseAdmin;
 
 const POCKET_NAMES: Record<string, string> = { BTC: "Bitcoin", LTC: "Litecoin", EVM: "Ethereum", DOGE: "Dogecoin", BCH: "Bitcoin Cash", XRP: "XRP", TRX: "TRON", SOL: "Solana" };
@@ -173,7 +166,7 @@ export type AdminAiCoin = {
 export const getAdminAi = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await requireAdmin(context.supabase as never, context.userId);
+    await requireAdmin(context as never);
     const admin = await db();
     await admin.rpc("ai_sync_ingest"); // save any finished downloads first
     const { aiSettings } = await import("./ai.server");
@@ -220,7 +213,7 @@ export const adminAiSetCoin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => coinInput.parse(input))
   .handler(async ({ data, context }) => {
-    await requireAdmin(context.supabase as never, context.userId);
+    await requireAdmin(context as never);
     const cat = catalogByGecko(data.id);
     if (!cat) throw new Error("Only coins Seeds can buy and sell back can be offered.");
     const admin = await db();
@@ -238,7 +231,7 @@ export const adminAiSetCoin = createServerFn({ method: "POST" })
 export const adminAiRefresh = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await requireAdmin(context.supabase as never, context.userId);
+    await requireAdmin(context as never);
     const admin = await db();
     await admin.rpc("ai_sync_ingest");
     const { data: n } = await admin.rpc("ai_sync_request", { _with_markets: true });
@@ -252,7 +245,7 @@ export const adminAiSaveSettings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => settingsInput.parse(input))
   .handler(async ({ data, context }) => {
-    await requireAdmin(context.supabase as never, context.userId);
+    await requireAdmin(context as never);
     const admin = await db();
     const { error } = await admin.from("ai_settings").update({ one_tap_limit_usd: data.oneTapLimitUsd, max_commit_tsd: data.maxCommitTsd, updated_at: new Date().toISOString() }).eq("id", 1);
     if (error) throw new Error(error.message);
@@ -263,7 +256,7 @@ export const adminAiSaveSettings = createServerFn({ method: "POST" })
 export const adminAiRunChecks = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await requireAdmin(context.supabase as never, context.userId);
+    await requireAdmin(context as never);
     const { runDailyChecks } = await import("./ai.server");
     return runDailyChecks();
   });

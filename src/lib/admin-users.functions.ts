@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { requireAdmin } from "./admin-guard";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -21,8 +22,7 @@ export type AdminRoleEvent = { at: string; action: "grant" | "revoke"; targetNam
 export const listAdminUsers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data: mine } = await context.supabase.from("user_roles").select("role").eq("user_id", context.userId).eq("role", "admin").maybeSingle();
-    if (!mine) throw new Error("Forbidden: admin role required");
+    await requireAdmin(context as never);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const authUsers: { id: string; email: string | null; lastSignInAt: string | null }[] = [];
@@ -70,8 +70,7 @@ export const setAdminAccess = createServerFn({ method: "POST" })
     return { userId: d.userId, grant: d.grant === true };
   })
   .handler(async ({ data, context }) => {
-    const { data: mine } = await context.supabase.from("user_roles").select("role").eq("user_id", context.userId).eq("role", "admin").maybeSingle();
-    if (!mine) throw new Error("Forbidden: admin role required");
+    await requireAdmin(context as never);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { adminResultMessage } = await import("./admin-users-rules");
     const { data: code, error } = await supabaseAdmin.rpc("set_admin_role", { _actor: context.userId, _target: data.userId, _grant: data.grant });

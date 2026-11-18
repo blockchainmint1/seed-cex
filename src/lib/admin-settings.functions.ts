@@ -2,12 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { memberLimits, overrideMessage, tiersProblem, type WithdrawHistory, type WithdrawTier } from "./withdraw-limits";
-
-type Ctx = { supabase: { from: (t: string) => any }; userId: string };
-async function requireAdmin(context: Ctx) {
-  const { data } = await context.supabase.from("user_roles").select("role").eq("user_id", context.userId).eq("role", "admin").maybeSingle();
-  if (!data) throw new Error("Forbidden: admin role required");
-}
+import { requireAdmin } from "./admin-guard";
 
 export type LimitMemberRow = {
   id: string;

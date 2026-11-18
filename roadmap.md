@@ -3,6 +3,8 @@
 - [x] /admin/settings withdrawal levels: low limits for new members, automatic step-ups from history, per-member set level / pause with notes, logged (Nov 18)
 - [ ] Confirm the starting withdrawal levels (blocked: Bobby's numbers)
 - [x] Two-factor sign-in (authenticator app) in Account → Security; required for withdrawal levels 2+; code on every withdrawal; admin reset with own code + note (Nov 18)
+- [x] Admins must use Seeds two-factor: console locked until set up, code every 12 hours, enforced on every admin action (Nov 18)
+- [ ] Bobby to confirm the 12-hour admin unlock window (agent-chosen)
 - [ ] Two-factor: first real setup on a real Honest.Money sign-in (blocked: Bobby tries it; test sign-ins can't enroll)
 
 - [x] Cross-chain swaps: THORChain routes for BTC, ETH, LTC, DOGE, BCH, XRP, SOL, ZEC, BNB, TRX (+ USDC/USDT on Ethereum) — live quotes, safety checks, /swap page

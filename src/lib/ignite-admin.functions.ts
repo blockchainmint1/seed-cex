@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { requireAdmin } from "./admin-guard";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -26,8 +27,7 @@ export const sendIgniteReminders = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { ids: string[] }) => ({ ids: cleanIds(d?.ids, 150) }))
   .handler(async ({ data, context }): Promise<SendResult> => {
-    const { data: mine } = await context.supabase.from("user_roles").select("role").eq("user_id", context.userId).eq("role", "admin").maybeSingle();
-    if (!mine) throw new Error("Forbidden: admin role required");
+    await requireAdmin(context as never);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { sesConfigured } = await import("./email/ses.server");
     if (!sesConfigured()) throw new Error("Email isn't set up right now.");
@@ -75,8 +75,7 @@ export const sendIgniteMessage = createServerFn({ method: "POST" })
     ids: cleanIds(d?.ids, 150), subject: String(d?.subject ?? ""), body: String(d?.body ?? ""),
   }))
   .handler(async ({ data, context }): Promise<SendResult> => {
-    const { data: mine } = await context.supabase.from("user_roles").select("role").eq("user_id", context.userId).eq("role", "admin").maybeSingle();
-    if (!mine) throw new Error("Forbidden: admin role required");
+    await requireAdmin(context as never);
     const { validateMessage, personalize, paragraphs } = await import("./ignite-admin");
     const problems = validateMessage(data);
     if (problems.subject || problems.body) throw new Error(problems.subject ?? problems.body);

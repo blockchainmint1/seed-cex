@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { adminUnlocked, requireAdmin } from "@/lib/admin-guard";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { P2P_ASSET_IDS, P2P_ASSETS, type P2pAsset } from "@/lib/p2p-config";
@@ -24,9 +25,9 @@ async function namesFor(ids: string[]) {
   return out;
 }
 
-async function isAdmin(supabase: { from: (t: "user_roles") => any }, userId: string) {
-  const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId).eq("role", "admin").maybeSingle();
-  return Boolean(data);
+/** Admin powers here (arbitration, seeing others' trades) need the role AND a recent authenticator code. */
+async function isAdmin(supabase: { from: (t: "user_roles") => any }, userId: string, claims: unknown) {
+  return adminUnlocked({ supabase, userId, claims });
 }
 
 /* --------------------------------- public --------------------------------- */
@@ -522,13 +523,13 @@ export const openTrade = createServerFn({ method: "POST" })
     return { id: t.id };
   });
 
-async function loadForParty(tradeId: string, userId: string, supabase: any) {
+async function loadForParty(tradeId: string, userId: string, supabase: any, claims: unknown) {
   const db = await admin();
   const { watchTrade } = await engine();
   const t = await watchTrade(tradeId);
   if (!t) throw new Error("Trade not found");
   const party = t.seller_id === userId || t.buyer_id === userId;
-  const isAdm = await isAdmin(supabase, userId);
+  const isAdm = await isAdmin(supabase, userId, claims);
   if (!party && !isAdm) throw new Error("Forbidden");
   return { db, t, isAdm };
 }
@@ -537,7 +538,7 @@ export const getP2pTrade = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) => z.object({ id: z.string().uuid() }).parse(i))
   .handler(async ({ data, context }) => {
-    const { db, t, isAdm } = await loadForParty(data.id, context.userId, context.supabase);
+    const { db, t, isAdm } = await loadForParty(data.id, context.userId, context.supabase, context.claims);
     const me = context.userId;
     if (me === t.seller_id && !t.seller_seen_at) {
       await db.from("p2p_trades").update({ seller_seen_at: new Date().toISOString() }).eq("id", t.id);
@@ -626,7 +627,7 @@ export const sendP2pMessage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) => z.object({ id: z.string().uuid(), body: z.string().trim().min(1).max(1000) }).parse(i))
   .handler(async ({ data, context }) => {
-    const { db, t } = await loadForParty(data.id, context.userId, context.supabase);
+    const { db, t } = await loadForParty(data.id, context.userId, context.supabase, context.claims);
     await db.from("p2p_messages").insert({ trade_id: t.id, sender_id: context.userId, body: data.body });
     const { p2pAlert } = await engine();
     const other = context.userId === t.seller_id ? t.buyer_id : t.seller_id;
@@ -663,7 +664,7 @@ export const uploadP2pReceipt = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const ext = UPLOAD_TYPES[data.type];
     if (!ext) throw new Error("Upload a photo (PNG, JPG, WebP, GIF) or a PDF");
-    const { db, t } = await loadForParty(data.id, context.userId, context.supabase);
+    const { db, t } = await loadForParty(data.id, context.userId, context.supabase, context.claims);
     if (t.status === "released" || t.status === "cancelled") throw new Error("This trade is closed");
     const bytes = Uint8Array.from(atob(data.base64), (c) => c.charCodeAt(0));
     if (bytes.byteLength > 8 * 1024 * 1024) throw new Error("File is over 8 MB");
@@ -695,7 +696,7 @@ export const p2pAction = createServerFn({ method: "POST" })
       .parse(i),
   )
   .handler(async ({ data, context }) => {
-    const { db, t } = await loadForParty(data.id, context.userId, context.supabase);
+    const { db, t } = await loadForParty(data.id, context.userId, context.supabase, context.claims);
     const me = context.userId;
     const { systemMessage, releaseTrade, p2pAlert } = await engine();
     const now = new Date().toISOString();
@@ -738,7 +739,7 @@ export const leaveFeedback = createServerFn({ method: "POST" })
     z.object({ id: z.string().uuid(), positive: z.boolean(), comment: z.string().max(400) }).parse(i),
   )
   .handler(async ({ data, context }) => {
-    const { db, t } = await loadForParty(data.id, context.userId, context.supabase);
+    const { db, t } = await loadForParty(data.id, context.userId, context.supabase, context.claims);
     if (!["released", "cancelled"].includes(t.status)) throw new Error("Feedback opens once the trade ends");
     const to = context.userId === t.seller_id ? t.buyer_id : t.seller_id;
     const { error } = await db.from("p2p_feedback").insert({
@@ -761,7 +762,7 @@ export const listDisputes = createServerFn({ method: "GET" })
     const me = context.userId;
     const [{ count }, isAdm] = await Promise.all([
       db.from("p2p_trades").select("id", { count: "exact", head: true }).or(`seller_id.eq.${me},buyer_id.eq.${me}`).eq("status", "released"),
-      isAdmin(context.supabase, me),
+      isAdmin(context.supabase, me, context.claims),
     ]);
     const eligible = isAdm || (count ?? 0) >= 3;
     const { data: ds } = await db
@@ -826,7 +827,7 @@ export const voteDispute = createServerFn({ method: "POST" })
     if (t.seller_id === me || t.buyer_id === me) throw new Error("You can't judge your own trade");
     const [{ count }, isAdm] = await Promise.all([
       db.from("p2p_trades").select("id", { count: "exact", head: true }).or(`seller_id.eq.${me},buyer_id.eq.${me}`).eq("status", "released"),
-      isAdmin(context.supabase, me),
+      isAdmin(context.supabase, me, context.claims),
     ]);
     if (!isAdm && (count ?? 0) < 3) throw new Error("Jurors need 3 completed P2P trades");
     const { error } = await db
@@ -840,7 +841,7 @@ export const resolveDispute = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) => z.object({ id: z.string().uuid(), outcome: z.enum(["release", "refund"]) }).parse(i))
   .handler(async ({ data, context }) => {
-    if (!(await isAdmin(context.supabase, context.userId))) throw new Error("Admins only");
+    await requireAdmin(context as never);
     const db = await admin();
     const { releaseTrade, systemMessage } = await engine();
     if (data.outcome === "release") {
@@ -886,7 +887,7 @@ export const blockTrader = createServerFn({ method: "POST" })
     const db = await admin();
     let target = data.userId ?? (data.handle ? await userByHandle(data.handle) : null);
     if (!target && data.tradeId) {
-      const { t } = await loadForParty(data.tradeId, context.userId, context.supabase);
+      const { t } = await loadForParty(data.tradeId, context.userId, context.supabase, context.claims);
       target = t.seller_id === context.userId ? t.buyer_id : t.seller_id;
     }
     if (!target || target === context.userId) throw new Error("Trader not found");
@@ -908,7 +909,7 @@ export const reportTrader = createServerFn({ method: "POST" })
     const db = await admin();
     let target = data.handle ? await userByHandle(data.handle) : null;
     if (data.tradeId) {
-      const { t } = await loadForParty(data.tradeId, context.userId, context.supabase);
+      const { t } = await loadForParty(data.tradeId, context.userId, context.supabase, context.claims);
       target = t.seller_id === context.userId ? t.buyer_id : t.seller_id;
     }
     if (!target || target === context.userId) throw new Error("Trader not found");
@@ -926,7 +927,7 @@ export const reportTrader = createServerFn({ method: "POST" })
 export const listP2pReports = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    if (!(await isAdmin(context.supabase, context.userId))) throw new Error("Admins only");
+    await requireAdmin(context as never);
     const db = await admin();
     const { data } = await db.from("p2p_reports").select("*").eq("status", "open").order("created_at", { ascending: false }).limit(100);
     const names = await namesFor((data ?? []).flatMap((r) => [r.reporter_id, r.reported_id]));
@@ -937,7 +938,7 @@ export const closeP2pReport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) => z.object({ id: z.string().uuid() }).parse(i))
   .handler(async ({ data, context }) => {
-    if (!(await isAdmin(context.supabase, context.userId))) throw new Error("Admins only");
+    await requireAdmin(context as never);
     const db = await admin();
     await db.from("p2p_reports").update({ status: "closed" }).eq("id", data.id);
     return { ok: true };

@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { adminGate, adminUnlockedUntil, hasAdminRole, requireAdmin, type AdminGate } from "./admin-guard";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 export type AdminAccountRow = {
@@ -66,29 +67,6 @@ export type AdminOverview = {
   openOrders: AdminOrderRow[];
 };
 
-async function assertAdmin(supabase: {
-  from: (t: "user_roles") => {
-    select: (c: string) => {
-      eq: (
-        c: string,
-        v: string,
-      ) => {
-        eq: (
-          c: string,
-          v: string,
-        ) => { maybeSingle: () => Promise<{ data: unknown; error: unknown }> };
-      };
-    };
-  };
-}, userId: string) {
-  const { data } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .eq("role", "admin")
-    .maybeSingle();
-  if (!data) throw new Error("Forbidden: admin role required");
-}
 
 export const amIAdmin = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -102,6 +80,22 @@ export const amIAdmin = createServerFn({ method: "GET" })
     return Boolean(data);
   });
 
+/**
+ * The admin console's lock state: not an admin, needs two-factor set up,
+ * needs a code, or unlocked (and until when). Read from the signed session.
+ */
+export const getAdminGate = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<{ gate: AdminGate; unlockedUntil: number | null }> => {
+    const nowSec = Math.floor(Date.now() / 1000);
+    if (!(await hasAdminRole(context as never))) return { gate: "not_admin", unlockedUntil: null };
+    const claims = context.claims as never;
+    const until = adminUnlockedUntil(claims, nowSec);
+    if (until) return { gate: "ok", unlockedUntil: until };
+    const { hasTwoFactor } = await import("./two-factor.server");
+    return { gate: adminGate({ isAdmin: true, twoFactorOn: await hasTwoFactor(context.userId), claims, nowSec }), unlockedUntil: null };
+  });
+
 const OPEN_TRADE_STATUSES = [
   "matched",
   "maker_funded",
@@ -113,7 +107,7 @@ const OPEN_TRADE_STATUSES = [
 export const getAdminOverview = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<AdminOverview> => {
-    await assertAdmin(context.supabase as never, context.userId);
+    await requireAdmin(context as never);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const since = new Date(Date.now() - 86_400_000).toISOString();
@@ -271,7 +265,7 @@ export type AdminIgniteRow = {
 export const getAdminIgnite = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertAdmin(context.supabase as never, context.userId);
+    await requireAdmin(context as never);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { SEAT_CAPACITY } = await import("./ignite-registration");
     const { SCHEDULE_DATES, SCHEDULE_TIME, DEPOSIT_USD } = await import("./ignite-registration");
@@ -320,7 +314,7 @@ export const cancelIgniteSeat = createServerFn({ method: "POST" })
     return { id: d.id };
   })
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.supabase as never, context.userId);
+    await requireAdmin(context as never);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { canCancelSeat } = await import("./ignite-registration");
     const { data: cur } = await supabaseAdmin.from("ignite_registrations").select("status").eq("id", data.id).maybeSingle();

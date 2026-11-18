@@ -1,11 +1,16 @@
 import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useState, type FormEvent } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, CandlestickChart, ExternalLink, Flame, LayoutDashboard, Settings, ShieldCheck, Sparkles, UserCog, Users } from "lucide-react";
-import { amIAdmin } from "@/lib/admin.functions";
+import { ArrowLeft, CandlestickChart, ExternalLink, Flame, LayoutDashboard, LockKeyhole, Settings, ShieldCheck, Sparkles, UserCog, Users } from "lucide-react";
+import { getAdminGate } from "@/lib/admin.functions";
 import { getMyProfile } from "@/lib/profile.functions";
 import { useSession } from "@/hooks/use-session";
 import { Button } from "@/components/ui/button";
+import { Note } from "@/components/account/ui";
+import { CodeField } from "@/components/account/CodeField";
+import { TwoFactorCard } from "@/components/account/TwoFactorCard";
+import { proveTwoFactor } from "@/components/account/two-factor";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   staticData: { sitemap: false },
@@ -41,15 +46,19 @@ const ELSEWHERE = [
 
 function AdminLayout() {
   const { user } = useSession();
-  const check = useServerFn(amIAdmin);
-  const admin = useQuery({ queryKey: ["am-i-admin"], queryFn: () => check(), retry: false, staleTime: 60_000 });
+  const check = useServerFn(getAdminGate);
+  // Re-checked every minute so the console locks itself when the 12-hour unlock runs out.
+  const admin = useQuery({ queryKey: ["admin-gate"], queryFn: () => check(), retry: false, staleTime: 30_000, refetchInterval: 60_000 });
   const load = useServerFn(getMyProfile);
-  const profile = useQuery({ queryKey: ["my-profile"], queryFn: () => load(), enabled: admin.data === true });
+  const profile = useQuery({ queryKey: ["my-profile"], queryFn: () => load(), enabled: admin.data?.gate === "ok" });
 
   if (admin.isPending) {
     return <div className="mx-auto max-w-7xl px-5 py-10 font-mono text-xs text-muted-foreground">Checking admin access…</div>;
   }
-  if (!admin.data) {
+  if (admin.data?.gate === "needs_setup" || admin.data?.gate === "needs_code") {
+    return <AdminUnlock gate={admin.data.gate} />;
+  }
+  if (admin.data?.gate !== "ok") {
     return (
       <div className="mx-auto max-w-7xl px-5 py-16">
         <div className="max-w-xl">
@@ -74,6 +83,9 @@ function AdminLayout() {
           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <span>Signed in as {profile.data?.display_name || user?.email || "admin"}</span>
             <span className="rounded-sm bg-primary/15 px-1.5 py-0.5 font-mono text-[10px] text-primary uppercase">admin</span>
+            {admin.data.unlockedUntil ? (
+              <span className="inline-flex items-center gap-1"><LockKeyhole className="h-3 w-3" /> Unlocked until {new Date(admin.data.unlockedUntil * 1000).toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" })}</span>
+            ) : null}
           </div>
         </div>
         <Button asChild size="sm" variant="outline"><Link to="/account"><ArrowLeft /> My account</Link></Button>
@@ -111,6 +123,57 @@ function AdminLayout() {
           <Outlet />
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Admins must use two-factor: set it up here, or enter a code to unlock the console for 12 hours. */
+function AdminUnlock({ gate }: { gate: "needs_setup" | "needs_code" }) {
+  const qc = useQueryClient();
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function unlock(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true); setErr(null);
+    try {
+      await proveTwoFactor(code);
+      await qc.invalidateQueries(); // every admin table re-reads with the unlocked session
+    } catch (x) {
+      setErr(x instanceof Error ? x.message : "That code didn't work.");
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <div className="mx-auto max-w-7xl px-5 py-16">
+      <div className="max-w-xl">
+        <div aria-hidden className="grid h-12 w-12 place-items-center rounded-full bg-primary/15 text-primary"><LockKeyhole className="h-5 w-5" /></div>
+        <p className="mt-4 font-mono text-[11px] tracking-[0.28em] text-primary uppercase">Admin</p>
+        {gate === "needs_code" ? (
+          <>
+            <h1 className="mt-1 font-display text-2xl font-extrabold">Unlock the admin console</h1>
+            <p className="mt-2 text-sm text-muted-foreground">Enter the 6-digit code from your authenticator app. The console stays unlocked on this device for 12 hours.</p>
+            <form onSubmit={unlock} className="mt-5 space-y-4">
+              <CodeField id="admin-unlock-code" value={code} onChange={setCode} />
+              {err ? <Note tone="error">{err}</Note> : null}
+              <div className="flex flex-wrap gap-2">
+                <Button type="submit" disabled={busy || code.length !== 6}>{busy ? "Checking…" : "Unlock"}</Button>
+                <Button asChild variant="outline"><Link to="/account"><ArrowLeft /> My account</Link></Button>
+              </div>
+            </form>
+            <p className="mt-6 text-xs text-muted-foreground">Lost your phone? Another admin can reset your two-factor from Admin → Settings after checking it's you.</p>
+          </>
+        ) : (
+          <>
+            <h1 className="mt-1 font-display text-2xl font-extrabold">Turn on two-factor to use the admin console</h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Admins can see every member and change access, limits and seats, so the console needs a code from your phone as well as your Honest.Money sign-in. Set it up once below; after that you'll enter a code every 12 hours.
+            </p>
+          </>
+        )}
+      </div>
+      {gate === "needs_setup" ? <div className="mt-6 max-w-2xl"><TwoFactorCard /></div> : null}
     </div>
   );
 }
