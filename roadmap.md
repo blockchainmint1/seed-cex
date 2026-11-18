@@ -109,3 +109,4 @@
 - [ ] PulseChain withdrawal pilot: first small real PLS and pHEX withdrawal (blocked: Bobby funds his pocket with a little PLS/pHEX and asks for one)
 - [ ] PulseChain withdrawals open to members + deposits open for them (blocked: pilot result, auditor sign-off)
 - [ ] Seeds AI buying PLS/HEX/pHEX through their TSD markets depends on sellers on the book (blocked: AI execution not built; linked-pocket market settlement not connected)
+- [x] Seeds AI "Find my playbook": tries 231 rule combos, ranks on older history only, fresh-data held-up/faded check, optional AI write-up (signed-in, 10/day)

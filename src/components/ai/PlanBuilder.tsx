@@ -8,6 +8,7 @@ import { fmtPct, fmtUsd, type Series } from "@/lib/ai/series";
 import { Chip, Field, inputCls, Panel, tone } from "./ui";
 import { LockPanel, type EditingPlan } from "./LockPanel";
 import { DailyPrices, TradeActions } from "./ShowWork";
+import { PlaybookFinder } from "./PlaybookFinder";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const RANGES = [["3 mo", 3], ["6 mo", 6], ["1 yr", 12], ["2 yr", 24], ["3 yr", 36], ["5 yr", 60]] as const;
@@ -65,6 +66,8 @@ export function PlanBuilder({ coins, settings, onChange, signedIn, editing, onSt
     if (on) delete weights[id];
     onChange({ ...s, coins: coinsNext, weights });
   }
+
+  const finder = <PlaybookFinder settings={s} series={series} loading={loading} symbol={symbol} signedIn={signedIn} onUse={onChange} />;
 
   return (
     <div className="grid gap-6 lg:grid-cols-[22rem_minmax(0,1fr)]">
@@ -217,6 +220,12 @@ export function PlanBuilder({ coins, settings, onChange, signedIn, editing, onSt
               </ResponsiveContainer>
             </div>
 
+          </>
+        )}
+        {finder}
+        {started && run && !run.error ? (
+          <>
+
             <div className="grid gap-3 rounded-sm border border-border bg-surface p-4 text-sm sm:grid-cols-3">
               <div>
                 <div className="label-caps">Total put in</div>
@@ -261,7 +270,7 @@ export function PlanBuilder({ coins, settings, onChange, signedIn, editing, onSt
               Past results don't predict future returns. A coin only counts once its price history starts. This is a testing tool, not financial advice — read the <Link to="/risk" className="underline">risk disclosure</Link>.
             </p>
           </>
-        )}
+        ) : null}
       </section>
     </div>
   );

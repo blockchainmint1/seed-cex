@@ -177,6 +177,27 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_playbook_notes: {
+        Row: {
+          created_at: string
+          goal: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          goal: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          goal?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ai_settings: {
         Row: {
           execution_enabled: boolean

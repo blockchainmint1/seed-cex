@@ -141,6 +141,13 @@
       "when": 1795015955937,
       "tag": "0019_pulsechain_hex_support",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1795023448607,
+      "tag": "0020_ai_playbook_notes",
+      "breakpoints": true
     }
   ]
 }
