@@ -46,7 +46,7 @@ function DailyChart({ data }: { data: { day: string; visits: number; pageviews: 
   return (
     <div className="rounded-sm border border-border bg-surface p-5">
       <h3 className="font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">Daily traffic (Texas time)</h3>
-      {data.length === 0 ? (
+      {data.every((d) => d.pageviews === 0) ? (
         <p className="mt-4 text-sm text-muted-foreground">No visits counted yet in this period.</p>
       ) : (
         <>
