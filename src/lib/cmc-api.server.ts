@@ -32,6 +32,11 @@ const ASSET_META: Record<string, { name: string; canWithdraw: boolean; canDeposi
   LTC: { name: "Litecoin", canWithdraw: true, canDeposit: true, type: "coin" },
   ISK: { name: "Iskandercoin", canWithdraw: true, canDeposit: true, type: "coin" },
   ZCU: { name: "ZeroChill", canWithdraw: true, canDeposit: true, type: "coin" },
+  BTC: { name: "Bitcoin", canWithdraw: true, canDeposit: true, type: "coin" },
+  ETH: { name: "Ether", canWithdraw: true, canDeposit: true, type: "coin" },
+  PLS: { name: "PulseChain", canWithdraw: true, canDeposit: true, type: "coin" },
+  HEX: { name: "HEX (Ethereum)", canWithdraw: true, canDeposit: true, type: "token" },
+  pHEX: { name: "HEX (PulseChain)", canWithdraw: true, canDeposit: true, type: "token" },
 };
 
 export function buildAssets() {

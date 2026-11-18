@@ -42,8 +42,11 @@ import { Route as ProofCodeRouteImport } from './routes/proof.code'
 import { Route as RegisterConfirmedRouteImport } from './routes/register_.confirmed'
 import { Route as TradeBtcTsdRouteImport } from './routes/trade.btc-tsd'
 import { Route as TradeEthTsdRouteImport } from './routes/trade.eth-tsd'
+import { Route as TradeHexTsdRouteImport } from './routes/trade.hex-tsd'
 import { Route as TradeIskTsdRouteImport } from './routes/trade.isk-tsd'
 import { Route as TradeLtcTsdRouteImport } from './routes/trade.ltc-tsd'
+import { Route as TradePhexTsdRouteImport } from './routes/trade.phex-tsd'
+import { Route as TradePlsTsdRouteImport } from './routes/trade.pls-tsd'
 import { Route as TradeTsdTxcRouteImport } from './routes/trade.tsd-txc'
 import { Route as TradeTsdUsdcRouteImport } from './routes/trade.tsd-usdc'
 import { Route as TradeZcuTsdRouteImport } from './routes/trade.zcu-tsd'
@@ -74,6 +77,7 @@ import { Route as ApiPublicHmeLinkRevokeRouteImport } from './routes/api/public/
 import { Route as ApiPublicHmeLinkSubmitRouteImport } from './routes/api/public/hme-link/submit'
 import { Route as ApiPublicHmeLinkTradesRouteImport } from './routes/api/public/hme-link/trades'
 import { Route as ApiPublicJobsAiDailyRouteImport } from './routes/api/public/jobs/ai-daily'
+import { Route as ApiPublicJobsPulseWithdrawalsRouteImport } from './routes/api/public/jobs/pulse-withdrawals'
 import { Route as ApiPublicJobsTsdRoutesRouteImport } from './routes/api/public/jobs/tsd-routes'
 import { Route as ApiPublicMinehmeProfileUpdateRouteImport } from './routes/api/public/minehme/profile-update'
 import { Route as ApiPublicNectarpayWebhookRouteImport } from './routes/api/public/nectarpay/webhook'
@@ -263,6 +267,11 @@ const TradeEthTsdRoute = TradeEthTsdRouteImport.update({
   path: '/trade/eth-tsd',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TradeHexTsdRoute = TradeHexTsdRouteImport.update({
+  id: '/trade/hex-tsd',
+  path: '/trade/hex-tsd',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TradeIskTsdRoute = TradeIskTsdRouteImport.update({
   id: '/trade/isk-tsd',
   path: '/trade/isk-tsd',
@@ -271,6 +280,16 @@ const TradeIskTsdRoute = TradeIskTsdRouteImport.update({
 const TradeLtcTsdRoute = TradeLtcTsdRouteImport.update({
   id: '/trade/ltc-tsd',
   path: '/trade/ltc-tsd',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TradePhexTsdRoute = TradePhexTsdRouteImport.update({
+  id: '/trade/phex-tsd',
+  path: '/trade/phex-tsd',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TradePlsTsdRoute = TradePlsTsdRouteImport.update({
+  id: '/trade/pls-tsd',
+  path: '/trade/pls-tsd',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TradeTsdTxcRoute = TradeTsdTxcRouteImport.update({
@@ -435,6 +454,12 @@ const ApiPublicJobsAiDailyRoute = ApiPublicJobsAiDailyRouteImport.update({
   path: '/api/public/jobs/ai-daily',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicJobsPulseWithdrawalsRoute =
+  ApiPublicJobsPulseWithdrawalsRouteImport.update({
+    id: '/api/public/jobs/pulse-withdrawals',
+    path: '/api/public/jobs/pulse-withdrawals',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicJobsTsdRoutesRoute = ApiPublicJobsTsdRoutesRouteImport.update({
   id: '/api/public/jobs/tsd-routes',
   path: '/api/public/jobs/tsd-routes',
@@ -593,8 +618,11 @@ export interface FileRoutesByFullPath {
   '/register/confirmed': typeof RegisterConfirmedRoute
   '/trade/btc-tsd': typeof TradeBtcTsdRoute
   '/trade/eth-tsd': typeof TradeEthTsdRoute
+  '/trade/hex-tsd': typeof TradeHexTsdRoute
   '/trade/isk-tsd': typeof TradeIskTsdRoute
   '/trade/ltc-tsd': typeof TradeLtcTsdRoute
+  '/trade/phex-tsd': typeof TradePhexTsdRoute
+  '/trade/pls-tsd': typeof TradePlsTsdRoute
   '/trade/tsd-txc': typeof TradeTsdTxcRoute
   '/trade/tsd-usdc': typeof TradeTsdUsdcRoute
   '/trade/zcu-tsd': typeof TradeZcuTsdRoute
@@ -626,6 +654,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hme-link/submit': typeof ApiPublicHmeLinkSubmitRoute
   '/api/public/hme-link/trades': typeof ApiPublicHmeLinkTradesRouteWithChildren
   '/api/public/jobs/ai-daily': typeof ApiPublicJobsAiDailyRoute
+  '/api/public/jobs/pulse-withdrawals': typeof ApiPublicJobsPulseWithdrawalsRoute
   '/api/public/jobs/tsd-routes': typeof ApiPublicJobsTsdRoutesRoute
   '/api/public/minehme/profile-update': typeof ApiPublicMinehmeProfileUpdateRoute
   '/api/public/nectarpay/webhook': typeof ApiPublicNectarpayWebhookRoute
@@ -682,8 +711,11 @@ export interface FileRoutesByTo {
   '/register/confirmed': typeof RegisterConfirmedRoute
   '/trade/btc-tsd': typeof TradeBtcTsdRoute
   '/trade/eth-tsd': typeof TradeEthTsdRoute
+  '/trade/hex-tsd': typeof TradeHexTsdRoute
   '/trade/isk-tsd': typeof TradeIskTsdRoute
   '/trade/ltc-tsd': typeof TradeLtcTsdRoute
+  '/trade/phex-tsd': typeof TradePhexTsdRoute
+  '/trade/pls-tsd': typeof TradePlsTsdRoute
   '/trade/tsd-txc': typeof TradeTsdTxcRoute
   '/trade/tsd-usdc': typeof TradeTsdUsdcRoute
   '/trade/zcu-tsd': typeof TradeZcuTsdRoute
@@ -714,6 +746,7 @@ export interface FileRoutesByTo {
   '/api/public/hme-link/submit': typeof ApiPublicHmeLinkSubmitRoute
   '/api/public/hme-link/trades': typeof ApiPublicHmeLinkTradesRouteWithChildren
   '/api/public/jobs/ai-daily': typeof ApiPublicJobsAiDailyRoute
+  '/api/public/jobs/pulse-withdrawals': typeof ApiPublicJobsPulseWithdrawalsRoute
   '/api/public/jobs/tsd-routes': typeof ApiPublicJobsTsdRoutesRoute
   '/api/public/minehme/profile-update': typeof ApiPublicMinehmeProfileUpdateRoute
   '/api/public/nectarpay/webhook': typeof ApiPublicNectarpayWebhookRoute
@@ -773,8 +806,11 @@ export interface FileRoutesById {
   '/register_/confirmed': typeof RegisterConfirmedRoute
   '/trade/btc-tsd': typeof TradeBtcTsdRoute
   '/trade/eth-tsd': typeof TradeEthTsdRoute
+  '/trade/hex-tsd': typeof TradeHexTsdRoute
   '/trade/isk-tsd': typeof TradeIskTsdRoute
   '/trade/ltc-tsd': typeof TradeLtcTsdRoute
+  '/trade/phex-tsd': typeof TradePhexTsdRoute
+  '/trade/pls-tsd': typeof TradePlsTsdRoute
   '/trade/tsd-txc': typeof TradeTsdTxcRoute
   '/trade/tsd-usdc': typeof TradeTsdUsdcRoute
   '/trade/zcu-tsd': typeof TradeZcuTsdRoute
@@ -806,6 +842,7 @@ export interface FileRoutesById {
   '/api/public/hme-link/submit': typeof ApiPublicHmeLinkSubmitRoute
   '/api/public/hme-link/trades': typeof ApiPublicHmeLinkTradesRouteWithChildren
   '/api/public/jobs/ai-daily': typeof ApiPublicJobsAiDailyRoute
+  '/api/public/jobs/pulse-withdrawals': typeof ApiPublicJobsPulseWithdrawalsRoute
   '/api/public/jobs/tsd-routes': typeof ApiPublicJobsTsdRoutesRoute
   '/api/public/minehme/profile-update': typeof ApiPublicMinehmeProfileUpdateRoute
   '/api/public/nectarpay/webhook': typeof ApiPublicNectarpayWebhookRoute
@@ -865,8 +902,11 @@ export interface FileRouteTypes {
     | '/register/confirmed'
     | '/trade/btc-tsd'
     | '/trade/eth-tsd'
+    | '/trade/hex-tsd'
     | '/trade/isk-tsd'
     | '/trade/ltc-tsd'
+    | '/trade/phex-tsd'
+    | '/trade/pls-tsd'
     | '/trade/tsd-txc'
     | '/trade/tsd-usdc'
     | '/trade/zcu-tsd'
@@ -898,6 +938,7 @@ export interface FileRouteTypes {
     | '/api/public/hme-link/submit'
     | '/api/public/hme-link/trades'
     | '/api/public/jobs/ai-daily'
+    | '/api/public/jobs/pulse-withdrawals'
     | '/api/public/jobs/tsd-routes'
     | '/api/public/minehme/profile-update'
     | '/api/public/nectarpay/webhook'
@@ -954,8 +995,11 @@ export interface FileRouteTypes {
     | '/register/confirmed'
     | '/trade/btc-tsd'
     | '/trade/eth-tsd'
+    | '/trade/hex-tsd'
     | '/trade/isk-tsd'
     | '/trade/ltc-tsd'
+    | '/trade/phex-tsd'
+    | '/trade/pls-tsd'
     | '/trade/tsd-txc'
     | '/trade/tsd-usdc'
     | '/trade/zcu-tsd'
@@ -986,6 +1030,7 @@ export interface FileRouteTypes {
     | '/api/public/hme-link/submit'
     | '/api/public/hme-link/trades'
     | '/api/public/jobs/ai-daily'
+    | '/api/public/jobs/pulse-withdrawals'
     | '/api/public/jobs/tsd-routes'
     | '/api/public/minehme/profile-update'
     | '/api/public/nectarpay/webhook'
@@ -1044,8 +1089,11 @@ export interface FileRouteTypes {
     | '/register_/confirmed'
     | '/trade/btc-tsd'
     | '/trade/eth-tsd'
+    | '/trade/hex-tsd'
     | '/trade/isk-tsd'
     | '/trade/ltc-tsd'
+    | '/trade/phex-tsd'
+    | '/trade/pls-tsd'
     | '/trade/tsd-txc'
     | '/trade/tsd-usdc'
     | '/trade/zcu-tsd'
@@ -1077,6 +1125,7 @@ export interface FileRouteTypes {
     | '/api/public/hme-link/submit'
     | '/api/public/hme-link/trades'
     | '/api/public/jobs/ai-daily'
+    | '/api/public/jobs/pulse-withdrawals'
     | '/api/public/jobs/tsd-routes'
     | '/api/public/minehme/profile-update'
     | '/api/public/nectarpay/webhook'
@@ -1131,8 +1180,11 @@ export interface RootRouteChildren {
   RegisterConfirmedRoute: typeof RegisterConfirmedRoute
   TradeBtcTsdRoute: typeof TradeBtcTsdRoute
   TradeEthTsdRoute: typeof TradeEthTsdRoute
+  TradeHexTsdRoute: typeof TradeHexTsdRoute
   TradeIskTsdRoute: typeof TradeIskTsdRoute
   TradeLtcTsdRoute: typeof TradeLtcTsdRoute
+  TradePhexTsdRoute: typeof TradePhexTsdRoute
+  TradePlsTsdRoute: typeof TradePlsTsdRoute
   TradeTsdTxcRoute: typeof TradeTsdTxcRoute
   TradeTsdUsdcRoute: typeof TradeTsdUsdcRoute
   TradeZcuTsdRoute: typeof TradeZcuTsdRoute
@@ -1150,6 +1202,7 @@ export interface RootRouteChildren {
   ApiPublicHmeLinkSubmitRoute: typeof ApiPublicHmeLinkSubmitRoute
   ApiPublicHmeLinkTradesRoute: typeof ApiPublicHmeLinkTradesRouteWithChildren
   ApiPublicJobsAiDailyRoute: typeof ApiPublicJobsAiDailyRoute
+  ApiPublicJobsPulseWithdrawalsRoute: typeof ApiPublicJobsPulseWithdrawalsRoute
   ApiPublicJobsTsdRoutesRoute: typeof ApiPublicJobsTsdRoutesRoute
   ApiPublicMinehmeProfileUpdateRoute: typeof ApiPublicMinehmeProfileUpdateRoute
   ApiPublicNectarpayWebhookRoute: typeof ApiPublicNectarpayWebhookRoute
@@ -1409,6 +1462,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TradeEthTsdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/trade/hex-tsd': {
+      id: '/trade/hex-tsd'
+      path: '/trade/hex-tsd'
+      fullPath: '/trade/hex-tsd'
+      preLoaderRoute: typeof TradeHexTsdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/trade/isk-tsd': {
       id: '/trade/isk-tsd'
       path: '/trade/isk-tsd'
@@ -1421,6 +1481,20 @@ declare module '@tanstack/react-router' {
       path: '/trade/ltc-tsd'
       fullPath: '/trade/ltc-tsd'
       preLoaderRoute: typeof TradeLtcTsdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/trade/phex-tsd': {
+      id: '/trade/phex-tsd'
+      path: '/trade/phex-tsd'
+      fullPath: '/trade/phex-tsd'
+      preLoaderRoute: typeof TradePhexTsdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/trade/pls-tsd': {
+      id: '/trade/pls-tsd'
+      path: '/trade/pls-tsd'
+      fullPath: '/trade/pls-tsd'
+      preLoaderRoute: typeof TradePlsTsdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/trade/tsd-txc': {
@@ -1631,6 +1705,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/jobs/ai-daily'
       fullPath: '/api/public/jobs/ai-daily'
       preLoaderRoute: typeof ApiPublicJobsAiDailyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/jobs/pulse-withdrawals': {
+      id: '/api/public/jobs/pulse-withdrawals'
+      path: '/api/public/jobs/pulse-withdrawals'
+      fullPath: '/api/public/jobs/pulse-withdrawals'
+      preLoaderRoute: typeof ApiPublicJobsPulseWithdrawalsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/jobs/tsd-routes': {
@@ -1918,8 +1999,11 @@ const rootRouteChildren: RootRouteChildren = {
   RegisterConfirmedRoute: RegisterConfirmedRoute,
   TradeBtcTsdRoute: TradeBtcTsdRoute,
   TradeEthTsdRoute: TradeEthTsdRoute,
+  TradeHexTsdRoute: TradeHexTsdRoute,
   TradeIskTsdRoute: TradeIskTsdRoute,
   TradeLtcTsdRoute: TradeLtcTsdRoute,
+  TradePhexTsdRoute: TradePhexTsdRoute,
+  TradePlsTsdRoute: TradePlsTsdRoute,
   TradeTsdTxcRoute: TradeTsdTxcRoute,
   TradeTsdUsdcRoute: TradeTsdUsdcRoute,
   TradeZcuTsdRoute: TradeZcuTsdRoute,
@@ -1937,6 +2021,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHmeLinkSubmitRoute: ApiPublicHmeLinkSubmitRoute,
   ApiPublicHmeLinkTradesRoute: ApiPublicHmeLinkTradesRouteWithChildren,
   ApiPublicJobsAiDailyRoute: ApiPublicJobsAiDailyRoute,
+  ApiPublicJobsPulseWithdrawalsRoute: ApiPublicJobsPulseWithdrawalsRoute,
   ApiPublicJobsTsdRoutesRoute: ApiPublicJobsTsdRoutesRoute,
   ApiPublicMinehmeProfileUpdateRoute: ApiPublicMinehmeProfileUpdateRoute,
   ApiPublicNectarpayWebhookRoute: ApiPublicNectarpayWebhookRoute,

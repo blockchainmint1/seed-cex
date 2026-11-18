@@ -1,5 +1,5 @@
 /**
- * EVM chain reads (Ethereum, Base, BNB Chain).
+ * EVM chain reads (Ethereum, Base, BNB Chain, PulseChain).
  *
  * Public JSON-RPC only, server-side, read-only. No keys are ever used here —
  * this file answers "what is in this address?", nothing more.
@@ -10,6 +10,7 @@ const PUBLIC_RPC: Record<string, string[]> = {
   ethereum: ["https://ethereum-rpc.publicnode.com", "https://1rpc.io/eth"],
   base: ["https://base-rpc.publicnode.com", "https://mainnet.base.org", "https://1rpc.io/base"],
   bsc: ["https://bsc-rpc.publicnode.com"],
+  pulsechain: ["https://rpc.pulsechain.com", "https://pulsechain-rpc.publicnode.com"],
 };
 
 /** Alchemy subdomains, used first when a key is configured. */

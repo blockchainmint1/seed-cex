@@ -10,7 +10,7 @@ const placeOrderInput = (input: unknown) =>
       pair: z.enum(PAIR_IDS).default("TSD_TXC"),
       side: z.enum(["buy", "sell"]),
       price: z.number().positive().max(1_000_000),
-      amount: z.number().positive().max(100_000_000),
+      amount: z.number().positive().max(1_000_000_000_000),
     })
     .parse(input);
 

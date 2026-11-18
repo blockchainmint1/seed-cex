@@ -226,6 +226,8 @@ export const adminAiSetCoin = createServerFn({ method: "POST" })
     const admin = await db();
     const { error } = await admin.from("ai_coins").upsert({
       id: cat.geckoId, symbol: cat.symbol, name: cat.name, swap_coin: cat.swapCoin, binance_symbol: cat.binance, active: data.active, updated_at: new Date().toISOString(),
+      // No Binance listing: go straight to CoinGecko history (never guess a Binance ticker that could be another coin).
+      ...(cat.binance ? {} : { binance_ok: false }),
     });
     if (error) throw new Error(error.message);
     if (data.active) await admin.rpc("ai_sync_request", { _with_markets: true });

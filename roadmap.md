@@ -56,7 +56,7 @@
 - [ ] Email footer postal address (CAN-SPAM) — needs Bobby's business mailing address
 
 - [x] /account rebuilt as exchange-style profile: tabs for overview, balances (spot/deposit/withdraw for every supported coin + network), profile, security, alerts, API keys, AI strategies (view/edit/pause/end), referrals; /api quick start, signing examples, recipes, troubleshooting
-- [ ] Seeds-signed withdrawals to outside addresses (instant-access pockets) — not built: today withdrawals happen in HME Wallet, extra coins swap to TSD first (blocked: Bobby's decision + auditor review)
+- [ ] Seeds-signed withdrawals to outside addresses for other coins — PulseChain only so far (Bobby chose it Nov 18); others still swap to TSD first (blocked: Bobby's decision + auditor review)
 - [x] /ai: shares start even, editable in a popup (blank coins split what's left); THOR added (10 coins)
 - [ ] /ai more coins: BNB, AVAX (needs BNB Chain/Avalanche sending), ATOM (Cosmos signer), ZEC (v5 signer), Maya coins ADA/DASH/RUNE (needs a 2nd independent Maya server) (blocked: Bobby picks which to build)
 - [ ] AI basket builder: AI writes a member-approved rulebook, fixed engine executes it (concept in docs/ai-basket-strategy-concept.md; blocked: Bobby's detailed spec + linked-pocket settlement)
@@ -103,3 +103,9 @@
 - [x] Phase 2: "Lock it in" — plans saved to the member's account (TSD amount, coins, rules); daily server-side check + Telegram "Based on your plan we should… " message with a review link
 - [ ] Phase 3: EXECUTE — member's TSD → USDC via TSD Bridge cash-out API (Seeds key already has cash-out access) → THORChain buys into the member's own pocket addresses; gas top-up design; one-tap Telegram confirm below an admin-set dollar limit, bigger moves open Seeds (blocked: build + real small test + auditor review)
 - [ ] Phase 4: more coins — Ethereum tokens like SHIB need a DEX route (THORChain/Maya don't list them); DOGE/BCH/XRP/SOL/TRX buyable once members link those keys (HME handoff list)
+
+- [x] HEX + PulseChain (Nov 18): PulseChain network (PLS, pHEX) and HEX on Ethereum in balances/deposits; PLS/TSD, HEX/TSD, pHEX/TSD markets; PLS/HEX/pHEX on P2P; Seeds AI tester (1 year of CoinGecko history); live prices from CoinGecko/DexScreener
+- [x] Seeds-signed PulseChain withdrawals (HME Wallet can't send there): 24-hour cancelable hold, $250 each / $1,000 a day, email + Telegram on every step, admin-only pilot
+- [ ] PulseChain withdrawal pilot: first small real PLS and pHEX withdrawal (blocked: Bobby funds his pocket with a little PLS/pHEX and asks for one)
+- [ ] PulseChain withdrawals open to members + deposits open for them (blocked: pilot result, auditor sign-off)
+- [ ] Seeds AI buying PLS/HEX/pHEX through their TSD markets depends on sellers on the book (blocked: AI execution not built; linked-pocket market settlement not connected)

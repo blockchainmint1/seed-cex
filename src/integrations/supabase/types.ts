@@ -1369,6 +1369,72 @@ export type Database = {
           },
         ]
       }
+      pocket_withdrawals: {
+        Row: {
+          amount: number
+          amount_units: string
+          amount_usd: number
+          cancelled_at: string | null
+          chain: string
+          coin: string
+          confirmations: number | null
+          created_at: string
+          error: string | null
+          from_address: string
+          id: string
+          link_id: string
+          release_at: string
+          sent_at: string | null
+          status: string
+          to_address: string
+          txid: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          amount_units: string
+          amount_usd: number
+          cancelled_at?: string | null
+          chain?: string
+          coin: string
+          confirmations?: number | null
+          created_at?: string
+          error?: string | null
+          from_address: string
+          id?: string
+          link_id: string
+          release_at: string
+          sent_at?: string | null
+          status?: string
+          to_address: string
+          txid?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          amount_units?: string
+          amount_usd?: number
+          cancelled_at?: string | null
+          chain?: string
+          coin?: string
+          confirmations?: number | null
+          created_at?: string
+          error?: string | null
+          from_address?: string
+          id?: string
+          link_id?: string
+          release_at?: string
+          sent_at?: string | null
+          status?: string
+          to_address?: string
+          txid?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           confirm_before_order: boolean
@@ -2084,6 +2150,11 @@ export type Database = {
         Args: { _key: string; _weight: number; _window: string }
         Returns: number
       }
+      cancel_pocket_withdrawal: {
+        Args: { _id: string; _user_id: string }
+        Returns: boolean
+      }
+      claim_pocket_withdrawal: { Args: { _id: string }; Returns: boolean }
       custody_snapshot: {
         Args: never
         Returns: {
@@ -2136,6 +2207,23 @@ export type Database = {
       reserve_lock_outpoints: {
         Args: { _spend_ids: string[] }
         Returns: boolean
+      }
+      reserve_pocket_withdrawal: {
+        Args: {
+          _amount: number
+          _amount_units: string
+          _amount_usd: number
+          _coin: string
+          _daily_max_usd: number
+          _from_address: string
+          _hold_hours: number
+          _link_id: string
+          _max_held: number
+          _per_max_usd: number
+          _to_address: string
+          _user_id: string
+        }
+        Returns: string
       }
       reserve_swap_send: {
         Args: {
@@ -2193,6 +2281,9 @@ export type Database = {
         | "wbtc"
         | "wltc"
         | "weth"
+        | "pls"
+        | "hex"
+        | "phex"
       escrow_status:
         | "awaiting_funding"
         | "funding_seen"
@@ -2361,6 +2452,9 @@ export const Constants = {
         "wbtc",
         "wltc",
         "weth",
+        "pls",
+        "hex",
+        "phex",
       ],
       escrow_status: [
         "awaiting_funding",

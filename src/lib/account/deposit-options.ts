@@ -5,12 +5,13 @@
  * One receive address per pocket key family: TSD rides on the TEXITcoin
  * address, every EVM network shares the EVM address. A network is open for
  * deposits only when the coins can get back out again — HME Wallet can send
- * them, or Seeds can at least swap them back to TSD. Anything else would be a
- * one-way trip, so it stays closed.
+ * them, Seeds can swap them back to TSD, or (PulseChain only) Seeds sends them
+ * out for the member after a hold. Anything else would be a one-way trip, so it
+ * stays closed.
  */
 import { POCKET_SPECS, type PocketCoin } from "@/lib/pockets/coins";
 
-export type EvmChain = "ethereum" | "base" | "bsc" | "zcu";
+export type EvmChain = "ethereum" | "base" | "bsc" | "zcu" | "pulsechain";
 
 export type DepositNetwork = {
   /** Unique across the catalog, used in URLs. */
@@ -20,9 +21,14 @@ export type DepositNetwork = {
   evmChain?: EvmChain;
   /** Shown on the deposit screen, most important first. */
   notes: string[];
+  /**
+   * HME Wallet holds the key but can't send on this network (PulseChain), so
+   * Seeds signs withdrawals for the member — to an address they pick, after a hold.
+   */
+  seedsSends?: boolean;
 };
 
-export type MarketPath = "/trade/tsd-txc" | "/trade/btc-tsd" | "/trade/eth-tsd" | "/trade/tsd-usdc" | "/trade/ltc-tsd" | "/trade/isk-tsd" | "/trade/zcu-tsd";
+export type MarketPath = "/trade/tsd-txc" | "/trade/btc-tsd" | "/trade/eth-tsd" | "/trade/tsd-usdc" | "/trade/ltc-tsd" | "/trade/isk-tsd" | "/trade/zcu-tsd" | "/trade/pls-tsd" | "/trade/hex-tsd" | "/trade/phex-tsd";
 export type DepositAsset = { symbol: string; name: string; networks: DepositNetwork[]; market?: MarketPath };
 
 const EVM_NOTE = "Same 0x address on every EVM network. Pick the network you are sending on — the coins only show on that network.";
@@ -30,6 +36,13 @@ const evm = (chain: EvmChain, label: string, gas: string, extra: string[] = []):
   id: chain, label, pocket: "EVM", evmChain: chain,
   notes: [...extra, EVM_NOTE, `Keep a little ${gas} at this address to pay network fees when the coins move.`],
 });
+
+const PULSE_NOTES = (coin: string) => [
+  "HME Wallet can't send on PulseChain yet. Seeds sends it out for you instead: to an address you choose, after a 24-hour hold you can cancel.",
+  `Send ${coin} on PulseChain only — not on Ethereum. The same 0x address exists on both, but they are different coins.`,
+  "Keep a little PLS at this address to pay PulseChain network fees.",
+];
+const pulse = (coin: string): DepositNetwork => ({ id: "pulsechain", label: "PulseChain", pocket: "EVM", evmChain: "pulsechain", notes: PULSE_NOTES(coin), seedsSends: true });
 
 const HME_CANT = "HME Wallet can't hold this coin. To take it out, swap it back to TSD on Seeds first.";
 const EXTRA_NOTES: Record<"DOGE" | "BCH" | "XRP" | "TRX" | "SOL" | "ZEC", string[]> = {
@@ -55,6 +68,12 @@ export const DEPOSIT_ASSETS: DepositAsset[] = [
   { symbol: "ISK", name: "Iskandercoin", market: "/trade/isk-tsd", networks: [{ id: "isk", label: "Iskandercoin", pocket: "ISK", notes: ["Send ISK on the Iskandercoin network only."] }] },
   { symbol: "BNB", name: "BNB", networks: [evm("bsc", "BNB Chain", "BNB")] },
   { symbol: "ZCU", name: "ZeroChill", market: "/trade/zcu-tsd", networks: [evm("zcu", "ZeroChill", "ZCU")] },
+  { symbol: "PLS", name: "PulseChain", market: "/trade/pls-tsd", networks: [pulse("PLS")] },
+  { symbol: "HEX", name: "HEX on Ethereum", market: "/trade/hex-tsd", networks: [evm("ethereum", "Ethereum", "ETH", [
+    "This is HEX on Ethereum. HEX on PulseChain is a different coin — deposit it as pHEX.",
+    "To see or send it in HME Wallet, add HEX as a custom token: 0x2b591e99afE9f32eAA6214f7B7629768c40Eeb39.",
+  ])] },
+  { symbol: "pHEX", name: "HEX on PulseChain", market: "/trade/phex-tsd", networks: [pulse("pHEX")] },
   ...(["DOGE", "BCH", "XRP", "TRX", "SOL", "ZEC"] as const).map((c): DepositAsset => ({
     symbol: c, name: POCKET_SPECS[c].name.replace(" (transparent)", ""),
     networks: [{ id: c.toLowerCase(), label: POCKET_SPECS[c].name, pocket: c, notes: EXTRA_NOTES[c] }],
@@ -64,7 +83,8 @@ export const DEPOSIT_ASSETS: DepositAsset[] = [
 
 export function findAsset(symbol: string | undefined): DepositAsset | undefined {
   if (!symbol) return undefined;
-  return DEPOSIT_ASSETS.find((a) => a.symbol === symbol.toUpperCase());
+  const want = symbol.toUpperCase();
+  return DEPOSIT_ASSETS.find((a) => a.symbol.toUpperCase() === want);
 }
 
 export function findNetwork(asset: DepositAsset | undefined, id: string | undefined): DepositNetwork | undefined {
@@ -78,8 +98,9 @@ export function addressFor(net: DepositNetwork, addresses: Record<string, string
 }
 
 /** How a coin on this network leaves the pocket. */
-export type WithdrawRoute = "hme" | "swap" | "none";
+export type WithdrawRoute = "hme" | "swap" | "seeds" | "none";
 export function withdrawRoute(net: DepositNetwork): WithdrawRoute {
+  if (net.seedsSends) return "seeds";
   const spec = POCKET_SPECS[net.pocket];
   if (spec.hmeToday) return "hme";
   return spec.signing === "ready" ? "swap" : "none";
@@ -87,9 +108,17 @@ export function withdrawRoute(net: DepositNetwork): WithdrawRoute {
 
 export type DepositState = { ok: true; address: string } | { ok: false; reason: string };
 
-/** Can the member deposit this coin on this network right now, and where to. */
-export function depositState(net: DepositNetwork, linked: boolean, addresses: Record<string, string | undefined>): DepositState {
+/**
+ * Can the member deposit this coin on this network right now, and where to.
+ * `seedsSendBlocker`: for networks Seeds sends out (PulseChain), why Seeds can't
+ * send for this member right now (null = it can). Unknown counts as closed.
+ */
+export function depositState(
+  net: DepositNetwork, linked: boolean, addresses: Record<string, string | undefined>, seedsSendBlocker?: string | null,
+): DepositState {
   if (!linked) return { ok: false, reason: "Link your HME Wallet trading pocket first — deposits go to that pocket." };
+  if (withdrawRoute(net) === "seeds" && seedsSendBlocker !== null)
+    return { ok: false, reason: `Deposits on ${net.label} stay off for you until Seeds can send them back out: ${seedsSendBlocker ?? "checking…"}` };
   if (withdrawRoute(net) === "none")
     return { ok: false, reason: `Seeds can't send ${POCKET_SPECS[net.pocket].name} out yet, so deposits stay off — anything sent now would be stuck.` };
   const address = addressFor(net, addresses);

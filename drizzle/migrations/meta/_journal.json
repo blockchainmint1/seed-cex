@@ -134,6 +134,13 @@
       "when": 1794960233741,
       "tag": "0018_tsd_routes_and_gas_topups",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1795015955937,
+      "tag": "0019_pulsechain_hex_support",
+      "breakpoints": true
     }
   ]
 }

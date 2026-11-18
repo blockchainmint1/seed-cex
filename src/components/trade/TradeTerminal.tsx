@@ -97,11 +97,14 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
     queryFn: () => getReferencePrices(),
     refetchInterval: 60_000,
   });
+  const px = (v: number | string) => fmtPrice(v, pair.priceDigits ?? 5);
   const refQuote = ref.data?.quotes.find((q) => q.symbol === pair.base);
+  // Outside reference price for the base coin, in dollars (TSD = $1).
+  const refPrice = pair.base === "TXC" ? (ref.data?.txcUsd ?? null) : (refQuote?.price ?? null);
   // How far the local book's last print sits from the global reference.
   const basisPct =
-    ref.data?.txcUsd != null && ref.data.txcUsd > 0 && stats.data?.last != null
-      ? ((stats.data.last - ref.data.txcUsd) / ref.data.txcUsd) * 100
+    refPrice != null && refPrice > 0 && pair.quote === "TSD" && stats.data?.last != null
+      ? ((stats.data.last - refPrice) / refPrice) * 100
       : null;
 
   const fetchMyOrders = useServerFn(getMyOrders);
@@ -212,7 +215,7 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
             Last
           </p>
           <p className="num text-2xl text-primary">
-            {stats.data?.last != null ? fmtPrice(stats.data.last) : "—"}
+            {stats.data?.last != null ? px(stats.data.last) : "—"}
           </p>
         </div>
         <div>
@@ -236,15 +239,15 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
         </div>
         <div>
           <p className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
-            CMC ref
+            Ref price
           </p>
           <p className="num text-lg text-foreground">
-            {ref.data?.txcUsd != null ? fmtPrice(ref.data.txcUsd) : "—"}
+            {refPrice != null ? px(refPrice) : "—"}
           </p>
           <p className="font-mono text-[10px] text-muted-foreground">
             {refQuote?.change24h != null
               ? `${refQuote.change24h >= 0 ? "+" : ""}${refQuote.change24h.toFixed(2)}% 24h`
-              : "offline"}
+              : refPrice != null ? "outside price" : "offline"}
             {basisPct != null ? ` · book ${basisPct >= 0 ? "+" : ""}${basisPct.toFixed(1)}%` : ""}
           </p>
         </div>
@@ -272,8 +275,8 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
             <div className="p-4">
               <Sparkline points={(series.data ?? []).map((s) => s.price)} />
               <div className="mt-2 flex justify-between font-mono text-[10px] text-muted-foreground">
-                <span>low {stats.data?.low24h != null ? fmtPrice(stats.data.low24h) : "—"}</span>
-                <span>high {stats.data?.high24h != null ? fmtPrice(stats.data.high24h) : "—"}</span>
+                <span>low {stats.data?.low24h != null ? px(stats.data.low24h) : "—"}</span>
+                <span>high {stats.data?.high24h != null ? px(stats.data.high24h) : "—"}</span>
               </div>
             </div>
           </Panel>
@@ -298,7 +301,7 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
                         {t.side.toUpperCase()}
                       </span>
                       <span className="tabular-nums">{fmtAmount(t.amount, 4)} {pair.base}</span>
-                      <span className="tabular-nums">@ {fmtPrice(t.price)}</span>
+                      <span className="tabular-nums">@ {px(t.price)}</span>
                       <span className="text-muted-foreground">{t.role}</span>
                       <span className="rounded-sm border border-border px-2 py-0.5 tracking-wider uppercase">
                         {t.status.replace(/_/g, " ")}
@@ -339,7 +342,7 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
                       <td className={`px-4 py-2 ${o.side === "buy" ? "text-bid" : "text-ask"}`}>
                         {o.side.toUpperCase()}
                       </td>
-                      <td className="px-4 py-2 text-right tabular-nums">{fmtPrice(o.price)}</td>
+                      <td className="px-4 py-2 text-right tabular-nums">{px(o.price)}</td>
                       <td className="px-4 py-2 text-right tabular-nums">
                         {fmtAmount(o.filled, 4)} / {fmtAmount(o.amount, 4)}
                       </td>
@@ -367,7 +370,7 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
           title="Order book"
           right={
             <span className="font-mono text-[10px] text-muted-foreground">
-              spread {book.data?.spread != null ? fmtPrice(book.data.spread) : "—"}
+              spread {book.data?.spread != null ? px(book.data.spread) : "—"}
             </span>
           }
         >
@@ -385,13 +388,13 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
                   style={{ width: `${(l.total / maxTotal) * 100}%` }}
                   aria-hidden
                 />
-                <span className="relative text-ask tabular-nums">{fmtPrice(l.price)}</span>
+                <span className="relative text-ask tabular-nums">{px(l.price)}</span>
                 <span className="relative text-foreground tabular-nums">{fmtAmount(l.amount, 3)}</span>
               </li>
             ))}
           </ul>
           <div className="border-y border-border px-3 py-2 text-center num text-sm text-primary">
-            {book.data?.mid != null ? fmtPrice(book.data.mid) : "—"}
+            {book.data?.mid != null ? px(book.data.mid) : "—"}
           </div>
           <ul>
             {(book.data?.bids ?? []).map((l) => (
@@ -401,7 +404,7 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
                   style={{ width: `${(l.total / maxTotal) * 100}%` }}
                   aria-hidden
                 />
-                <span className="relative text-bid tabular-nums">{fmtPrice(l.price)}</span>
+                <span className="relative text-bid tabular-nums">{px(l.price)}</span>
                 <span className="relative text-foreground tabular-nums">{fmtAmount(l.amount, 3)}</span>
               </li>
             ))}
@@ -501,7 +504,7 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
                     className="flex justify-between px-4 py-1 num text-[11px]"
                   >
                     <span className={t.side === "buy" ? "text-bid" : "text-ask"}>
-                      {fmtPrice(t.price)}
+                      {px(t.price)}
                     </span>
                     <span className="text-foreground">{fmtAmount(t.amount, 3)}</span>
                     <span className="text-muted-foreground">{fmtTime(t.createdAt)}</span>

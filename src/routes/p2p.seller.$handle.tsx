@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { BadgeCheck, ThumbsDown, ThumbsUp } from "lucide-react";
 import { getSellerProfile } from "@/lib/p2p.functions";
 import { ScorePill, mins } from "@/components/p2p/SellerBadge";
-import { STATUS_LABEL } from "@/lib/p2p-config";
+import { fmtCoinPrice, STATUS_LABEL } from "@/lib/p2p-config";
 import { fmtAgo } from "@/lib/format";
 
 export const Route = createFileRoute("/p2p/seller/$handle")({
@@ -70,7 +70,7 @@ function SellerPage() {
         {p.offers.map((o) => (
           <div key={o.id} className="rounded-sm border border-border bg-surface p-4">
             <div className="flex justify-between font-mono">
-              <span className="text-lg">{o.asset} @ ${o.price.toLocaleString()}</span>
+              <span className="text-lg">{o.asset} @ ${fmtCoinPrice(o.price)}</span>
               <span className="text-xs text-muted-foreground">fee {Number(o.fee_pct)}%</span>
             </div>
             <div className="mt-1 flex items-center gap-1 font-mono text-[11px] text-primary">

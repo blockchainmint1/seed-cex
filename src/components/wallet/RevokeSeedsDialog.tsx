@@ -45,7 +45,8 @@ export function RevokeSeedsDialog({ extraCoins, pending, onConfirm }: { extraCoi
           <AlertDialogTitle>Revoke Seeds access?</AlertDialogTitle>
           <AlertDialogDescription>
             This deletes Seeds’ trading key. It doesn’t move your funds — use Revoke in HME Wallet to move TXC, ISK, BTC, LTC
-            and ETH back and retire this pocket.
+            and ETH back and retire this pocket. Withdraw any PLS or pHEX on Seeds first: HME Wallet can’t send on PulseChain,
+            so after a revoke only your recovery phrase in a PulseChain wallet can move them.
           </AlertDialogDescription>
         </AlertDialogHeader>
 

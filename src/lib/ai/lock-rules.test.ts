@@ -32,6 +32,19 @@ describe("which coins Seeds AI may offer", () => {
   });
 });
 
+describe("HEX and PulseChain in AI plans", () => {
+  it("offers PLS, HEX and pHEX through their Seeds TSD markets", () => {
+    expect(aiBuyable("SEEDS:PLS_TSD")).toBe(true);
+    expect(aiBuyable("SEEDS:HEX_TSD")).toBe(true);
+    expect(aiBuyable("SEEDS:PHEX_TSD")).toBe(true);
+  });
+  it("holds them in the member's EVM pocket", async () => {
+    const { aiPocketFor } = await import("./catalog");
+    expect(aiPocketFor("SEEDS:PLS_TSD")).toBe("EVM");
+  });
+  it("never offers a Seeds market that doesn't exist", () => expect(aiBuyable("SEEDS:SHIB_TSD")).toBe(false));
+});
+
 describe("catalog", () => {
   it("every catalog coin is one Seeds can actually buy and sell back", async () => {
     const { AI_CATALOG } = await import("./catalog");

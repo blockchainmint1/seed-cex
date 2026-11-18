@@ -41,6 +41,9 @@ const LEG_LABEL: Record<string, string> = {
   zcu: "ZCU on ZeroChill",
   wbtc: "BTC, settled as Omni #43",
   weth: "ETH, settled as Omni #45",
+  pls: "PLS on PulseChain",
+  hex: "HEX on Ethereum",
+  phex: "pHEX (HEX on PulseChain)",
 };
 
 function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {

@@ -34,4 +34,21 @@ describe("deposit catalog", () => {
   test("network ids are unique within each coin", () => {
     for (const a of DEPOSIT_ASSETS) expect(new Set(a.networks.map((n) => n.id)).size).toBe(a.networks.length);
   });
+  test("PulseChain coins (PLS, pHEX) go to the EVM address and are sent out by Seeds", () => {
+    for (const c of ["PLS", "pHEX"]) {
+      const net = findNetwork(findAsset(c), undefined)!;
+      expect(net.evmChain).toBe("pulsechain");
+      expect(withdrawRoute(net)).toBe("seeds");
+      expect(depositState(net, true, addrs, null)).toEqual({ ok: true, address: "0xabc" });
+    }
+  });
+  test("PulseChain deposits stay closed while Seeds can't send for this member", () => {
+    const net = findNetwork(findAsset("PLS"), "pulsechain")!;
+    expect(depositState(net, true, addrs, "pilot").ok).toBe(false);
+    expect(depositState(net, true, addrs).ok).toBe(false); // unknown = closed
+  });
+  test("HEX on Ethereum withdraws in HME Wallet; pHEX is a separate coin", () => {
+    expect(withdrawRoute(findNetwork(findAsset("HEX"), "ethereum")!)).toBe("hme");
+    expect(findAsset("phex")!.symbol).toBe("pHEX");
+  });
 });

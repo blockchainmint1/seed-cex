@@ -6,7 +6,7 @@
  * directly.
  */
 
-export type ChainId = "txc" | "ethereum" | "base" | "bsc" | "ltc" | "isk" | "zcu" | "btc";
+export type ChainId = "txc" | "ethereum" | "base" | "bsc" | "ltc" | "isk" | "zcu" | "btc" | "pulsechain";
 
 /** Every settlement leg Seeds can deliver on-chain. */
 export type LegId =
@@ -19,7 +19,13 @@ export type LegId =
   | "zcu"
   | "wbtc"
   | "wltc"
-  | "weth";
+  | "weth"
+  | "pls"
+  | "hex"
+  | "phex";
+
+/** HEX's contract: the same address on Ethereum and PulseChain, but two separate coins with their own prices. */
+export const HEX_CONTRACT = "0x2b591e99afE9f32eAA6214f7B7629768c40Eeb39";
 
 export type AssetDef = {
   symbol: string;
@@ -92,6 +98,7 @@ export const CHAINS: ChainDef[] = [
       { symbol: "ETH", contract: null, decimals: 18 },
       { symbol: "USDC", contract: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", decimals: 6 },
       { symbol: "USDT", contract: "0xdAC17F958D2ee523a2206206994597C13D831ec7", decimals: 6 },
+      { symbol: "HEX", contract: HEX_CONTRACT, decimals: 8 },
     ],
     explorer: "https://etherscan.io/address/",
   },
@@ -148,6 +155,20 @@ export const CHAINS: ChainDef[] = [
     sharedPath: "m/44'/60'/9'/0/0",
     assets: [{ symbol: "ZCU", contract: null, decimals: 18 }],
     explorer: "https://explorer.zerochill.com/address/",
+  },
+  {
+    // PulseChain: an EVM network (chain 369), so the member's one EVM pocket address works here too.
+    // HEX on PulseChain is shown as "pHEX" so it is never confused with HEX on Ethereum.
+    id: "pulsechain",
+    name: "PulseChain",
+    evmChainId: 369,
+    nativeSymbol: "PLS",
+    sharedPath: "m/44'/60'/9'/0/0",
+    assets: [
+      { symbol: "PLS", contract: null, decimals: 18 },
+      { symbol: "pHEX", contract: HEX_CONTRACT, decimals: 8 },
+    ],
+    explorer: "https://scan.pulsechain.com/address/",
   },
 ];
 
@@ -208,6 +229,9 @@ export const LEGS: Record<LegId, LegDef> = {
   wbtc: { id: "wbtc", symbol: "wBTC", kind: "omni", chain: "txc" },
   wltc: { id: "wltc", symbol: "wLTC", kind: "omni", chain: "txc" },
   weth: { id: "weth", symbol: "wETH", kind: "omni", chain: "txc" },
+  pls: { id: "pls", symbol: "PLS", kind: "evm", evmChains: ["pulsechain"], native: true },
+  hex: { id: "hex", symbol: "HEX", kind: "evm", evmChains: ["ethereum"] },
+  phex: { id: "phex", symbol: "pHEX", kind: "evm", evmChains: ["pulsechain"] },
 };
 
 /** Every leg that settles as an Omni property on TEXITcoin. */
@@ -244,7 +268,10 @@ export type PairId =
   | "ISK_TSD"
   | "ZCU_TSD"
   | "BTC_TSD"
-  | "ETH_TSD";
+  | "ETH_TSD"
+  | "PLS_TSD"
+  | "HEX_TSD"
+  | "PHEX_TSD";
 
 export type PairDef = {
   id: PairId;
@@ -262,6 +289,8 @@ export type PairDef = {
   blurb: string;
   /** Both legs settle on the TEXITcoin chain. */
   native: boolean;
+  /** Decimal places for prices (tiny-priced coins like PLS need more). Default 5. */
+  priceDigits?: number;
 };
 
 export const PAIRS: PairDef[] = [
@@ -342,6 +371,42 @@ export const PAIRS: PairDef[] = [
     quoteLeg: "tsd",
     blurb: "Ether priced in Texas Stable Dollars. Deposit native ETH — it settles on the TEXITcoin chain instantly.",
     native: false,
+  },
+  {
+    id: "PLS_TSD",
+    slug: "pls-tsd",
+    label: "PLS / TSD",
+    base: "PLS",
+    quote: "TSD",
+    baseLeg: "pls",
+    quoteLeg: "tsd",
+    blurb: "PulseChain's PLS priced in Texas Stable Dollars — native PLS transfers on PulseChain, TSD on TEXITcoin.",
+    native: false,
+    priceDigits: 10,
+  },
+  {
+    id: "HEX_TSD",
+    slug: "hex-tsd",
+    label: "HEX / TSD",
+    base: "HEX",
+    quote: "TSD",
+    baseLeg: "hex",
+    quoteLeg: "tsd",
+    blurb: "HEX on Ethereum priced in Texas Stable Dollars — the original HEX token, sent on Ethereum.",
+    native: false,
+    priceDigits: 8,
+  },
+  {
+    id: "PHEX_TSD",
+    slug: "phex-tsd",
+    label: "pHEX / TSD",
+    base: "pHEX",
+    quote: "TSD",
+    baseLeg: "phex",
+    quoteLeg: "tsd",
+    blurb: "HEX on PulseChain (pHEX) priced in Texas Stable Dollars — a separate coin from Ethereum HEX, sent on PulseChain.",
+    native: false,
+    priceDigits: 8,
   },
 ];
 

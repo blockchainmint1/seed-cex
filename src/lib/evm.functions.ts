@@ -17,13 +17,13 @@ export const getEvmPortfolio = createServerFn({ method: "POST" })
   .inputValidator((input) => z.object({ address: evmAddress }).parse(input))
   .handler(async ({ data }) => {
     const { fetchEvmBalances } = await import("./evm.server");
-    const chains = ["base", "ethereum", "bsc", "zcu"] as const;
+    const chains = ["base", "ethereum", "bsc", "zcu", "pulsechain"] as const;
     const results = await Promise.all(chains.map((c) => fetchEvmBalances(c, data.address)));
     return results.flat();
   });
 
 export const getEvmStatus = createServerFn({ method: "GET" }).handler(async () => {
   const { fetchEvmStatus } = await import("./evm.server");
-  const chains = ["base", "ethereum", "bsc"] as const;
+  const chains = ["base", "ethereum", "bsc", "pulsechain"] as const;
   return Promise.all(chains.map((c) => fetchEvmStatus(c)));
 });

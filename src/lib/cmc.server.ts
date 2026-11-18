@@ -78,6 +78,8 @@ export async function fetchQuotes(symbols: string[]): Promise<QuoteSet> {
       });
     }
 
+    quotes.push(...(await fetchHexPulseQuotes()));
+
     const txc = quotes.find((q) => q.symbol === "TXC")?.price ?? null;
     const usdc = quotes.find((q) => q.symbol === "USDC")?.price ?? null;
     const value: QuoteSet = {
@@ -93,4 +95,59 @@ export async function fetchQuotes(symbols: string[]): Promise<QuoteSet> {
     console.error("CMC quotes error", err);
     return empty;
   }
+}
+
+/* ------------------------- HEX and PulseChain prices ------------------------ */
+
+/**
+ * PLS, HEX (Ethereum) and pHEX (HEX on PulseChain) come from CoinGecko, with
+ * DexScreener as backup. CoinMarketCap is not used for these: its PulseChain HEX
+ * price was several times off the live PulseX price when checked (Nov 2026),
+ * and looking up "HEX" or "PLS" by symbol there can return the wrong coin.
+ */
+const HEX_PULSE = [
+  { symbol: "PLS", name: "PulseChain", gecko: "pulsechain", dexChain: "pulsechain", token: "0xA1077a294dDE1B09bB078844df40758a5D0f9a27" /* WPLS */ },
+  { symbol: "HEX", name: "HEX", gecko: "hex", dexChain: "ethereum", token: "0x2b591e99afE9f32eAA6214f7B7629768c40Eeb39" },
+  { symbol: "pHEX", name: "HEX (PulseChain)", gecko: "hex-pulsechain", dexChain: "pulsechain", token: "0x2b591e99afE9f32eAA6214f7B7629768c40Eeb39" },
+] as const;
+
+function quoteOf(c: (typeof HEX_PULSE)[number], price: number, change24h: number | null, volume24h: number | null, marketCap: number | null): Quote {
+  return { symbol: c.symbol, name: c.name, price, change1h: null, change24h, change7d: null, volume24h, marketCap, updatedAt: new Date().toISOString() };
+}
+
+async function fetchHexPulseQuotes(): Promise<Quote[]> {
+  const out: Quote[] = [];
+  try {
+    const ids = HEX_PULSE.map((c) => c.gecko).join(",");
+    const res = await fetch(
+      `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true&include_market_cap=true`,
+      { headers: { accept: "application/json" }, signal: AbortSignal.timeout(6000) },
+    );
+    if (res.ok) {
+      const j = (await res.json()) as Record<string, { usd?: number; usd_24h_change?: number; usd_24h_vol?: number; usd_market_cap?: number }>;
+      for (const c of HEX_PULSE) {
+        const r = j[c.gecko];
+        if (r?.usd && r.usd > 0) out.push(quoteOf(c, r.usd, r.usd_24h_change ?? null, r.usd_24h_vol ?? null, r.usd_market_cap ?? null));
+      }
+    }
+  } catch (err) {
+    console.error("CoinGecko HEX/PLS prices failed", err);
+  }
+  const missing = HEX_PULSE.filter((c) => !out.some((q) => q.symbol === c.symbol));
+  await Promise.all(missing.map(async (c) => {
+    try {
+      const res = await fetch(`https://api.dexscreener.com/tokens/v1/${c.dexChain}/${c.token}`, { signal: AbortSignal.timeout(6000) });
+      if (!res.ok) return;
+      const pairs = (await res.json()) as Array<{ baseToken?: { address?: string }; priceUsd?: string; liquidity?: { usd?: number }; volume?: { h24?: number }; priceChange?: { h24?: number } }>;
+      // Deepest pool where this coin is the base token, and only with real liquidity behind it.
+      const best = pairs
+        .filter((p) => p.baseToken?.address?.toLowerCase() === c.token.toLowerCase() && (p.liquidity?.usd ?? 0) >= 25_000)
+        .sort((a, b) => (b.liquidity?.usd ?? 0) - (a.liquidity?.usd ?? 0))[0];
+      const price = Number(best?.priceUsd);
+      if (best && price > 0) out.push(quoteOf(c, price, best.priceChange?.h24 ?? null, best.volume?.h24 ?? null, null));
+    } catch (err) {
+      console.error(`DexScreener ${c.symbol} price failed`, err);
+    }
+  }));
+  return out;
 }

@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { BadgeCheck } from "lucide-react";
 import { toast } from "sonner";
 import { blockTrader, getMyP2p, getP2pMarketPrices, saveOffer, saveP2pProfile, setP2pAway } from "@/lib/p2p.functions";
-import { P2P_ASSET_IDS, PAYMENT_METHODS, STATUS_LABEL, type P2pAsset } from "@/lib/p2p-config";
+import { fmtCoinPrice, P2P_ASSET_IDS, PAYMENT_METHODS, STATUS_LABEL, type P2pAsset } from "@/lib/p2p-config";
 import { ScorePill, mins } from "@/components/p2p/SellerBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -87,7 +87,7 @@ function Desk() {
             {d.offers.map((o) => (
               <li key={o.id} className="flex items-center justify-between gap-3 rounded-sm border border-border p-3">
                 <div>
-                  <div className="font-mono"><span className={o.side === "buy" ? "text-primary" : "text-destructive"}>{o.side === "buy" ? "BUY" : "SELL"}</span> {o.asset} @ {o.priceMode === "market" ? `market ${o.marginPct >= 0 ? "+" : ""}${o.marginPct}%` : `$${o.price}`} <span className="text-xs text-muted-foreground">fee {o.feePct}% · ${o.minFiat}–${o.maxFiat}</span></div>
+                  <div className="font-mono"><span className={o.side === "buy" ? "text-primary" : "text-destructive"}>{o.side === "buy" ? "BUY" : "SELL"}</span> {o.asset} @ {o.priceMode === "market" ? `market ${o.marginPct >= 0 ? "+" : ""}${o.marginPct}%` : `$${fmtCoinPrice(o.price)}`} <span className="text-xs text-muted-foreground">fee {o.feePct}% · ${o.minFiat}–${o.maxFiat}</span></div>
                   {o.side === "sell" ? <div className={`flex items-center gap-1 font-mono text-[11px] ${o.verified > 0 ? "text-primary" : "text-destructive"}`}>
                     <BadgeCheck className="h-3 w-3" />
                     {o.verified > 0 ? `${o.verified} ${o.asset} verified & available` : `No verified ${o.asset} — authorize and fund your trading pocket on the Wallet page`}
@@ -305,7 +305,7 @@ function OfferForm({ offer, onDone }: { offer: OfferRow | null; onDone: () => vo
                   <label><span className={lbl}>Above / below market %</span><Input value={f.marginPct} onChange={(e) => setF({ ...f, marginPct: e.target.value })} /></label>
                   <p className="pb-2 font-mono text-xs text-muted-foreground">
                     {market.data?.[f.asset]
-                      ? <>Market ${market.data[f.asset]!.toLocaleString(undefined, { maximumFractionDigits: 6 })} → you sell at <b className="text-foreground">${(market.data[f.asset]! * (1 + (Number(f.marginPct) || 0) / 100)).toLocaleString(undefined, { maximumFractionDigits: 6 })}</b></>
+                      ? <>Market ${fmtCoinPrice(market.data[f.asset]!)} → you sell at <b className="text-foreground">${fmtCoinPrice(market.data[f.asset]! * (1 + (Number(f.marginPct) || 0) / 100))}</b></>
                       : "Market price unavailable right now"}
                   </p>
                 </div>

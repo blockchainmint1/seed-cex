@@ -97,7 +97,7 @@ const legInput = (input: unknown) =>
   z
     .object({
       tradeId: z.string().uuid(),
-      leg: z.enum(["txc", "tsd", "usdc", "usdt", "ltc", "isk", "zcu", "wbtc", "wltc", "weth"]),
+      leg: z.enum(["txc", "tsd", "usdc", "usdt", "ltc", "isk", "zcu", "wbtc", "wltc", "weth", "pls", "hex", "phex"]),
     })
     .parse(input);
 

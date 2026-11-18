@@ -407,6 +407,7 @@ function RiskPage() {
                     "Keep only what you are actively trading in an instant-access pocket. Leave savings elsewhere.",
                     "You can revoke access from HME Wallet at any time. Revoking retires the pocket; trades already being settled may still complete.",
                     "Some coins (such as DOGE, BCH, ZEC, XRP, TRX and SOL) can only be linked in instant-access mode.",
+                    "PulseChain coins (PLS and HEX on PulseChain) are the one case where Seeds sends your coins to an outside address: HME Wallet can't send on PulseChain, so Seeds signs the withdrawal for you. It only sends to the address you type, after a 24-hour hold you can cancel, within dollar limits, and it emails you as soon as one is set up. If someone took over your Honest.Money sign-in, they could ask for a withdrawal — watch those emails and cancel anything you didn't ask for.",
                   ]}
                 />
               </Sub>

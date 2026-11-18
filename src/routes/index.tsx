@@ -29,21 +29,10 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-const PAIR_LABELS: Record<string, string> = {
-  "TXC_TSD": "TXC / TSD",
-  "TSD_USDC": "TSD / USDC",
-  "LTC_TSD": "LTC / TSD",
-  "ISK_TSD": "ISK / TSD",
-  "ZCU_TSD": "ZCU / TSD",
-};
-
-const PAIR_ROUTE: Record<string, "/trade/tsd-txc" | "/trade/tsd-usdc" | "/trade/ltc-tsd" | "/trade/isk-tsd" | "/trade/zcu-tsd"> = {
-  "TXC_TSD": "/trade/tsd-txc",
-  "TSD_USDC": "/trade/tsd-usdc",
-  "LTC_TSD": "/trade/ltc-tsd",
-  "ISK_TSD": "/trade/isk-tsd",
-  "ZCU_TSD": "/trade/zcu-tsd",
-};
+// Market rows arrive as "BASE_QUOTE" (CMC format); map each back to its page.
+const PAIR_LABELS: Record<string, string> = Object.fromEntries(PAIRS.map((p) => [`${p.base}_${p.quote}`, p.label]));
+const PAIR_ROUTE: Record<string, string> = Object.fromEntries(PAIRS.map((p) => [`${p.base}_${p.quote}`, `/trade/${p.slug}`]));
+const PAIR_DIGITS: Record<string, number> = Object.fromEntries(PAIRS.map((p) => [`${p.base}_${p.quote}`, p.priceDigits ?? 5]));
 
 function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
@@ -219,7 +208,7 @@ function Index() {
                           {PAIR_LABELS[m.trading_pairs] ?? m.trading_pairs}
                         </td>
                         <td className="px-4 py-4 text-right num text-sm text-foreground">
-                          {fmtPrice(m.last_price ?? 0)}
+                          {fmtPrice(m.last_price ?? 0, PAIR_DIGITS[m.trading_pairs] ?? 5)}
                         </td>
                         <td className="px-4 py-4 text-right num text-sm text-muted-foreground">
                           {fmtAmount(m.base_volume ?? 0)}

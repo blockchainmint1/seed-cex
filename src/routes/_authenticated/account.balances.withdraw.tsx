@@ -5,6 +5,8 @@ import { Card, Note, TabTitle } from "@/components/account/ui";
 import { CoinNetworkPicker } from "@/components/account/CoinNetworkPicker";
 import { fmtCoin, usePocketBalances, usePocketLink } from "@/components/account/use-pocket";
 import { findAsset, findNetwork, withdrawRoute, type DepositNetwork } from "@/lib/account/deposit-options";
+import { PulseWithdraw } from "@/components/account/PulseWithdraw";
+import { isPulseCoin } from "@/lib/pulse/withdraw-rules";
 
 type Search = { coin?: string; network?: string };
 
@@ -17,7 +19,7 @@ export const Route = createFileRoute("/_authenticated/account/balances/withdraw"
   head: () => ({
     meta: [
       { title: "Withdraw crypto — Seeds" },
-      { name: "description", content: "Withdraw from your HME trading pocket: HME Wallet sends HME-supported coins with your own keys; other coins swap back to TSD on Seeds first." },
+      { name: "description", content: "Withdraw from your HME trading pocket: HME Wallet sends HME-supported coins with your own keys; PulseChain coins are sent by Seeds after a hold; other coins swap back to TSD first." },
       { property: "og:title", content: "Withdraw crypto — Seeds" },
       { property: "og:description", content: "How to move coins out of your HME trading pocket, coin by coin." },
       { property: "og:type", content: "website" },
@@ -27,7 +29,7 @@ export const Route = createFileRoute("/_authenticated/account/balances/withdraw"
   component: Withdraw,
 });
 
-const FEE_COIN: Record<string, string> = { "txc-omni": "TXC", ethereum: "ETH", base: "ETH", bsc: "BNB", zcu: "ZCU" };
+const FEE_COIN: Record<string, string> = { "txc-omni": "TXC", ethereum: "ETH", base: "ETH", bsc: "BNB", zcu: "ZCU", pulsechain: "PLS" };
 
 function Withdraw() {
   const search = Route.useSearch();
@@ -44,7 +46,7 @@ function Withdraw() {
     <div className="space-y-5">
       <TabTitle
         title="Withdraw"
-        desc="Your HME Wallet holds the keys to your trading pocket, so withdrawals to outside addresses are signed by you in HME Wallet — never by Seeds."
+        desc="Your HME Wallet holds the keys to your trading pocket, so withdrawals to outside addresses are signed by you in HME Wallet. The one exception is PulseChain, which HME Wallet can't send on yet: there Seeds sends for you, after a hold you can cancel."
       />
       {!link.isPending && !l ? (
         <Note tone="warn">Link your HME Wallet trading pocket first — <Link to="/account/security" className="text-primary underline">go to Security</Link>.</Note>
@@ -75,7 +77,11 @@ function Withdraw() {
                       <p className="mt-0.5 truncate font-mono text-xs">{row.address}</p>
                     </div>
                   </div>
-                  <Steps net={net} symbol={asset.symbol} account={l.account} />
+                  {withdrawRoute(net) === "seeds" && isPulseCoin(asset.symbol) ? (
+                    <PulseWithdraw coin={asset.symbol} from={row.address} balance={row.balance} />
+                  ) : (
+                    <Steps net={net} symbol={asset.symbol} account={l.account} />
+                  )}
                 </>
               )}
             </div>
@@ -84,14 +90,16 @@ function Withdraw() {
         <aside className="space-y-4 text-sm">
           <Card title="Why withdraw in HME Wallet?">
             <p className="text-muted-foreground">
-              Seeds is non-custodial: it never sends your coins to an outside address. Only your own wallet can, which means a
-              hacked Seeds account or a stolen API key can't drain your pocket to a stranger.
+              When your own wallet signs, a hacked Seeds account or a stolen API key can't drain your pocket to a stranger.
+              PulseChain is the one exception (HME Wallet can't send there yet): Seeds sends only after a 24-hour hold, tells
+              you by email straight away, and you can cancel. API keys can never do this.
             </p>
           </Card>
           <Card title="Before you revoke">
             <p className="text-muted-foreground">
               Swap any DOGE, BCH, XRP, TRX or SOL back to TSD first. HME Wallet can't hold those coins, and after a revoke Seeds
-              deletes its key.
+              deletes its key. Withdraw PLS and pHEX first too: they stay safe at your EVM address, but HME Wallet won't show them,
+              and you'd need your recovery phrase in a PulseChain wallet to move them.
             </p>
           </Card>
         </aside>
@@ -102,6 +110,7 @@ function Withdraw() {
 
 function Steps({ net, symbol, account }: { net: DepositNetwork; symbol: string; account: number }) {
   const route = withdrawRoute(net);
+  if (route === "seeds") return <Note tone="warn">Seeds sends {symbol} on {net.label} for you — this coin can't be sent from here.</Note>;
   if (route === "none") return <Note tone="warn">Seeds can't send {symbol} yet. Keep it where it is; nothing should be deposited on this network until sending is built.</Note>;
   if (route === "swap")
     return (

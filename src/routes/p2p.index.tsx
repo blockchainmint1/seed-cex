@@ -5,7 +5,7 @@ import { useState } from "react";
 import { BadgeCheck, Lock, Users } from "lucide-react";
 import { toast } from "sonner";
 import { listOffers, openTrade } from "@/lib/p2p.functions";
-import { P2P_ASSET_IDS, P2P_ASSETS, PAYMENT_METHODS, type P2pAsset } from "@/lib/p2p-config";
+import { fmtCoinPrice, P2P_ASSET_IDS, P2P_ASSETS, PAYMENT_METHODS, type P2pAsset } from "@/lib/p2p-config";
 import { SellerBadge } from "@/components/p2p/SellerBadge";
 import { useSession } from "@/hooks/use-session";
 import { Button } from "@/components/ui/button";
@@ -136,7 +136,7 @@ function Market() {
                 </div>
               </div>
               <div>
-                <div className="font-mono text-lg">${o.price.toLocaleString()} <span className="text-xs text-muted-foreground">/ {o.asset}</span></div>
+                <div className="font-mono text-lg">${fmtCoinPrice(o.price)} <span className="text-xs text-muted-foreground">/ {o.asset}</span></div>
                 <div className="font-mono text-[11px] text-muted-foreground">fee {o.feePct}%{o.priceMode === "market" ? ` · market ${o.marginPct >= 0 ? "+" : ""}${o.marginPct}%` : ""}</div>
               </div>
               <div className="font-mono text-xs">
@@ -205,7 +205,7 @@ function BuyDialog({ offer, onClose }: { offer: Offer; onClose: () => void }) {
               </select>
             </label>
             <div className="space-y-1 rounded-sm border border-border bg-surface p-3 font-mono text-xs">
-              <div className="flex justify-between"><span>Price</span><span>${offer.price.toLocaleString()} / {offer.asset}</span></div>
+              <div className="flex justify-between"><span>Price</span><span>${fmtCoinPrice(offer.price)} / {offer.asset}</span></div>
               <div className="flex justify-between"><span>Seller fee ({offer.feePct}%)</span><span>${fee.toFixed(2)}</span></div>
               <div className="flex justify-between text-sm text-primary"><span>{sellAd ? "You send" : "You get"}</span><span>{get > 0 ? get.toFixed(P2P_ASSETS[offer.asset].decimals) : "0"} {offer.asset}</span></div>
               <div className="flex justify-between text-muted-foreground"><span>Time to pay</span><span>{offer.windowMinutes} min</span></div>

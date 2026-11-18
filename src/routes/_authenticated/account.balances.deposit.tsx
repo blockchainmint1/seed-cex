@@ -7,6 +7,7 @@ import { Card, Note, TabTitle } from "@/components/account/ui";
 import { CoinNetworkPicker } from "@/components/account/CoinNetworkPicker";
 import { fmtCoin, usePocketBalances, usePocketLink } from "@/components/account/use-pocket";
 import { depositState, findAsset, findNetwork, withdrawRoute } from "@/lib/account/deposit-options";
+import { usePulseWithdrawals } from "@/components/account/PulseWithdraw";
 
 type Search = { coin?: string; network?: string };
 
@@ -19,7 +20,7 @@ export const Route = createFileRoute("/_authenticated/account/balances/deposit")
   head: () => ({
     meta: [
       { title: "Deposit crypto — Seeds" },
-      { name: "description", content: "Deposit TSD, TXC, BTC, ETH, USDC, USDT, LTC, ISK, BNB, ZCU and more into your own HME trading pocket, with QR code and network warnings." },
+      { name: "description", content: "Deposit TSD, TXC, BTC, ETH, USDC, USDT, LTC, ISK, BNB, ZCU, PLS, HEX and more into your own HME trading pocket, with QR code and network warnings." },
       { property: "og:title", content: "Deposit crypto — Seeds" },
       { property: "og:description", content: "Pick a coin and network, then send to your own HME trading-pocket address." },
       { property: "og:type", content: "website" },
@@ -38,7 +39,9 @@ function Deposit() {
   const asset = findAsset(search.coin);
   const net = findNetwork(asset, search.network);
   const linked = new Set(Object.keys(l?.addresses ?? {}));
-  const state = net ? depositState(net, Boolean(l), l?.addresses ?? {}) : null;
+  const pulse = usePulseWithdrawals(Boolean(l));
+  const seedsBlocker = pulse.data ? pulse.data.blocker : undefined;
+  const state = net ? depositState(net, Boolean(l), l?.addresses ?? {}, seedsBlocker) : null;
   const balance = net ? rows.find((r) => r.asset.symbol === asset?.symbol && r.net.id === net.id)?.balance ?? null : null;
   const [copied, setCopied] = useState(false);
 
@@ -56,7 +59,7 @@ function Deposit() {
             linked={linked}
             onAsset={(coin) => { setCopied(false); navigate({ search: { coin, network: undefined }, replace: true }); }}
             onNetwork={(network) => { setCopied(false); navigate({ search: (p) => ({ ...p, network }), replace: true }); }}
-            disabledNote={(n) => (l && !depositState(n, true, l.addresses).ok ? "Not available" : null)}
+            disabledNote={(n) => (l && !depositState(n, true, l.addresses, seedsBlocker).ok ? "Not available" : null)}
           />
           {net && state ? (
             <div className="mt-6 border-t border-border pt-6">
