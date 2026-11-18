@@ -39,7 +39,7 @@ function Index() {
   }, []);
 
   return (
-    <div className="ignite-theme seed-lines min-h-screen pb-28 lg:pb-0">
+    <div className="ignite-theme seed-lines min-h-screen overflow-x-clip pb-28 lg:pb-0">
       <div className="mx-auto grid max-w-7xl gap-12 px-5 pt-6 pb-16 lg:grid-cols-[1.15fr_1fr] lg:gap-16 lg:pt-16">
         <section>
           <p className="font-mono text-xs font-medium tracking-[0.14em] text-primary">INTRODUCING SEEDS</p>

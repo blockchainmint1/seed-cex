@@ -268,9 +268,9 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
         directly between the two traders' wallets. Seeds never takes custody of your coins.
       </p>
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-[1fr_320px_300px]">
+      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_320px_300px]">
         {/* chart + my activity */}
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <Panel title="Price" right={<span className="font-mono text-[10px] text-muted-foreground">last {series.data?.length ?? 0} prints</span>}>
             <div className="p-4">
               <Sparkline points={(series.data ?? []).map((s) => s.price)} />
@@ -326,6 +326,7 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
             ) : (myOrders.data ?? []).filter((o) => o.pair === PAIR).length === 0 ? (
               <p className="p-4 font-mono text-xs text-muted-foreground">No orders yet.</p>
             ) : (
+              <div className="overflow-x-auto">
               <table className="w-full font-mono text-xs">
                 <thead>
                   <tr className="border-b border-border text-[10px] tracking-[0.16em] text-muted-foreground uppercase">
@@ -361,6 +362,7 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
           </Panel>
         </div>
