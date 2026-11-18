@@ -198,7 +198,7 @@ function IgniteAdminPage() {
                     <SortHeader label="Referred by" k="refCode" sort={sort} onSort={onSort} />
                     <SortHeader label="Registered" k="createdAt" sort={sort} onSort={onSort} />
                     <SortHeader label="Last emailed" k="lastEmailedAt" sort={sort} onSort={onSort} />
-                    <th scope="col" className="px-3 py-2 text-right font-normal">Actions</th>
+                    <th scope="col" className="bg-surface px-3 py-2 text-right font-normal lg:sticky lg:right-0 lg:shadow-[-8px_0_8px_-8px_var(--border)]">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -220,7 +220,7 @@ function IgniteAdminPage() {
                         <td className="px-3 py-2 text-xs text-muted-foreground">{r.refCode ?? "—"}</td>
                         <td className="px-3 py-2 text-xs text-muted-foreground">{fmtAgo(r.createdAt)}</td>
                         <td className="px-3 py-2 text-xs text-muted-foreground">{r.lastEmailedAt ? fmtAgo(r.lastEmailedAt) : "—"}</td>
-                        <td className="px-3 py-2">
+                        <td className={`px-3 py-2 lg:sticky lg:right-0 lg:shadow-[-8px_0_8px_-8px_var(--border)] ${picked.has(r.id) ? "bg-accent" : "bg-surface"}`}>
                           <div className="flex justify-end gap-1.5">
                             <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => setCompose([r])} title="Write an email"><Mail /> Email</Button>
                             {(REMINDABLE as readonly string[]).includes(r.status) ? (
@@ -271,7 +271,7 @@ function IgniteAdminPage() {
               <dl className="grid grid-cols-[8rem_1fr] gap-x-3 gap-y-1.5 text-sm">
                 <dt className="text-muted-foreground">Status</dt><dd>{STATUS_CHIP[detail.status]?.label ?? detail.status}</dd>
                 <dt className="text-muted-foreground">Paid</dt><dd>{paidLabel(detail)}</dd>
-                <dt className="text-muted-foreground">Paid by</dt><dd>{detail.payerName ?? (detail.method === "peer" ? "—" : "self")}</dd>
+                <dt className="text-muted-foreground">Paid by</dt><dd>{detail.payerName ?? (detail.status === "confirmed" && detail.method !== "peer" ? "self" : "—")}</dd>
                 <dt className="text-muted-foreground">Invoice</dt><dd className="font-mono text-xs" title={detail.invoiceId ?? undefined}>{short(detail.invoiceId)}</dd>
                 <dt className="text-muted-foreground">Referred by</dt><dd>{detail.refCode ?? "—"}</dd>
                 <dt className="text-muted-foreground">Honest.Money</dt><dd>{detail.hmLinked ? "linked" : "not linked"}</dd>

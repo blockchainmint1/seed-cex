@@ -101,6 +101,13 @@ function AccountLayout() {
                 </Link>
               </li>
             ))}
+            {admin.data ? (
+              <li className="shrink-0 lg:hidden">
+                <Link to="/admin" className="flex items-center gap-2.5 whitespace-nowrap rounded-sm px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+                  <ShieldCheck className="h-4 w-4" /> Admin console
+                </Link>
+              </li>
+            ) : null}
           </ul>
           <div className="mt-6 hidden border-t border-border pt-4 lg:block">
             <p className="px-3 font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">Elsewhere</p>
