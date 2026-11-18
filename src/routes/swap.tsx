@@ -8,7 +8,8 @@ import { PROTOCOL_LABEL, SWAP_COINS, swapCoin, swapCoinGroup, type Protocol, typ
 import { getSwapQuotes, getSwapSendContext, getSwapStatus, sendSwap } from "@/lib/xchain/swap.functions";
 import { landsOutsideHmeWallet, receivePocket, sendBlocker, sendSource, SWAP_LIMITS } from "@/lib/xchain/send-rules";
 import { useSession } from "@/hooks/use-session";
-import { TsdSwapPanel } from "@/components/swap/TsdSwapPanel";
+import { MyTsdSwaps, TSD_BUY_COINS, TSD_SELL_COINS, TsdRouteResult } from "@/components/swap/TsdRoute";
+import { getTsdRouteQuote } from "@/lib/xchain/tsd-route.functions";
 import { fmtCompact } from "@/lib/format";
 
 export const Route = createFileRoute("/swap")({
@@ -60,14 +61,33 @@ const COIN_GROUPS: Array<[string, SwapCoin[]]> = (() => {
   return [...m.entries()].sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]));
 })();
 
-function CoinSelect({ value, onChange, label }: { value: SwapCoinId; onChange: (v: SwapCoinId) => void; label: string }) {
+/** A side of the swap: any THORChain/Maya coin, or TSD (converted through TSD Bridge). */
+type Side = SwapCoinId | "TSD";
+const TSD_LABEL = { symbol: "TSD", network: "TEXITcoin" } as const;
+const sideNetwork = (v: Side) => (v === "TSD" ? TSD_LABEL.network : swapCoin(v)!.network);
+
+function groupsFor(list: readonly SwapCoin[]): Array<[string, SwapCoin[]]> {
+  const ids = new Set(list.map((c) => c.id));
+  return COIN_GROUPS.map(([g, cs]) => [g, cs.filter((c) => ids.has(c.id))] as [string, SwapCoin[]]).filter(([, cs]) => cs.length);
+}
+
+function CoinSelect({ value, onChange, label, options, withTsd }: { value: Side; onChange: (v: Side) => void; label: string; options: readonly SwapCoin[]; withTsd: boolean }) {
   return (
-    <Select value={value} onValueChange={(v) => onChange(v as SwapCoinId)}>
+    // Radix fires an empty change when the option list swaps under the current value (inside a form); ignore it.
+    <Select value={value} onValueChange={(v) => { if (v === "TSD" || swapCoin(v as SwapCoinId)) onChange(v as Side); }}>
       <SelectTrigger aria-label={label} className="h-12 w-36 shrink-0 rounded-sm font-mono sm:w-44 [&>span]:truncate">
         <SelectValue />
       </SelectTrigger>
       <SelectContent className="max-h-80">
-        {COIN_GROUPS.map(([group, list]) => (
+        {withTsd ? (
+          <SelectGroup>
+            <SelectLabel className="font-mono text-[10px] tracking-[0.18em] text-primary uppercase">Texas Stable Dollar</SelectLabel>
+            <SelectItem value="TSD" className="font-mono">
+              TSD <span className="text-muted-foreground">· {TSD_LABEL.network}</span>
+            </SelectItem>
+          </SelectGroup>
+        ) : null}
+        {groupsFor(options).map(([group, list]) => (
           <SelectGroup key={group}>
             <SelectLabel className="font-mono text-[10px] tracking-[0.18em] text-primary uppercase">{group}</SelectLabel>
             {list.map((c) => (
@@ -82,6 +102,13 @@ function CoinSelect({ value, onChange, label }: { value: SwapCoinId; onChange: (
   );
 }
 
+/** Keeps a from/to pair valid: never the same coin twice, and TSD only against coins TSD Bridge + THORChain can do both ways. */
+function fixPair(from: Side, to: Side): [Side, Side] {
+  if (from === "TSD" && to !== "TSD" && !TSD_BUY_COINS.some((c) => c.id === to)) return [from, "BTC"];
+  if (to === "TSD" && from !== "TSD" && !TSD_SELL_COINS.some((c) => c.id === from)) return ["BTC", to];
+  return [from, to];
+}
+
 function SwapPage() {
   const loader = Route.useLoaderData();
   const fetchStatus = useServerFn(getSwapStatus);
@@ -93,13 +120,31 @@ function SwapPage() {
     refetchInterval: 30_000,
   });
 
-  const [from, setFrom] = useState<SwapCoinId>("BTC");
-  const [to, setTo] = useState<SwapCoinId>("ETH");
-  const [amount, setAmount] = useState("0.01");
+  const [from, setFrom] = useState<Side>("TSD");
+  const [to, setTo] = useState<Side>("BTC");
+  const [amount, setAmount] = useState("50");
   const [destination, setDestination] = useState("");
+  // With TSD on one side the swap runs TSD Bridge ↔ USDC ↔ THORChain; otherwise THORChain and Maya are compared directly.
+  const tsdDirection = from === "TSD" ? ("buy" as const) : to === "TSD" ? ("sell" as const) : null;
+  const tsdCoinId = (tsdDirection === "buy" ? to : from) as SwapCoinId;
   const quote = useMutation({
-    mutationFn: () => fetchQuotes({ data: { from, to, amount, destination } }),
+    mutationFn: () => fetchQuotes({ data: { from: from as SwapCoinId, to: to as SwapCoinId, amount, destination } }),
   });
+  const fetchTsdQuote = useServerFn(getTsdRouteQuote);
+  const tsdQuote = useMutation({
+    mutationFn: () => fetchTsdQuote({ data: { direction: tsdDirection!, coin: tsdCoinId, amount } }),
+  });
+  const resetQuotes = () => {
+    quote.reset();
+    tsdQuote.reset();
+  };
+  function setPair(f: Side, t: Side) {
+    const [nf, nt] = fixPair(f, t);
+    setFrom(nf);
+    setTo(nt);
+    setDestination("");
+    resetQuotes();
+  }
 
   const { user } = useSession();
   const fetchSendCtx = useServerFn(getSwapSendContext);
@@ -110,20 +155,22 @@ function SwapPage() {
     refetchInterval: 30_000,
   });
 
-  const fromCoin = swapCoin(from)!;
-  const toCoin = swapCoin(to)!;
-  const ownPocket = receivePocket(toCoin);
+  const fromCoin = from === "TSD" ? null : swapCoin(from)!;
+  const toCoin = to === "TSD" ? null : swapCoin(to)!;
+  const tsdCoin = tsdDirection ? swapCoin(tsdCoinId)! : null;
+  const ownPocket = toCoin ? receivePocket(toCoin) : null;
   const ownAddress = ownPocket ? (sendCtx?.link?.addresses as Record<string, string> | undefined)?.[ownPocket] ?? null : null;
-  const fromPrice = status.coins.find((c) => c.id === from)?.priceUsd ?? null;
+  const fromPrice = from === "TSD" ? 1 : status.coins.find((c) => c.id === from)?.priceUsd ?? null;
   const amountNum = Number(amount);
   const routes = quote.data?.routes ?? [];
   const bestPrice = routes.filter((r) => r.ok).sort((a, b) => b.expectedOut - a.expectedOut)[0] ?? null;
+  const tq = tsdQuote.data;
+  const receiveShown = tsdDirection ? (tq?.ok ? tq.out : null) : bestPrice?.expectedOut ?? null;
+  const pending = quote.isPending || tsdQuote.isPending;
+  const linkCtx = sendCtx?.link ? { mode: sendCtx.link.mode, hasKey: sendCtx.link.hasKey, pockets: sendCtx.link.pockets as string[] } : null;
 
   function flip() {
-    setFrom(to);
-    setTo(from);
-    setDestination("");
-    quote.reset();
+    setPair(to, from);
   }
 
   return (
@@ -134,9 +181,9 @@ function SwapPage() {
           Real coins, chain to chain.
         </h1>
         <p className="max-w-2xl text-muted-foreground">
-          Live prices through THORChain and Maya Protocol for every coin they trade — {SWAP_COINS.length} in all, from
-          Bitcoin, Ether, Solana and XRP to Cardano, Avalanche, Cosmos and stablecoins on six networks. Seeds never
-          holds your coins.
+          Swap TSD or any of {SWAP_COINS.length} coins THORChain and Maya trade — Bitcoin, Ether, Solana and XRP to Cardano,
+          Avalanche, Cosmos and stablecoins on six networks. Pick what you send and what you get; Seeds finds the route and
+          never holds your coins.
         </p>
         <p className="inline-flex items-center gap-2 rounded-sm border border-primary/40 bg-primary/10 px-3 py-1.5 font-mono text-[11px] text-foreground">
           <ShieldCheck className="h-3.5 w-3.5 text-primary" />
@@ -144,11 +191,6 @@ function SwapPage() {
         </p>
       </header>
 
-      <TsdSwapPanel
-        signedIn={Boolean(user)}
-        isAdmin={Boolean(sendCtx?.isAdmin)}
-        link={sendCtx?.link ? { mode: sendCtx.link.mode, hasKey: sendCtx.link.hasKey, pockets: sendCtx.link.pockets as string[] } : null}
-      />
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
         <section className="min-w-0 space-y-6">
@@ -156,7 +198,8 @@ function SwapPage() {
             className="space-y-4 rounded-sm border border-border bg-surface p-5"
             onSubmit={(e) => {
               e.preventDefault();
-              quote.mutate();
+              if (tsdDirection) tsdQuote.mutate();
+              else quote.mutate();
             }}
           >
             <div className="space-y-2">
@@ -170,25 +213,20 @@ function SwapPage() {
                   value={amount}
                   onChange={(e) => {
                     setAmount(e.target.value.replace(/[^0-9.]/g, ""));
-                    quote.reset();
+                    resetQuotes();
                   }}
                   className="h-12 min-w-0 flex-1 rounded-sm border border-input bg-background px-3 num text-lg outline-none focus:border-primary"
                 />
                 <CoinSelect
                   label="Coin you send"
                   value={from}
-                  onChange={(v) => {
-                    setFrom(v);
-                    if (v === to) {
-                      setTo(from);
-                      setDestination("");
-                    }
-                    quote.reset();
-                  }}
+                  options={to === "TSD" ? TSD_SELL_COINS : SWAP_COINS}
+                  withTsd={to !== "TSD"}
+                  onChange={(v) => setPair(v, v === to ? from : to)}
                 />
               </div>
               <p className="font-mono text-[11px] text-muted-foreground">
-                ≈ {usd(Number.isFinite(amountNum) && fromPrice ? amountNum * fromPrice : null)} · {fromCoin.network}
+                ≈ {usd(Number.isFinite(amountNum) && fromPrice ? amountNum * fromPrice : null)} · {sideNetwork(from)}
               </p>
             </div>
 
@@ -207,73 +245,94 @@ function SwapPage() {
               <span className="font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">You receive</span>
               <div className="flex gap-2">
                 <div className="flex h-12 min-w-0 flex-1 items-center rounded-sm border border-input bg-background px-3 num text-lg">
-                  {bestPrice ? coins(bestPrice.expectedOut) : <span className="text-muted-foreground">—</span>}
+                  {receiveShown != null ? coins(receiveShown, to === "TSD" ? 2 : 8) : <span className="text-muted-foreground">—</span>}
                 </div>
                 <CoinSelect
                   label="Coin you receive"
                   value={to}
-                  onChange={(v) => {
-                    setTo(v);
-                    if (v === from) setFrom(to);
-                    setDestination("");
-                    quote.reset();
-                  }}
+                  options={from === "TSD" ? TSD_BUY_COINS : SWAP_COINS}
+                  withTsd={from !== "TSD"}
+                  onChange={(v) => setPair(v === from ? to : from, v)}
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label htmlFor="swap-dest" className="font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
-                Your {toCoin.network} receiving address <span className="normal-case tracking-normal">(optional)</span>
-              </label>
-              <input
-                id="swap-dest"
-                value={destination}
-                placeholder={toCoin.addressHint}
-                onChange={(e) => {
-                  setDestination(e.target.value.trim());
-                  quote.reset();
-                }}
-                className="h-11 w-full rounded-sm border border-input bg-background px-3 font-mono text-sm outline-none focus:border-primary"
-              />
-              <p className="text-xs text-muted-foreground">
-                Add it to run the full send checks: the swap instruction is verified to pay exactly this address.
-              </p>
-              {ownAddress && destination !== ownAddress ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDestination(ownAddress);
-                    quote.reset();
-                  }}
-                  className="inline-flex items-center gap-1.5 rounded-sm border border-border px-2.5 py-1 font-mono text-[11px] text-foreground transition-colors hover:border-primary hover:text-primary"
-                >
-                  <Wallet className="h-3.5 w-3.5" />
-                  Send it to my trading pocket
-                </button>
-              ) : null}
-              {ownAddress && destination === ownAddress && landsOutsideHmeWallet(toCoin) ? (
-                <p className="border-l-2 border-warn pl-3 text-xs text-foreground">
-                  HME Wallet can’t hold {toCoin.symbol}. It stays in your Seeds trading pocket — swap it back to TSD before you revoke Seeds’ access.
+            {tsdDirection ? (
+              <div className="space-y-2">
+                <p className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Wallet className="h-3.5 w-3.5" /> Lands in your own trading pocket{to === "TSD" ? " as TSD on TEXITcoin" : ""}.
                 </p>
-              ) : null}
-            </div>
+                {tsdDirection === "buy" && tsdCoin && landsOutsideHmeWallet(tsdCoin) ? (
+                  <p className="border-l-2 border-warn pl-3 text-xs text-foreground">
+                    HME Wallet can’t hold {tsdCoin.symbol}. It stays in your Seeds trading pocket — swap it back to TSD before you revoke Seeds’ access.
+                  </p>
+                ) : null}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <label htmlFor="swap-dest" className="font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
+                  Your {toCoin!.network} receiving address <span className="normal-case tracking-normal">(optional)</span>
+                </label>
+                <input
+                  id="swap-dest"
+                  value={destination}
+                  placeholder={toCoin!.addressHint}
+                  onChange={(e) => {
+                    setDestination(e.target.value.trim());
+                    resetQuotes();
+                  }}
+                  className="h-11 w-full rounded-sm border border-input bg-background px-3 font-mono text-sm outline-none focus:border-primary"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Add it to run the full send checks: the swap instruction is verified to pay exactly this address.
+                </p>
+                {ownAddress && destination !== ownAddress ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDestination(ownAddress);
+                      resetQuotes();
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-sm border border-border px-2.5 py-1 font-mono text-[11px] text-foreground transition-colors hover:border-primary hover:text-primary"
+                  >
+                    <Wallet className="h-3.5 w-3.5" />
+                    Send it to my trading pocket
+                  </button>
+                ) : null}
+                {ownAddress && destination === ownAddress && landsOutsideHmeWallet(toCoin!) ? (
+                  <p className="border-l-2 border-warn pl-3 text-xs text-foreground">
+                    HME Wallet can’t hold {toCoin!.symbol}. It stays in your Seeds trading pocket — swap it back to TSD before you revoke Seeds’ access.
+                  </p>
+                ) : null}
+              </div>
+            )}
 
             <button
               type="submit"
-              disabled={quote.isPending || !amount}
+              disabled={pending || !amount}
               className="h-11 w-full rounded-md bg-action text-sm font-semibold text-action-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
             >
-              {quote.isPending ? "Asking THORChain and Maya…" : "Compare routes"}
+              {pending ? "Finding the best route…" : "Get price"}
             </button>
-            {quote.error ? (
+            {quote.error || tsdQuote.error ? (
               <p role="alert" className="font-mono text-xs text-destructive">
-                {(quote.error as Error).message}
+                {((quote.error ?? tsdQuote.error) as Error).message}
               </p>
             ) : null}
           </form>
 
-          {quote.data ? (
+          {tsdDirection && tq && tsdCoin ? (
+            <TsdRouteResult
+              direction={tsdDirection}
+              coin={tsdCoin}
+              amount={amount}
+              q={tq}
+              signedIn={Boolean(user)}
+              link={linkCtx}
+              isAdmin={Boolean(sendCtx?.isAdmin)}
+            />
+          ) : null}
+          {!tsdDirection && quote.data && fromCoin && toCoin ? (
             <div className="grid gap-4 md:grid-cols-2">
               {routes.map((r) => {
                 const isBest = bestPrice?.protocol === r.protocol;
@@ -358,6 +417,7 @@ function SwapPage() {
             </div>
           ) : null}
           {sendCtx?.sends?.length ? <MySwaps sends={sendCtx.sends} /> : null}
+          <MyTsdSwaps signedIn={Boolean(user)} />
         </section>
 
         <aside className="space-y-4">
@@ -423,7 +483,7 @@ function SwapPage() {
         {[
           {
             t: "1 · Quote",
-            d: "We ask THORChain and Maya for a live price, then show every fee: price impact, the network fee to deliver your coin, and the Seeds fee (none today).",
+            d: "We ask THORChain and Maya — plus TSD Bridge when TSD is on one side — for a live price, then show every fee: price impact, the network fee to deliver your coin, and the Seeds fee (none today).",
           },
           {
             t: "2 · Check",
