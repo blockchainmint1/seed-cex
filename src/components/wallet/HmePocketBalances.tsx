@@ -58,10 +58,13 @@ export function HmePocketBalances({ addresses, linkId }: { addresses: Record<str
       const b = d?.utxo.find((r) => r.symbol === symbol);
       return { symbol, network: symbol === "LTC" ? "Litecoin" : "Iskandercoin", address: addresses[symbol], balance: b?.online ? b.balance : null };
     }),
-    ...HME_WALLET_CANT_HOLD.map((c: PocketCoin) => ({
+    // Coins Seeds can't send out yet get no receive code (a deposit would be a one-way trip);
+    // they're listed only if something already sits there. Monero can't be read at all.
+    ...HME_WALLET_CANT_HOLD.filter((c: PocketCoin) => POCKET_SPECS[c].balanceReadable).map((c: PocketCoin) => ({
       symbol: c, network: POCKET_SPECS[c].name, address: addresses[c], notInHme: true,
+      canReceive: POCKET_SPECS[c].signing === "ready",
       balance: (d?.extra ?? []).find((r) => r.coin === c)?.balance ?? null,
-    })),
+    })).filter((r) => r.canReceive || (r.balance ?? 0) > 0),
     ...(d?.evm ?? []).map((r) => ({ symbol: r.symbol, network: `${r.chainName} · EVM`, address: addresses.EVM, balance: r.online ? r.balance : null })),
   ].filter((r) => Boolean(r.address));
   const stranded = revokeCheck(d?.extra ?? []).stranded;
@@ -80,7 +83,7 @@ export function HmePocketBalances({ addresses, linkId }: { addresses: Record<str
         <tbody>{visibleRows.map((r) => <tr key={`${r.symbol}-${r.network}`} className="border-b border-border/60">
           <td className="py-3 pr-3 font-semibold">{r.symbol}</td><td className="py-3 pr-3 text-muted-foreground">{r.network}{"notInHme" in r && r.notInHme ? <span className="ml-2 whitespace-nowrap rounded-sm border border-warn/60 px-1.5 py-0.5 font-mono text-[10px] text-foreground">Not in HME Wallet</span> : null}</td>
           <td className="py-3 text-right num text-xs">{r.balance === null ? (query.isFetching ? "Checking…" : "Not available") : r.balance.toLocaleString("en-US", { maximumFractionDigits: 8 })}</td>
-          <td className="py-2 pl-3 text-right"><Button variant="ghost" size="icon" title={`Receive ${r.symbol} on ${r.network}`} aria-label={`Receive ${r.symbol} on ${r.network}`} onClick={() => { if (r.address) { setCopied(false); setReceive({ ...r, address: r.address }); } }}><QrCode /></Button></td>
+          <td className="py-2 pl-3 text-right">{"canReceive" in r && r.canReceive === false ? null : <Button variant="ghost" size="icon" title={`Receive ${r.symbol} on ${r.network}`} aria-label={`Receive ${r.symbol} on ${r.network}`} onClick={() => { if (r.address) { setCopied(false); setReceive({ ...r, address: r.address }); } }}><QrCode /></Button>}</td>
         </tr>)}</tbody>
       </table>
     </div>

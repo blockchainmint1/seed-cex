@@ -1,23 +1,28 @@
 /**
  * Read-only network access for the newer pocket coins (no sending here yet).
- * DOGE/BCH/ZEC: NowNodes Blockbook (same key as Litecoin). XRP, TRON, Solana:
- * public JSON-RPC/HTTP endpoints with a fallback each. Every function returns
+ * DOGE/BCH/ZEC/DASH: NowNodes Blockbook (same key as Litecoin). XRP, TRON,
+ * Solana, Cosmos, THORChain (RUNE), Cardano (Koios): public endpoints. Monero
+ * isn't here: reading it needs a private view-key scan Seeds doesn't run. Every function returns
  * null instead of throwing so a down network never breaks the Profile page.
  */
 import type { PocketCoin } from "./coins";
 
-export type ExtraCoin = Extract<PocketCoin, "DOGE" | "BCH" | "ZEC" | "XRP" | "TRX" | "SOL">;
-export const EXTRA_COINS: ExtraCoin[] = ["DOGE", "BCH", "ZEC", "XRP", "TRX", "SOL"];
+export type ExtraCoin = Extract<PocketCoin, "DOGE" | "BCH" | "ZEC" | "XRP" | "TRX" | "SOL" | "DASH" | "ATOM" | "RUNE" | "ADA">;
+export const EXTRA_COINS: ExtraCoin[] = ["DOGE", "BCH", "ZEC", "XRP", "TRX", "SOL", "DASH", "ATOM", "RUNE", "ADA"];
 
-const BOOK: Record<"DOGE" | "BCH" | "ZEC", string> = {
+const BOOK: Record<"DOGE" | "BCH" | "ZEC" | "DASH", string> = {
   DOGE: "https://dogebook.nownodes.io/api/v2",
   BCH: "https://bchbook.nownodes.io/api/v2",
   ZEC: "https://zecbook.nownodes.io/api/v2",
+  DASH: "https://dashbook.nownodes.io/api/v2",
 };
+const COSMOS_LCD = ["https://cosmos-rest.publicnode.com", "https://rest.cosmos.directory/cosmoshub"];
+const THORNODE = ["https://gateway.liquify.com/chain/thorchain_api", "https://thorchain.ibs.team/api", "https://api-thorchain.rorcual.xyz"]; // same public nodes the swap router reads
+const KOIOS = ["https://api.koios.rest/api/v1"];
 const XRP_RPC = ["https://xrplcluster.com", "https://s1.ripple.com:51234"];
 const TRON_API = ["https://api.trongrid.io"];
 const SOL_RPC = ["https://api.mainnet-beta.solana.com", "https://solana-rpc.publicnode.com"];
-const DECIMALS: Record<ExtraCoin, number> = { DOGE: 8, BCH: 8, ZEC: 8, XRP: 6, TRX: 6, SOL: 9 };
+const DECIMALS: Record<ExtraCoin, number> = { DOGE: 8, BCH: 8, ZEC: 8, XRP: 6, TRX: 6, SOL: 9, DASH: 8, ATOM: 6, RUNE: 8, ADA: 6 };
 const UA = { "User-Agent": "seeds-exchange/1.0", accept: "application/json" };
 
 async function getJson<T>(url: string, init?: RequestInit): Promise<T | null> {
@@ -47,7 +52,19 @@ function toUnits(raw: bigint, coin: ExtraCoin): number {
 
 /** Confirmed balance in whole coins, or null when the network can't be read. */
 export async function fetchExtraBalance(coin: ExtraCoin, address: string): Promise<number | null> {
-  if (coin === "DOGE" || coin === "BCH" || coin === "ZEC") {
+  if (coin === "ATOM" || coin === "RUNE") {
+    const [urls, denom] = coin === "ATOM" ? [COSMOS_LCD, "uatom"] : [THORNODE, "rune"];
+    const r = await firstOk(urls, (u) => getJson<{ balance?: { amount?: string } }>(
+      `${u}/cosmos/bank/v1beta1/balances/${encodeURIComponent(address)}/by_denom?denom=${denom}`, { headers: UA }));
+    return r?.balance ? toUnits(BigInt(r.balance.amount ?? "0"), coin) : null;
+  }
+  if (coin === "ADA") {
+    const r = await firstOk(KOIOS, (u) => getJson<{ balance?: string }[]>(`${u}/address_info`,
+      { method: "POST", headers: { ...UA, "content-type": "application/json" }, body: JSON.stringify({ _addresses: [address] }) }));
+    if (!r) return null;
+    return toUnits(BigInt(r[0]?.balance ?? "0"), coin); // [] = address never used on-chain
+  }
+  if (coin === "DOGE" || coin === "BCH" || coin === "ZEC" || coin === "DASH") {
     const key = process.env.NOWNODES_API_KEY;
     if (!key) return null;
     const r = await getJson<{ balance?: string }>(`${BOOK[coin]}/address/${encodeURIComponent(address)}?details=basic`, { headers: { ...UA, "api-key": key } });

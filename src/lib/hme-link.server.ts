@@ -11,7 +11,9 @@ import { hkdf } from "@noble/hashes/hkdf.js";
 import { ripemd160 } from "@noble/hashes/legacy.js";
 import { base58, base64, base64urlnopad, createBase58check, hex } from "@scure/base";
 import { HDKey } from "@scure/bip32";
-import { accountPath, parseAccountPath, type PocketCoin } from "./pockets/coins";
+import { POCKET_SPECS, accountPath, parseAccountPath, type PocketCoin } from "./pockets/coins";
+import { parseCardanoXpub } from "./pockets/cardano";
+import { moneroPublicToAddress } from "./pockets/monero";
 import { pocketKeysMatch } from "./pockets/derive";
 import { createDecipheriv } from "node:crypto";
 
@@ -19,13 +21,28 @@ export const LINK_DOMAIN = "seeds.honest.money";
 /** Pockets requested from every wallet today (HME Wallet derives these five). */
 export const ALLOWED_CHAINS = ["TXC", "ISK", "BTC", "LTC", "EVM"] as const;
 /** Pockets Seeds accepts when a wallet chooses to send them (see docs/hme-wallet-extra-pockets.md). */
-export const OPTIONAL_CHAINS = ["DOGE", "BCH", "ZEC", "XRP", "TRX", "SOL"] as const;
+export const OPTIONAL_CHAINS = ["DOGE", "BCH", "ZEC", "XRP", "TRX", "SOL", "DASH", "ATOM", "RUNE", "ADA", "XMR"] as const;
 export const ACCEPTED_CHAINS = [...ALLOWED_CHAINS, ...OPTIONAL_CHAINS] as const;
 export type LinkChain = PocketCoin;
 
 /** The wallet may substitute 1106..2105 after pocket rotation. */
 export const REQUEST_PATHS = Object.fromEntries(ALLOWED_CHAINS.map((c) => [c, accountPath(c, 1106)])) as Record<(typeof ALLOWED_CHAINS)[number], string>;
 export const OPTIONAL_PATHS = Object.fromEntries(OPTIONAL_CHAINS.map((c) => [c, accountPath(c, 1106)])) as Record<(typeof OPTIONAL_CHAINS)[number], string>;
+
+/**
+ * Exact key format per optional coin, listed in the manifest so a wallet can
+ * check it derives what Seeds expects (older wallets ignore the field).
+ */
+export const KEY_FORMATS: Record<(typeof OPTIONAL_CHAINS)[number], string> = {
+  DOGE: "bip32", BCH: "bip32", ZEC: "bip32", XRP: "bip32", TRX: "bip32", DASH: "bip32", ATOM: "bip32", RUNE: "bip32",
+  SOL: "slip10-ed25519",
+  ADA: "cip1852-icarus",
+  XMR: "slip10-ed25519-monero-trezor",
+};
+
+export function optionalRequest(): { chain: string; path: string; curve: string; format: string }[] {
+  return OPTIONAL_CHAINS.map((c) => ({ chain: c, path: OPTIONAL_PATHS[c], curve: POCKET_SPECS[c].curve, format: KEY_FORMATS[c] }));
+}
 
 export function chainForPath(path: string): { chain: LinkChain; account: number } | null {
   const r = parseAccountPath(path);
@@ -127,8 +144,10 @@ export function openSealed(payloadB64url: string, recipientPrivHex: string, reci
 // ---------- extended keys ----------
 const LTC_VERSIONS = { public: 0x019da462, private: 0x019d9cfe };
 
-/** Validates a submitted public half: account xpub, or a 32-byte base58 key for Solana. */
-export function parseExtKey(chain: LinkChain, key: string): HDKey | Uint8Array {
+/** Validates a submitted public half: account xpub, a 32-byte base58 key (Solana), hex A‖cc (Cardano) or an address (Monero). */
+export function parseExtKey(chain: LinkChain, key: string): HDKey | Uint8Array | string {
+  if (chain === "ADA") return parseCardanoXpub(key);
+  if (chain === "XMR") return moneroPublicToAddress(key);
   if (chain === "SOL") {
     const k = base58.decode(key);
     if (k.length !== 32) throw new Error("bad Solana key");

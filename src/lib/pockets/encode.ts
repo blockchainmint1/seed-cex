@@ -1,7 +1,8 @@
 /**
  * Address encoders for every pocket coin. Pure, client-safe, no network.
  * Each takes the receive key's public key (33-byte compressed secp256k1,
- * or 32-byte ed25519 for Solana).
+ * or 32-byte ed25519 for Solana). Cardano and Monero addresses need two
+ * keys each, so they live in cardano.ts / monero.ts instead.
  */
 import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { ripemd160 } from "@noble/hashes/legacy.js";
@@ -141,5 +142,11 @@ export function addressFor(coin: PocketCoin, pubkey: Uint8Array): string {
     case "TRX": return tronAddress(pubkey);
     case "EVM": return evmAddress(pubkey);
     case "SOL": return solAddress(pubkey);
+    case "DASH": return p2pkhAddress([76], pubkey);
+    case "ATOM": return bech32.encode("cosmos", bech32.toWords(hash160(pubkey)));
+    case "RUNE": return bech32.encode("thor", bech32.toWords(hash160(pubkey)));
+    case "ADA":
+    case "XMR":
+      throw new Error(`${coin} addresses are built from two keys — use cardano.ts / monero.ts`);
   }
 }

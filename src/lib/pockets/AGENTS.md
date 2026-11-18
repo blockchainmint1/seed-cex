@@ -1,3 +1,4 @@
 # Pockets
 
 - Which pocket coins HME Wallet can't hold comes only from POCKET_SPECS.hmeToday via src/lib/pockets/hme-support.ts (tested); every swap-back-to-TSD warning uses it, revoking warns but is never blocked, and a TSD swap never buys a coin Seeds can't sell back. Why: after a revoke Seeds deletes its key, so those coins are recoverable only by recovery phrase.
+- New chains follow the checklist in docs/hme-wallet-extra-pockets.md: POCKET_SPECS entry, exact key format in KEY_FORMATS, test vectors from an outside reference plus a cross-check against HME Wallet's own derivation code, then list it in request_optional. A coin with signing=planned is accepted in links but never offered for deposit. Why: HME Wallet skips optional coins it doesn't know, so the two sides never have to ship on the same day, and a deposit must never be a one-way trip.

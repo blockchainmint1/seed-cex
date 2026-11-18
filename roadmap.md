@@ -6,7 +6,10 @@
 - [x] Multichain pockets: Seeds-side keys/addresses/balances/signing for DOGE, BCH, XRP, TRX, SOL (+ ZEC addresses/balances); HME link accepts optional pockets
 - [ ] HME Wallet extra pocket keys: built and audited on HME's side, not published; members must re-link from Seeds to share them (blocked: HME publish)
 - [ ] HME Wallet revoke: sweeps TXC before TSD/tokens, leaving TSD with no TXC for fees — ask HME to move tokens first (blocked: HME team)
-- [ ] DASH/ATOM/RUNE/ADA pockets: only accept in submit once Seeds can read and sign them; ADA must use the Icarus master-key method HME uses (blocked: Seeds signers not built)
+- [x] DASH/ATOM/RUNE/ADA/XMR accepted in HME links (Nov 18, at HME's request): keys checked, addresses + balances (not XMR), deposits stay closed; ADA = Icarus, XMR = Trezor method, both pinned to outside vectors + HME's own code
+- [ ] DASH/ATOM/RUNE/ADA signers, then open deposits/swaps (ATOM on THORChain; DASH/ADA/RUNE need a 2nd independent Maya server) (blocked: not built)
+- [ ] Monero: no THORChain or Maya pool exists, and reading a balance needs a view-key scan server — keys are stored only (blocked: no swap route anywhere Seeds uses)
+- [ ] HME Wallet: a new link to the same site on the same pocket should replace the old link record, or revoking the stale one later retires the pocket in use (blocked: HME Wallet change)
 - [x] Warn members HME Wallet can't hold DOGE/BCH/ZEC/XRP/TRX/SOL: swap back to TSD before revoking (Profile, revoke dialog, swap page, Telegram, revoke email); TSD swaps never buy a coin Seeds can't sell back
 - [ ] Zcash v5 (ZIP-244) signing
 - [ ] Per-coin "send out" for the new coins before taking deposits (HME Wallet can't move them)

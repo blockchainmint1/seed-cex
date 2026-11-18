@@ -57,5 +57,8 @@ export function hmeCantHoldWarning(coins: string[]): string | null {
 export function recoveryLines(account: number, addresses: Partial<Record<string, string>>): string[] {
   return HME_WALLET_CANT_HOLD
     .filter((c) => addresses[c])
-    .map((c) => `${c} (${POCKET_SPECS[c].name}): ${addresses[c]} — recovery path ${receivePath(c, account)}`);
+    .map((c) => {
+      const note = POCKET_SPECS[c].recoveryNote;
+      return `${c} (${POCKET_SPECS[c].name}): ${addresses[c]} — ${note ? `${note} ${account}` : `recovery path ${receivePath(c, account)}`}`;
+    });
 }

@@ -65,3 +65,68 @@ When optional coins are included, add one line to the link consent screen, for e
 ## Why pocket keys instead of the whole seed
 
 With these keys, Seeds can do everything with the trading pockets that it could do with the whole seed. A whole seed would also unlock the person's savings (account 0) and every other pocket, which Seeds never needs. If a seed ever does reach Seeds from elsewhere (HME Vault, typed in, or an operator seed), Seeds derives these same pocket keys and discards the seed immediately, so both routes end up stored the same way.
+
+---
+
+## Nov 18 2026 update: five more coins, and how new chains get added from now on
+
+Seeds now lists and accepts **Dash, Cosmos (ATOM), THORChain (RUNE), Cardano (ADA) and Monero (XMR)** as well. That's 11 optional coins, and `paths` may now contain up to 16 entries. Each `request_optional` entry now also has a `format` field naming the exact key method:
+
+| chain | path (pocket 1106) | curve | format | public half (`xpubs[chain]`) | private half (sealed `xprvs[chain]`) |
+|---|---|---|---|---|---|
+| DOGE, BCH, ZEC, XRP, TRX, DASH, ATOM, RUNE | `m/44'/<coin>'/1106'` (DASH 5, ATOM 118, RUNE 931) | secp256k1 | `bip32` | account xpub, standard version bytes | account xprv |
+| SOL | `m/44'/501'/1106'/0'` | ed25519 | `slip10-ed25519` | base58 32-byte key | hex 32-byte SLIP-0010 key |
+| ADA | `m/1852'/1815'/1106'` | ed25519-bip32 | `cip1852-icarus` | hex(A 32 ‖ chain code 32), 128 hex chars | hex(kL ‖ kR ‖ chain code), 192 hex chars |
+| XMR | `m/44'/128'/1106'` | ed25519 | `slip10-ed25519-monero-trezor` | Monero primary address (`4…`, 95 chars). hex(spendPub ‖ viewPub) is also accepted | hex 32 bytes: the SLIP-0010 key at that path, or the private spend key (same wallet either way) |
+
+### Cardano: Icarus
+
+The master key is CIP-3 Icarus (PBKDF2 over the words' entropy), not the BIP39 seed. Seeds' receive address is the Shelley base address: payment key `account/0/0`, stake key `account/2/0`. HME Wallet's `cardanoAccountKey` already does exactly this. Seeds derives byte-for-byte the same public key from HME's own code.
+
+### Monero: Trezor's method
+
+There are two incompatible ways to make a Monero wallet from the same 12 words. Seeds uses **Trezor's**, the same as HME Wallet:
+
+```text
+key seed  = SLIP-0010 ed25519 private key at m/44'/128'/N'
+spend sec = key seed mod l
+view sec  = keccak256(spend sec) mod l
+address   = Monero base58( 0x12 ‖ spendPub ‖ viewPub ‖ keccak4 )
+```
+
+Ledger's way (BIP32 secp256k1 at `m/44'/128'/N'/0/0`, then converted) gives a **different wallet**. Someone who restores their words in Ledger Live won't see these coins. Seeds' revoke email says so in the recovery line. Seeds refuses a Ledger-style key because it doesn't match the submitted address.
+
+### Check your derivation with these test values
+
+Recovery phrase `abandon … about`, no passphrase, pocket 1106:
+
+| Chain | Receive address |
+|---|---|
+| DASH | Xp6ThXaCd19dsRMhGtmbBotUHpSzvquubJ |
+| ATOM | cosmos1wqmetx3wwm7tqwj990kf8xjpg8gwp9gcsly57y |
+| RUNE | thor176rxh2dcfpfjfxmrdatl5057e3satvr8dzj5sw |
+| ADA | addr1q8r6rzvltgh2xq32knz39gn6pv4td7hvsey7g26w9pl2lqzw930gs3rpl924spt83xkr6v5xnhpzjg744v7l252azxksxm68ze |
+| XMR | 4A4meFan68GQTKM2GJemCwBkfbVP2UsH2ZLPxWKquxhF93ruBpNL3PjSQzkKWFX5ELS8P4MKc4DVqb5sDFuswXJFCRuGsea |
+
+Monero against Trezor's own firmware test (`alcohol woman abuse must during monitor noble actual mixed trade anger aisle`):
+
+| Path | Address |
+|---|---|
+| m/44'/128'/0' | 4Ahp23WfMrMFK3wYL2hLWQFGt87ZTeRkufS6JoQZu6MEFDokAQeGWmu9MA3GFq1yVLSJQbKJqVAn9F9DLYGpRzRAEXqAXKM |
+| m/44'/128'/1' | 44iAazhoAkv5a5RqLNVyh82a1n3ceNggmN4Ho7bUBJ14WkEVR8uFTe9f7v5rNnJ2kEbVXxfXiRzsD5Jtc6NvBi4D6WNHPie |
+
+### What Seeds does with them today
+
+The keys are checked and stored encrypted, like every other pocket. Seeds shows **no deposit address** for these five until it can send each coin back out, so a deposit is never a one-way trip.
+- Balances are read for DASH, ATOM, RUNE and ADA.
+- Monero balances need a private view-key scan that Seeds doesn't run.
+- No THORChain or Maya pool exists for Monero.
+
+### How a new chain gets added from now on
+
+1. **Seeds** adds the coin to its list with the exact key format and test vectors from an outside reference. It cross-checks against HME Wallet's derivation code, then lists the coin in `request_optional`.
+2. **HME Wallet** adds the derivation whenever it's ready. Until then it simply **skips** optional coins it doesn't know, which is already in `validateDelegate`. Older wallets keep linking normally.
+3. Neither side has to ship on the same day. Either order is safe. Seeds is usually first, because listing a coin costs nothing until a wallet sends it.
+4. **Members who are already linked** get the new coin by linking again from Seeds. Seeds asks for the same pocket number, and HME reuses it for the same site.
+
+**One fix needed on the HME Wallet side:** a new link to the same site on the same pocket should replace the old link record. Today both records stay in the wallet. Seeds has already retired the old one, but if the member later revokes the stale record, the wallet retires the pocket the new link is using.
