@@ -4,7 +4,7 @@ import { getMarketStats } from "@/lib/market.functions";
 import { getCmcSummary } from "@/lib/cmc.functions";
 import { fmtAmount, fmtPrice } from "@/lib/format";
 import { PAIRS } from "@/lib/chains";
-import seedsCoin from "@/assets/seeds-coin.jpeg.asset.json";
+import seedsCoin from "@/assets/seeds-cold-storage-coin.jpg.asset.json";
 
 export const Route = createFileRoute("/")({
   staticData: { sitemap: true },
@@ -278,12 +278,17 @@ function Index() {
                 </button>
               </div>
             </div>
-            <div className="flex aspect-square items-center justify-center overflow-hidden rounded-sm border border-border bg-background">
-              <img
-                src={seedsCoin.url}
-                alt="SEEDS cold-storage coin — black coin with a green ring and twelve seed dots"
-                className="h-full w-full object-cover"
-              />
+            <div className="flex justify-center md:justify-end">
+              <figure className="w-full max-w-sm rounded-md border border-border bg-background p-3 shadow-lg">
+                <img
+                  src={seedsCoin.url}
+                  alt="SEEDS cold-storage coin — copper coin embossed with the Seeds leaf mark and the word seeds"
+                  className="aspect-square w-full rounded-sm object-cover ring-1 ring-border"
+                  width={1254}
+                  height={1254}
+                  loading="lazy"
+                />
+              </figure>
             </div>
           </div>
         </div>
