@@ -9,7 +9,8 @@
 - [x] DASH/ATOM/RUNE/ADA/XMR accepted in HME links (Nov 18, at HME's request): keys checked, addresses + balances (not XMR), deposits stay closed; ADA = Icarus, XMR = Trezor method, both pinned to outside vectors + HME's own code
 - [ ] DASH/ATOM/RUNE/ADA signers, then open deposits/swaps (ATOM on THORChain; DASH/ADA/RUNE need a 2nd independent Maya server) (blocked: not built)
 - [ ] Monero: no THORChain or Maya pool exists, and reading a balance needs a view-key scan server — keys are stored only (blocked: no swap route anywhere Seeds uses)
-- [ ] HME Wallet: a new link to the same site on the same pocket should replace the old link record, or revoking the stale one later retires the pocket in use (blocked: HME Wallet change)
+- [x] HME Wallet: re-link on the same pocket replaces the old record; revoking a stale record leaves the live pocket alone (HME confirmed + tested, Nov 18)
+- [ ] Joint HME Wallet test: 5→16 coins on same pocket, one active link, old 5-coin build refused, wallet revoke hits the active link (blocked: HME publishes their update)
 - [x] Warn members HME Wallet can't hold DOGE/BCH/ZEC/XRP/TRX/SOL: swap back to TSD before revoking (Profile, revoke dialog, swap page, Telegram, revoke email); TSD swaps never buy a coin Seeds can't sell back
 - [ ] Zcash v5 (ZIP-244) signing
 - [ ] Per-coin "send out" for the new coins before taking deposits (HME Wallet can't move them)
