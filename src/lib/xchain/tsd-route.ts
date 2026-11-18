@@ -113,7 +113,7 @@ export function routeBlocker(p: {
   if (!p.link) return "Link your HME Wallet trading pocket first (Profile).";
   if (p.link.mode !== "access" || !p.link.hasKey) return "Your pocket is linked in approve-every-trade mode. TSD swaps need instant access for now.";
   const missing = routePockets(p.direction, p.coin).filter((x) => !p.link!.pockets.includes(x));
-  if (missing.length) return `Your linked pocket is missing ${missing.join(", ")}. Re-link it in HME Wallet to add them.`;
+  if (missing.length) return `Your linked pocket is missing ${missing.join(", ")}. Use "Add new coins" on Account → Security to add them — no need to revoke.`;
   if (p.tsdAmount != null && p.tsdAmount < TSD_ROUTE.minTsd) return `TSD Bridge's minimum is ${TSD_ROUTE.minTsd} TSD.`;
   if (p.amountUsd == null) return "No live price for this coin, so the limit can't be checked.";
   if (p.amountUsd > SWAP_LIMITS.perSwapUsd) return `Swaps are limited to $${SWAP_LIMITS.perSwapUsd} each during the test.`;

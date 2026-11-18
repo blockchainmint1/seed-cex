@@ -36,6 +36,21 @@ export const getMyHmeLink = createServerFn({ method: "GET" })
       .eq("user_id", context.userId).eq("status", "revoked")
       .order("revoked_at", { ascending: false, nullsFirst: false })
       .limit(1).maybeSingle();
+    // "Add new coins" just went through: the link it replaced, if that happened in the last 15 minutes.
+    let justUpdated: { at: string; added: string[] } | null = null;
+    if (data) {
+      const { data: replaced } = await supabaseAdmin.from("hme_links")
+        .select("account, paths, revoked_at, revoked_by").eq("user_id", context.userId).eq("status", "revoked")
+        .gte("revoked_at", new Date(Date.now() - 15 * 60_000).toISOString())
+        .order("revoked_at", { ascending: false }).limit(1).maybeSingle();
+      // Only the link this one replaced (retired in the same submit), not an older revoke-and-relink.
+      const sameSubmit = replaced && Math.abs(new Date(replaced.revoked_at as string).getTime() - new Date(data.created_at).getTime()) < 60_000;
+      if (replaced && replaced.revoked_by === "replaced" && sameSubmit && replaced.account === data.account) {
+        const { linkCoins } = await import("./hme-link-rules");
+        const before = linkCoins({ account: replaced.account, paths: replaced.paths as string[] });
+        justUpdated = { at: replaced.revoked_at as string, added: linkCoins({ account: data.account, paths: data.paths as string[] }).filter((c) => !before.includes(c)) };
+      }
+    }
     const addresses: Record<string, string> = {};
     if (data) {
       const { pocketReceiveAddress } = await import("./pockets/derive");
@@ -59,6 +74,7 @@ export const getMyHmeLink = createServerFn({ method: "GET" })
           created_at: data.created_at, addresses, pending,
           identityAddress: data.identity_address as string,
           keyHeld: Boolean(data.key_ciphertext),
+          justUpdated,
           previous: prior && prior.identity_address !== data.identity_address
             ? { identityAddress: prior.identity_address as string, account: prior.account, revokedAt: prior.revoked_at as string, createdAt: prior.created_at as string }
             : null,

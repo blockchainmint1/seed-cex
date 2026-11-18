@@ -123,6 +123,6 @@ export function depositState(
     return { ok: false, reason: `Seeds can't send ${POCKET_SPECS[net.pocket].name} out yet, so deposits stay off — anything sent now would be stuck.` };
   const address = addressFor(net, addresses);
   if (!address)
-    return { ok: false, reason: `Your linked pocket doesn't include ${POCKET_SPECS[net.pocket].name} yet. Re-link HME Wallet (Security tab) once it can share this coin.` };
+    return { ok: false, reason: `Your linked pocket doesn't include ${POCKET_SPECS[net.pocket].name} yet. Use "Add new coins" on Account → Security once HME Wallet can share it.` };
   return { ok: true, address };
 }

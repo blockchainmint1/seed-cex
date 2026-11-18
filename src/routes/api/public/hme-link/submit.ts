@@ -4,6 +4,7 @@ import {
   linkDomainFor, openSealed, parseExtKey, payloadSha256, validAccount, verifyTxcMessage,
 } from "@/lib/hme-link.server";
 import { decryptDelegatedKey, encryptDelegatedKey } from "@/lib/delegation.server";
+import { replaceProblem } from "@/lib/hme-link-rules";
 
 type Body = {
   token?: string; mode?: string; account?: number; paths?: string[]; identity_address?: string;
@@ -58,6 +59,12 @@ export const Route = createFileRoute("/api/public/hme-link/submit")({
         if (clash && clash.user_id !== req.user_id)
           return json({ error: "wallet already linked to another Seeds account; revoke that link first" }, 409);
 
+        // Replacing a live link: same pocket only, and never fewer coins (Seeds would wipe keys to coins HME Wallet can't move).
+        const { data: active } = await supabaseAdmin.from("hme_links")
+          .select("id, account, paths").eq("user_id", req.user_id).eq("status", "active").maybeSingle();
+        const problem = replaceProblem(active ? { account: active.account, paths: active.paths as string[] } : null, { account: b.account!, chains });
+        if (problem) return json({ error: problem }, 409);
+
         let keyCiphertext: string | null = null;
         if (b.mode === "access") {
           let xprvs: Record<string, string>;
@@ -78,9 +85,13 @@ export const Route = createFileRoute("/api/public/hme-link/submit")({
           .update({ consumed_at: new Date().toISOString() }).eq("challenge_id", b.token).is("consumed_at", null).select("challenge_id");
         if (!burned?.length) return json({ error: "already used" }, 409);
 
-        await supabaseAdmin.from("hme_links")
+        const { data: retired } = await supabaseAdmin.from("hme_links")
           .update({ status: "revoked", revoked_at: new Date().toISOString(), revoked_by: "replaced", key_ciphertext: null })
-          .eq("user_id", req.user_id).eq("status", "active");
+          .eq("user_id", req.user_id).eq("status", "active").select("id");
+        // Approvals waiting on the old link can no longer be answered; close them like a revoke does.
+        for (const r of retired ?? []) {
+          await supabaseAdmin.from("hme_trade_proposals").update({ status: "expired" }).eq("link_id", r.id).eq("status", "pending");
+        }
 
         const { data: link, error } = await supabaseAdmin.from("hme_links").insert({
           user_id: req.user_id, mode: b.mode, account: b.account!, paths: b.paths,
@@ -89,7 +100,9 @@ export const Route = createFileRoute("/api/public/hme-link/submit")({
         if (error || !link) return json({ error: "store failed" }, 500);
         const { emailAccountChange } = await import("@/lib/email/send.server");
         await emailAccountChange(req.user_id, "HME Wallet link", [
-          `Linked pocket #${b.account} (${b.mode === "access" ? "instant trades — Seeds can sign" : "you approve every trade"})`,
+          active
+            ? `Updated the link on pocket #${b.account} (same pocket and addresses — no coins moved)`
+            : `Linked pocket #${b.account} (${b.mode === "access" ? "instant trades — Seeds can sign" : "you approve every trade"})`,
           `Coins: ${chains.join(", ")}`,
         ], "revoke the link in HME Wallet right away, then contact support@honest.money.");
         return json({ linked_to: "Seeds Exchange", link_id: link.id });

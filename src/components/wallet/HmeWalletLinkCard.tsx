@@ -8,12 +8,29 @@ import { Button } from "@/components/ui/button";
 import { HmePocketBalances } from "./HmePocketBalances";
 import { RevokeSeedsDialog } from "./RevokeSeedsDialog";
 import { HME_WALLET_CANT_HOLD, hmeCantHoldWarning } from "@/lib/pockets/hme-support";
-import { Link2, ShieldCheck, ExternalLink } from "lucide-react";
+import { coinNames, coinsToAdd, linkCoins } from "@/lib/hme-link-rules";
+import { Link2, ShieldCheck, ExternalLink, PlusCircle } from "lucide-react";
 
-const CHAIN_NAME: Record<string, string> = {
-  "696969": "TXC + TSD", "969696": "ISK", "0": "Bitcoin", "2": "Litecoin", "60": "ETH / USDC / USDT",
-  "3": "Dogecoin", "145": "Bitcoin Cash", "133": "Zcash", "144": "XRP", "195": "TRON", "501": "Solana",
-};
+function LinkQr({ manifest, onCancel, updating }: { manifest: string; onCancel: () => void; updating?: boolean }) {
+  return (
+    <div className="mt-4 flex flex-col items-center gap-3 sm:flex-row sm:items-start">
+      <div className="rounded-md bg-accent p-3 ring-1 ring-primary/30">
+        <QRCodeSVG value={manifest} size={168} bgColor="transparent" fgColor="currentColor" className="text-foreground" />
+      </div>
+      <div className="min-w-0 text-sm text-muted-foreground">
+        <p className="text-foreground">Scan with the HME Wallet (web or Android).</p>
+        {updating ? (
+          <p className="mt-2">It will say "Update your Seeds link" — same pocket and addresses, so no coins move. Your current link keeps working until the update goes through. Code works for 10 minutes.</p>
+        ) : (
+          <p className="mt-2">It will ask how Seeds should trade for you: instant access, or approve every trade. Code works for 10 minutes.</p>
+        )}
+        <p className="mt-2 break-all font-mono text-[10px]">{manifest}</p>
+        <p className="mt-2 text-xs">Waiting for your wallet…</p>
+        <Button variant="ghost" size="sm" className="mt-3" onClick={onCancel}>Cancel</Button>
+      </div>
+    </div>
+  );
+}
 
 export function HmeWalletLinkCard({ showBalances = true, className = "border-y border-border py-7" }: { showBalances?: boolean; className?: string } = {}) {
   const qc = useQueryClient();
@@ -29,7 +46,14 @@ export function HmeWalletLinkCard({ showBalances = true, className = "border-y b
     queryFn: () => fetchLink(),
     refetchInterval: 4000,
   });
-  useEffect(() => { if (link.data) setManifest(null); }, [link.data]);
+  // A new link (first link or "Add new coins" update) shows up as a new link id; close the QR then.
+  const linkId = link.data?.id ?? null;
+  const [seenId, setSeenId] = useState<string | null | undefined>(undefined);
+  useEffect(() => {
+    if (link.isPending) return;
+    if (seenId !== undefined && linkId !== seenId) { setManifest(null); setExpiresAt(null); }
+    setSeenId(linkId);
+  }, [linkId, link.isPending]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!expiresAt) return;
     const timer = setTimeout(() => { setManifest(null); setExpiresAt(null); }, Math.max(0, new Date(expiresAt).getTime() - Date.now()));
@@ -48,6 +72,7 @@ export function HmeWalletLinkCard({ showBalances = true, className = "border-y b
   const l = link.data;
   const extraCoins = l ? Object.keys(l.addresses).filter((c) => (HME_WALLET_CANT_HOLD as string[]).includes(c)) : [];
   const extraWarning = hmeCantHoldWarning(extraCoins);
+  const toAdd = l ? coinsToAdd(l) : [];
   return (
     <section className={className}>
       <div className="flex items-center gap-3"><ShieldCheck className="h-5 w-5 text-primary" /><h2 className="font-display text-xl font-bold text-foreground">HME Wallet trading pocket</h2></div>
@@ -91,9 +116,33 @@ export function HmeWalletLinkCard({ showBalances = true, className = "border-y b
               <span className="font-mono">{l.previous.identityAddress}</span>.
             </p>
           ) : null}
-          <p className="font-mono text-[11px]">
-            {l.paths.map((p) => CHAIN_NAME[p.split("/")[2]?.replace("'", "") ?? ""] ?? p).join(" · ")}
-          </p>
+          <p className="font-mono text-[11px]">{coinNames(linkCoins(l)).join(" · ")}</p>
+          {l.justUpdated ? (
+            <p role="status" className="rounded-md bg-accent/60 px-3 py-2 text-sm text-foreground ring-1 ring-primary/25">
+              Link updated at {new Date(l.justUpdated.at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })} — same pocket #{l.account}, same addresses, nothing moved.
+              {l.justUpdated.added.length ? ` Added: ${coinNames(l.justUpdated.added as Parameters<typeof coinNames>[0]).join(", ")}.` : " No new coins came through — your HME Wallet may need updating."}
+            </p>
+          ) : null}
+          {toAdd.length ? (
+            <div className="rounded-md border border-border bg-surface px-3 py-3">
+              <p className="text-foreground">
+                Seeds can now link {toAdd.length === 1 ? "one more coin" : `${toAdd.length} more coins`} from your Trading pocket: {coinNames(toAdd).join(", ")}.
+              </p>
+              <p className="mt-1 text-xs">
+                Open HME Wallet to approve. You'll enter your wallet password; nothing moves, and your pocket number and addresses stay the same.
+                You need the latest HME Wallet — an older version can't share these coins{l.mode === "approve" ? ", and the extra coins need instant access (HME Wallet can't sign them)" : ""}.
+              </p>
+              {manifest ? (
+                <LinkQr manifest={manifest} updating onCancel={() => { setManifest(null); setExpiresAt(null); }} />
+              ) : (
+                <Button onClick={() => begin.mutate()} disabled={begin.isPending} size="sm" className="mt-3">
+                  <PlusCircle />
+                  {begin.isPending ? "Preparing…" : "Add new coins"}
+                </Button>
+              )}
+              {begin.error ? <p className="mt-2 text-xs text-destructive">Couldn't start the update. Try again.</p> : null}
+            </div>
+          ) : null}
           {l.mode === "approve" && l.pending > 0 ? (
             <p className="text-foreground">{l.pending} trade(s) waiting for your approval in the HME Wallet.</p>
           ) : null}
@@ -111,18 +160,7 @@ export function HmeWalletLinkCard({ showBalances = true, className = "border-y b
           {showBalances ? <HmePocketBalances addresses={l.addresses} linkId={l.id} /> : null}
         </div>
       ) : manifest ? (
-        <div className="mt-4 flex flex-col items-center gap-3 sm:flex-row sm:items-start">
-          <div className="rounded-md bg-accent p-3 ring-1 ring-primary/30">
-            <QRCodeSVG value={manifest} size={168} bgColor="transparent" fgColor="currentColor" className="text-foreground" />
-          </div>
-          <div className="text-sm text-muted-foreground">
-            <p className="text-foreground">Scan with the HME Wallet (web or Android).</p>
-            <p className="mt-2">It will ask how Seeds should trade for you: instant access, or approve every trade. Code works for 10 minutes.</p>
-            <p className="mt-2 break-all font-mono text-[10px]">{manifest}</p>
-            <p className="mt-2 text-xs">Waiting for your wallet…</p>
-             <Button variant="ghost" size="sm" className="mt-3" onClick={() => { setManifest(null); setExpiresAt(null); }}>Cancel</Button>
-          </div>
-        </div>
+        <LinkQr manifest={manifest} onCancel={() => { setManifest(null); setExpiresAt(null); }} />
       ) : (
         <div className="mt-3 text-sm text-muted-foreground">
           <p>Connect the separate trading pocket in HME Wallet. Your main wallet and recovery phrase stay private.</p>

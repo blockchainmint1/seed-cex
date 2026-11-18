@@ -8,7 +8,7 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
-- HME Wallet trading links (hm-link-delegate) live in src/lib/hme-link.server.ts + src/routes/api/public/hme-link/*; always trust the account/paths the wallet submits (pockets rotate 1106→2105), never assume 1106. Why: wallet retires pockets on revoke.
+- HME Wallet links: src/lib/hme-link.server.ts, hme-link-rules.ts (tested), api/public/hme-link/*. Trust the wallet's pocket number (rotates 1106→2105); a re-link while active must keep its pocket and every coin. Why: dropped keys strand coins HME Wallet can't move.
 - P2P marketplace logic lives in src/lib/p2p.server.ts (lock + watch: reserve against the live trading-pocket balance, flag if it drops; release via withdrawAsset). Why: Seeds never takes custody, so safety comes from on-chain checks and seller score.
 - /account is the tabbed HME trading-pocket and settings surface; /wallet and /api-keys redirect into it, legacy vault code stays. Deposit/withdraw networks come only from src/lib/account/deposit-options.ts (pure, tested): deposits open only when coins can leave again (HME Wallet sends, Seeds swaps to TSD, or Seeds sends — PulseChain only). Why: Seeds must not act custodial; no deposit may be one-way.
 - HME pocket receive addresses derive public child 0/0 from the wallet-submitted account xpubs; display native balances separately from settlement assets. Why: pocket rotation must not reuse static legacy derivation paths or mislabel trading liquidity.

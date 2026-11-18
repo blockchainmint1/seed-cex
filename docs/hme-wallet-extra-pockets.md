@@ -130,3 +130,9 @@ The keys are checked and stored encrypted, like every other pocket. Seeds shows 
 4. **Members who are already linked** get the new coin by linking again from Seeds. Seeds asks for the same pocket number, and HME reuses it for the same site.
 
 **One fix needed on the HME Wallet side:** a new link to the same site on the same pocket should replace the old link record. Today both records stay in the wallet. Seeds has already retired the old one, but if the member later revokes the stale record, the wallet retires the pocket the new link is using.
+
+## Adding coins to an existing link (18 Nov 2026)
+
+- Account → Security shows **Add new coins** to a linked member whenever Seeds accepts coins their active link doesn't hold (`coinsToAdd` in `src/lib/hme-link-rules.ts`). It starts a normal fresh link request while the current link stays active; the manifest asks for the active link's pocket number.
+- Submit refuses, with HTTP 409 and nothing changed, (1) a different pocket number while a link is active and (2) any link that leaves out a coin the active link holds (older wallet build, or approve-every-trade over an instant-access link with extra coins).
+- On a successful replace the old link is retired as `replaced`, its sealed key is cleared, and its pending trade approvals are closed.

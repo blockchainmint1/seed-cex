@@ -18,11 +18,8 @@ import { pocketKeysMatch } from "./pockets/derive";
 import { createDecipheriv } from "node:crypto";
 
 export const LINK_DOMAIN = "seeds.honest.money";
-/** Pockets requested from every wallet today (HME Wallet derives these five). */
-export const ALLOWED_CHAINS = ["TXC", "ISK", "BTC", "LTC", "EVM"] as const;
-/** Pockets Seeds accepts when a wallet chooses to send them (see docs/hme-wallet-extra-pockets.md). */
-export const OPTIONAL_CHAINS = ["DOGE", "BCH", "ZEC", "XRP", "TRX", "SOL", "DASH", "ATOM", "RUNE", "ADA", "XMR"] as const;
-export const ACCEPTED_CHAINS = [...ALLOWED_CHAINS, ...OPTIONAL_CHAINS] as const;
+import { ALLOWED_CHAINS, OPTIONAL_CHAINS } from "./hme-link-rules";
+export { ACCEPTED_CHAINS, ALLOWED_CHAINS, OPTIONAL_CHAINS } from "./hme-link-rules";
 export type LinkChain = PocketCoin;
 
 /** The wallet may substitute 1106..2105 after pocket rotation. */
@@ -40,8 +37,9 @@ export const KEY_FORMATS: Record<(typeof OPTIONAL_CHAINS)[number], string> = {
   XMR: "slip10-ed25519-monero-trezor",
 };
 
-export function optionalRequest(): { chain: string; path: string; curve: string; format: string }[] {
-  return OPTIONAL_CHAINS.map((c) => ({ chain: c, path: OPTIONAL_PATHS[c], curve: POCKET_SPECS[c].curve, format: KEY_FORMATS[c] }));
+/** Optional coins for the manifest; `paths` lets an "Add new coins" request ask for the member's current pocket. */
+export function optionalRequest(paths: Record<string, string> = OPTIONAL_PATHS): { chain: string; path: string; curve: string; format: string }[] {
+  return OPTIONAL_CHAINS.map((c) => ({ chain: c, path: paths[c] ?? OPTIONAL_PATHS[c], curve: POCKET_SPECS[c].curve, format: KEY_FORMATS[c] }));
 }
 
 export function chainForPath(path: string): { chain: LinkChain; account: number } | null {
