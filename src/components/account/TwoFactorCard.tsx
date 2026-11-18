@@ -109,15 +109,15 @@ export function TwoFactorCard() {
             <li>Scan this code, or type the setup key by hand.</li>
             <li>Enter the 6-digit code the app shows.</li>
           </ol>
-          <div className="flex flex-wrap items-start gap-5">
-            <div className="rounded-sm border border-border bg-background p-3 text-foreground">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
+            <div className="self-start rounded-sm border border-border bg-qr p-3 text-qr-foreground">
               <QRCodeSVG value={setup.uri} size={168} bgColor="transparent" fgColor="currentColor" aria-label="Two-factor setup QR code" />
             </div>
             <div className="min-w-0 flex-1 space-y-3">
               <div>
                 <p className="text-xs text-muted-foreground">Setup key</p>
-                <div className="mt-1 flex items-center gap-2">
-                  <code className="break-all rounded-sm bg-muted/50 px-2 py-1 font-mono text-xs">{setup.secret}</code>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <code className="min-w-0 break-all rounded-sm bg-muted/50 px-2 py-1 font-mono text-xs">{setup.secret}</code>
                   <Button type="button" size="sm" variant="outline" onClick={() => { void navigator.clipboard.writeText(setup.secret); setCopied(true); setTimeout(() => setCopied(false), 1500); }}>
                     <Copy /> {copied ? "Copied" : "Copy"}
                   </Button>

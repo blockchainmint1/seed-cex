@@ -51,6 +51,8 @@
   --color-destructive-foreground: var(--destructive-foreground);
   --color-banner: var(--banner);
   --color-banner-foreground: var(--banner-foreground);
+  --color-qr: var(--qr);
+  --color-qr-foreground: var(--qr-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -132,6 +134,9 @@
   /* Site-wide demo-mode banner: the same deep red with ivory text in both themes. */
   --banner: oklch(0.501 0.178 28.7);
   --banner-foreground: oklch(0.98 0.022 87.1);
+  /* QR codes: always dark marks on light, in both themes, so every phone camera can scan them */
+  --qr: oklch(0.98 0.022 87.1);
+  --qr-foreground: oklch(0.231 0.047 168.2);
   --warning: oklch(0.504 0.108 71.5);            /* Amber Deep */
 
   --bid: oklch(0.507 0.139 149.2);

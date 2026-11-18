@@ -7,14 +7,13 @@ export function CodeField({ value, onChange, label = "Code from your authenticat
       <span className={fieldLabel}>{label}</span>
       <input
         id={id}
-        className={`${inputCls} mt-1 w-40 text-center font-mono text-lg tracking-[0.3em]`}
+        className={`${inputCls} mt-1 block !w-44 text-center font-mono text-lg tracking-[0.3em]`}
         inputMode="numeric"
         autoComplete="one-time-code"
-        pattern="[0-9 ]*"
-        maxLength={7}
+        pattern="[0-9]*"
         placeholder="000000"
         value={value}
-        onChange={(e) => onChange(e.target.value.replace(/[^\d ]/g, ""))}
+        onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
       />
     </label>
   );
