@@ -73,6 +73,7 @@ import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authentic
 import { Route as AuthenticatedP2pDashboardRouteImport } from './routes/_authenticated/p2p.dashboard'
 import { Route as AuthenticatedP2pJuryRouteImport } from './routes/_authenticated/p2p.jury'
 import { Route as AiCoinIdRouteImport } from './routes/ai.coin.$id'
+import { Route as ApiPublicTrackRouteImport } from './routes/api/public/track'
 import { Route as P2pSellerHandleRouteImport } from './routes/p2p.seller.$handle'
 import { Route as AuthenticatedAccountBalancesIndexRouteImport } from './routes/_authenticated/account.balances.index'
 import { Route as AuthenticatedAccountBalancesDepositRouteImport } from './routes/_authenticated/account.balances.deposit'
@@ -445,6 +446,11 @@ const AiCoinIdRoute = AiCoinIdRouteImport.update({
   path: '/ai/coin/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicTrackRoute = ApiPublicTrackRouteImport.update({
+  id: '/api/public/track',
+  path: '/api/public/track',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const P2pSellerHandleRoute = P2pSellerHandleRouteImport.update({
   id: '/p2p/seller/$handle',
   path: '/p2p/seller/$handle',
@@ -720,6 +726,7 @@ export interface FileRoutesByFullPath {
   '/p2p/dashboard': typeof AuthenticatedP2pDashboardRoute
   '/p2p/jury': typeof AuthenticatedP2pJuryRoute
   '/ai/coin/$id': typeof AiCoinIdRoute
+  '/api/public/track': typeof ApiPublicTrackRoute
   '/p2p/seller/$handle': typeof P2pSellerHandleRoute
   '/account/': typeof AuthenticatedAccountIndexRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
@@ -822,6 +829,7 @@ export interface FileRoutesByTo {
   '/p2p/dashboard': typeof AuthenticatedP2pDashboardRoute
   '/p2p/jury': typeof AuthenticatedP2pJuryRoute
   '/ai/coin/$id': typeof AiCoinIdRoute
+  '/api/public/track': typeof ApiPublicTrackRoute
   '/p2p/seller/$handle': typeof P2pSellerHandleRoute
   '/account': typeof AuthenticatedAccountIndexRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
@@ -929,6 +937,7 @@ export interface FileRoutesById {
   '/_authenticated/p2p/dashboard': typeof AuthenticatedP2pDashboardRoute
   '/_authenticated/p2p/jury': typeof AuthenticatedP2pJuryRoute
   '/ai/coin/$id': typeof AiCoinIdRoute
+  '/api/public/track': typeof ApiPublicTrackRoute
   '/p2p/seller/$handle': typeof P2pSellerHandleRoute
   '/_authenticated/account/': typeof AuthenticatedAccountIndexRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
@@ -1036,6 +1045,7 @@ export interface FileRouteTypes {
     | '/p2p/dashboard'
     | '/p2p/jury'
     | '/ai/coin/$id'
+    | '/api/public/track'
     | '/p2p/seller/$handle'
     | '/account/'
     | '/admin/'
@@ -1138,6 +1148,7 @@ export interface FileRouteTypes {
     | '/p2p/dashboard'
     | '/p2p/jury'
     | '/ai/coin/$id'
+    | '/api/public/track'
     | '/p2p/seller/$handle'
     | '/account'
     | '/admin'
@@ -1244,6 +1255,7 @@ export interface FileRouteTypes {
     | '/_authenticated/p2p/dashboard'
     | '/_authenticated/p2p/jury'
     | '/ai/coin/$id'
+    | '/api/public/track'
     | '/p2p/seller/$handle'
     | '/_authenticated/account/'
     | '/_authenticated/admin/'
@@ -1330,6 +1342,7 @@ export interface RootRouteChildren {
   ApiIndexRoute: typeof ApiIndexRoute
   P2pIndexRoute: typeof P2pIndexRoute
   AiCoinIdRoute: typeof AiCoinIdRoute
+  ApiPublicTrackRoute: typeof ApiPublicTrackRoute
   P2pSellerHandleRoute: typeof P2pSellerHandleRoute
   ApiPublicCmcAssetsRoute: typeof ApiPublicCmcAssetsRoute
   ApiPublicCmcSummaryRoute: typeof ApiPublicCmcSummaryRoute
@@ -1817,6 +1830,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AiCoinIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/track': {
+      id: '/api/public/track'
+      path: '/api/public/track'
+      fullPath: '/api/public/track'
+      preLoaderRoute: typeof ApiPublicTrackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/p2p/seller/$handle': {
       id: '/p2p/seller/$handle'
       path: '/p2p/seller/$handle'
@@ -2253,6 +2273,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiIndexRoute: ApiIndexRoute,
   P2pIndexRoute: P2pIndexRoute,
   AiCoinIdRoute: AiCoinIdRoute,
+  ApiPublicTrackRoute: ApiPublicTrackRoute,
   P2pSellerHandleRoute: P2pSellerHandleRoute,
   ApiPublicCmcAssetsRoute: ApiPublicCmcAssetsRoute,
   ApiPublicCmcSummaryRoute: ApiPublicCmcSummaryRoute,

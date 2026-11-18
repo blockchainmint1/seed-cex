@@ -1623,6 +1623,39 @@ export type Database = {
         }
         Relationships: []
       }
+      site_page_views: {
+        Row: {
+          country: string | null
+          created_at: string
+          device: string | null
+          id: number
+          is_new_session: boolean
+          path: string
+          referrer_host: string | null
+          session_id: string
+        }
+        Insert: {
+          country?: string | null
+          created_at?: string
+          device?: string | null
+          id?: number
+          is_new_session?: boolean
+          path: string
+          referrer_host?: string | null
+          session_id: string
+        }
+        Update: {
+          country?: string | null
+          created_at?: string
+          device?: string | null
+          id?: number
+          is_new_session?: boolean
+          path?: string
+          referrer_host?: string | null
+          session_id?: string
+        }
+        Relationships: []
+      }
       sso_nonces: {
         Row: {
           nonce: string
@@ -2482,6 +2515,31 @@ export type Database = {
           _tier: number
         }
         Returns: string
+      }
+      site_page_views_prune: { Args: never; Returns: undefined }
+      site_stats_breakdown: {
+        Args: { _days?: number; _dimension: string; _limit?: number }
+        Returns: {
+          label: string
+          value: number
+        }[]
+      }
+      site_stats_daily: {
+        Args: { _days?: number }
+        Returns: {
+          day: string
+          pageviews: number
+          visitors: number
+        }[]
+      }
+      site_stats_totals: {
+        Args: { _days?: number }
+        Returns: {
+          countries: number
+          pages: number
+          pageviews: number
+          visitors: number
+        }[]
       }
     }
     Enums: {

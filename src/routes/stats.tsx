@@ -1,20 +1,21 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { getPublicStats } from "@/lib/stats.functions";
+import { SiteTrafficSection } from "@/components/stats/SiteTrafficSection";
 
 export const Route = createFileRoute("/stats")({
   staticData: { sitemap: true },
   head: () => ({
     meta: [
-      { title: "Live Exchange Stats — Seeds" },
+      { title: "Live Exchange & Traffic Stats — Seeds" },
       {
         name: "description",
         content:
-          "Real-time Seeds exchange stats: market volume, open orders, settled on-chain legs, vaults created, and delegated keys currently held.",
+          "Real-time Seeds stats: market volume, open orders, on-chain settlements, plus open website traffic — visits, sources, top pages and countries.",
       },
-      { property: "og:title", content: "Live Exchange Stats — Seeds" },
+      { property: "og:title", content: "Live Exchange & Traffic Stats — Seeds" },
       {
         property: "og:description",
-        content: "Volume, open orders, on-chain settlements and custody counts, published live.",
+        content: "Volume, orders, on-chain settlements and anonymous website traffic, published live.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -121,6 +122,8 @@ function StatsPage() {
           </tbody>
         </table>
       </section>
+
+      <SiteTrafficSection />
 
       <p className="font-mono text-xs text-muted-foreground">
         Machine-readable versions of this data live at{" "}

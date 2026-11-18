@@ -316,6 +316,7 @@ function Privacy() {
               <><B>Your sign-in session</B>, so you stay signed in. Removed when you sign out.</>,
               <><B>Your light or dark mode choice.</B></>,
               <><B>The page you were on before signing in</B>, for up to 24 hours, so we can bring you back to it.</>,
+              <><B>A random visit number</B> for our own visit counter (see Site analytics). It is kept only until you close the browser tab.</>,
             ]}
           />
         </Sub>
@@ -360,6 +361,26 @@ function Privacy() {
           All of this is recorded for every visitor, without cookies and without identifying
           anyone. Detailed data is kept for 90 days and daily summaries for a year.
         </p>
+        <Sub title="Seeds' own visit counter">
+          <p>
+            Seeds also counts visits itself, so anyone can see the totals on our public{" "}
+            <a href="/stats" className={linkCls}>stats page</a>. For each page opened on seeds.honest.money it saves:
+          </p>
+          <List
+            items={[
+              "the page address, without anything typed after a \"?\", and with invite codes and payment-link numbers hidden;",
+              "the name of the website that sent you, if any (for example honest.money), on the first page of a visit;",
+              "your country, as a two-letter code worked out by our hosting provider — never your IP address;",
+              "whether you're on a desktop, phone or tablet;",
+              "a random visit number that lives only until you close the tab, so several pages count as one visit.",
+            ]}
+          />
+          <p>
+            It doesn&rsquo;t save your name, member ID, email, IP address or wallet, and uses no cookies. Only
+            totals are shown on the stats page; nobody outside the Seeds team can see single visits. Each
+            record is deleted after one year.
+          </p>
+        </Sub>
       </Section>
 
       <Section id="keep" n={16} title="How long we keep it">
@@ -369,7 +390,7 @@ function Privacy() {
             "Locked-balance signing records: kept permanently, because they are what stops a coin being signed twice.",
             "Single-use codes and links expire quickly: Telegram connect codes after 15 minutes, account-claim links after 30 minutes, Peer Pay links after 7 days, sign-in tickets within minutes.",
             "Your saved return page: up to 24 hours in your browser.",
-            "Site analytics: 90 days in detail, one year in daily summaries.",
+            "Site analytics: 90 days in detail, one year in daily summaries. Seeds\u2019 own visit counter: one year.",
             "Backups of older accounts: until the account is claimed or no longer needed.",
           ]}
         />

@@ -15,6 +15,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { DemoBanner } from "@/components/site/DemoBanner";
+import { VisitCounter } from "@/components/site/VisitCounter";
 import { supabase } from "@/integrations/supabase/client";
 
 function NotFoundComponent() {
@@ -164,6 +165,7 @@ function RootComponent() {
           <Outlet />
         </main>
         <SiteFooter />
+        <VisitCounter />
       </div>
     </QueryClientProvider>
   );
