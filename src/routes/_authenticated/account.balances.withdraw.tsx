@@ -62,7 +62,7 @@ function Withdraw() {
             <div className="mt-6 space-y-4 border-t border-border pt-6">
               <p className="text-sm font-semibold"><span className="mr-2 inline-grid h-5 w-5 place-items-center rounded-full bg-primary/15 font-mono text-[11px] text-primary">3</span>Send it out</p>
               {!row ? (
-                <Note tone="warn">Your linked pocket doesn't include this network, so there's nothing to withdraw here.</Note>
+                <Note tone="warn">Your linked pocket doesn't include {asset.symbol} on {net.label}, so there's nothing to withdraw here.</Note>
               ) : (
                 <>
                   <div className="grid gap-3 sm:grid-cols-2">
