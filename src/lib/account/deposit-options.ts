@@ -38,7 +38,7 @@ const evm = (chain: EvmChain, label: string, gas: string, extra: string[] = []):
 });
 
 const PULSE_NOTES = (coin: string) => [
-  "HME Wallet can't send on PulseChain yet. Seeds sends it out for you instead: to an address you choose, after a 24-hour hold you can cancel.",
+  "HME Wallet can't send on PulseChain yet. Seeds sends it out for you instead: to an address you choose, after a hold of at least 24 hours that you can cancel.",
   `Send ${coin} on PulseChain only — not on Ethereum. The same 0x address exists on both, but they are different coins.`,
   "Keep a little PLS at this address to pay PulseChain network fees.",
 ];

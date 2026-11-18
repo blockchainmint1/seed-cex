@@ -64,11 +64,12 @@ describe("saving levels", () => {
     expect(tiersProblem([{ ...DEFAULT_TIERS[0], dailyUsd: 50 }])).toContain("daily"));
   test("no gaps in numbering", () =>
     expect(tiersProblem([DEFAULT_TIERS[0], DEFAULT_TIERS[2]])).toContain("no gaps"));
-  test("hard ceilings: $100,000 each, $250,000 a day, 1–168 hours", () => {
+  test("hard ceilings: $100,000 each, $250,000 a day, 24–168 hours", () => {
     expect(tiersProblem([{ ...DEFAULT_TIERS[0], perWithdrawalUsd: 100_001, dailyUsd: 200_000 }])).toContain("$100,000");
     expect(tiersProblem([{ ...DEFAULT_TIERS[0], dailyUsd: 250_001 }])).toContain("$250,000");
-    expect(tiersProblem([{ ...DEFAULT_TIERS[0], holdHours: 0 }])).toContain("1–168");
-    expect(tiersProblem([{ ...DEFAULT_TIERS[0], holdHours: 169 }])).toContain("1–168");
+    expect(tiersProblem([{ ...DEFAULT_TIERS[0], holdHours: 23 }])).toContain("24–168");
+    expect(tiersProblem([{ ...DEFAULT_TIERS[0], holdHours: 24 }])).toBeNull();
+    expect(tiersProblem([{ ...DEFAULT_TIERS[0], holdHours: 169 }])).toContain("24–168");
   });
   test("at most 6 levels", () =>
     expect(tiersProblem(Array.from({ length: 7 }, (_, i) => ({ ...DEFAULT_TIERS[0], level: i + 1 })))).toContain("6"));

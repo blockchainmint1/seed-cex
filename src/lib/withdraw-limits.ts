@@ -25,7 +25,7 @@ export type WithdrawHistory = { accountDays: number; withdrawals: number; withdr
 export type WithdrawOverride = { tierLevel: number | null; frozen: boolean; note: string } | null;
 
 export const MAX_TIERS = 6;
-export const LIMIT_CEILINGS = { perWithdrawalUsd: 100_000, dailyUsd: 250_000, holdHoursMin: 1, holdHoursMax: 168 } as const;
+export const LIMIT_CEILINGS = { perWithdrawalUsd: 100_000, dailyUsd: 250_000, holdHoursMin: 24, holdHoursMax: 168 } as const;
 
 /** Starting levels; the database was seeded with the same values. Editable in /admin/settings. */
 export const DEFAULT_TIERS: WithdrawTier[] = [
@@ -112,7 +112,7 @@ export function tiersProblem(tiers: WithdrawTier[]): string | null {
     if (t.perWithdrawalUsd > LIMIT_CEILINGS.perWithdrawalUsd) return `${label}: at most $${LIMIT_CEILINGS.perWithdrawalUsd.toLocaleString("en-US")} per withdrawal.`;
     if (t.dailyUsd > LIMIT_CEILINGS.dailyUsd) return `${label}: at most $${LIMIT_CEILINGS.dailyUsd.toLocaleString("en-US")} a day.`;
     if (t.dailyUsd < t.perWithdrawalUsd) return `${label}: the daily limit must be at least one full withdrawal.`;
-    if (t.holdHours < LIMIT_CEILINGS.holdHoursMin || t.holdHours > LIMIT_CEILINGS.holdHoursMax) return `${label}: the wait must be 1–168 hours.`;
+    if (t.holdHours < LIMIT_CEILINGS.holdHoursMin || t.holdHours > LIMIT_CEILINGS.holdHoursMax) return `${label}: the wait must be 24–168 hours, so a member always has at least a day to cancel.`;
     if (i === 0 && (t.minAccountDays || t.minWithdrawals || t.minWithdrawnUsd || t.minTrades)) return "Level 1 is where every new member starts, so it can't have requirements.";
     if (i > 0) {
       const p = list[i - 1];

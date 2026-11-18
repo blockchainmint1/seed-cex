@@ -169,6 +169,13 @@
       "when": 1795033656495,
       "tag": "0023_withdrawal_levels",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1795034337612,
+      "tag": "0024_withdrawal_hold_min_24h",
+      "breakpoints": true
     }
   ]
 }

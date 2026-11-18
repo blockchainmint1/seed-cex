@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { authenticateCronRequest } from "@/integrations/supabase/cron-auth";
 
-/** Every 5 minutes: send PulseChain withdrawals whose 24-hour hold is over, and track confirmations. */
+/** Every 5 minutes: send PulseChain withdrawals whose hold is over, and track confirmations. */
 export const Route = createFileRoute("/api/public/jobs/pulse-withdrawals")({
   staticData: { sitemap: false },
   server: {

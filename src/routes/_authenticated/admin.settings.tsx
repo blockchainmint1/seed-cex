@@ -81,10 +81,10 @@ const LIMIT_COLS: { k: NumField; label: string; prefix?: string }[] = [
   { k: "holdHours", label: "Wait (hrs)" },
 ];
 const NEED_COLS: { k: NumField; label: string; prefix?: string }[] = [
-  { k: "minAccountDays", label: "Days on Seeds" },
-  { k: "minWithdrawals", label: "Withdrawals done" },
+  { k: "minAccountDays", label: "Days" },
+  { k: "minWithdrawals", label: "Withdrawals" },
   { k: "minWithdrawnUsd", label: "Withdrawn", prefix: "$" },
-  { k: "minTrades", label: "Trades done" },
+  { k: "minTrades", label: "Trades" },
 ];
 
 function TierEditor({ tiers, members, maxWaiting }: { tiers: WithdrawTier[]; members: LimitMemberRow[]; maxWaiting: number }) {
@@ -120,7 +120,7 @@ function TierEditor({ tiers, members, maxWaiting }: { tiers: WithdrawTier[]; mem
 
   // Table inputs get fixed widths (inputCls is full-width, which collapses inside table cells).
   const box = "rounded-sm border border-border bg-background px-2 py-1 text-sm outline-none focus:border-primary";
-  const cell = `${box} w-24 text-right num`;
+  const cell = `${box} w-20 text-right num`;
   return (
     <section className="min-w-0 rounded-md border border-border bg-surface">
       <header className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-5 py-3.5">
@@ -128,7 +128,8 @@ function TierEditor({ tiers, members, maxWaiting }: { tiers: WithdrawTier[]; mem
           <h3 className="font-display text-base font-bold">Withdrawal levels</h3>
           <p className="mt-0.5 max-w-2xl text-xs text-muted-foreground">
             Everyone starts on level 1. A member moves up on their own once they meet <b>every</b> requirement for the next level.
-            The "per day" limit counts the last 24 hours. Up to {maxWaiting} withdrawals can wait at once.
+            Requirements are days on Seeds, finished withdrawals, dollars withdrawn and finished trades.
+            The "per day" limit counts the last 24 hours, the wait is 24–168 hours, and up to {maxWaiting} withdrawals can wait at once.
           </p>
         </div>
       </header>
@@ -136,42 +137,42 @@ function TierEditor({ tiers, members, maxWaiting }: { tiers: WithdrawTier[]; mem
         <table className="w-full whitespace-nowrap text-sm">
           <thead className="label-caps text-muted-foreground">
             <tr>
-              <th className="px-3 pt-2.5 text-left font-normal" colSpan={2}></th>
-              <th className="border-l border-border px-3 pt-2.5 text-left font-normal" colSpan={3}>Limits</th>
-              <th className="border-l border-border px-3 pt-2.5 text-left font-normal" colSpan={4}>To reach this level</th>
+              <th className="px-2 pt-2.5 text-left font-normal" colSpan={2}></th>
+              <th className="border-l border-border px-2 pt-2.5 text-left font-normal" colSpan={3}>Limits</th>
+              <th className="border-l border-border px-2 pt-2.5 text-left font-normal" colSpan={4}>To reach this level</th>
               <th colSpan={2}></th>
             </tr>
             <tr className="border-b border-border">
-              <th scope="col" className="px-3 py-2 text-left font-normal">#</th>
-              <th scope="col" className="px-3 py-2 text-left font-normal">Name</th>
-              {LIMIT_COLS.map((c, i) => <th key={c.k} scope="col" className={`px-3 py-2 text-right font-normal ${i === 0 ? "border-l border-border" : ""}`}>{c.label}</th>)}
-              {NEED_COLS.map((c, i) => <th key={c.k} scope="col" className={`px-3 py-2 text-right font-normal ${i === 0 ? "border-l border-border" : ""}`}>{c.label}</th>)}
-              <th scope="col" className="px-3 py-2 text-right font-normal">Members</th>
-              <th scope="col" className="px-3 py-2"><span className="sr-only">Remove</span></th>
+              <th scope="col" className="px-2 py-2 text-left font-normal">#</th>
+              <th scope="col" className="px-2 py-2 text-left font-normal">Name</th>
+              {LIMIT_COLS.map((c, i) => <th key={c.k} scope="col" className={`px-2 py-2 text-right font-normal ${i === 0 ? "border-l border-border" : ""}`}>{c.label}</th>)}
+              {NEED_COLS.map((c, i) => <th key={c.k} scope="col" className={`px-2 py-2 text-right font-normal ${i === 0 ? "border-l border-border" : ""}`}>{c.label}</th>)}
+              <th scope="col" className="px-2 py-2 text-right font-normal">Members</th>
+              <th scope="col" className="px-2 py-2"><span className="sr-only">Remove</span></th>
             </tr>
           </thead>
           <tbody>
             {draft.map((t, i) => (
               <tr key={i} className="border-b border-border/50 last:border-0">
-                <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{t.level}</td>
-                <td className="px-3 py-2">
-                  <input aria-label={`Level ${t.level} name`} className={`${box} w-32`} value={t.name} maxLength={40}
+                <td className="px-2 py-2 font-mono text-xs text-muted-foreground">{t.level}</td>
+                <td className="px-2 py-2">
+                  <input aria-label={`Level ${t.level} name`} className={`${box} w-28`} value={t.name} maxLength={40}
                     onChange={(e) => setDraft((list) => list.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} />
                 </td>
                 {LIMIT_COLS.map((c, ci) => (
-                  <td key={c.k} className={`px-3 py-2 text-right ${ci === 0 ? "border-l border-border" : ""}`}>
+                  <td key={c.k} className={`px-2 py-2 text-right ${ci === 0 ? "border-l border-border" : ""}`}>
                     <NumInput label={`Level ${t.level} ${c.label}`} prefix={c.prefix} value={t[c.k]} onChange={(v) => setNum(i, c.k, v)} cls={cell} />
                   </td>
                 ))}
                 {NEED_COLS.map((c, ci) => (
-                  <td key={c.k} className={`px-3 py-2 text-right ${ci === 0 ? "border-l border-border" : ""}`}>
+                  <td key={c.k} className={`px-2 py-2 text-right ${ci === 0 ? "border-l border-border" : ""}`}>
                     {i === 0
-                      ? <span className="text-xs text-muted-foreground">{ci === 0 ? "everyone starts here" : ""}</span>
+                      ? <span className="text-xs text-muted-foreground">{ci === 0 ? "starts here" : ""}</span>
                       : <NumInput label={`Level ${t.level} ${c.label}`} prefix={c.prefix} value={t[c.k]} onChange={(v) => setNum(i, c.k, v)} cls={cell} />}
                   </td>
                 ))}
-                <td className="px-3 py-2 text-right num text-muted-foreground">{count(t.level)}</td>
-                <td className="px-3 py-2 text-right">
+                <td className="px-2 py-2 text-right num text-muted-foreground">{count(t.level)}</td>
+                <td className="px-2 py-2 text-right">
                   {i > 0 && i === draft.length - 1 ? (
                     <button type="button" aria-label={`Remove level ${t.level}`} onClick={() => remove(i)} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></button>
                   ) : null}

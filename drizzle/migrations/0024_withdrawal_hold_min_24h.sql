@@ -1,0 +1,2 @@
+ALTER TABLE public.withdrawal_tiers DROP CONSTRAINT IF EXISTS withdrawal_tiers_hold_hours_check;
+ALTER TABLE public.withdrawal_tiers ADD CONSTRAINT withdrawal_tiers_hold_hours_check CHECK (hold_hours BETWEEN 24 AND 168);

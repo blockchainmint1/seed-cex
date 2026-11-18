@@ -91,7 +91,7 @@ function Withdraw() {
           <Card title="Why withdraw in HME Wallet?">
             <p className="text-muted-foreground">
               When your own wallet signs, a hacked Seeds account or a stolen API key can't drain your pocket to a stranger.
-              PulseChain is the one exception (HME Wallet can't send there yet): Seeds sends only after a 24-hour hold, tells
+              PulseChain is the one exception (HME Wallet can't send there yet): Seeds sends only after a hold of at least 24 hours, tells
               you by email straight away, and you can cancel. API keys can never do this.
             </p>
           </Card>
