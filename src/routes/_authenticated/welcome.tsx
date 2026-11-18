@@ -184,7 +184,7 @@ function StepWelcome({ onNext }: { onNext: () => void }) {
   const first = (profile.data?.display_name ?? "").trim().split(/\s+/)[0];
   const points = [
     { icon: HandCoins, title: "Your coins stay with you", text: "Seeds trades from a trading pocket inside your own HME Wallet. Seeds never holds your coins." },
-    { icon: ShieldCheck, title: "No KYC, no Seeds fees", text: "No ID uploads, and Seeds takes no cut of your trades.", to: "/about/kyc" as const, cta: "Why no KYC" },
+    { icon: ShieldCheck, title: "No KYC, no trading fees", text: "No ID uploads, and Seeds takes no cut of your trades.", to: "/about/kyc" as const, cta: "Why no KYC" },
     { icon: CalendarDays, title: "Trading opens November 30, 2026", text: "Until then Seeds is in demo mode. You can set up your account and link your wallet now.", to: "/coming-soon" as const, cta: "What's coming" },
   ];
   return (

@@ -147,7 +147,7 @@ function NoKyc() {
 
       <Section id="no-fees" n={5} title="We don't make money from you">
         <p>
-          There is no fee from us. Not on trades, not on deposits, not on withdrawals, not on
+          You pay no fee to us. Not on trades, not on deposits, not on withdrawals, not on
           the AI tools, not on the API. Our public market data reports a 0% maker
           fee and a 0% taker fee because that is what we charge. We don&rsquo;t take a spread
           between your buy and sell price, we don&rsquo;t take a cut of a P2P deal, and we don&rsquo;t
