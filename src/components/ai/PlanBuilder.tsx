@@ -43,7 +43,7 @@ export function PlanBuilder({ coins, settings, onChange, signedIn }: {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[22rem_minmax(0,1fr)]">
-      <aside className="space-y-5 self-start rounded-sm border border-border bg-surface p-4">
+      <aside className="order-2 space-y-5 self-start rounded-sm border border-border bg-surface p-4 lg:order-1">
         <div>
           <h2 className="font-display text-xl font-extrabold">Build your plan</h2>
           <p className="text-xs text-muted-foreground">Every decision uses only prices known on that day.</p>
@@ -134,7 +134,7 @@ export function PlanBuilder({ coins, settings, onChange, signedIn }: {
         <button type="button" onClick={() => onChange({ ...defaultPlan })} className="text-xs text-muted-foreground underline-offset-2 hover:underline">Reset to the starter plan</button>
       </aside>
 
-      <section className="min-w-0 space-y-6">
+      <section className="order-1 min-w-0 space-y-6 lg:order-2">
         {!run ? (
           <p className="text-sm text-muted-foreground">Loading price history…</p>
         ) : run.error ? (
