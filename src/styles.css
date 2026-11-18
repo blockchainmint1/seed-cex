@@ -387,6 +387,8 @@
   --tol-glow: var(--growth-glow);
 }
 .tol { overflow: visible; }
+/* Dims the drawing (never the logo) where it sits close to the headline. */
+.tol-art { opacity: var(--tol-dim, 1); }
 .tol-limb {
   fill: none;
   stroke-linecap: round;

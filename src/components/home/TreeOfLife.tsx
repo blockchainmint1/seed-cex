@@ -39,6 +39,7 @@ export function TreeOfLife({ className = "" }: { className?: string }) {
         </mask>
       </defs>
 
+      <g className="tol-art">
       {/* Soft growth glow behind the seed and canopy (never on the logo itself). */}
       <ellipse className="tol-glow" cx={SEED_X} cy={SEED_Y - 150} rx={290} ry={260} fill="url(#tol-glow)" />
 
@@ -85,6 +86,7 @@ export function TreeOfLife({ className = "" }: { className?: string }) {
             />
           </g>
         ))}
+      </g>
       </g>
 
       <image

@@ -80,7 +80,7 @@ function Index() {
         <div className="relative mx-auto max-w-7xl px-5 py-20 md:py-28">
           {/* Tree of Life: canopy up from the Seeds symbol, roots down past the hero. */}
           <div
-            className="pointer-events-none absolute top-6 right-5 hidden w-[440px] opacity-60 lg:block xl:w-[540px] xl:opacity-100"
+            className="pointer-events-none absolute top-6 right-5 hidden w-[440px] [--tol-dim:0.6] lg:block xl:w-[540px] xl:[--tol-dim:1]"
             aria-hidden
           >
             <TreeOfLife className="h-auto w-full" />
