@@ -363,7 +363,7 @@ function StepDone({ onFinish }: { onFinish: () => void }) {
               <Link to={r.to} className="flex items-center gap-3 rounded-sm px-2 py-2 text-sm hover:bg-muted">
                 {r.done ? <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" /> : <Circle className="h-4 w-4 shrink-0 text-muted-foreground" />}
                 <span className={r.done ? "text-muted-foreground" : "text-foreground"}>{r.label}</span>
-                <span className="ml-auto text-xs text-muted-foreground">{r.done ? "Done" : "Not yet"}</span>
+                <span className="ml-auto shrink-0 whitespace-nowrap text-xs text-muted-foreground">{r.done ? "Done" : "Not yet"}</span>
               </Link>
             </li>
           ))}
