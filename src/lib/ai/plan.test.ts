@@ -115,3 +115,33 @@ describe("daily Telegram check", () => {
     expect(text).toContain("Paper plan");
   });
 });
+
+describe("trade actions log (show our work)", () => {
+  const basket = { ...defaultPlan, mode: "basket" as const, coins: ["bitcoin", "up"], start: days[0]!, end: "", amount: 500, feeBps: 25, holdout: 0, reserve: 0, stopLoss: 0, drift: 5, rebalance: "weekly" as const };
+  it("day one buys $250 of each coin at that day's price, costing 0.25% each", () => {
+    const run = runPlan({ bitcoin: flat, up }, basket);
+    const first = run.fills.filter((f) => f.day === days[0]);
+    expect(first).toHaveLength(2);
+    for (const f of first) {
+      expect(f.side).toBe("buy");
+      expect(f.usd).toBeCloseTo(250, 6);
+      expect(f.price).toBe(100);
+      expect(f.units).toBeCloseTo(2.5, 6);
+      expect(f.fee).toBeCloseTo(0.625, 6);
+    }
+  });
+  it("logged costs add up to the plan's total costs", () => {
+    const run = runPlan({ bitcoin: flat, up }, basket);
+    expect(run.fills.length).toBeGreaterThan(2); // drift forced rebalances
+    expect(run.fills.reduce((t, f) => t + f.fee, 0)).toBeCloseTo(run.plan.fees, 6);
+    expect(run.fills.length).toBe(run.plan.trades);
+  });
+  it("logs a stop-loss sale at the crash price", () => {
+    const crash = { days, closes: days.map((_, i) => (i < 60 ? 100 * 1.01 ** i : 50)) };
+    const run = runPlan({ bitcoin: crash, down }, { ...base, stopLoss: 20, rebalance: "monthly", feeBps: 100 });
+    const sale = run.fills.find((f) => f.reason.startsWith("Stop-loss"))!;
+    expect(sale.side).toBe("sell");
+    expect(sale.price).toBe(50);
+    expect(run.fills.reduce((t, f) => t + f.fee, 0)).toBeCloseTo(run.plan.fees, 6);
+  });
+});

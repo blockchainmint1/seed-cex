@@ -31,7 +31,9 @@ export const defaultPlan: PlanSettings = {
 export type Point = { day: string; plan: number; hold: number; btc: number; cash: number };
 export type Summary = { totalIn: number; finalValue: number; totalReturn: number; maxDrawdown: number; trades: number; fees: number; daysInCash: number };
 export type Change = { day: string; before: Record<string, number>; after: Record<string, number>; value: number };
-export type PlanRun = { changes: Change[]; points: Point[]; plan: Summary; hold: Summary; btc: Summary; split?: string; inSample?: [number, number]; outSample?: [number, number]; log: { day: string; picks: string; reason: string }[]; current?: Record<string, number>; error?: string };
+/** One simulated trade, exactly as the engine charged it: the "show our work" trade log. */
+export type Fill = { day: string; coin: string; side: "buy" | "sell"; usd: number; price: number; units: number; fee: number; reason: string };
+export type PlanRun = { fills: Fill[]; changes: Change[]; points: Point[]; plan: Summary; hold: Summary; btc: Summary; split?: string; inSample?: [number, number]; outSample?: [number, number]; log: { day: string; picks: string; reason: string }[]; current?: Record<string, number>; error?: string };
 
 const START = 10000;
 // TSD (held at $1) is the "go to cash" option: never ranked, it takes whatever the coin picks leave over.
@@ -75,7 +77,7 @@ export function basketTargets(s: Pick<PlanSettings, "coins" | "weights">): Recor
 }
 
 export function runPlan(series: Record<string, Series>, s: PlanSettings, opts: { minDays?: number } = {}): PlanRun {
-  const empty = { changes: [], points: [], plan: summarise([], []), hold: summarise([], []), btc: summarise([], []), log: [] };
+  const empty = { fills: [], changes: [], points: [], plan: summarise([], []), hold: summarise([], []), btc: summarise([], []), log: [] };
   s = { ...defaultPlan, ...s, weights: s.weights ?? {} };
   const btc = series["bitcoin"];
   if (!btc || !s.coins.length) return { ...empty, error: "Pick at least one coin." };
@@ -91,11 +93,20 @@ export function runPlan(series: Record<string, Series>, s: PlanSettings, opts: {
   const amount = s.amount > 0 ? s.amount : START; const add = Math.max(0, s.weeklyAdd || 0);
   let weights: Record<string, number> = {}; let value = amount; let idx = 1; let totalIn = amount; let trades = 0; let fees = 0; let cashDays = 0;
   const entryPeak: Record<string, number> = {};
-  const changes: Change[] = []; const planVals: number[] = []; const planIdx: number[] = []; const log: PlanRun["log"] = [];
+  const fills: Fill[] = []; const changes: Change[] = []; const planVals: number[] = []; const planIdx: number[] = []; const log: PlanRun["log"] = [];
   const stable = s.coins.find(isStable); const ranked = s.coins.filter((id) => !isStable(id));
   const holdCoins = ranked.filter((id) => priceAt(id, days[0]!));
   const holdBase = Object.fromEntries(holdCoins.map((id) => [id, priceAt(id, days[0]!)!]));
   const points: Point[] = [];
+  // Same cost the engine charges: every weight change, both sides, at feeBps of the money moved.
+  const recordFills = (d: string, from: Record<string, number>, to: Record<string, number>, valueBefore: number, reason: string) => {
+    for (const id of new Set([...Object.keys(from), ...Object.keys(to)])) {
+      const ch = (to[id] ?? 0) - (from[id] ?? 0);
+      if (Math.abs(ch) <= 1e-6) continue;
+      const usd = Math.abs(ch) * valueBefore; const price = isStable(id) ? 1 : priceAt(id, d) ?? NaN;
+      fills.push({ day: d, coin: id, side: ch > 0 ? "buy" : "sell", usd, price, units: usd / price, fee: usd * (s.feeBps / 10000), reason });
+    }
+  };
   // buy-and-hold and Bitcoin comparisons get the same money on the same days
   const holdUnits: Record<string, number> = Object.fromEntries(holdCoins.map((id) => [id, amount / holdCoins.length / holdBase[id]!]));
   let btcUnits = amount / btcMap.get(days[0]!)!; let holdIdx = 1, btcIdx = 1; const holdI: number[] = [], btcI: number[] = [];
@@ -117,6 +128,8 @@ export function runPlan(series: Record<string, Series>, s: PlanSettings, opts: {
         if (b) entryPeak[id] = Math.max(entryPeak[id] ?? b, b);
         if (s.stopLoss > 0 && b && b / entryPeak[id]! - 1 <= -s.stopLoss / 100) {
           const cost = weights[id] * value * (s.feeBps / 10000); value -= cost; idx *= 1 - cost / (value + cost); fees += cost; trades++;
+          const soldUsd = weights[id] * (value + cost);
+          fills.push({ day: d, coin: id, side: "sell", usd: soldUsd, price: b, units: soldUsd / b, fee: cost, reason: `Stop-loss: fell ${s.stopLoss}% from its high` });
           log.push({ day: d, picks: `sold ${id}`, reason: `Fell ${s.stopLoss}% from its high since buying` });
           const before = { ...weights }; delete weights[id]; delete entryPeak[id];
           changes.push({ day: d, before, after: { ...weights }, value });
@@ -140,6 +153,7 @@ export function runPlan(series: Record<string, Series>, s: PlanSettings, opts: {
         for (const id of new Set([...Object.keys(weights), ...Object.keys(next)])) {
           const ch = Math.abs((next[id] ?? 0) - (weights[id] ?? 0)); turnover += ch; if (ch > 1e-6) trades++;
         }
+        recordFills(d, weights, next, value, first ? "Bought the basket" : "Rebalanced back to target");
         const cost = turnover * value * (s.feeBps / 10000); value -= cost; if (value + cost > 0) idx *= 1 - cost / (value + cost); fees += cost;
         for (const id of Object.keys(next)) if (!weights[id]) entryPeak[id] = priceAt(id, d)!;
         if (turnover > 1e-6) log.push({ day: d, picks: Object.entries(next).map(([id, w]) => `${id} ${(w * 100).toFixed(0)}%`).join(", ") || "all cash",
@@ -163,6 +177,7 @@ export function runPlan(series: Record<string, Series>, s: PlanSettings, opts: {
       for (const id of new Set([...Object.keys(weights), ...Object.keys(next)])) {
         const ch = Math.abs((next[id] ?? 0) - (weights[id] ?? 0)); turnover += ch; if (ch > 1e-6) trades++;
       }
+      recordFills(d, weights, next, value, scored.length ? `Strongest ${s.lookback}-day gains` : "No coin passed the rules — to TSD");
       const cost = turnover * value * (s.feeBps / 10000); value -= cost; if (value + cost > 0) idx *= 1 - cost / (value + cost); fees += cost;
       for (const x of scored) if (!weights[x.id]) entryPeak[x.id] = priceAt(x.id, d)!;
       if (turnover > 1e-6) log.push({ day: d, picks: [...scored.map((x) => `${x.id} ${(each * 100).toFixed(0)}%`), ...(stable && next[stable] ? [`${stable} ${(next[stable]! * 100).toFixed(0)}%`] : [])].join(", ") || "all cash",
@@ -187,7 +202,7 @@ export function runPlan(series: Record<string, Series>, s: PlanSettings, opts: {
   });
 
   const run: PlanRun = {
-    changes, points, log, current: { ...weights },
+    fills, changes, points, log, current: { ...weights },
     plan: summarise(planVals, planIdx, totalIn, trades, fees, cashDays),
     hold: summarise(points.map((p) => p.hold), holdI, totalIn),
     btc: summarise(points.map((p) => p.btc), btcI, totalIn),

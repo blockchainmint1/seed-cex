@@ -7,6 +7,7 @@ import { basketTargets, defaultPlan, isStable, runPlan, stableSeries, type PlanS
 import { fmtPct, fmtUsd, type Series } from "@/lib/ai/series";
 import { Chip, Field, inputCls, Panel, tone } from "./ui";
 import { LockPanel, type EditingPlan } from "./LockPanel";
+import { DailyPrices, TradeActions } from "./ShowWork";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const RANGES = [["3 mo", 3], ["6 mo", 6], ["1 yr", 12], ["2 yr", 24], ["3 yr", 36], ["5 yr", 60]] as const;
@@ -192,20 +193,12 @@ export function PlanBuilder({ coins, settings, onChange, signedIn, editing, onSt
               ) : null}
             </div>
 
-            <div className="overflow-x-auto rounded-sm border border-border bg-surface">
-              <h3 className="border-b border-border px-4 py-2.5 font-display text-[11px] font-bold tracking-[0.18em] uppercase">Trade log (latest 40)</h3>
-              <table className="w-full text-sm">
-                <tbody>
-                  {run.log.slice(-40).reverse().map((l, i) => (
-                    <tr key={i} className="border-t border-border">
-                      <td className="num px-4 py-1.5 whitespace-nowrap text-muted-foreground">{l.day}</td>
-                      <td className="py-1.5">{l.picks.replace(/[a-z0-9-]+(?= \d+%)|(?<=sold )[a-z0-9-]+/g, (m) => symbol(m))}</td>
-                      <td className="py-1.5 pr-4 text-xs text-muted-foreground">{l.reason}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="space-y-1">
+              <h2 className="font-display text-xl font-extrabold">Show the work</h2>
+              <p className="text-sm text-muted-foreground">Every number above comes from these two tables. Download either one to check it yourself.</p>
             </div>
+            <TradeActions run={run} symbol={symbol} />
+            <DailyPrices run={run} series={series} coins={s.coins} symbol={symbol} />
             <p className="text-xs text-muted-foreground">
               Past results don't predict future returns. A coin only counts once its price history starts. This is a testing tool, not financial advice — read the <Link to="/risk" className="underline">risk disclosure</Link>.
             </p>
