@@ -47,7 +47,7 @@ function AccountsPage() {
         <section className="min-w-0 rounded-md border border-border bg-surface">
           <header className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3">
             <h3 className="font-display text-sm font-bold">{search.trim() ? `${matched.length} of ${d.accounts.length} accounts` : `${d.accounts.length} accounts`}</h3>
-            <label className="relative ml-auto min-w-[12rem] flex-1 sm:max-w-xs">
+            <label className="relative w-full sm:ml-auto sm:w-80">
               <span className="sr-only">Search accounts</span>
               <Search aria-hidden className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <input className={`${inputCls} py-1.5 pr-8 pl-8`} placeholder="Name, TXC or EVM address, user id" value={search}
