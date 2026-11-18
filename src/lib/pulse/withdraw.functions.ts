@@ -29,7 +29,7 @@ export const requestPulseWithdrawalFn = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const isAdmin = await callerIsAdmin(context.supabase as never, context.userId);
     const { requestPulseWithdrawal } = await import("./withdraw.server");
-    return requestPulseWithdrawal(context.userId, isAdmin, data);
+    return requestPulseWithdrawal(context.userId, isAdmin, data, context.claims as never);
   });
 
 /** Cancel one of my withdrawals while it is still on hold. */

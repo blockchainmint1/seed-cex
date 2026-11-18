@@ -2,8 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Pause, Plus, Search, Trash2, Undo2, X } from "lucide-react";
-import { getWithdrawalSettings, saveWithdrawalTiers, setWithdrawalOverride, type LimitMemberRow } from "@/lib/admin-settings.functions";
+import { Pause, Plus, Search, ShieldCheck, ShieldOff, Trash2, Undo2, X } from "lucide-react";
+import { getWithdrawalSettings, resetMemberTwoFactor, saveWithdrawalTiers, setWithdrawalOverride, type LimitMemberRow } from "@/lib/admin-settings.functions";
+import { CodeField } from "@/components/account/CodeField";
+import { proveTwoFactor } from "@/components/account/two-factor";
 import { DEFAULT_TIERS, MAX_TIERS, tiersProblem, type WithdrawTier } from "@/lib/withdraw-limits";
 import { pageOf } from "@/lib/admin-accounts";
 import { Card, Note, TabTitle, fieldLabel, inputCls } from "@/components/account/ui";
@@ -29,11 +31,12 @@ export const Route = createFileRoute("/_authenticated/admin/settings")({
 
 const usd = (n: number) => `$${n.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
 const PAGE_SIZES = [25, 50, 100] as const;
-type Key = "name" | "level" | "days" | "withdrawals" | "withdrawn" | "trades";
+type Key = "name" | "level" | "twofa" | "days" | "withdrawals" | "withdrawn" | "trades";
 const FILTERS = [
   { v: "all", label: "Everyone" },
   { v: "admin", label: "Set by admin" },
   { v: "paused", label: "Paused" },
+  { v: "no2fa", label: "No 2FA" },
 ] as const;
 
 function AdminSettingsPage() {
@@ -51,7 +54,7 @@ function AdminSettingsPage() {
             {d.pilotAdminOnly ? <>Right now only admins can withdraw while the first real-money tests run, so these levels apply to admins only for now.</> : null}
           </Note>
           <TierEditor tiers={d.tiers} members={d.members} maxWaiting={d.maxWaiting} />
-          <MemberLimits members={d.members} tiers={d.tiers} me={d.me} />
+          <MemberLimits members={d.members} tiers={d.tiers} me={d.me} meTwoFactor={d.meTwoFactor} />
           <Card title="History" desc="Every change to levels or a member's limits, newest first.">
             {d.history.length === 0 ? <p className="text-sm text-muted-foreground">No changes yet.</p> : (
               <ul className="space-y-2 text-sm">
@@ -87,6 +90,11 @@ const NEED_COLS: { k: NumField; label: string; prefix?: string }[] = [
   { k: "minTrades", label: "Trades" },
 ];
 
+/** Turning two-factor on for a level turns it on for every level above; off turns it off for every level below. */
+function set2fa(list: WithdrawTier[], i: number, on: boolean): WithdrawTier[] {
+  return list.map((t, j) => (on ? (j >= i && j > 0 ? { ...t, requires2fa: true } : t) : (j <= i ? { ...t, requires2fa: false } : t)));
+}
+
 function TierEditor({ tiers, members, maxWaiting }: { tiers: WithdrawTier[]; members: LimitMemberRow[]; maxWaiting: number }) {
   const qc = useQueryClient();
   const save = useServerFn(saveWithdrawalTiers);
@@ -103,7 +111,7 @@ function TierEditor({ tiers, members, maxWaiting }: { tiers: WithdrawTier[]; mem
     setDraft((list) => list.map((t, j) => (j === i ? { ...t, [k]: raw === "" ? 0 : Number(raw) } : t)));
   const add = () => setDraft((list) => {
     const last = list[list.length - 1];
-    return [...list, { ...last, level: list.length + 1, name: `Level ${list.length + 1}`, minAccountDays: Math.max(1, last.minAccountDays) }];
+    return [...list, { ...last, requires2fa: list.length > 0, level: list.length + 1, name: `Level ${list.length + 1}`, minAccountDays: Math.max(1, last.minAccountDays) }];
   });
   const remove = (i: number) => setDraft((list) => list.filter((_, j) => j !== i).map((t, j) => ({ ...t, level: j + 1 })));
 
@@ -128,7 +136,8 @@ function TierEditor({ tiers, members, maxWaiting }: { tiers: WithdrawTier[]; mem
           <h3 className="font-display text-base font-bold">Withdrawal levels</h3>
           <p className="mt-0.5 max-w-2xl text-xs text-muted-foreground">
             Everyone starts on level 1. A member moves up on their own once they meet <b>every</b> requirement for the next level.
-            Requirements are days on Seeds, finished withdrawals, dollars withdrawn and finished trades.
+            Requirements are days on Seeds, finished withdrawals, dollars withdrawn, finished trades and, if ticked, two-factor sign-in.
+            A level that needs two-factor is never given to someone without it, even when you set it by hand.
             The "per day" limit counts the last 24 hours, the wait is 24–168 hours, and up to {maxWaiting} withdrawals can wait at once.
           </p>
         </div>
@@ -139,7 +148,7 @@ function TierEditor({ tiers, members, maxWaiting }: { tiers: WithdrawTier[]; mem
             <tr>
               <th className="px-2 pt-2.5 text-left font-normal" colSpan={2}></th>
               <th className="border-l border-border px-2 pt-2.5 text-left font-normal" colSpan={3}>Limits</th>
-              <th className="border-l border-border px-2 pt-2.5 text-left font-normal" colSpan={4}>To reach this level</th>
+              <th className="border-l border-border px-2 pt-2.5 text-left font-normal" colSpan={5}>To reach this level</th>
               <th colSpan={2}></th>
             </tr>
             <tr className="border-b border-border">
@@ -147,6 +156,7 @@ function TierEditor({ tiers, members, maxWaiting }: { tiers: WithdrawTier[]; mem
               <th scope="col" className="px-2 py-2 text-left font-normal">Name</th>
               {LIMIT_COLS.map((c, i) => <th key={c.k} scope="col" className={`px-2 py-2 text-right font-normal ${i === 0 ? "border-l border-border" : ""}`}>{c.label}</th>)}
               {NEED_COLS.map((c, i) => <th key={c.k} scope="col" className={`px-2 py-2 text-right font-normal ${i === 0 ? "border-l border-border" : ""}`}>{c.label}</th>)}
+              <th scope="col" className="px-2 py-2 text-center font-normal" title="Member must have two-factor sign-in on">2FA</th>
               <th scope="col" className="px-2 py-2 text-right font-normal">Members</th>
               <th scope="col" className="px-2 py-2"><span className="sr-only">Remove</span></th>
             </tr>
@@ -171,6 +181,12 @@ function TierEditor({ tiers, members, maxWaiting }: { tiers: WithdrawTier[]; mem
                       : <NumInput label={`Level ${t.level} ${c.label}`} prefix={c.prefix} value={t[c.k]} onChange={(v) => setNum(i, c.k, v)} cls={cell} />}
                   </td>
                 ))}
+                <td className="px-2 py-2 text-center">
+                  {i === 0 ? <span className="text-xs text-muted-foreground">—</span> : (
+                    <input type="checkbox" aria-label={`Level ${t.level} needs two-factor`} className="h-4 w-4 accent-[var(--primary)]"
+                      checked={t.requires2fa} onChange={(e) => setDraft((list) => set2fa(list, i, e.target.checked))} />
+                  )}
+                </td>
                 <td className="px-2 py-2 text-right num text-muted-foreground">{count(t.level)}</td>
                 <td className="px-2 py-2 text-right">
                   {i > 0 && i === draft.length - 1 ? (
@@ -208,7 +224,7 @@ function NumInput({ label, value, onChange, prefix, cls }: { label: string; valu
   );
 }
 
-function MemberLimits({ members, tiers, me }: { members: LimitMemberRow[]; tiers: WithdrawTier[]; me: string }) {
+function MemberLimits({ members, tiers, me, meTwoFactor }: { members: LimitMemberRow[]; tiers: WithdrawTier[]; me: string; meTwoFactor: boolean }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<(typeof FILTERS)[number]["v"]>("all");
   const [sort, setSort] = useState<{ key: Key; dir: "asc" | "desc" }>({ key: "level", dir: "desc" });
@@ -220,10 +236,10 @@ function MemberLimits({ members, tiers, me }: { members: LimitMemberRow[]; tiers
     const s = search.trim().toLowerCase();
     const list = members.filter((m) =>
       (!s || m.name.toLowerCase().includes(s) || (m.hmMemberId ?? "").toLowerCase().includes(s) || m.id.startsWith(s))
-      && (filter === "all" || (filter === "admin" ? m.source === "admin" : m.frozen)));
+      && (filter === "all" || (filter === "admin" ? m.source === "admin" : filter === "no2fa" ? !m.history.twoFactor : m.frozen)));
     const sign = sort.dir === "asc" ? 1 : -1;
     const val = (m: LimitMemberRow): string | number => ({
-      name: m.name.toLowerCase(), level: m.frozen ? -1 : m.level, days: m.history.accountDays,
+      name: m.name.toLowerCase(), level: m.frozen ? -1 : m.level, twofa: m.history.twoFactor ? 1 : 0, days: m.history.accountDays,
       withdrawals: m.history.withdrawals, withdrawn: m.history.withdrawnUsd, trades: m.history.trades,
     })[sort.key];
     return [...list].sort((a, b) => (val(a) < val(b) ? -sign : val(a) > val(b) ? sign : a.name.localeCompare(b.name)));
@@ -262,6 +278,7 @@ function MemberLimits({ members, tiers, me }: { members: LimitMemberRow[]; tiers
             <tr className="border-b border-border">
               {H("Name", "name", "left")}
               {H("Level", "level", "left")}
+              {H("2FA", "twofa", "left")}
               <th scope="col" className="px-3 py-2 text-right font-normal">Each / per day</th>
               {H("Days", "days")}
               {H("Withdrawals", "withdrawals")}
@@ -278,6 +295,12 @@ function MemberLimits({ members, tiers, me }: { members: LimitMemberRow[]; tiers
                   {m.frozen ? <span className="mr-1.5 rounded-sm bg-destructive/15 px-1.5 py-0.5 font-mono text-[10px] text-destructive uppercase">paused</span> : null}
                   <span>{m.level} · {m.levelName}</span>
                   {m.source === "admin" ? <span className="ml-1.5 rounded-sm bg-warn/15 px-1.5 py-0.5 font-mono text-[10px] text-foreground uppercase" title={m.note ?? undefined}>set by admin</span> : null}
+                  {m.waitingOnTwoFactor ? <span className="ml-1.5 text-xs text-muted-foreground">({m.waitingOnTwoFactor} once 2FA is on)</span> : null}
+                </td>
+                <td className="px-3 py-2">
+                  {m.history.twoFactor
+                    ? <span className="inline-flex items-center gap-1 text-xs text-primary"><ShieldCheck className="h-3.5 w-3.5" /> On</span>
+                    : <span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><ShieldOff className="h-3.5 w-3.5" /> Off</span>}
                 </td>
                 <td className="px-3 py-2 text-right num text-muted-foreground">{m.frozen ? "—" : `${usd(m.perWithdrawalUsd)} / ${usd(m.dailyUsd)}`}</td>
                 <td className="px-3 py-2 text-right num">{m.history.accountDays}</td>
@@ -289,20 +312,23 @@ function MemberLimits({ members, tiers, me }: { members: LimitMemberRow[]; tiers
                 </td>
               </tr>
             ))}
-            {view.rows.length === 0 ? <tr><td colSpan={8} className="px-3 py-6 text-muted-foreground">No one matches.</td></tr> : null}
+            {view.rows.length === 0 ? <tr><td colSpan={9} className="px-3 py-6 text-muted-foreground">No one matches.</td></tr> : null}
           </tbody>
         </table>
       </div>
       <Pager page={view.page} pages={view.pages} from={view.from} to={view.to} total={matched.length} size={size} sizes={PAGE_SIZES}
         onPage={setPage} onSize={(n) => { setSize(n); setPage(0); }} />
-      <EditDialog member={editing} tiers={tiers} onClose={() => setEditing(null)} />
+      <EditDialog member={editing} tiers={tiers} meTwoFactor={meTwoFactor} onClose={() => setEditing(null)} />
     </section>
   );
 }
 
-function EditDialog({ member, tiers, onClose }: { member: LimitMemberRow | null; tiers: WithdrawTier[]; onClose: () => void }) {
+function EditDialog({ member, tiers, meTwoFactor, onClose }: { member: LimitMemberRow | null; tiers: WithdrawTier[]; meTwoFactor: boolean; onClose: () => void }) {
   const qc = useQueryClient();
   const change = useServerFn(setWithdrawalOverride);
+  const reset = useServerFn(resetMemberTwoFactor);
+  const [myCode, setMyCode] = useState("");
+  const [resetting, setResetting] = useState(false);
   const [level, setLevel] = useState<string>("auto");
   const [frozen, setFrozen] = useState(false);
   const [note, setNote] = useState("");
@@ -311,7 +337,7 @@ function EditDialog({ member, tiers, onClose }: { member: LimitMemberRow | null;
   useEffect(() => {
     if (!member) return;
     setLevel(member.source === "admin" ? String(member.level) : "auto");
-    setFrozen(member.frozen); setNote(member.note ?? ""); setErr(null);
+    setFrozen(member.frozen); setNote(member.note ?? ""); setErr(null); setMyCode(""); setResetting(false);
   }, [member]);
 
   if (!member) return null;
@@ -329,6 +355,18 @@ function EditDialog({ member, tiers, onClose }: { member: LimitMemberRow | null;
     } finally { setBusy(false); }
   }
 
+  async function doReset() {
+    setBusy(true); setErr(null);
+    try {
+      await proveTwoFactor(myCode);
+      await reset({ data: { userId: member!.id, note: note.trim() } });
+      await qc.invalidateQueries({ queryKey: ["admin-withdraw-settings"] });
+      onClose();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Couldn't reset.");
+    } finally { setBusy(false); setMyCode(""); }
+  }
+
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent>
@@ -344,9 +382,13 @@ function EditDialog({ member, tiers, onClose }: { member: LimitMemberRow | null;
             <span className={fieldLabel}>Level</span>
             <select className={`${inputCls} mt-1`} value={level} onChange={(e) => setLevel(e.target.value)}>
               <option value="auto">Automatic — moves up with their history</option>
-              {tiers.map((t) => <option key={t.level} value={t.level}>{t.level} · {t.name} — {usd(t.perWithdrawalUsd)} each, {usd(t.dailyUsd)} a day</option>)}
+              {tiers.map((t) => <option key={t.level} value={t.level}>{t.level} · {t.name} — {usd(t.perWithdrawalUsd)} each, {usd(t.dailyUsd)} a day{t.requires2fa ? " · needs 2FA" : ""}</option>)}
             </select>
-            <span className="mt-1 block text-xs text-muted-foreground">A set level stays put (up or down) until you switch them back to automatic.</span>
+            <span className="mt-1 block text-xs text-muted-foreground">
+              A set level stays put (up or down) until you switch them back to automatic.
+              {!member.history.twoFactor && level !== "auto" && tiers.find((t) => t.level === Number(level))?.requires2fa
+                ? " They don't have two-factor on, so they stay on the highest level without it until they turn it on." : ""}
+            </span>
           </label>
           <label className="flex items-start gap-3">
             <input type="checkbox" className="mt-1 h-4 w-4 accent-[var(--destructive)]" checked={frozen} onChange={(e) => setFrozen(e.target.checked)} />
@@ -359,6 +401,32 @@ function EditDialog({ member, tiers, onClose }: { member: LimitMemberRow | null;
             <span className={fieldLabel}>Note (required, members don't see it)</span>
             <textarea className={`${inputCls} mt-1 min-h-[4.5rem]`} maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Why, e.g. 'Known OG member, verified by phone'" />
           </label>
+          {member.history.twoFactor ? (
+            <div className="rounded-sm border border-border p-3">
+              {!resetting ? (
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-sm"><ShieldCheck className="mr-1 inline h-3.5 w-3.5 text-primary" />Two-factor is on.</span>
+                  <Button size="sm" variant="outline" onClick={() => { setResetting(true); setErr(null); }}>Reset two-factor…</Button>
+                </div>
+              ) : !meTwoFactor ? (
+                <Note tone="warn">Only admins with two-factor on can reset someone else's. Set yours up in Account → Security first.</Note>
+              ) : (
+                <div className="space-y-3">
+                  <Note tone="warn">
+                    Only for a member who lost their phone, after you've checked it's really them (not just an email asking).
+                    It removes their authenticator, drops their withdrawal level and emails them. Write how you checked in the note above.
+                  </Note>
+                  <CodeField id="admin-reset-code" label="Your own authenticator code" value={myCode} onChange={setMyCode} />
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="destructive" disabled={busy || !noteOk || myCode.replace(/\D/g, "").length !== 6} onClick={doReset}>
+                      {busy ? "Checking…" : "Remove their authenticator"}
+                    </Button>
+                    <Button size="sm" variant="outline" disabled={busy} onClick={() => { setResetting(false); setMyCode(""); }}>Cancel</Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : null}
           {err ? <Note tone="error">{err}</Note> : null}
         </div>
         <DialogFooter className="gap-2 sm:justify-between">

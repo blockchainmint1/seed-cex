@@ -1552,6 +1552,7 @@ export type Database = {
           telegram_verified: boolean
           timezone: string
           trades_completed: number
+          two_factor_on: boolean
           updated_at: string
         }
         Insert: {
@@ -1581,6 +1582,7 @@ export type Database = {
           telegram_verified?: boolean
           timezone?: string
           trades_completed?: number
+          two_factor_on?: boolean
           updated_at?: string
         }
         Update: {
@@ -1610,6 +1612,7 @@ export type Database = {
           telegram_verified?: boolean
           timezone?: string
           trades_completed?: number
+          two_factor_on?: boolean
           updated_at?: string
         }
         Relationships: []
@@ -2185,6 +2188,7 @@ export type Database = {
           min_withdrawn_usd: number
           name: string
           per_withdrawal_usd: number
+          requires_2fa: boolean
           updated_at: string
           updated_by: string | null
         }
@@ -2198,6 +2202,7 @@ export type Database = {
           min_withdrawn_usd?: number
           name: string
           per_withdrawal_usd: number
+          requires_2fa?: boolean
           updated_at?: string
           updated_by?: string | null
         }
@@ -2211,6 +2216,7 @@ export type Database = {
           min_withdrawn_usd?: number
           name?: string
           per_withdrawal_usd?: number
+          requires_2fa?: boolean
           updated_at?: string
           updated_by?: string | null
         }

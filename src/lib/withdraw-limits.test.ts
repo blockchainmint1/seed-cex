@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { DEFAULT_TIERS, earnedTier, memberLimits, missingFor, nextLevelText, tiersProblem, type WithdrawHistory } from "./withdraw-limits";
+import { DEFAULT_TIERS, TWO_FACTOR_MISSING, earnedTier, memberLimits, missingFor, nextLevelText, tiersProblem, type WithdrawHistory } from "./withdraw-limits";
 
-const fresh: WithdrawHistory = { accountDays: 0, withdrawals: 0, withdrawnUsd: 0, trades: 0 };
+const fresh: WithdrawHistory = { accountDays: 0, withdrawals: 0, withdrawnUsd: 0, trades: 0, twoFactor: false };
 
 describe("withdrawal levels", () => {
   test("a brand-new member starts on level 1: $100 each, $250 a day, 48-hour wait", () => {
@@ -12,39 +12,55 @@ describe("withdrawal levels", () => {
   });
 
   test("30 days and 3 withdrawals earns level 2 ($250 / $1,000, 24 hours)", () => {
-    const l = memberLimits(DEFAULT_TIERS, { accountDays: 30, withdrawals: 3, withdrawnUsd: 0, trades: 0 }, null)!;
+    const l = memberLimits(DEFAULT_TIERS, { accountDays: 30, withdrawals: 3, withdrawnUsd: 0, trades: 0, twoFactor: true }, null)!;
     expect(l.tier.level).toBe(2);
     expect([l.perWithdrawalUsd, l.dailyUsd, l.holdHours]).toEqual([250, 1000, 24]);
   });
 
   test("29 days is not enough for level 2 even with many withdrawals", () => {
-    expect(earnedTier(DEFAULT_TIERS, { accountDays: 29, withdrawals: 50, withdrawnUsd: 50_000, trades: 50 })!.level).toBe(1);
+    expect(earnedTier(DEFAULT_TIERS, { accountDays: 29, withdrawals: 50, withdrawnUsd: 50_000, trades: 50, twoFactor: true })!.level).toBe(1);
   });
 
   test("levels are climbed in order: meeting level 4's numbers but not level 3's dollars stays on 2", () => {
     const tiers = DEFAULT_TIERS.map((t) => (t.level === 3 ? { ...t, minWithdrawnUsd: 20_000 } : t));
-    expect(earnedTier(tiers, { accountDays: 200, withdrawals: 30, withdrawnUsd: 15_000, trades: 10 })!.level).toBe(2);
+    expect(earnedTier(tiers, { accountDays: 200, withdrawals: 30, withdrawnUsd: 15_000, trades: 10, twoFactor: true })!.level).toBe(2);
   });
 
   test("tells the member what's missing for the next level", () => {
-    expect(missingFor(DEFAULT_TIERS[1], { accountDays: 18, withdrawals: 1, withdrawnUsd: 0, trades: 0 })).toEqual(["12 more days on Seeds", "2 more completed withdrawals"]);
+    expect(missingFor(DEFAULT_TIERS[1], { accountDays: 18, withdrawals: 1, withdrawnUsd: 0, trades: 0, twoFactor: true })).toEqual(["12 more days on Seeds", "2 more completed withdrawals"]);
+    expect(missingFor(DEFAULT_TIERS[1], { accountDays: 18, withdrawals: 1, withdrawnUsd: 0, trades: 0, twoFactor: false })).toContain(TWO_FACTOR_MISSING);
     expect(nextLevelText(memberLimits(DEFAULT_TIERS, fresh, null)!)).toContain("Regular");
   });
 
   test("an admin-set level replaces the earned one, both up and down", () => {
-    expect(memberLimits(DEFAULT_TIERS, fresh, { tierLevel: 3, frozen: false, note: "known member" })!.perWithdrawalUsd).toBe(1000);
-    const down = memberLimits(DEFAULT_TIERS, { accountDays: 400, withdrawals: 40, withdrawnUsd: 40_000, trades: 20 }, { tierLevel: 1, frozen: false, note: "review" })!;
+    expect(memberLimits(DEFAULT_TIERS, { ...fresh, twoFactor: true }, { tierLevel: 3, frozen: false, note: "known member" })!.perWithdrawalUsd).toBe(1000);
+    const down = memberLimits(DEFAULT_TIERS, { accountDays: 400, withdrawals: 40, withdrawnUsd: 40_000, trades: 20, twoFactor: true }, { tierLevel: 1, frozen: false, note: "review" })!;
     expect(down.tier.level).toBe(1);
     expect(down.source).toBe("admin");
     expect(down.next).toBeNull();
   });
 
   test("an admin-set level that was deleted falls back to the highest level below it", () => {
-    expect(memberLimits(DEFAULT_TIERS.slice(0, 2), fresh, { tierLevel: 4, frozen: false, note: "x" })!.tier.level).toBe(2);
+    expect(memberLimits(DEFAULT_TIERS.slice(0, 2), { ...fresh, twoFactor: true }, { tierLevel: 4, frozen: false, note: "x" })!.tier.level).toBe(2);
   });
 
   test("a paused member is marked frozen", () => {
     expect(memberLimits(DEFAULT_TIERS, fresh, { tierLevel: null, frozen: true, note: "hacked?" })!.frozen).toBe(true);
+  });
+
+  test("levels 2 and up need two-factor by default: full history without it stays on level 1", () => {
+    const veteran = { accountDays: 400, withdrawals: 40, withdrawnUsd: 40_000, trades: 20, twoFactor: false };
+    expect(DEFAULT_TIERS.map((t) => t.requires2fa)).toEqual([false, true, true, true]);
+    expect(memberLimits(DEFAULT_TIERS, veteran, null)!.tier.level).toBe(1);
+    expect(memberLimits(DEFAULT_TIERS, { ...veteran, twoFactor: true }, null)!.tier.level).toBe(4);
+  });
+
+  test("an admin can't hand a two-factor level to someone without two-factor; they get the best level below it", () => {
+    const l = memberLimits(DEFAULT_TIERS, fresh, { tierLevel: 3, frozen: false, note: "known member" })!;
+    expect(l.tier.level).toBe(1);
+    expect(l.perWithdrawalUsd).toBe(100);
+    expect(l.waitingOnTwoFactor?.level).toBe(3);
+    expect(nextLevelText(l)).toContain("two-factor");
   });
 
   test("no levels at all means no withdrawals (fail closed)", () => {
@@ -71,6 +87,10 @@ describe("saving levels", () => {
     expect(tiersProblem([{ ...DEFAULT_TIERS[0], holdHours: 24 }])).toBeNull();
     expect(tiersProblem([{ ...DEFAULT_TIERS[0], holdHours: 169 }])).toContain("24–168");
   });
+  test("level 1 can't need two-factor", () =>
+    expect(tiersProblem([{ ...DEFAULT_TIERS[0], requires2fa: true }])).toContain("Level 1"));
+  test("once a level needs two-factor, every level above it must too", () =>
+    expect(tiersProblem([DEFAULT_TIERS[0], DEFAULT_TIERS[1], { ...DEFAULT_TIERS[2], requires2fa: false }])).toContain("two-factor"));
   test("at most 6 levels", () =>
     expect(tiersProblem(Array.from({ length: 7 }, (_, i) => ({ ...DEFAULT_TIERS[0], level: i + 1 })))).toContain("6"));
 });

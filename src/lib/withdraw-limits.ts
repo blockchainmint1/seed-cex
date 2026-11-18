@@ -3,7 +3,10 @@
  *
  * Every member starts on level 1 and moves up automatically as their history
  * grows: account age, completed withdrawals, dollars withdrawn and completed
- * trades. An admin can put one member on a set level (up or down) or pause
+ * trades, and from level 2 up (by default) two-factor sign-in on Seeds. A level
+ * that needs two-factor is never given to a member without it, not even by an
+ * admin, so a stolen Honest.Money sign-in alone can't reach the higher limits.
+ * An admin can put one member on a set level (up or down) or pause
  * their withdrawals, always with a note. The levels themselves are edited in
  * /admin/settings and stored in withdrawal_tiers; save_withdrawal_tiers in the
  * database re-checks the same shape rules as tiersProblem.
@@ -19,9 +22,11 @@ export type WithdrawTier = {
   minWithdrawals: number;
   minWithdrawnUsd: number;
   minTrades: number;
+  /** Member must have two-factor sign-in on Seeds. Level 1 never; once a level needs it, every higher level does. */
+  requires2fa: boolean;
 };
 
-export type WithdrawHistory = { accountDays: number; withdrawals: number; withdrawnUsd: number; trades: number };
+export type WithdrawHistory = { accountDays: number; withdrawals: number; withdrawnUsd: number; trades: number; twoFactor: boolean };
 export type WithdrawOverride = { tierLevel: number | null; frozen: boolean; note: string } | null;
 
 export const MAX_TIERS = 6;
@@ -29,11 +34,13 @@ export const LIMIT_CEILINGS = { perWithdrawalUsd: 100_000, dailyUsd: 250_000, ho
 
 /** Starting levels; the database was seeded with the same values. Editable in /admin/settings. */
 export const DEFAULT_TIERS: WithdrawTier[] = [
-  { level: 1, name: "New", perWithdrawalUsd: 100, dailyUsd: 250, holdHours: 48, minAccountDays: 0, minWithdrawals: 0, minWithdrawnUsd: 0, minTrades: 0 },
-  { level: 2, name: "Regular", perWithdrawalUsd: 250, dailyUsd: 1000, holdHours: 24, minAccountDays: 30, minWithdrawals: 3, minWithdrawnUsd: 0, minTrades: 0 },
-  { level: 3, name: "Trusted", perWithdrawalUsd: 1000, dailyUsd: 5000, holdHours: 24, minAccountDays: 90, minWithdrawals: 10, minWithdrawnUsd: 1000, minTrades: 0 },
-  { level: 4, name: "Established", perWithdrawalUsd: 5000, dailyUsd: 20000, holdHours: 24, minAccountDays: 180, minWithdrawals: 25, minWithdrawnUsd: 10000, minTrades: 5 },
+  { level: 1, name: "New", perWithdrawalUsd: 100, dailyUsd: 250, holdHours: 48, minAccountDays: 0, minWithdrawals: 0, minWithdrawnUsd: 0, minTrades: 0, requires2fa: false },
+  { level: 2, name: "Regular", perWithdrawalUsd: 250, dailyUsd: 1000, holdHours: 24, minAccountDays: 30, minWithdrawals: 3, minWithdrawnUsd: 0, minTrades: 0, requires2fa: true },
+  { level: 3, name: "Trusted", perWithdrawalUsd: 1000, dailyUsd: 5000, holdHours: 24, minAccountDays: 90, minWithdrawals: 10, minWithdrawnUsd: 1000, minTrades: 0, requires2fa: true },
+  { level: 4, name: "Established", perWithdrawalUsd: 5000, dailyUsd: 20000, holdHours: 24, minAccountDays: 180, minWithdrawals: 25, minWithdrawnUsd: 10000, minTrades: 5, requires2fa: true },
 ];
+
+export const TWO_FACTOR_MISSING = "turn on two-factor sign-in (Account → Security)";
 
 const sorted = (t: WithdrawTier[]) => [...t].sort((a, b) => a.level - b.level);
 
@@ -48,6 +55,7 @@ export function missingFor(tier: WithdrawTier, h: WithdrawHistory): string[] {
   if (usd > 0) out.push(`$${Math.ceil(usd).toLocaleString("en-US")} more withdrawn`);
   const tr = tier.minTrades - h.trades;
   if (tr > 0) out.push(`${tr} more completed trade${tr === 1 ? "" : "s"}`);
+  if (tier.requires2fa && !h.twoFactor) out.push(TWO_FACTOR_MISSING);
   return out;
 }
 
@@ -69,6 +77,8 @@ export type MemberLimits = {
   perWithdrawalUsd: number;
   dailyUsd: number;
   holdHours: number;
+  /** An admin set a level that needs two-factor but the member hasn't turned it on, so they get the highest level below it that doesn't. */
+  waitingOnTwoFactor: WithdrawTier | null;
   /** The next level up from the earned one and what's missing; null at the top or when an admin set the level. */
   next: { tier: WithdrawTier; missing: string[] } | null;
 };
@@ -80,15 +90,21 @@ export function memberLimits(tiers: WithdrawTier[], h: WithdrawHistory, o: Withd
   const earned = earnedTier(list, h) ?? list[0];
   let tier = earned;
   let source: "earned" | "admin" = "earned";
+  let waitingOnTwoFactor: WithdrawTier | null = null;
   if (o?.tierLevel != null) {
     // An admin's level that no longer exists falls back to the highest level at or below it.
     const pick = [...list].reverse().find((t) => t.level <= o.tierLevel!) ?? list[0];
     tier = pick;
     source = "admin";
+    // Two-factor is a hard rule: an admin can't hand a two-factor level to a member without it.
+    if (pick.requires2fa && !h.twoFactor) {
+      waitingOnTwoFactor = pick;
+      tier = [...list].reverse().find((t) => t.level <= pick.level && !t.requires2fa) ?? list[0];
+    }
   }
   const up = source === "earned" ? list.find((t) => t.level > earned.level) : undefined;
   return {
-    tier, source, frozen: Boolean(o?.frozen), note: o?.note ?? null,
+    tier, source, frozen: Boolean(o?.frozen), note: o?.note ?? null, waitingOnTwoFactor,
     perWithdrawalUsd: tier.perWithdrawalUsd, dailyUsd: tier.dailyUsd, holdHours: tier.holdHours,
     next: up ? { tier: up, missing: missingFor(up, h) } : null,
   };
@@ -113,12 +129,13 @@ export function tiersProblem(tiers: WithdrawTier[]): string | null {
     if (t.dailyUsd > LIMIT_CEILINGS.dailyUsd) return `${label}: at most $${LIMIT_CEILINGS.dailyUsd.toLocaleString("en-US")} a day.`;
     if (t.dailyUsd < t.perWithdrawalUsd) return `${label}: the daily limit must be at least one full withdrawal.`;
     if (t.holdHours < LIMIT_CEILINGS.holdHoursMin || t.holdHours > LIMIT_CEILINGS.holdHoursMax) return `${label}: the wait must be 24–168 hours, so a member always has at least a day to cancel.`;
-    if (i === 0 && (t.minAccountDays || t.minWithdrawals || t.minWithdrawnUsd || t.minTrades)) return "Level 1 is where every new member starts, so it can't have requirements.";
+    if (i === 0 && (t.minAccountDays || t.minWithdrawals || t.minWithdrawnUsd || t.minTrades || t.requires2fa)) return "Level 1 is where every new member starts, so it can't have requirements.";
     if (i > 0) {
       const p = list[i - 1];
       if (t.perWithdrawalUsd < p.perWithdrawalUsd || t.dailyUsd < p.dailyUsd) return `${label} must allow at least as much as level ${p.level}.`;
       if (t.minAccountDays < p.minAccountDays || t.minWithdrawals < p.minWithdrawals || t.minWithdrawnUsd < p.minWithdrawnUsd || t.minTrades < p.minTrades)
         return `${label} must ask for at least as much history as level ${p.level}.`;
+      if (p.requires2fa && !t.requires2fa) return `${label} must need two-factor sign-in, because level ${p.level} does.`;
     }
   }
   return null;
@@ -138,6 +155,7 @@ export const overrideMessage = (code: string) => OVERRIDE_RESULT_MESSAGES[code] 
 
 /** Short member-facing sentence about the next level. */
 export function nextLevelText(l: MemberLimits): string | null {
+  if (l.waitingOnTwoFactor) return `The Seeds team set you to ${l.waitingOnTwoFactor.name}. Turn on two-factor sign-in (Account → Security) to use it.`;
   if (l.source === "admin" || !l.next) return null;
   const { tier, missing } = l.next;
   const up = `$${tier.perWithdrawalUsd.toLocaleString("en-US")} each, $${tier.dailyUsd.toLocaleString("en-US")} a day`;

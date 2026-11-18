@@ -9,13 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Card, TabTitle } from "@/components/account/ui";
 import { HmeWalletLinkCard } from "@/components/wallet/HmeWalletLinkCard";
 import { usePocketLink } from "@/components/account/use-pocket";
+import { TwoFactorCard, useMyTwoFactor } from "@/components/account/TwoFactorCard";
 
 export const Route = createFileRoute("/_authenticated/account/security")({
   staticData: { sitemap: false },
   head: () => ({
     meta: [
       { title: "Security — Seeds" },
-      { name: "description", content: "Your sign-in method, linked HME Wallet trading pocket, revoke access, API key exposure and security notices." },
+      { name: "description", content: "Your sign-in method, two-factor codes, linked HME Wallet trading pocket, revoke access, API key exposure and security notices." },
       { property: "og:title", content: "Security — Seeds" },
       { property: "og:description", content: "Sign-in, wallet link and access controls for your Seeds account." },
       { property: "og:type", content: "website" },
@@ -32,12 +33,14 @@ function SecurityTab() {
   const profile = useQuery({ queryKey: ["my-profile"], queryFn: () => loadProfile() });
   const keys = useQuery({ queryKey: ["api-keys"], queryFn: () => loadKeys() });
   const link = usePocketLink();
+  const twoFactor = useMyTwoFactor();
   const p = profile.data;
   const l = link.data;
   const tradeKeys = (keys.data ?? []).filter((k) => k.enabled && (k.scopes ?? []).includes("trade")).length;
 
   const checks = [
     { ok: true, label: "Sign-in through Honest.Money", hint: "Seeds stores no password. Use a strong one and two-step sign-in on Honest.Money." },
+    { ok: Boolean(twoFactor.data), label: "Two-factor sign-in on Seeds", hint: twoFactor.data ? "Withdrawals ask for a code from your phone." : "Set it up below. Needed for withdrawal levels above New." },
     { ok: Boolean(l), label: "HME Wallet trading pocket linked", hint: l ? `Pocket #${l.account}, ${l.mode === "access" ? "instant trades" : "you approve every trade"}.` : "Link it below." },
     { ok: Boolean(p?.telegram_verified && p?.notify_login), label: "Sign-in alerts on Telegram", hint: p?.telegram_verified ? (p.notify_login ? "You'll hear about every new sign-in." : "Turn on “New sign-in” in Alerts.") : "Connect Telegram in Alerts." },
     { ok: tradeKeys === 0 || (keys.data ?? []).every((k) => !k.enabled || (k.ip_allowlist ?? []).length > 0), label: "Trading API keys locked to IP addresses", hint: tradeKeys ? `${tradeKeys} key(s) can trade. Add an IP allowlist to each.` : "No trading keys." },
@@ -61,6 +64,8 @@ function SecurityTab() {
           <Button asChild variant="outline" size="sm"><Link to="/account/api-keys">API keys</Link></Button>
         </div>
       </Card>
+
+      <TwoFactorCard />
 
       <div className="rounded-md border border-border bg-surface px-5">
         <HmeWalletLinkCard showBalances={false} className="py-6" />

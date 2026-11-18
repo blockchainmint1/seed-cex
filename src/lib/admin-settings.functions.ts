@@ -21,8 +21,10 @@ export type LimitMemberRow = {
   note: string | null;
   perWithdrawalUsd: number;
   dailyUsd: number;
+  /** Admin-set level they can't use until they turn on two-factor. */
+  waitingOnTwoFactor: string | null;
 };
-export type LimitEvent = { at: string; action: "tiers" | "set" | "clear"; actorName: string; targetName: string | null; text: string; note: string | null };
+export type LimitEvent = { at: string; action: "tiers" | "set" | "clear" | "reset_2fa"; actorName: string; targetName: string | null; text: string; note: string | null };
 
 /** Withdrawal levels, every member's level and why, and the last 50 changes. Admins only. */
 export const getWithdrawalSettings = createServerFn({ method: "GET" })
@@ -43,19 +45,20 @@ export const getWithdrawalSettings = createServerFn({ method: "GET" })
     const names = new Map((profiles ?? []).map((p) => [p.id, p.display_name || "Unnamed"]));
     const members: LimitMemberRow[] = [];
     for (const p of profiles ?? []) {
-      const history = histories.get(p.id) ?? { accountDays: 0, withdrawals: 0, withdrawnUsd: 0, trades: 0 };
+      const history = histories.get(p.id) ?? { accountDays: 0, withdrawals: 0, withdrawnUsd: 0, trades: 0, twoFactor: false };
       const l = memberLimits(tiers, history, ov.get(p.id) ?? null);
       if (!l) continue;
       members.push({
         id: p.id, name: names.get(p.id)!, hmMemberId: p.hm_member_id, history,
         level: l.tier.level, levelName: l.tier.name, source: l.source, frozen: l.frozen, note: l.note,
-        perWithdrawalUsd: l.perWithdrawalUsd, dailyUsd: l.dailyUsd,
+        perWithdrawalUsd: l.perWithdrawalUsd, dailyUsd: l.dailyUsd, waitingOnTwoFactor: l.waitingOnTwoFactor?.name ?? null,
       });
     }
     const levelName = (n: unknown) => tiers.find((t) => t.level === n)?.name ?? `level ${n}`;
     const history: LimitEvent[] = (events ?? []).map((e) => {
       const d = (e.detail ?? {}) as { tier?: number | null; frozen?: boolean; note?: string };
       const text = e.action === "tiers" ? "changed the withdrawal levels"
+        : e.action === "reset_2fa" ? "reset two-factor sign-in for"
         : e.action === "clear" ? "switched back to automatic levels for"
         : [d.frozen ? "paused withdrawals for" : null, d.tier != null ? `set ${levelName(d.tier)} for` : null].filter(Boolean).join(" and ");
       return {
@@ -63,7 +66,11 @@ export const getWithdrawalSettings = createServerFn({ method: "GET" })
         actorName: names.get(e.actor_id) ?? "Deleted account", targetName: e.target_id ? names.get(e.target_id) ?? "Deleted account" : null,
       };
     });
-    return { me: context.userId, tiers, members, history, pilotAdminOnly: PULSE_WITHDRAW_PILOT_ADMIN_ONLY, maxWaiting: PULSE_MAX_WAITING };
+    const { freshTwoFactor } = await import("./two-factor");
+    const me = members.find((m) => m.id === context.userId);
+    return {
+      me: context.userId, meTwoFactor: Boolean(me?.history.twoFactor), meCodeFresh: freshTwoFactor(context.claims as never, Math.floor(Date.now() / 1000)),
+      tiers, members, history, pilotAdminOnly: PULSE_WITHDRAW_PILOT_ADMIN_ONLY, maxWaiting: PULSE_MAX_WAITING };
   });
 
 const tierSchema = z.object({
@@ -76,6 +83,7 @@ const tierSchema = z.object({
   minWithdrawals: z.number().int().min(0),
   minWithdrawnUsd: z.number().finite().min(0),
   minTrades: z.number().int().min(0),
+  requires2fa: z.boolean(),
 });
 
 /** Replace all withdrawal levels. Checked here and again inside the database, and logged. */
@@ -91,6 +99,7 @@ export const saveWithdrawalTiers = createServerFn({ method: "POST" })
     const rows = tiers.map((t) => ({
       level: t.level, name: t.name.trim(), per_withdrawal_usd: t.perWithdrawalUsd, daily_usd: t.dailyUsd, hold_hours: t.holdHours,
       min_account_days: t.minAccountDays, min_withdrawals: t.minWithdrawals, min_withdrawn_usd: t.minWithdrawnUsd, min_trades: t.minTrades,
+      requires_2fa: t.requires2fa,
     }));
     const { data: code, error } = await supabaseAdmin.rpc("save_withdrawal_tiers", { _actor: context.userId, _tiers: rows });
     if (error) throw new Error(error.message.replace(/^.*?ERROR:\s*/i, "") || "Couldn't save the levels.");
@@ -130,6 +139,44 @@ export const setWithdrawalOverride = createServerFn({ method: "POST" })
       void emailAccountChange(data.userId, "Withdrawal limits", lines, "contact support@honest.money.");
     } catch (e) {
       console.error("withdrawal limit email failed", e);
+    }
+    return { ok: true };
+  });
+
+/**
+ * Remove a member's authenticator after an admin has checked it's really them
+ * (lost phone). The admin must not be the member, must have entered their own
+ * authenticator code in the last 10 minutes, and must leave a note. Logged and
+ * emailed; the member's level drops until they set two-factor up again.
+ */
+export const resetMemberTwoFactor = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ userId: z.string().uuid(), note: z.string().trim().max(300) }).parse(d))
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context as never);
+    const { freshTwoFactor, resetProblem } = await import("./two-factor");
+    const { hasTwoFactor, removeAllFactors } = await import("./two-factor.server");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: target } = await supabaseAdmin.from("profiles").select("id").eq("id", data.userId).maybeSingle();
+    if (!target) throw new Error("That account doesn't exist.");
+    const why = resetProblem({
+      actorId: context.userId, targetId: data.userId, note: data.note,
+      actorFresh: freshTwoFactor(context.claims as never, Math.floor(Date.now() / 1000)),
+      targetOn: await hasTwoFactor(data.userId),
+    });
+    if (why) throw new Error(why);
+    const removed = await removeAllFactors(data.userId);
+    await supabaseAdmin.from("profiles").update({ two_factor_on: false }).eq("id", data.userId);
+    await supabaseAdmin.from("withdrawal_limit_events").insert({
+      actor_id: context.userId, target_id: data.userId, action: "reset_2fa", detail: { note: data.note.trim(), removed },
+    });
+    try {
+      const { emailAccountChange } = await import("./email/send.server");
+      void emailAccountChange(data.userId, "Two-factor sign-in",
+        ["The Seeds team removed the authenticator from your account, as you asked", "Set it up again in Account → Security to get your withdrawal level back"],
+        "contact support@honest.money right away.");
+    } catch (e) {
+      console.error("two-factor reset email failed", e);
     }
     return { ok: true };
   });

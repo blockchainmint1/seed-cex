@@ -7,6 +7,8 @@ import { Note, fieldLabel, inputCls } from "@/components/account/ui";
 import { cancelPulseWithdrawalFn, getPulseWithdrawals, requestPulseWithdrawalFn } from "@/lib/pulse/withdraw.functions";
 import { destinationProblem, PULSE_MIN_GAS_PLS, WITHDRAW_STATUS, type PulseCoin } from "@/lib/pulse/withdraw-rules";
 import { fmtCoin } from "@/components/account/use-pocket";
+import { CodeField } from "@/components/account/CodeField";
+import { proveTwoFactor } from "@/components/account/two-factor";
 
 /** Shared cache: whether Seeds can send PulseChain coins for this member, plus their PulseChain withdrawals. */
 export function usePulseWithdrawals(enabled: boolean) {
@@ -25,15 +27,21 @@ export function PulseWithdraw({ coin, from, balance }: { coin: PulseCoin; from: 
   const [amount, setAmount] = useState("");
   const [to, setTo] = useState("");
   const [checked, setChecked] = useState(false);
+  const [code, setCode] = useState("");
   const [done, setDone] = useState<string | null>(null);
   const refresh = () => qc.invalidateQueries({ queryKey: ["pulse-withdrawals"] });
 
   const submit = useMutation({
-    mutationFn: () => request({ data: { coin, amount: amount.trim(), to: to.trim() } }),
+    mutationFn: async () => {
+      // With two-factor on, a fresh code upgrades this session first; the server checks that proof.
+      if (ctx.data?.twoFactor.on) await proveTwoFactor(code);
+      return request({ data: { coin, amount: amount.trim(), to: to.trim() } });
+    },
     onSuccess: (r) => {
       setDone(`Set up: ${r.amount} ${coin} (about $${r.amountUsd}). Seeds sends it in ${r.holdHours} hours — we emailed you a way to cancel.`);
-      setAmount(""); setTo(""); setChecked(false); refresh();
+      setAmount(""); setTo(""); setChecked(false); setCode(""); refresh();
     },
+    onSettled: () => setCode(""),
   });
   const stop = useMutation({ mutationFn: (id: string) => cancel({ data: { id } }), onSuccess: refresh });
 
@@ -84,9 +92,10 @@ export function PulseWithdraw({ coin, from, balance }: { coin: PulseCoin; from: 
               {!d.level.setByAdmin ? " New members start low; limits rise on their own as you build history." : ""}
             </p>
           </div>
+          {d.twoFactor.on ? <CodeField id={`pulse-code-${coin}`} value={code} onChange={setCode} /> : null}
           {submit.error ? <Note tone="error">{submit.error.message}</Note> : null}
           {done ? <Note tone="ok">{done}</Note> : null}
-          <Button type="submit" disabled={!checked || !amount.trim() || !to.trim() || Boolean(toProblem) || submit.isPending}>
+          <Button type="submit" disabled={!checked || !amount.trim() || !to.trim() || Boolean(toProblem) || submit.isPending || (d.twoFactor.on && code.replace(/\D/g, "").length !== 6)}>
             {submit.isPending ? "Checking…" : `Withdraw ${coin}`}
           </Button>
         </form>

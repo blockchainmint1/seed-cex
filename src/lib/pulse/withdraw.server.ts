@@ -16,6 +16,7 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { limitsFor } from "@/lib/withdraw-limits.server";
 import { nextLevelText } from "@/lib/withdraw-limits";
+import { freshTwoFactor, withdrawalTwoFactorProblem, type SessionClaims } from "@/lib/two-factor";
 import {
   destinationProblem, feeTooHigh, isPulseCoin, parseUnits, PULSE_CHAIN_ID, PULSE_COINS, PULSE_CONFIRMATIONS,
   PULSE_MAX_WAITING, PULSE_WITHDRAW_PILOT_ADMIN_ONLY, pulseSendBlocker, unitsToNumber, withdrawalProblem, type PulseCoin,
@@ -90,6 +91,7 @@ export async function pulseWithdrawContext(userId: string, isAdmin: boolean) {
     pilotAdminOnly: PULSE_WITHDRAW_PILOT_ADMIN_ONLY,
     limits: { perWithdrawalUsd: lim.perWithdrawalUsd, dailyUsd: lim.dailyUsd, maxWaiting: PULSE_MAX_WAITING },
     level: { name: lim.tier.name, number: lim.tier.level, setByAdmin: lim.source === "admin", next: nextLevelText(lim) },
+    twoFactor: { on: lim.history.twoFactor },
     holdHours: lim.holdHours,
     withdrawals: data ?? [],
   };
@@ -97,7 +99,7 @@ export async function pulseWithdrawContext(userId: string, isAdmin: boolean) {
 
 export type PulseWithdrawInput = { coin: string; amount: string; to: string };
 
-export async function requestPulseWithdrawal(userId: string, isAdmin: boolean, input: PulseWithdrawInput) {
+export async function requestPulseWithdrawal(userId: string, isAdmin: boolean, input: PulseWithdrawInput, claims: SessionClaims | null) {
   if (!isPulseCoin(input.coin)) throw new Error("Seeds only sends PLS and pHEX on PulseChain.");
   const coin = input.coin;
   const spec = PULSE_COINS[coin];
@@ -106,6 +108,9 @@ export async function requestPulseWithdrawal(userId: string, isAdmin: boolean, i
   if (lim.frozen) throw new Error(FROZEN);
   const blocker = pulseSendBlocker({ link: linkLike(link), isAdmin });
   if (blocker) throw new Error(blocker);
+  // Members with two-factor on approve every withdrawal with a fresh authenticator code (read from the signed session).
+  const tf = withdrawalTwoFactorProblem({ on: lim.history.twoFactor, fresh: freshTwoFactor(claims, Math.floor(Date.now() / 1000)), levelNeeds2fa: lim.tier.requires2fa });
+  if (tf) throw new Error(tf);
   const from = link!.addresses.EVM!;
   const to = input.to.trim();
   const bad = destinationProblem(to, from);
