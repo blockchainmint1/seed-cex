@@ -15,6 +15,14 @@ import { getReferencePrices } from "@/lib/cmc.functions";
 import { useSession } from "@/hooks/use-session";
 import { getPair, PAIRS, type PairId } from "@/lib/chains";
 import { fmtAgo, fmtAmount, fmtPrice, fmtTime } from "@/lib/format";
+import { MarketOrderConfirm } from "@/components/trade/MarketOrderConfirm";
+import {
+  DEFAULT_MARKET_SLIPPAGE_PCT,
+  MARKET_SLIPPAGE_OPTIONS,
+  estimateMarketFill,
+  marketOrderNotes,
+  withoutOwnOrders,
+} from "@/lib/market-order";
 
 function Sparkline({ points }: { points: number[] }) {
   if (points.length < 2) {
@@ -126,6 +134,9 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
   });
 
   const [side, setSide] = useState<"buy" | "sell">("buy");
+  const [orderType, setOrderType] = useState<"limit" | "market">("limit");
+  const [slippagePct, setSlippagePct] = useState<number>(DEFAULT_MARKET_SLIPPAGE_PCT);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [price, setPrice] = useState("");
   const [amount, setAmount] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
@@ -142,21 +153,56 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
 
   const submit = useMutation({
     mutationFn: async () => {
-      const p = Number(price);
       const a = Number(amount);
-      if (!Number.isFinite(p) || p <= 0) throw new Error("Enter a valid price");
       if (!Number.isFinite(a) || a <= 0) throw new Error("Enter a valid amount");
-      return submitOrder({ data: { pair: PAIR, side, price: p, amount: a } });
+      if (orderType === "market") {
+        return submitOrder({ data: { type: "market", pair: PAIR, side, amount: a, slippagePct } });
+      }
+      const p = Number(price);
+      if (!Number.isFinite(p) || p <= 0) throw new Error("Enter a valid price");
+      return submitOrder({ data: { type: "limit", pair: PAIR, side, price: p, amount: a } });
     },
     onSuccess: (res) => {
       setFormError(null);
-      setReceipt(
-        res.filled > 0
-          ? `Filled ${fmtAmount(res.filled, 4)} ${pair.base} across ${res.tradeIds.length} escrowed trade(s)${
-              res.resting > 0 ? `, ${fmtAmount(res.resting, 4)} resting on the book` : ""
-            }.`
-          : "Order resting on the book — no crossing liquidity yet.",
-      );
+      const failed = res.settlements.filter((st) => st.legs.some((l) => !l.ok));
+      const unsettled = failed.length;
+      const reason = failed[0]?.legs.find((l) => !l.ok)?.error?.replace(/^Trade cancelled, nothing was sent: /, "");
+      const settleNote =
+        unsettled > 0
+          ? ` ${unsettled} trade(s) couldn't settle and were cancelled; nothing was sent for those${reason ? ` (${reason})` : ""}.`
+          : "";
+      if (res.tradeIds.length > 0 && unsettled === res.tradeIds.length) {
+        // Matched, but no trade could settle: say so plainly, nothing moved.
+        setReceipt(null);
+        setFormError(
+          `Your order matched ${fmtAmount(res.filled, 4)} ${pair.base}, but the trade couldn't settle, so it was cancelled and nothing was sent${
+            reason ? `: ${reason}` : "."
+          }`,
+        );
+        setAmount("");
+        refreshAll();
+        return;
+      }
+      if (res.type === "market") {
+        const did = side === "buy" ? "Bought" : "Sold";
+        setReceipt(
+          `${did} ${fmtAmount(res.filled, 4)} ${pair.base} at an average of ${
+            res.avgPrice != null ? px(res.avgPrice) : "—"
+          } ${pair.quote} across ${res.tradeIds.length} trade(s).${
+            res.cancelled > 1e-8
+              ? ` The other ${fmtAmount(res.cancelled, 4)} ${pair.base} couldn't fill within your ${slippagePct}% price protection and was cancelled.`
+              : ""
+          }${settleNote}`,
+        );
+      } else {
+        setReceipt(
+          res.filled > 0
+            ? `Filled ${fmtAmount(res.filled, 4)} ${pair.base} across ${res.tradeIds.length} escrowed trade(s)${
+                res.resting > 0 ? `, ${fmtAmount(res.resting, 4)} resting on the book` : ""
+              }.${settleNote}`
+            : "Order resting on the book — no crossing liquidity yet.",
+        );
+      }
       setAmount("");
       refreshAll();
     },
@@ -176,6 +222,43 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
     const a = Number(amount);
     return Number.isFinite(p) && Number.isFinite(a) ? p * a : 0;
   }, [price, amount]);
+
+  // Market estimate: walk the other side of the book, minus my own orders
+  // (they never trade against me).
+  const marketEstimate = useMemo(() => {
+    const levels = (side === "buy" ? book.data?.asks : book.data?.bids) ?? [];
+    const opposite = side === "buy" ? "sell" : "buy";
+    const own = (myOrders.data ?? [])
+      .filter((o) => o.pair === PAIR && o.side === opposite && (o.status === "open" || o.status === "partial"))
+      .map((o) => ({ price: Number(o.price), remaining: Number(o.amount) - Number(o.filled) }));
+    const a = Number(amount);
+    return estimateMarketFill(side, withoutOwnOrders(levels, own), Number.isFinite(a) ? a : 0, slippagePct);
+  }, [side, book.data, myOrders.data, amount, slippagePct, PAIR]);
+  const marketCheck = useMemo(
+    () =>
+      marketOrderNotes(marketEstimate, {
+        base: pair.base,
+        quote: pair.quote,
+        refPrice: pair.quote === "TSD" ? refPrice : null,
+        fmt: (n) => fmtAmount(n, 4),
+      }),
+    [marketEstimate, pair.base, pair.quote, refPrice],
+  );
+
+  const onTicketSubmit = () => {
+    setReceipt(null);
+    if (orderType === "market") {
+      const a = Number(amount);
+      if (!Number.isFinite(a) || a <= 0) {
+        setFormError("Enter a valid amount");
+        return;
+      }
+      setFormError(null);
+      setConfirmOpen(true);
+      return;
+    }
+    submit.mutate();
+  };
 
   const maxTotal = Math.max(
     ...(book.data?.bids.map((b) => b.total) ?? [1]),
@@ -320,7 +403,7 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
             )}
           </Panel>
 
-          <Panel title="Your open orders">
+          <Panel title="Your orders">
             {!user ? (
               <p className="p-4 font-mono text-xs text-muted-foreground">Sign in to place orders.</p>
             ) : (myOrders.data ?? []).filter((o) => o.pair === PAIR).length === 0 ? (
@@ -331,6 +414,7 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
                 <thead>
                   <tr className="border-b border-border text-[10px] tracking-[0.16em] text-muted-foreground uppercase">
                     <th className="px-4 py-2 text-left">Side</th>
+                    <th className="px-4 py-2 text-left">Type</th>
                     <th className="px-4 py-2 text-right">Price</th>
                     <th className="px-4 py-2 text-right">Filled / Size</th>
                     <th className="px-4 py-2 text-right">Status</th>
@@ -343,11 +427,22 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
                       <td className={`px-4 py-2 ${o.side === "buy" ? "text-bid" : "text-ask"}`}>
                         {o.side.toUpperCase()}
                       </td>
-                      <td className="px-4 py-2 text-right tabular-nums">{px(o.price)}</td>
+                      <td className="px-4 py-2 text-muted-foreground">{o.order_type}</td>
+                      <td className="px-4 py-2 text-right tabular-nums">
+                        {o.order_type === "market" ? (
+                          <span title={`Price protection ${px(o.price)}`}>market</span>
+                        ) : (
+                          px(o.price)
+                        )}
+                      </td>
                       <td className="px-4 py-2 text-right tabular-nums">
                         {fmtAmount(o.filled, 4)} / {fmtAmount(o.amount, 4)}
                       </td>
-                      <td className="px-4 py-2 text-right text-muted-foreground">{o.status}</td>
+                      <td className="px-4 py-2 text-right text-muted-foreground">
+                        {o.order_type === "market" && o.status === "cancelled" && Number(o.filled) > 0
+                          ? "part filled"
+                          : o.status}
+                      </td>
                       <td className="px-4 py-2 text-right">
                         {o.status === "open" || o.status === "partial" ? (
                           <button
@@ -435,21 +530,108 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
                 ))}
               </div>
 
-              <label className="font-mono text-[10px] tracking-[0.16em] text-muted-foreground uppercase">
-                Price ({pair.quote})
-              </label>
-              <input
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                inputMode="decimal"
-                maxLength={20}
-                className="mt-1 mb-3 w-full rounded-sm border border-input bg-background px-3 py-2 num text-sm outline-none focus:border-primary"
-              />
+              <div className="mb-1 grid grid-cols-2 rounded-sm border border-border p-0.5" role="tablist" aria-label="Order type">
+                {(["limit", "market"] as const).map((t) => (
+                  <button
+                    key={t}
+                    role="tab"
+                    aria-selected={orderType === t}
+                    onClick={() => {
+                      setOrderType(t);
+                      setFormError(null);
+                    }}
+                    className={`rounded-[2px] px-3 py-1.5 font-mono text-[11px] tracking-[0.16em] uppercase ${
+                      orderType === t ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+              <p className="mb-4 text-xs leading-relaxed text-muted-foreground">
+                {orderType === "limit"
+                  ? "You set the price. It waits on the book until someone matches it."
+                  : `${side === "buy" ? "Buy" : "Sell"} right now at the best price available. Whatever can't fill is cancelled.`}
+              </p>
 
-              <label className="font-mono text-[10px] tracking-[0.16em] text-muted-foreground uppercase">
+              {orderType === "limit" ? (
+                <>
+                  <div className="flex items-baseline justify-between">
+                    <label
+                      htmlFor="ticket-price"
+                      className="font-mono text-[10px] tracking-[0.16em] text-muted-foreground uppercase"
+                    >
+                      Price ({pair.quote})
+                    </label>
+                    {(side === "buy" ? book.data?.asks[0] : book.data?.bids[0]) ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const best = side === "buy" ? book.data?.asks[0]?.price : book.data?.bids[0]?.price;
+                          if (best != null) setPrice(String(best));
+                        }}
+                        className="font-mono text-[10px] text-primary hover:underline"
+                      >
+                        use best {side === "buy" ? "ask" : "bid"}
+                      </button>
+                    ) : null}
+                  </div>
+                  <input
+                    id="ticket-price"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                    inputMode="decimal"
+                    maxLength={20}
+                    className="mt-1 mb-3 w-full rounded-sm border border-input bg-background px-3 py-2 num text-sm outline-none focus:border-primary"
+                  />
+                </>
+              ) : (
+                <>
+                  <p className="font-mono text-[10px] tracking-[0.16em] text-muted-foreground uppercase">
+                    Price ({pair.quote})
+                  </p>
+                  <p className="mt-1 mb-3 rounded-sm border border-dashed border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                    Best available
+                    {marketEstimate.bestPrice != null ? (
+                      <span className="num text-foreground"> · now {px(marketEstimate.bestPrice)}</span>
+                    ) : (
+                      <span> · nobody {side === "buy" ? "selling" : "buying"} yet</span>
+                    )}
+                  </p>
+                  <p className="font-mono text-[10px] tracking-[0.16em] text-muted-foreground uppercase">
+                    Price protection
+                  </p>
+                  <div className="mt-1 mb-1 flex gap-1.5">
+                    {MARKET_SLIPPAGE_OPTIONS.map((o) => (
+                      <button
+                        key={o}
+                        type="button"
+                        aria-pressed={slippagePct === o}
+                        onClick={() => setSlippagePct(o)}
+                        className={`flex-1 rounded-sm border px-2 py-1 font-mono text-[11px] ${
+                          slippagePct === o
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {o}%
+                      </button>
+                    ))}
+                  </div>
+                  <p className="mb-3 text-[11px] leading-relaxed text-muted-foreground">
+                    The most the price may move from the best {side === "buy" ? "ask" : "bid"} before Seeds stops filling.
+                  </p>
+                </>
+              )}
+
+              <label
+                htmlFor="ticket-amount"
+                className="font-mono text-[10px] tracking-[0.16em] text-muted-foreground uppercase"
+              >
                 Amount ({pair.base})
               </label>
               <input
+                id="ticket-amount"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 inputMode="decimal"
@@ -457,10 +639,35 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
                 className="mt-1 mb-3 w-full rounded-sm border border-input bg-background px-3 py-2 num text-sm outline-none focus:border-primary"
               />
 
-              <p className="mb-4 flex justify-between font-mono text-[11px] text-muted-foreground">
-                <span>Notional</span>
-                <span className="tabular-nums">{fmtAmount(notional)} {pair.quote}</span>
-              </p>
+              {orderType === "limit" ? (
+                <p className="mb-4 flex justify-between font-mono text-[11px] text-muted-foreground">
+                  <span>Notional</span>
+                  <span className="tabular-nums">{fmtAmount(notional)} {pair.quote}</span>
+                </p>
+              ) : (
+                <dl className="mb-4 space-y-1 font-mono text-[11px] text-muted-foreground">
+                  <div className="flex justify-between">
+                    <dt>Est. average price</dt>
+                    <dd className="tabular-nums text-foreground">
+                      {marketEstimate.avgPrice != null ? px(marketEstimate.avgPrice) : "—"}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt>{side === "buy" ? "Est. cost" : "Est. you get"}</dt>
+                    <dd className="tabular-nums text-foreground">
+                      {fmtAmount(marketEstimate.total)} {pair.quote}
+                    </dd>
+                  </div>
+                  {marketEstimate.unfilled > 1e-8 && marketEstimate.filled > 1e-8 ? (
+                    <div className="flex justify-between text-warn">
+                      <dt>Would cancel</dt>
+                      <dd className="tabular-nums">
+                        {fmtAmount(marketEstimate.unfilled, 4)} {pair.base}
+                      </dd>
+                    </div>
+                  ) : null}
+                </dl>
+              )}
 
               {formError ? (
                 <p className="mb-3 rounded-sm border border-destructive/40 bg-destructive/10 px-3 py-2 font-mono text-[11px] text-destructive">
@@ -475,13 +682,17 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
 
               {user ? (
                 <button
-                  onClick={() => submit.mutate()}
+                  onClick={onTicketSubmit}
                   disabled={submit.isPending}
                   className={`w-full rounded-sm px-4 py-3 font-mono text-xs font-semibold tracking-[0.16em] uppercase disabled:opacity-50 ${
                     side === "buy" ? "bg-bid text-background" : "bg-ask text-background"
                   }`}
                 >
-                  {submit.isPending ? "Matching…" : `${side} ${pair.base}`}
+                  {submit.isPending
+                    ? "Matching…"
+                    : orderType === "market"
+                      ? `${side} ${pair.base} at market`
+                      : `${side} ${pair.base}`}
                 </button>
               ) : (
                 <Link
@@ -493,6 +704,22 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
                 </Link>
               )}
             </div>
+            <MarketOrderConfirm
+              open={confirmOpen}
+              onOpenChange={setConfirmOpen}
+              estimate={marketEstimate}
+              notes={marketCheck.notes}
+              canPlace={marketCheck.canPlace}
+              base={pair.base}
+              quote={pair.quote}
+              slippagePct={slippagePct}
+              px={(n) => px(n)}
+              onConfirm={() => submit.mutate()}
+              onUseLimit={() => {
+                setOrderType("limit");
+                setConfirmOpen(false);
+              }}
+            />
           </Panel>
 
           <Panel title="Trade tape">

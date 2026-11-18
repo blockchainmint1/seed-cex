@@ -7,6 +7,7 @@
  */
 
 import { getPair, PAIRS, type PairDef } from "@/lib/chains";
+import { MAX_MARKET_SLIPPAGE_PCT } from "@/lib/market-order";
 import { symbolOf, filtersFor } from "./v1.server";
 
 const n8 = (v: number) => v.toFixed(8);
@@ -108,7 +109,7 @@ export async function apiOpenOrders(userId: string, pair: PairDef | null) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   let q = supabaseAdmin
     .from("orders")
-    .select("id, pair, side, price, amount, filled, status, created_at, updated_at")
+    .select("id, pair, side, price, amount, filled, status, order_type, created_at, updated_at")
     .eq("user_id", userId)
     .in("status", ["open", "partial"])
     .order("created_at", { ascending: false })
@@ -116,21 +117,39 @@ export async function apiOpenOrders(userId: string, pair: PairDef | null) {
   if (pair) q = q.eq("pair", pair.id);
   const { data, error } = await q;
   if (error) throw new Error(error.message);
-  return (data ?? []).map(serializeOrder);
+  return (data ?? []).map((o) => serializeOrder(o));
 }
 
 export async function apiAllOrders(userId: string, pair: PairDef | null, limit: number) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   let q = supabaseAdmin
     .from("orders")
-    .select("id, pair, side, price, amount, filled, status, created_at, updated_at")
+    .select("id, pair, side, price, amount, filled, status, order_type, created_at, updated_at")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(limit);
   if (pair) q = q.eq("pair", pair.id);
   const { data, error } = await q;
   if (error) throw new Error(error.message);
-  return (data ?? []).map(serializeOrder);
+  const rows = data ?? [];
+  // Market orders store their price protection, not a fill price, so their
+  // quote total comes from the trades they actually made.
+  const marketIds = rows.filter((o) => o.order_type === "market").map((o) => o.id);
+  const quoteByOrder = new Map<string, number>();
+  if (marketIds.length > 0) {
+    const { data: fills } = await supabaseAdmin
+      .from("trades")
+      .select("taker_order_id, price, amount, status")
+      .in("taker_order_id", marketIds);
+    for (const t of fills ?? []) {
+      if (!t.taker_order_id || t.status === "timed_out") continue;
+      quoteByOrder.set(
+        t.taker_order_id,
+        (quoteByOrder.get(t.taker_order_id) ?? 0) + Number(t.amount) * Number(t.price),
+      );
+    }
+  }
+  return rows.map((o) => serializeOrder(o, quoteByOrder.get(o.id)));
 }
 
 const STATUS_MAP: Record<string, string> = {
@@ -148,20 +167,24 @@ function serializeOrder(o: {
   amount: number;
   filled: number;
   status: string;
+  order_type?: string | null;
   created_at: string;
   updated_at: string;
-}) {
+}, marketQuoteQty?: number) {
   const pair = pairBySymbolId(o.pair);
+  const market = o.order_type === "market";
   return {
     symbol: symbolOf(pair),
     orderId: o.id,
-    price: n8(Number(o.price)),
+    // Market orders have no limit price (Binance convention: "0").
+    price: market ? n8(0) : n8(Number(o.price)),
     origQty: n8(Number(o.amount)),
     executedQty: n8(Number(o.filled)),
-    cummulativeQuoteQty: n8(Number(o.filled) * Number(o.price)),
+    cummulativeQuoteQty: n8(market ? (marketQuoteQty ?? 0) : Number(o.filled) * Number(o.price)),
     status: STATUS_MAP[o.status] ?? o.status.toUpperCase(),
-    timeInForce: "GTC",
-    type: "LIMIT",
+    timeInForce: market ? "IOC" : "GTC",
+    type: market ? "MARKET" : "LIMIT",
+    ...(market ? { seedsPriceProtection: n8(Number(o.price)) } : {}),
     side: o.side.toUpperCase(),
     time: new Date(o.created_at).getTime(),
     updateTime: new Date(o.updated_at).getTime(),
@@ -209,20 +232,19 @@ export async function apiMyTrades(userId: string, pair: PairDef | null, limit: n
   });
 }
 
-export type PlaceParams = {
-  symbol: PairDef;
-  side: "buy" | "sell";
-  price: number;
-  quantity: number;
-};
+export type PlaceParams =
+  | { type: "limit"; symbol: PairDef; side: "buy" | "sell"; price: number; quantity: number }
+  | { type: "market"; symbol: PairDef; side: "buy" | "sell"; quantity: number; maxSlippagePct?: number };
 
 export async function apiPlaceOrder(userId: string, p: PlaceParams) {
   const { matchOrder } = await import("@/lib/trading.server");
-  const result = await matchOrder(userId, p.symbol.id, {
-    side: p.side,
-    price: p.price,
-    amount: p.quantity,
-  });
+  const result = await matchOrder(
+    userId,
+    p.symbol.id,
+    p.type === "market"
+      ? { type: "market", side: p.side, amount: p.quantity, slippagePct: p.maxSlippagePct }
+      : { type: "limit", side: p.side, price: p.price, amount: p.quantity },
+  );
 
   let settlements: Awaited<ReturnType<typeof import("@/lib/autosettle.server").autoSettleTrades>> = [];
   if (result.tradeIds.length > 0) {
@@ -231,17 +253,27 @@ export async function apiPlaceOrder(userId: string, p: PlaceParams) {
   }
 
   const executed = result.filled;
+  const market = p.type === "market";
   return {
     symbol: symbolOf(p.symbol),
     orderId: result.orderId,
     transactTime: Date.now(),
-    price: n8(p.price),
+    price: n8(market ? 0 : p.price),
     origQty: n8(p.quantity),
     executedQty: n8(executed),
-    cummulativeQuoteQty: n8(executed * p.price),
-    status: executed >= p.quantity - 1e-8 ? "FILLED" : executed > 0 ? "PARTIALLY_FILLED" : "NEW",
-    timeInForce: "GTC",
-    type: "LIMIT",
+    cummulativeQuoteQty: n8(executed * (result.avgPrice ?? 0)),
+    status: market
+      ? executed >= p.quantity - 1e-8
+        ? "FILLED"
+        : "EXPIRED"
+      : executed >= p.quantity - 1e-8
+        ? "FILLED"
+        : executed > 0
+          ? "PARTIALLY_FILLED"
+          : "NEW",
+    timeInForce: market ? "IOC" : "GTC",
+    type: market ? "MARKET" : "LIMIT",
+    ...(market ? { seedsPriceProtection: n8(result.limitPrice) } : {}),
     side: p.side.toUpperCase(),
     fills: result.tradeIds.map((id) => ({ tradeId: id })),
     settlements,
@@ -256,11 +288,23 @@ export async function apiCancelOrder(userId: string, orderId: string) {
     .eq("id", orderId)
     .eq("user_id", userId)
     .in("status", ["open", "partial"])
-    .select("id, pair, side, price, amount, filled, status, created_at, updated_at")
+    .select("id, pair, side, price, amount, filled, status, order_type, created_at, updated_at")
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) return null;
   return serializeOrder(data);
+}
+
+/** Validate a MARKET order: quantity filters only (there is no price). */
+export function validateMarketOrder(pair: PairDef, qty: number, maxSlippagePct: number | null): string | null {
+  const f = filtersFor(pair);
+  if (!Number.isFinite(qty) || qty <= 0) return "Invalid quantity";
+  if (qty < Number(f.minQty)) return `Quantity below LOT_SIZE minQty ${f.minQty}`;
+  if (qty > Number(f.maxQty)) return `Quantity above LOT_SIZE maxQty ${f.maxQty}`;
+  if (maxSlippagePct != null && (!Number.isFinite(maxSlippagePct) || maxSlippagePct <= 0 || maxSlippagePct > MAX_MARKET_SLIPPAGE_PCT)) {
+    return `maxSlippagePct must be above 0 and at most ${MAX_MARKET_SLIPPAGE_PCT}`;
+  }
+  return null;
 }
 
 /** Validate an incoming order against the symbol's published filters. */

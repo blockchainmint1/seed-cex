@@ -9,11 +9,14 @@
  */
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getLeg, getPair, type LegId } from "@/lib/chains";
+import { clampSlippagePct, marketFinalStatus, protectionPrice } from "@/lib/market-order";
 
 type Side = "buy" | "sell";
 type Leg = LegId;
 
-export type PlaceOrderInput = { side: Side; price: number; amount: number };
+export type PlaceOrderInput =
+  | { type?: "limit"; side: Side; price: number; amount: number }
+  | { type: "market"; side: Side; amount: number; slippagePct?: number };
 
 /** Deterministic stand-in for a real 2-of-3 multisig address (Phase 2). */
 function simulatedEscrowAddress(leg: Leg, tradeId: string): string {
@@ -27,7 +30,9 @@ export async function matchOrder(userId: string, pair: string, input: PlaceOrder
   // Which asset the quote leg delivers: TSD (Omni #39) or USDC (EVM).
   const { baseLeg, quoteLeg } = getPair(pair);
 
-  // Best-priced resting orders that cross our limit.
+  const isMarket = input.type === "market";
+
+  // Best-priced resting orders on the other side, best first.
   let query = supabaseAdmin
     .from("orders")
     .select("id, user_id, side, price, amount, filled, status")
@@ -35,10 +40,12 @@ export async function matchOrder(userId: string, pair: string, input: PlaceOrder
     .eq("side", opposite)
     .in("status", ["open", "partial"]);
 
-  query =
-    input.side === "buy"
-      ? query.lte("price", input.price).order("price", { ascending: true })
-      : query.gte("price", input.price).order("price", { ascending: false });
+  // A limit order only looks at orders that cross its price. A market order
+  // looks at the whole side, then caps itself at its price protection.
+  if (!isMarket) {
+    query = input.side === "buy" ? query.lte("price", input.price) : query.gte("price", input.price);
+  }
+  query = query.order("price", { ascending: input.side === "buy" });
 
   const { data: resting, error: restingError } = await query
     .order("created_at", { ascending: true })
@@ -46,7 +53,26 @@ export async function matchOrder(userId: string, pair: string, input: PlaceOrder
   if (restingError) throw new Error(restingError.message);
 
   // Own orders never self-trade.
-  const candidates = (resting ?? []).filter((o) => o.user_id !== userId);
+  let candidates = (resting ?? []).filter((o) => o.user_id !== userId);
+
+  let price: number;
+  if (isMarket) {
+    const best = candidates[0] ? Number(candidates[0].price) : null;
+    if (best == null) {
+      // Nothing is written: a market order with nothing to take is refused.
+      throw new Error(
+        input.side === "buy"
+          ? "Nobody is selling right now, so a market buy can't fill. Try a limit order instead."
+          : "Nobody is buying right now, so a market sell can't fill. Try a limit order instead.",
+      );
+    }
+    price = protectionPrice(input.side, best, clampSlippagePct(input.slippagePct));
+    candidates = candidates.filter((o) =>
+      input.side === "buy" ? Number(o.price) <= price + 1e-12 : Number(o.price) >= price - 1e-12,
+    );
+  } else {
+    price = input.price;
+  }
 
   const { data: taker, error: takerError } = await supabaseAdmin
     .from("orders")
@@ -54,14 +80,19 @@ export async function matchOrder(userId: string, pair: string, input: PlaceOrder
       user_id: userId,
       pair,
       side: input.side,
-      price: input.price,
+      // For a market order this is the price protection: the worst price it
+      // may fill at. It is never on the book (status starts cancelled).
+      price,
       amount: input.amount,
+      order_type: isMarket ? "market" : "limit",
+      status: isMarket ? "cancelled" : "open",
     })
     .select("id")
     .single();
   if (takerError) throw new Error(takerError.message);
 
   let remaining = input.amount;
+  let quoteTotal = 0;
   const tradeIds: string[] = [];
   const fills: Array<{ makerId: string; amount: number; price: number }> = [];
 
@@ -128,6 +159,7 @@ export async function matchOrder(userId: string, pair: string, input: PlaceOrder
     });
 
     remaining -= fillAmount;
+    quoteTotal += fillAmount * fillPrice;
     tradeIds.push(trade.id);
     if (maker.user_id) fills.push({ makerId: maker.user_id, amount: fillAmount, price: fillPrice });
   }
@@ -137,7 +169,14 @@ export async function matchOrder(userId: string, pair: string, input: PlaceOrder
     .from("orders")
     .update({
       filled: takerFilled,
-      status: remaining <= 1e-8 ? "filled" : takerFilled > 0 ? "partial" : "open",
+      // Market orders never rest: whatever didn't fill is cancelled.
+      status: isMarket
+        ? marketFinalStatus(input.amount, takerFilled)
+        : remaining <= 1e-8
+          ? "filled"
+          : takerFilled > 0
+            ? "partial"
+            : "open",
     })
     .eq("id", taker.id);
 
@@ -158,8 +197,13 @@ export async function matchOrder(userId: string, pair: string, input: PlaceOrder
 
   return {
     orderId: taker.id,
+    type: isMarket ? ("market" as const) : ("limit" as const),
     filled: takerFilled,
-    resting: remaining,
+    // Limit leftovers rest on the book; market leftovers are cancelled.
+    resting: isMarket ? 0 : remaining,
+    cancelled: isMarket ? remaining : 0,
+    avgPrice: takerFilled > 1e-8 ? quoteTotal / takerFilled : null,
+    limitPrice: price,
     tradeIds,
   };
 }

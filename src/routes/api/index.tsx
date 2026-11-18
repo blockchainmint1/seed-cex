@@ -81,7 +81,7 @@ type Status = "Live" | "Being built";
 const STATUS: { area: string; status: Status; note: string }[] = [
   { area: "Public market data", status: "Live", note: "Depth, trades, klines, tickers, exchange info, SSE stream and the CoinMarketCap feed. No key needed." },
   { area: "Signed reads", status: "Live", note: "Account, open orders, order history, order status and your trades." },
-  { area: "Order entry and cancel", status: "Live", note: "LIMIT / GTC orders join the same book as the website and match immediately." },
+  { area: "Order entry and cancel", status: "Live", note: "LIMIT / GTC orders join the same book as the website and match immediately. MARKET orders take the best prices within a price protection (default 2%) and cancel whatever is left." },
   { area: "Settlement from HME Wallet trading pockets", status: "Being built", note: "Fills from accounts that trade through a linked HME Wallet pocket record as matched and wait for settlement. Fills settle on-chain right away only for accounts that still hold an earlier Seeds trading authorization." },
   { area: "Withdrawals", status: "Live", note: "Not possible through the API, by design. There is no withdrawal endpoint and no scope that adds one." },
 ];
@@ -103,7 +103,7 @@ const ENDPOINTS: Array<[string, string, string, string]> = [
   ["GET", `${V1}/allOrders`, "10", "SIGNED, read. Order history, optional `symbol`, `limit` (max 1000)."],
   ["GET", `${V1}/order`, "4", "SIGNED, read. One order by `orderId`."],
   ["GET", `${V1}/myTrades`, "10", "SIGNED, read. Fills with settlement legs and txids, `limit` (max 1000)."],
-  ["POST", `${V1}/order`, "20", "SIGNED, trade. New LIMIT / GTC order."],
+  ["POST", `${V1}/order`, "20", "SIGNED, trade. New LIMIT / GTC or MARKET order."],
   ["DELETE", `${V1}/order`, "4", "SIGNED, trade. Cancel by `orderId`."],
 ];
 
@@ -408,12 +408,19 @@ print(signed("GET", "/account"))`}</Code>
       <Section id="recipes" title="Recipes">
         <p>These snippets use the Node.js <C>signed(method, path, params)</C> helper above. Reads require read scope; order creation and cancellation require trade scope. Every invocation signs a fresh timestamp.</p>
         <h3 className="font-semibold text-foreground">1. Place a limit order</h3>
-        <p>Read <C>/exchangeInfo</C> first and choose a symbol, price and quantity matching its filters. This example is a real BUY if executed, not a sandbox. Only LIMIT and GTC are supported (and are the defaults). The response includes <C>orderId</C>, <C>fills</C> and <C>settlements</C>; retain them.</p>
+        <p>Read <C>/exchangeInfo</C> first and choose a symbol, price and quantity matching its filters. This example is a real BUY if executed, not a sandbox. LIMIT with GTC is the default; MARKET is shown in the next example. The response includes <C>orderId</C>, <C>fills</C> and <C>settlements</C>; retain them.</p>
         <Code>{`const placed = await signed("POST", "/order", {
   symbol: "${EXAMPLE}", side: "BUY", type: "LIMIT", timeInForce: "GTC",
   price: "0.05", quantity: "100",
 });
 console.log(placed);`}</Code>
+        <h3 className="font-semibold text-foreground">1b. Place a market order</h3>
+        <p>A MARKET order sends <C>quantity</C> only, with no <C>price</C> or <C>timeInForce</C>. It fills against the best resting orders right away, never below (sell) or above (buy) <C>maxSlippagePct</C> from the best price at the moment it arrives (default 2, max 10). Anything left is cancelled and the order ends <C>FILLED</C> or <C>EXPIRED</C>; it never rests on the book. If nothing is on the other side, it is rejected with <C>-2010</C>. The response carries <C>seedsPriceProtection</C> (the worst price allowed) and a real <C>cummulativeQuoteQty</C>.</p>
+        <Code>{`const bought = await signed("POST", "/order", {
+  symbol: "${EXAMPLE}", side: "BUY", type: "MARKET",
+  quantity: "100", maxSlippagePct: "2",
+});
+console.log(bought.status, bought.executedQty, bought.cummulativeQuoteQty);`}</Code>
         <p>A match may still await settlement. After a timeout, inspect open orders, order history and fills before deciding whether to place again. There is no client order ID/idempotency parameter in the handler; blindly retrying can create a second order.</p>
         <h3 className="font-semibold text-foreground">2. Cancel an order</h3>
         <Code>{`// Use the orderId returned by your own order, not a symbol or client ID.
@@ -467,7 +474,7 @@ await pollTrades(); // Schedule subsequent calls within your weight budget.`}</C
           <li><C>-2015</C> — “Missing X-SEEDS-APIKEY header” or “Invalid or disabled API key”: send the key ID (not the secret), check the environment and whether the key is disabled/deleted.</li>
           <li><C>-1102</C> — “Missing signature”, “Missing timestamp” or “Missing orderId”: supply the required value in the correct location. Always explicitly send a numeric timestamp; omission is not a valid signing strategy.</li>
           <li><C>-1003</C>, HTTP 429 — “Request weight limit exceeded, back off”: stop sending requests until the next fixed minute window, add jitter, and reduce polling across all processes sharing that key. The budget is 1200 weighted units, not 1200 calls.</li>
-          <li><C>-1013</C>: check the price/quantity validation message and <C>/exchangeInfo</C> filters. <C>-1014</C>: use LIMIT/GTC. <C>-1121</C>: use a listed symbol. <C>-1130</C>: use BUY/SELL.</li>
+          <li><C>-1013</C>: check the price/quantity validation message and <C>/exchangeInfo</C> filters. <C>-1014</C>: use LIMIT (GTC) or MARKET (no timeInForce, no price). <C>-1121</C>: use a listed symbol. <C>-1130</C>: use BUY/SELL.</li>
           <li><C>-2010</C>: read the order rejection message and check your linked trading setup/authorizations. Do not treat a pending settlement as a settled transfer. <C>-2011</C>: refresh order status; it may already be filled/canceled or not yours. <C>-2013</C>: verify the order ID and account; the status handler searches the latest 1000 orders.</li>
           <li><C>-1100</C>: check the named parameter, such as kline interval. <C>-1000</C>: back off on server failures; for an ambiguous order submission, reconcile before retrying.</li>
         </ul>
@@ -539,7 +546,7 @@ await pollTrades(); // Schedule subsequent calls within your weight budget.`}</C
         <Code>{`PRICE_FILTER  tickSize 0.000001   minPrice 0.00000001   maxPrice 1000000
 LOT_SIZE      stepSize 0.00000001 minQty 0.0001         maxQty 100000000
 MIN_NOTIONAL  1.00 (price × quantity, in the quote asset)
-Order types   LIMIT only, timeInForce GTC only`}</Code>
+Order types   LIMIT (timeInForce GTC) and MARKET (quantity only, maxSlippagePct default 2, max 10)`}</Code>
       </Section>
 
       <Section id="ratelimits" title="Rate limits">

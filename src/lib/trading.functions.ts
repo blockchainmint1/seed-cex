@@ -3,16 +3,32 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
 import { PAIR_IDS } from "@/lib/chains";
+import { MAX_MARKET_SLIPPAGE_PCT } from "@/lib/market-order";
 
+const amountSchema = z.number().positive().max(1_000_000_000_000);
 const placeOrderInput = (input: unknown) =>
   z
-    .object({
-      pair: z.enum(PAIR_IDS).default("TSD_TXC"),
-      side: z.enum(["buy", "sell"]),
-      price: z.number().positive().max(1_000_000),
-      amount: z.number().positive().max(1_000_000_000_000),
-    })
-    .parse(input);
+    .discriminatedUnion("type", [
+      z.object({
+        type: z.literal("limit"),
+        pair: z.enum(PAIR_IDS).default("TSD_TXC"),
+        side: z.enum(["buy", "sell"]),
+        price: z.number().positive().max(1_000_000),
+        amount: amountSchema,
+      }),
+      z.object({
+        type: z.literal("market"),
+        pair: z.enum(PAIR_IDS).default("TSD_TXC"),
+        side: z.enum(["buy", "sell"]),
+        amount: amountSchema,
+        // Price protection in percent; the server caps it (market-order.ts).
+        slippagePct: z.number().positive().max(MAX_MARKET_SLIPPAGE_PCT).optional(),
+      }),
+    ])
+    .parse(
+      // Older callers sent no type: those are limit orders.
+      input && typeof input === "object" && !("type" in input) ? { ...input, type: "limit" } : input,
+    );
 
 /* ------------------------------ wallet vault ------------------------------ */
 
@@ -118,7 +134,7 @@ export const getMyOrders = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("orders")
-      .select("id, pair, side, price, amount, filled, status, created_at")
+      .select("id, pair, side, price, amount, filled, status, order_type, created_at")
       .eq("user_id", context.userId)
       .order("created_at", { ascending: false })
       .limit(100);

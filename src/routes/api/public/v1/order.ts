@@ -23,7 +23,7 @@ export const Route = createFileRoute("/api/public/v1/order")({
         return privateJson(found);
       },
 
-      /** New limit order. Matching and on-chain settlement run inline. */
+      /** New LIMIT or MARKET order. Matching and on-chain settlement run inline. */
       POST: async ({ request }) => {
         const { authenticate } = await import("@/lib/api/auth.server");
         const { privateJson, resolveSymbol, apiError, ERR } = await import("@/lib/api/v1.server");
@@ -35,12 +35,18 @@ export const Route = createFileRoute("/api/public/v1/order")({
         if (!pair) return apiError(ERR.BAD_SYMBOL, "Invalid symbol", 400);
 
         const type = (p.get("type") ?? "LIMIT").toUpperCase();
-        if (type !== "LIMIT") {
-          return apiError(ERR.UNSUPPORTED_ORDER_COMBO, "Only LIMIT orders are supported", 400);
+        if (type !== "LIMIT" && type !== "MARKET") {
+          return apiError(ERR.UNSUPPORTED_ORDER_COMBO, "Only LIMIT and MARKET orders are supported", 400);
         }
-        const tif = (p.get("timeInForce") ?? "GTC").toUpperCase();
-        if (tif !== "GTC") {
-          return apiError(ERR.UNSUPPORTED_ORDER_COMBO, "Only GTC timeInForce is supported", 400);
+        const tifRaw = p.get("timeInForce");
+        if (type === "LIMIT" && (tifRaw ?? "GTC").toUpperCase() !== "GTC") {
+          return apiError(ERR.UNSUPPORTED_ORDER_COMBO, "LIMIT orders support GTC timeInForce only", 400);
+        }
+        if (type === "MARKET" && tifRaw != null) {
+          return apiError(ERR.UNSUPPORTED_ORDER_COMBO, "MARKET orders take no timeInForce (unfilled size is cancelled)", 400);
+        }
+        if (type === "MARKET" && (p.get("price") != null || p.get("quoteOrderQty") != null)) {
+          return apiError(ERR.UNSUPPORTED_ORDER_COMBO, "MARKET orders take quantity only (no price or quoteOrderQty)", 400);
         }
 
         const sideRaw = (p.get("side") ?? "").toUpperCase();
@@ -50,17 +56,23 @@ export const Route = createFileRoute("/api/public/v1/order")({
 
         const price = Number(p.get("price"));
         const quantity = Number(p.get("quantity"));
-        const { validateOrder, apiPlaceOrder } = await import("@/lib/api/private.server");
-        const bad = validateOrder(pair, price, quantity);
+        const slipRaw = p.get("maxSlippagePct");
+        const maxSlippagePct = slipRaw == null ? null : Number(slipRaw);
+        const { validateOrder, validateMarketOrder, apiPlaceOrder } = await import("@/lib/api/private.server");
+        const bad =
+          type === "MARKET"
+            ? validateMarketOrder(pair, quantity, maxSlippagePct)
+            : validateOrder(pair, price, quantity);
         if (bad) return apiError(ERR.INVALID_QUANTITY, bad, 400);
 
         try {
-          const result = await apiPlaceOrder(auth.caller.userId, {
-            symbol: pair,
-            side: sideRaw === "BUY" ? "buy" : "sell",
-            price,
-            quantity,
-          });
+          const side = sideRaw === "BUY" ? ("buy" as const) : ("sell" as const);
+          const result = await apiPlaceOrder(
+            auth.caller.userId,
+            type === "MARKET"
+              ? { type: "market", symbol: pair, side, quantity, maxSlippagePct: maxSlippagePct ?? undefined }
+              : { type: "limit", symbol: pair, side, price, quantity },
+          );
           return privateJson(result);
         } catch (e) {
           const msg = e instanceof Error ? e.message : "Order rejected";

@@ -120,7 +120,7 @@ export function buildExchangeInfo() {
         quoteAssetPrecision: 8,
         baseSettlementChain: p.baseLeg,
         quoteSettlementChain: p.quoteLeg,
-        orderTypes: ["LIMIT"],
+        orderTypes: ["LIMIT", "MARKET"],
         timeInForce: ["GTC"],
         isSpotTradingAllowed: true,
         isMarginTradingAllowed: false,

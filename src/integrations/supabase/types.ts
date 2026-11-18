@@ -1017,6 +1017,7 @@ export type Database = {
           filled: number
           id: string
           is_demo: boolean
+          order_type: string
           pair: string
           price: number
           side: Database["public"]["Enums"]["order_side"]
@@ -1030,6 +1031,7 @@ export type Database = {
           filled?: number
           id?: string
           is_demo?: boolean
+          order_type?: string
           pair?: string
           price: number
           side: Database["public"]["Enums"]["order_side"]
@@ -1043,6 +1045,7 @@ export type Database = {
           filled?: number
           id?: string
           is_demo?: boolean
+          order_type?: string
           pair?: string
           price?: number
           side?: Database["public"]["Enums"]["order_side"]

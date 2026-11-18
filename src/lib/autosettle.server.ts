@@ -57,13 +57,18 @@ async function restoreFills(orderIds: Array<string | null>, amount: number) {
     if (!id) continue;
     const { data: o } = await supabaseAdmin
       .from("orders")
-      .select("filled, status")
+      .select("filled, status, order_type")
       .eq("id", id)
       .maybeSingle();
     if (!o) continue;
     const filled = Math.max(0, Number(o.filled) - amount);
+    // A market order never goes back on the book: its returned size is cancelled.
     const status =
-      o.status === "cancelled" ? "cancelled" : filled > 1e-8 ? "partial" : "open";
+      o.status === "cancelled" || o.order_type === "market"
+        ? "cancelled"
+        : filled > 1e-8
+          ? "partial"
+          : "open";
     await supabaseAdmin.from("orders").update({ filled, status }).eq("id", id);
   }
 }
