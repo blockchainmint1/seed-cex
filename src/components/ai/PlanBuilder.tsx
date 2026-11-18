@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 const RANGES = [["3 mo", 3], ["6 mo", 6], ["1 yr", 12], ["2 yr", 24], ["3 yr", 36], ["5 yr", 60]] as const;
 const monthsAgo = (m: number) => { const d = new Date(); d.setUTCMonth(d.getUTCMonth() - m); return d.toISOString().slice(0, 10); };
 
-export function PlanBuilder({ coins, settings, onChange, signedIn, editing, onStopEditing }: {
+export function PlanBuilder({ coins, settings, onChange, signedIn, editing, onStopEditing, started, onStart }: {
   coins: AiCoin[];
   settings: PlanSettings;
   onChange: (s: PlanSettings) => void;
@@ -20,6 +20,9 @@ export function PlanBuilder({ coins, settings, onChange, signedIn, editing, onSt
   /** A locked plan being changed (from Profile → AI strategies). */
   editing?: EditingPlan | null;
   onStopEditing?: () => void;
+  /** False until the member runs a test or changes a setting: the page opens on a blank chart. */
+  started: boolean;
+  onStart: () => void;
 }) {
   const s = settings;
   const set = <K extends keyof PlanSettings>(k: K, v: PlanSettings[K]) => onChange({ ...s, [k]: v });
@@ -119,12 +122,15 @@ export function PlanBuilder({ coins, settings, onChange, signedIn, editing, onSt
       </aside>
 
       <section className="order-1 min-w-0 space-y-6 lg:order-2">
-        {!run ? (
+        {!started ? (
+          <BlankStart onStart={onStart} />
+        ) : !run ? (
           <p className="text-sm text-muted-foreground">Loading price history…</p>
         ) : run.error ? (
           <Panel>{run.error}</Panel>
         ) : (
           <>
+            <TestedPeriod from={run.points[0]?.day} to={run.points.at(-1)?.day} />
             <div className="grid gap-3 sm:grid-cols-3">
               {([["Your plan", run.plan], ["Buy & hold these coins", run.hold], ["Just Bitcoin", run.btc]] as const).map(([label, r]) => (
                 <div key={label} className="rounded-sm border border-border bg-surface p-4">
@@ -207,6 +213,43 @@ export function PlanBuilder({ coins, settings, onChange, signedIn, editing, onSt
         )}
       </section>
     </div>
+  );
+}
+
+/** Empty chart frame shown on first load, so no return appears before the member has picked anything. */
+function BlankStart({ onStart }: { onStart: () => void }) {
+  return (
+    <div className="relative h-80 overflow-hidden rounded-sm border border-dashed border-border bg-surface">
+      <div aria-hidden className="absolute inset-x-6 top-8 bottom-10 flex flex-col justify-between">
+        {[0, 1, 2, 3, 4].map((i) => <div key={i} className="border-t border-border/60" />)}
+      </div>
+      <div className="relative flex h-full items-center justify-center px-4">
+        <div className="flex max-w-lg flex-col items-center gap-3 rounded-sm bg-surface px-6 py-5 text-center">
+        <h2 className="font-display text-2xl font-extrabold">Choose your settings to begin</h2>
+        <p className="max-w-md text-sm text-muted-foreground">
+          Pick your coins, how far back to test and how much to start with
+          <span className="lg:hidden"> below</span><span className="hidden lg:inline"> on the left</span>. Results show the moment you change something, or run the starter plan as it is.
+        </p>
+        <button type="button" onClick={onStart} className="rounded-sm bg-action px-4 py-2 text-sm font-semibold text-action-foreground hover:opacity-90">
+          Run test
+        </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** States the exact date range behind every number below it. */
+function TestedPeriod({ from, to }: { from?: string; to?: string }) {
+  if (!from || !to) return null;
+  const years = (Date.parse(to) - Date.parse(from)) / (365.25 * 864e5);
+  const months = Math.max(1, Math.round(years * 12));
+  const span = months < 12 ? `${months} month${months === 1 ? "" : "s"}` : months % 12 === 0 ? `${months / 12} year${months === 12 ? "" : "s"}` : `${(months / 12).toFixed(1)} years`;
+  const fmt = (d: string) => new Date(d + "T00:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+  return (
+    <p className="num text-sm text-muted-foreground">
+      Tested <span className="font-semibold text-foreground">{fmt(from)} → {fmt(to)}</span> ({span}). Change it under "Going back".
+    </p>
   );
 }
 

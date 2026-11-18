@@ -39,6 +39,9 @@ function AiPage() {
   const myPlans = useQuery({ queryKey: ["ai-my-plans"], queryFn: () => fetchPlans(), enabled: Boolean(user && plan && edit) });
   const [tab, setTab] = useState<"plan" | "coins">("plan");
   const [settings, setSettings] = useState<PlanSettings>(defaultPlan);
+  // Opens on a blank chart; results appear once the member runs a test or changes a setting.
+  const [started, setStarted] = useState(false);
+  const change = (s: PlanSettings) => { setSettings(s); setStarted(true); };
   // ?plan=…&edit=1 (from Profile → AI strategies) loads a locked plan into the tester to change its rules.
   const editingPlan = edit && plan ? myPlans.data?.plans.find((p) => p.id === plan && p.status !== "ended") : undefined;
   const [loadedFor, setLoadedFor] = useState<string | null>(null);
@@ -47,6 +50,7 @@ function AiPage() {
     if (editingPlan && loadedFor !== editingPlan.id) {
       setSettings({ ...defaultPlan, ...editingPlan.settings, start: defaultPlan.start, amount: editingPlan.commitTsd });
       setLoadedFor(editingPlan.id);
+      setStarted(true);
     }
   }, [editingPlan, loadedFor]);
   useEffect(() => {
@@ -79,7 +83,7 @@ function AiPage() {
       ) : coinsQ.error ? (
         <p className="text-sm text-destructive">Couldn't load coins. Refresh to try again.</p>
       ) : tab === "plan" ? (
-        <PlanBuilder coins={coins} settings={settings} onChange={setSettings} signedIn={Boolean(user)} editing={editing} onStopEditing={() => setEditingOff(true)} />
+        <PlanBuilder coins={coins} settings={settings} onChange={change} started={started} onStart={() => setStarted(true)} signedIn={Boolean(user)} editing={editing} onStopEditing={() => setEditingOff(true)} />
       ) : (
         <div className="space-y-3">
           <p className="max-w-3xl text-sm text-muted-foreground">
@@ -91,7 +95,7 @@ function AiPage() {
       )}
 
       {user ? (
-        <MyPlans coins={coins} highlight={plan} onLoad={(s) => { setSettings({ ...defaultPlan, ...s, start: defaultPlan.start, amount: settings.amount }); setTab("plan"); window.scrollTo({ top: 0, behavior: "smooth" }); }} />
+        <MyPlans coins={coins} highlight={plan} onLoad={(s) => { setStarted(true); setSettings({ ...defaultPlan, ...s, start: defaultPlan.start, amount: settings.amount }); setTab("plan"); window.scrollTo({ top: 0, behavior: "smooth" }); }} />
       ) : (
         <p className="text-sm text-muted-foreground">
           <Link to="/auth" search={{ redirect: "/ai" }} className="font-semibold text-primary underline">Sign in</Link> to see your locked plans.
