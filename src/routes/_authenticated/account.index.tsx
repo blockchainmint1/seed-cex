@@ -1,7 +1,7 @@
 import { createFileRoute, Link, type LinkProps } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowDownToLine, ArrowRight, ArrowUpFromLine, CheckCircle2, Circle } from "lucide-react";
+import { ArrowDownToLine, ArrowRight, ArrowUpFromLine, CheckCircle2, Circle, Sprout } from "lucide-react";
 import { getMyProfile } from "@/lib/profile.functions";
 import { listApiKeys } from "@/lib/api-keys.functions";
 import { getMyAiPlans } from "@/lib/ai/ai.functions";
@@ -81,7 +81,11 @@ function Overview() {
         <Stat label="Invite friends" value="Your invite link" to="/account/referrals" cta="Get link" />
       </div>
 
-      <Card title="Finish setting up" desc={`${doneCount} of ${steps.length} done`}>
+      <Card
+        title="Finish setting up"
+        desc={`${doneCount} of ${steps.length} done`}
+        right={<Button asChild size="sm" variant="outline"><Link to="/welcome" search={{ step: "welcome" }}><Sprout /> Open setup guide</Link></Button>}
+      >
         <ol className="space-y-1">
           {steps.map((s) => (
             <li key={s.label}>

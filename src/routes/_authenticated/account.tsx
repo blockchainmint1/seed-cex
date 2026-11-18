@@ -1,4 +1,4 @@
-import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, redirect } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -6,6 +6,8 @@ import {
 } from "lucide-react";
 import { getMyProfile } from "@/lib/profile.functions";
 import { amIAdmin } from "@/lib/admin.functions";
+import { getMyOnboarding } from "@/lib/onboarding.functions";
+import { needsOnboarding, ONBOARDING_QUERY } from "@/lib/onboarding";
 import { useSession } from "@/hooks/use-session";
 import { Button } from "@/components/ui/button";
 import { usePocketLink } from "@/components/account/use-pocket";
@@ -23,6 +25,16 @@ export const Route = createFileRoute("/_authenticated/account")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
+  // First visit after joining: open the setup guide (skippable) before the account pages.
+  beforeLoad: async ({ context, location }) => {
+    let status: string | null;
+    try {
+      status = (await context.queryClient.ensureQueryData({ queryKey: ONBOARDING_QUERY, queryFn: () => getMyOnboarding() })).status;
+    } catch {
+      return; // never lock anyone out of their account over this
+    }
+    if (needsOnboarding(status)) throw redirect({ to: "/welcome", search: { next: location.href } });
+  },
   component: AccountLayout,
 });
 

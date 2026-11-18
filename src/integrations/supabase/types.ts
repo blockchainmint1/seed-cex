@@ -1545,6 +1545,8 @@ export type Database = {
           notify_settlement: boolean
           notify_settlement_failed: boolean
           notify_weekly_digest: boolean
+          onboarding_at: string | null
+          onboarding_status: string | null
           reputation: number
           telegram_chat_id: string | null
           telegram_code: string | null
@@ -1575,6 +1577,8 @@ export type Database = {
           notify_settlement?: boolean
           notify_settlement_failed?: boolean
           notify_weekly_digest?: boolean
+          onboarding_at?: string | null
+          onboarding_status?: string | null
           reputation?: number
           telegram_chat_id?: string | null
           telegram_code?: string | null
@@ -1605,6 +1609,8 @@ export type Database = {
           notify_settlement?: boolean
           notify_settlement_failed?: boolean
           notify_weekly_digest?: boolean
+          onboarding_at?: string | null
+          onboarding_status?: string | null
           reputation?: number
           telegram_chat_id?: string | null
           telegram_code?: string | null

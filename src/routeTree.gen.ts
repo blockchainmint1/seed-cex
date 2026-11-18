@@ -35,6 +35,7 @@ import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedApiKeysRouteImport } from './routes/_authenticated/api-keys'
 import { Route as AuthenticatedTradesRouteImport } from './routes/_authenticated/trades'
 import { Route as AuthenticatedWalletRouteImport } from './routes/_authenticated/wallet'
+import { Route as AuthenticatedWelcomeRouteImport } from './routes/_authenticated/welcome'
 import { Route as AboutKycRouteImport } from './routes/about.kyc'
 import { Route as AiIndexRouteImport } from './routes/ai.index'
 import { Route as ApiIndexRouteImport } from './routes/api/index'
@@ -240,6 +241,11 @@ const AuthenticatedTradesRoute = AuthenticatedTradesRouteImport.update({
 const AuthenticatedWalletRoute = AuthenticatedWalletRouteImport.update({
   id: '/wallet',
   path: '/wallet',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedWelcomeRoute = AuthenticatedWelcomeRouteImport.update({
+  id: '/welcome',
+  path: '/welcome',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AboutKycRoute = AboutKycRouteImport.update({
@@ -678,6 +684,7 @@ export interface FileRoutesByFullPath {
   '/api-keys': typeof AuthenticatedApiKeysRoute
   '/trades': typeof AuthenticatedTradesRoute
   '/wallet': typeof AuthenticatedWalletRoute
+  '/welcome': typeof AuthenticatedWelcomeRoute
   '/about/kyc': typeof AboutKycRoute
   '/ignite/confirmed': typeof IgniteConfirmedRoute
   '/invite/$code': typeof InviteCodeRoute
@@ -780,6 +787,7 @@ export interface FileRoutesByTo {
   '/api-keys': typeof AuthenticatedApiKeysRoute
   '/trades': typeof AuthenticatedTradesRoute
   '/wallet': typeof AuthenticatedWalletRoute
+  '/welcome': typeof AuthenticatedWelcomeRoute
   '/about/kyc': typeof AboutKycRoute
   '/ignite/confirmed': typeof IgniteConfirmedRoute
   '/invite/$code': typeof InviteCodeRoute
@@ -885,6 +893,7 @@ export interface FileRoutesById {
   '/_authenticated/api-keys': typeof AuthenticatedApiKeysRoute
   '/_authenticated/trades': typeof AuthenticatedTradesRoute
   '/_authenticated/wallet': typeof AuthenticatedWalletRoute
+  '/_authenticated/welcome': typeof AuthenticatedWelcomeRoute
   '/about/kyc': typeof AboutKycRoute
   '/ignite_/confirmed': typeof IgniteConfirmedRoute
   '/invite/$code': typeof InviteCodeRoute
@@ -991,6 +1000,7 @@ export interface FileRouteTypes {
     | '/api-keys'
     | '/trades'
     | '/wallet'
+    | '/welcome'
     | '/about/kyc'
     | '/ignite/confirmed'
     | '/invite/$code'
@@ -1093,6 +1103,7 @@ export interface FileRouteTypes {
     | '/api-keys'
     | '/trades'
     | '/wallet'
+    | '/welcome'
     | '/about/kyc'
     | '/ignite/confirmed'
     | '/invite/$code'
@@ -1197,6 +1208,7 @@ export interface FileRouteTypes {
     | '/_authenticated/api-keys'
     | '/_authenticated/trades'
     | '/_authenticated/wallet'
+    | '/_authenticated/welcome'
     | '/about/kyc'
     | '/ignite_/confirmed'
     | '/invite/$code'
@@ -1537,6 +1549,13 @@ declare module '@tanstack/react-router' {
       path: '/wallet'
       fullPath: '/wallet'
       preLoaderRoute: typeof AuthenticatedWalletRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/welcome': {
+      id: '/_authenticated/welcome'
+      path: '/welcome'
+      fullPath: '/welcome'
+      preLoaderRoute: typeof AuthenticatedWelcomeRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/about/kyc': {
@@ -2157,6 +2176,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedApiKeysRoute: typeof AuthenticatedApiKeysRoute
   AuthenticatedTradesRoute: typeof AuthenticatedTradesRoute
   AuthenticatedWalletRoute: typeof AuthenticatedWalletRoute
+  AuthenticatedWelcomeRoute: typeof AuthenticatedWelcomeRoute
   AuthenticatedP2pDashboardRoute: typeof AuthenticatedP2pDashboardRoute
   AuthenticatedP2pJuryRoute: typeof AuthenticatedP2pJuryRoute
   AuthenticatedP2pTradeIdRoute: typeof AuthenticatedP2pTradeIdRoute
@@ -2168,6 +2188,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedApiKeysRoute: AuthenticatedApiKeysRoute,
   AuthenticatedTradesRoute: AuthenticatedTradesRoute,
   AuthenticatedWalletRoute: AuthenticatedWalletRoute,
+  AuthenticatedWelcomeRoute: AuthenticatedWelcomeRoute,
   AuthenticatedP2pDashboardRoute: AuthenticatedP2pDashboardRoute,
   AuthenticatedP2pJuryRoute: AuthenticatedP2pJuryRoute,
   AuthenticatedP2pTradeIdRoute: AuthenticatedP2pTradeIdRoute,

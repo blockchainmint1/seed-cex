@@ -183,6 +183,13 @@
       "when": 1795034948519,
       "tag": "0025_withdrawal_levels_two_factor",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1795036734545,
+      "tag": "0026_onboarding_status",
+      "breakpoints": true
     }
   ]
 }
