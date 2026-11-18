@@ -107,3 +107,16 @@ export const revokeMyHmeLink = createServerFn({ method: "POST" })
     }
     return { ok: true };
   });
+
+/** The member's own wallet-link history: every link, update and revoke (no keys, no xpubs). */
+export const getMyHmeLinkHistory = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin.from("hme_links")
+      .select("id, mode, account, paths, identity_address, status, created_at, revoked_at, revoked_by")
+      .eq("user_id", context.userId).order("created_at", { ascending: false }).limit(200);
+    if (error) throw new Error("Could not read your wallet link history. Try again.");
+    const { buildLinkHistory } = await import("./hme-link-history");
+    return buildLinkHistory((data ?? []).map((r) => ({ ...r, paths: r.paths as string[] })));
+  });

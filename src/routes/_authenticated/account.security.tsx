@@ -10,6 +10,7 @@ import { Card, TabTitle } from "@/components/account/ui";
 import { HmeWalletLinkCard } from "@/components/wallet/HmeWalletLinkCard";
 import { usePocketLink } from "@/components/account/use-pocket";
 import { TwoFactorCard, useMyTwoFactor } from "@/components/account/TwoFactorCard";
+import { LinkHistoryCard } from "@/components/account/LinkHistoryCard";
 
 export const Route = createFileRoute("/_authenticated/account/security")({
   staticData: { sitemap: false },
@@ -70,6 +71,8 @@ function SecurityTab() {
       <div className="rounded-md border border-border bg-surface px-5">
         <HmeWalletLinkCard showBalances={false} className="py-6" />
       </div>
+
+      <LinkHistoryCard />
 
       <Card title="Security emails" desc="Always on.">
         <p className="text-sm text-muted-foreground">
