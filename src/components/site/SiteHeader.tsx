@@ -2,7 +2,7 @@ import { Link, useLocation } from "@tanstack/react-router";
 import { signOutOfSeeds } from "@/lib/sign-out";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { ChevronDown, Menu, Moon, Sun, X } from "lucide-react";
+import { ChevronDown, Menu, Moon, Sun, UserRound, X } from "lucide-react";
 import { useSession } from "@/hooks/use-session";
 import { useTheme } from "@/hooks/use-theme";
 import { SiteLogo } from "@/components/site/SiteLogo";
@@ -120,24 +120,18 @@ export function SiteHeader() {
         </nav>
 
         <div className="ml-auto flex items-center gap-3 text-[13px] font-semibold">
-          <button
-            onClick={toggle}
-            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-            className="flex h-9 w-9 items-center justify-center rounded-sm border border-border text-muted-foreground transition-colors hover:border-primary hover:text-primary"
-          >
-            {theme === "dark" ? <Sun className="h-4 w-4" strokeWidth={1.5} /> : <Moon className="h-4 w-4" strokeWidth={1.5} />}
-          </button>
           {loading ? null : user ? (
             <>
               <Link
                 to="/account"
-                className="hidden tracking-[0.04em] text-muted-foreground uppercase transition-colors hover:text-foreground sm:inline"
+                className="hidden items-center gap-1.5 rounded-sm border border-primary/50 px-3 py-2 tracking-[0.04em] text-primary uppercase transition-colors hover:bg-primary/10 sm:inline-flex sm:px-3.5"
               >
+                <UserRound className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
                 Profile
               </Link>
               <button
                 onClick={signOut}
-                className="whitespace-nowrap rounded-sm border border-foreground/60 px-3 py-2 tracking-[0.04em] uppercase sm:px-3.5 transition-colors hover:border-foreground"
+                className="whitespace-nowrap tracking-[0.04em] text-muted-foreground uppercase transition-colors hover:text-foreground"
               >
                 Sign out
               </button>
@@ -151,6 +145,14 @@ export function SiteHeader() {
               Sign in
             </Link>
           )}
+          <span aria-hidden className="mx-1 hidden h-6 w-px bg-border sm:block" />
+          <button
+            onClick={toggle}
+            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-border text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+          >
+            {theme === "dark" ? <Sun className="h-4 w-4" strokeWidth={1.5} /> : <Moon className="h-4 w-4" strokeWidth={1.5} />}
+          </button>
           <button
             type="button"
             onClick={() => setMenuOpen((o) => !o)}
