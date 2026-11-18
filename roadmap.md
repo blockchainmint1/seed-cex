@@ -132,3 +132,9 @@
 - [x] Homepage Ignite popup (flyer style) driving to /ignite; /register and /register/confirmed 301 to /ignite
 - [x] New-member setup guide (/welcome): first account visit, skippable, resumes where left off, reopen from Account → Overview (Nov 18)
 - [ ] Bobby to confirm existing unlinked members should see the setup guide once (agent-chosen)
+
+## Uniswap / PancakeSwap / PulseX (Bobby, Nov 18: more coins; Ethereum, Base, BNB Chain, PulseChain; pools directly; any coin)
+- [x] Live prices from the pools on /swap/tokens: coin search or pasted address, best of every pool, sell-back check, plain warnings
+- [ ] Swapping from the member's EVM pocket: exact-amount spend permission + swap, server re-quote floor, Telegram Approve tap, admin-only small test first (next build)
+- [ ] First small real swap per network (blocked: send step built, Bobby's pocket funded on that network, two-factor + re-link done)
+

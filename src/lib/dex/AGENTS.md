@@ -1,0 +1,5 @@
+# Single-network pools (Uniswap, PancakeSwap, PulseX)
+
+- src/lib/dex/: venues.ts (pool registry + member warnings, pure, tested), abi.ts (hand-rolled calldata, tested), quote.server.ts (one Multicall3 eth_call per quote, read-only), market.server.ts (DexScreener search/market facts only — never the swap price), dex.functions.ts. Every router/quoter address is checked on-chain (factory/wrapped-coin answer + selector present in bytecode) before it is added. Why: a wrong router is an unrecoverable loss, and prices must come from the pools themselves.
+- Members may pick any coin; risk is shown (sell-back check, pool size, age, price impact, hidden-tax disclaimer), never used to block. Only Uniswap v2/v3, PancakeSwap v2/v3 and PulseX v1/v2 pools count (v4 is skipped). Why: Bobby wants open choice; Seeds can only trade through pools it calls directly.
+- Sending is not built: when it is, it must go through src/lib/pocket-send (Telegram approval) with exact-amount approvals and a server re-quote minimum. Why: same no-tap-no-send rule as every pocket send.

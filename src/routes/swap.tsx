@@ -11,6 +11,7 @@ import { useSession } from "@/hooks/use-session";
 import { MyTsdSwaps, TSD_BUY_COINS, TSD_SELL_COINS, TsdRouteResult } from "@/components/swap/TsdRoute";
 import { getTsdRouteQuote } from "@/lib/xchain/tsd-route.functions";
 import { fmtCompact } from "@/lib/format";
+import { SwapTabs } from "@/components/swap/SwapTabs";
 
 export const Route = createFileRoute("/swap")({
   staticData: { sitemap: true },
@@ -176,6 +177,7 @@ function SwapPage() {
   return (
     <div className="mx-auto max-w-7xl space-y-12 px-5 py-14">
       <header className="space-y-3">
+        <SwapTabs active="cross" />
         <p className="font-mono text-[11px] tracking-[0.28em] text-primary uppercase">Cross-chain swap</p>
         <h1 className="font-display text-3xl font-extrabold tracking-tight md:text-5xl">
           Real coins, chain to chain.
