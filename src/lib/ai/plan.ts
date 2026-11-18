@@ -18,6 +18,8 @@ export type PlanSettings = {
   drift: number;
   rebalance: "daily" | "weekly" | "monthly";
   lookback: number; topK: number; trendMA: number; // 0 = off
+  /** basket mode: at each check, a coin closing below its N-day average is held as TSD until it closes back above (0 = off). */
+  exitMA: number;
   cap: number; reserve: number; feeBps: number; stopLoss: number; // % ; 0 = off
   holdout: number; // % of period held back for out-of-sample check
   amount: number; weeklyAdd: number; // starting money and regular weekly top-up
@@ -25,7 +27,7 @@ export type PlanSettings = {
 export const defaultPlan: PlanSettings = {
   mode: "basket", weights: {}, drift: 5,
   coins: ["bitcoin", "ethereum", "litecoin"], start: "2021-01-01", end: "", rebalance: "weekly",
-  lookback: 30, topK: 2, trendMA: 50, cap: 50, reserve: 0, feeBps: 25, stopLoss: 0, holdout: 30, amount: 500, weeklyAdd: 0,
+  lookback: 30, topK: 2, trendMA: 50, exitMA: 0, cap: 50, reserve: 0, feeBps: 25, stopLoss: 0, holdout: 30, amount: 500, weeklyAdd: 0,
 };
 
 export type Point = { day: string; plan: number; hold: number; btc: number; cash: number };
@@ -40,6 +42,8 @@ const START = 10000;
 export const STABLES = { tsd: "TSD" } as const;
 export const isStable = (id: string) => id in STABLES;
 export const stableSeries = (days: string[]): Series => ({ days, closes: days.map(() => 1) });
+/** After a stop-loss, a coin stays in TSD until it closes back above this average (the trend-exit average if one is set). */
+export const STOP_REENTRY_MA = 20;
 const isTopUp = (i: number) => i > 0 && i % 7 === 0;
 
 // vals = money value; idx = growth index excluding top-ups (for a fair worst-drop figure)
@@ -93,18 +97,19 @@ export function runPlan(series: Record<string, Series>, s: PlanSettings, opts: {
   const amount = s.amount > 0 ? s.amount : START; const add = Math.max(0, s.weeklyAdd || 0);
   let weights: Record<string, number> = {}; let value = amount; let idx = 1; let totalIn = amount; let trades = 0; let fees = 0; let cashDays = 0;
   const entryPeak: Record<string, number> = {};
+  const stoppedOut = new Set<string>(); let prevOut = new Set<string>();
   const fills: Fill[] = []; const changes: Change[] = []; const planVals: number[] = []; const planIdx: number[] = []; const log: PlanRun["log"] = [];
   const stable = s.coins.find(isStable); const ranked = s.coins.filter((id) => !isStable(id));
   const holdCoins = ranked.filter((id) => priceAt(id, days[0]!));
   const holdBase = Object.fromEntries(holdCoins.map((id) => [id, priceAt(id, days[0]!)!]));
   const points: Point[] = [];
   // Same cost the engine charges: every weight change, both sides, at feeBps of the money moved.
-  const recordFills = (d: string, from: Record<string, number>, to: Record<string, number>, valueBefore: number, reason: string) => {
+  const recordFills = (d: string, from: Record<string, number>, to: Record<string, number>, valueBefore: number, reason: string | ((id: string) => string)) => {
     for (const id of new Set([...Object.keys(from), ...Object.keys(to)])) {
       const ch = (to[id] ?? 0) - (from[id] ?? 0);
       if (Math.abs(ch) <= 1e-6) continue;
       const usd = Math.abs(ch) * valueBefore; const price = isStable(id) ? 1 : priceAt(id, d) ?? NaN;
-      fills.push({ day: d, coin: id, side: ch > 0 ? "buy" : "sell", usd, price, units: usd / price, fee: usd * (s.feeBps / 10000), reason });
+      fills.push({ day: d, coin: id, side: ch > 0 ? "buy" : "sell", usd, price, units: usd / price, fee: usd * (s.feeBps / 10000), reason: typeof reason === "string" ? reason : reason(id) });
     }
   };
   // buy-and-hold and Bitcoin comparisons get the same money on the same days
@@ -131,7 +136,7 @@ export function runPlan(series: Record<string, Series>, s: PlanSettings, opts: {
           const soldUsd = weights[id] * (value + cost);
           fills.push({ day: d, coin: id, side: "sell", usd: soldUsd, price: b, units: soldUsd / b, fee: cost, reason: `Stop-loss: fell ${s.stopLoss}% from its high` });
           log.push({ day: d, picks: `sold ${id}`, reason: `Fell ${s.stopLoss}% from its high since buying` });
-          const before = { ...weights }; delete weights[id]; delete entryPeak[id];
+          const before = { ...weights }; delete weights[id]; delete entryPeak[id]; stoppedOut.add(id);
           changes.push({ day: d, before, after: { ...weights }, value });
         }
       }
@@ -140,29 +145,47 @@ export function runPlan(series: Record<string, Series>, s: PlanSettings, opts: {
         value += add; totalIn += add;
       }
     }
+    // stopped-out coins come back only once they close above their re-entry average
+    if (isRebalance(d, days[i - 1], s.rebalance)) for (const id of [...stoppedOut]) {
+      const n = (s.mode === "basket" ? s.exitMA : s.trendMA) || STOP_REENTRY_MA;
+      const p = priceAt(id, d);
+      if (p && p > avg(id, d, n)) stoppedOut.delete(id);
+    }
     if (s.mode === "basket" && isRebalance(d, days[i - 1], s.rebalance)) {
       const invest = 1 - s.reserve / 100;
       const targets = basketTargets(s);
       const live = Object.fromEntries(Object.entries(targets).filter(([id]) => priceAt(id, d)));
       const liveSum = Object.values(live).reduce((a, b) => a + b, 0);
-      const next: Record<string, number> = Object.fromEntries(Object.entries(live).map(([id, w]) => [id, liveSum > 0 ? (w / liveSum) * invest : 0]));
+      // trend exit: a coin below its average keeps its share in TSD (not handed to the other coins)
+      const below = (id: string) => { if (!(s.exitMA > 0)) return false; const m = avg(id, d, s.exitMA); return Number.isFinite(m) && priceAt(id, d)! < m; };
+      const out = new Set(Object.keys(live).filter((id) => stoppedOut.has(id) || below(id)));
+      const next: Record<string, number> = Object.fromEntries(Object.entries(live).filter(([id]) => !out.has(id)).map(([id, w]) => [id, liveSum > 0 ? (w / liveSum) * invest : 0]));
+      const outChanged = out.size !== prevOut.size || [...out].some((id) => !prevOut.has(id));
+      const was = prevOut; prevOut = out;
       const offBy = Math.max(0, ...[...new Set([...Object.keys(weights), ...Object.keys(next)])].map((id) => Math.abs((next[id] ?? 0) - (weights[id] ?? 0))));
       const first = !Object.keys(weights).length;
-      if (first || s.drift <= 0 || offBy * 100 >= s.drift) {
+      if (first || outChanged || s.drift <= 0 || offBy * 100 >= s.drift) {
         let turnover = 0;
         for (const id of new Set([...Object.keys(weights), ...Object.keys(next)])) {
           const ch = Math.abs((next[id] ?? 0) - (weights[id] ?? 0)); turnover += ch; if (ch > 1e-6) trades++;
         }
-        recordFills(d, weights, next, value, first ? "Bought the basket" : "Rebalanced back to target");
+        const why = (id: string) =>
+          out.has(id) && !was.has(id) ? (stoppedOut.has(id) ? "Waiting after stop-loss → TSD" : `Closed below its ${s.exitMA}-day average → TSD`)
+          : was.has(id) && !out.has(id) ? (s.exitMA > 0 ? `Back above its ${s.exitMA}-day average` : `Back above its ${STOP_REENTRY_MA}-day average after stop-loss`)
+          : i === 0 || !Object.keys(weights).length ? "Bought the basket" : "Rebalanced back to target";
+        recordFills(d, weights, next, value, why);
         const cost = turnover * value * (s.feeBps / 10000); value -= cost; if (value + cost > 0) idx *= 1 - cost / (value + cost); fees += cost;
         for (const id of Object.keys(next)) if (!weights[id]) entryPeak[id] = priceAt(id, d)!;
         if (turnover > 1e-6) log.push({ day: d, picks: Object.entries(next).map(([id, w]) => `${id} ${(w * 100).toFixed(0)}%`).join(", ") || "all cash",
-          reason: first ? "Bought the basket" : `Rebalanced — a coin was ${(offBy * 100).toFixed(0)} points off target` });
+          reason: [...out].some((id) => !was.has(id)) ? `Moved ${[...out].filter((id) => !was.has(id)).join(", ")} to TSD (below ${s.exitMA}-day average${stoppedOut.size ? " or stopped out" : ""})`
+            : [...was].some((id) => !out.has(id)) ? `Bought back ${[...was].filter((id) => !out.has(id)).join(", ")}`
+            : i === 0 ? "Bought the basket" : `Rebalanced — a coin was ${(offBy * 100).toFixed(0)} points off target` });
         if (turnover > 1e-6) changes.push({ day: d, before: { ...weights }, after: { ...next }, value });
         weights = next;
       }
     } else if (s.mode !== "basket" && isRebalance(d, days[i - 1], s.rebalance)) {
       const scored = ranked.map((id) => {
+        if (stoppedOut.has(id)) return null;
         const now = priceAt(id, d), past = priceAt(id, back(d, s.lookback)!);
         if (!now || !past) return null;
         if (s.trendMA > 0 && !(now > avg(id, d, s.trendMA))) return null;

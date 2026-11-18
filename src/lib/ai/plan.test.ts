@@ -145,3 +145,33 @@ describe("trade actions log (show our work)", () => {
     expect(run.fills.reduce((t, f) => t + f.fee, 0)).toBeCloseTo(run.plan.fees, 6);
   });
 });
+
+describe("go to cash (TSD) rules in a basket", () => {
+  // BTC climbs 60 days, crashes 40% and drifts down 20 days, then climbs again
+  const v = days.map((_, i) => (i < 60 ? 100 * 1.01 ** i : i < 80 ? 108 * 0.99 ** (i - 60) : 88 * 1.02 ** (i - 80)));
+  const btc = { days, closes: v };
+  const only = { ...defaultPlan, mode: "basket" as const, coins: ["bitcoin"], start: days[0]!, end: "", amount: 500, feeBps: 0, holdout: 0, reserve: 0, stopLoss: 0, drift: 5, rebalance: "daily" as const, exitMA: 0 };
+  it("with no rule, Bitcoin-only never leaves the market", () => {
+    const run = runPlan({ bitcoin: btc }, only);
+    expect(run.fills).toHaveLength(1);
+    expect(run.plan.daysInCash).toBe(0);
+  });
+  it("sells to TSD when Bitcoin closes below its 20-day average, and buys back above it", () => {
+    const run = runPlan({ bitcoin: btc }, { ...only, exitMA: 20 });
+    const exit = run.fills.find((f) => f.side === "sell")!;
+    expect(exit.day).toBe(days[60]);
+    expect(exit.reason).toBe("Closed below its 20-day average → TSD");
+    const back = run.fills.find((f) => f.side === "buy" && f.day > exit.day)!;
+    expect(back.reason).toBe("Back above its 20-day average");
+    expect(run.plan.daysInCash).toBeGreaterThan(0);
+    expect(run.plan.finalValue).toBeGreaterThan(runPlan({ bitcoin: btc }, only).plan.finalValue);
+  });
+  it("after a 20% stop-loss, a daily basket stays in TSD instead of buying straight back", () => {
+    const run = runPlan({ bitcoin: btc }, { ...only, stopLoss: 20 });
+    const sale = run.fills.find((f) => f.side === "sell")!;
+    expect(sale.day).toBe(days[60]);
+    expect(run.fills.some((f) => f.side === "buy" && f.day === sale.day)).toBe(false);
+    const back = run.fills.find((f) => f.side === "buy" && f.day > sale.day)!;
+    expect(back.reason).toBe("Back above its 20-day average after stop-loss");
+  });
+});

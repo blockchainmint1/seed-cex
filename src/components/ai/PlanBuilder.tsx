@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useQueries } from "@tanstack/react-query";
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { aiSeriesQuery, type AiCoin } from "@/lib/ai/market";
-import { basketTargets, defaultPlan, isStable, runPlan, stableSeries, type PlanSettings } from "@/lib/ai/plan";
+import { basketTargets, defaultPlan, isStable, runPlan, stableSeries, STOP_REENTRY_MA, type PlanSettings } from "@/lib/ai/plan";
 import { fmtPct, fmtUsd, type Series } from "@/lib/ai/series";
 import { Chip, Field, inputCls, Panel, tone } from "./ui";
 import { LockPanel, type EditingPlan } from "./LockPanel";
@@ -110,15 +110,39 @@ export function PlanBuilder({ coins, settings, onChange, signedIn, editing, onSt
             <>
               <Field label="Momentum days" hint="Rank by gain over this many days"><input type="number" min={1} className={inputCls} value={s.lookback} onChange={num("lookback")} /></Field>
               <Field label="Hold top" hint="Number of coins"><input type="number" min={1} className={inputCls} value={s.topK} onChange={num("topK")} /></Field>
-              <Field label="Trend filter" hint="Only above this day average (0 = off)"><input type="number" min={0} className={inputCls} value={s.trendMA} onChange={num("trendMA")} /></Field>
               <Field label="Max per coin %"><input type="number" min={1} max={100} className={inputCls} value={s.cap} onChange={num("cap")} /></Field>
             </>
           )}
-          <Field label="Stop-loss %" hint="Sell if down this much from its high (0 = off)"><input type="number" min={0} className={inputCls} value={s.stopLoss} onChange={num("stopLoss")} /></Field>
-          <Field label="Keep in TSD %" hint="Never invested"><input type="number" min={0} max={90} className={inputCls} value={s.reserve} onChange={num("reserve")} /></Field>
           <Field label="Trading cost %" hint="Per trade, swap fees included"><input type="number" min={0} step={0.01} className={inputCls} value={s.feeBps / 100} onChange={(e) => set("feeBps", Number(e.target.value) * 100)} /></Field>
           <Field label="Fresh-data slice %" hint="Recent part kept as a fresh test"><input type="number" min={0} max={80} className={inputCls} value={s.holdout} onChange={num("holdout")} /></Field>
         </div>
+        <div className="space-y-3 rounded-sm border border-border p-3">
+          <div>
+            <h3 className="font-semibold">Go to cash (TSD) when…</h3>
+            <p className="text-xs text-muted-foreground">Rules that sell to TSD in a bad market. Set a rule to 0 to turn it off.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {s.mode === "basket" ? (
+              <Field label="Below average (days)" hint="Sell a coin that closes below its average over this many days; buy back when it's above">
+                <input type="number" min={0} max={365} className={inputCls} value={s.exitMA ?? 0} onChange={num("exitMA")} />
+              </Field>
+            ) : (
+              <Field label="Below average (days)" hint="Skip coins below their average over this many days">
+                <input type="number" min={0} max={365} className={inputCls} value={s.trendMA} onChange={num("trendMA")} />
+              </Field>
+            )}
+            <Field label="Stop-loss %" hint={`Sell if down this much from its high; buy back once above its ${(s.mode === "basket" ? s.exitMA : s.trendMA) || STOP_REENTRY_MA}-day average`}>
+              <input type="number" min={0} max={90} className={inputCls} value={s.stopLoss} onChange={num("stopLoss")} />
+            </Field>
+            <Field label="Always keep in TSD %" hint="Never invested"><input type="number" min={0} max={90} className={inputCls} value={s.reserve} onChange={num("reserve")} /></Field>
+          </div>
+          {s.mode === "basket" && !s.exitMA && !s.stopLoss ? (
+            <button type="button" onClick={() => onChange({ ...s, exitMA: 50 })} className="text-xs font-semibold text-primary underline-offset-2 hover:underline">
+              Try it: sell below the 50-day average
+            </button>
+          ) : null}
+        </div>
+
         <button type="button" onClick={() => onChange({ ...defaultPlan })} className="text-xs text-muted-foreground underline-offset-2 hover:underline">Reset to the starter plan</button>
       </aside>
 

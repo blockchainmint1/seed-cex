@@ -139,6 +139,7 @@ function rulesOf(p: MyAiPlan, symbol: (id: string) => string): [string, string][
     const t = basketTargets(s);
     out.push(["Shares", s.coins.map((c) => `${symbol(c)} ${Math.round((t[c] ?? 0) * 1000) / 10}%`).join(" · ")]);
     out.push(["Rebalance band", s.drift ? `Only when a coin is ${s.drift} points off` : "Every check"]);
+    out.push(["Trend exit", s.exitMA ? `Move a coin to TSD while it's below its ${s.exitMA}-day average` : "Off"]);
   }
   out.push(["Checks", s.rebalance === "daily" ? "Daily" : s.rebalance === "weekly" ? "Weekly (Mondays)" : "Monthly"]);
   out.push(["Stop-loss", s.stopLoss ? `Sell to TSD after a ${s.stopLoss}% drop from the high` : "Off"]);

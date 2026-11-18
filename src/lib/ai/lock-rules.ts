@@ -29,6 +29,7 @@ export function cleanSettings(raw: Partial<PlanSettings>, activeCoins: string[])
     lookback: Math.round(clamp(raw.lookback, 1, 365, defaultPlan.lookback)),
     topK: Math.round(clamp(raw.topK, 1, LOCK_LIMITS.maxCoins, defaultPlan.topK)),
     trendMA: Math.round(clamp(raw.trendMA, 0, 365, defaultPlan.trendMA)),
+    exitMA: Math.round(clamp(raw.exitMA, 0, 365, defaultPlan.exitMA)),
     cap: clamp(raw.cap, 1, 100, defaultPlan.cap),
     reserve: clamp(raw.reserve, 0, 90, defaultPlan.reserve),
     feeBps: clamp(raw.feeBps, 0, 500, defaultPlan.feeBps),
