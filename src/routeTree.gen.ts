@@ -47,11 +47,22 @@ import { Route as TradeLtcTsdRouteImport } from './routes/trade.ltc-tsd'
 import { Route as TradeTsdTxcRouteImport } from './routes/trade.tsd-txc'
 import { Route as TradeTsdUsdcRouteImport } from './routes/trade.tsd-usdc'
 import { Route as TradeZcuTsdRouteImport } from './routes/trade.zcu-tsd'
+import { Route as AuthenticatedAccountIndexRouteImport } from './routes/_authenticated/account.index'
+import { Route as AuthenticatedAccountAiRouteImport } from './routes/_authenticated/account.ai'
+import { Route as AuthenticatedAccountAlertsRouteImport } from './routes/_authenticated/account.alerts'
+import { Route as AuthenticatedAccountApiKeysRouteImport } from './routes/_authenticated/account.api-keys'
+import { Route as AuthenticatedAccountBalancesRouteImport } from './routes/_authenticated/account.balances'
+import { Route as AuthenticatedAccountProfileRouteImport } from './routes/_authenticated/account.profile'
+import { Route as AuthenticatedAccountReferralsRouteImport } from './routes/_authenticated/account.referrals'
+import { Route as AuthenticatedAccountSecurityRouteImport } from './routes/_authenticated/account.security'
 import { Route as AuthenticatedAdminAiRouteImport } from './routes/_authenticated/admin_.ai'
 import { Route as AuthenticatedP2pDashboardRouteImport } from './routes/_authenticated/p2p.dashboard'
 import { Route as AuthenticatedP2pJuryRouteImport } from './routes/_authenticated/p2p.jury'
 import { Route as AiCoinIdRouteImport } from './routes/ai.coin.$id'
 import { Route as P2pSellerHandleRouteImport } from './routes/p2p.seller.$handle'
+import { Route as AuthenticatedAccountBalancesIndexRouteImport } from './routes/_authenticated/account.balances.index'
+import { Route as AuthenticatedAccountBalancesDepositRouteImport } from './routes/_authenticated/account.balances.deposit'
+import { Route as AuthenticatedAccountBalancesWithdrawRouteImport } from './routes/_authenticated/account.balances.withdraw'
 import { Route as AuthenticatedP2pTradeIdRouteImport } from './routes/_authenticated/p2p.trade.$id'
 import { Route as ApiPublicCmcIndexRouteImport } from './routes/api/public/cmc/index'
 import { Route as ApiPublicCmcAssetsRouteImport } from './routes/api/public/cmc/assets'
@@ -277,6 +288,53 @@ const TradeZcuTsdRoute = TradeZcuTsdRouteImport.update({
   path: '/trade/zcu-tsd',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAccountIndexRoute =
+  AuthenticatedAccountIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedAccountRoute,
+  } as any)
+const AuthenticatedAccountAiRoute = AuthenticatedAccountAiRouteImport.update({
+  id: '/ai',
+  path: '/ai',
+  getParentRoute: () => AuthenticatedAccountRoute,
+} as any)
+const AuthenticatedAccountAlertsRoute =
+  AuthenticatedAccountAlertsRouteImport.update({
+    id: '/alerts',
+    path: '/alerts',
+    getParentRoute: () => AuthenticatedAccountRoute,
+  } as any)
+const AuthenticatedAccountApiKeysRoute =
+  AuthenticatedAccountApiKeysRouteImport.update({
+    id: '/api-keys',
+    path: '/api-keys',
+    getParentRoute: () => AuthenticatedAccountRoute,
+  } as any)
+const AuthenticatedAccountBalancesRoute =
+  AuthenticatedAccountBalancesRouteImport.update({
+    id: '/balances',
+    path: '/balances',
+    getParentRoute: () => AuthenticatedAccountRoute,
+  } as any)
+const AuthenticatedAccountProfileRoute =
+  AuthenticatedAccountProfileRouteImport.update({
+    id: '/profile',
+    path: '/profile',
+    getParentRoute: () => AuthenticatedAccountRoute,
+  } as any)
+const AuthenticatedAccountReferralsRoute =
+  AuthenticatedAccountReferralsRouteImport.update({
+    id: '/referrals',
+    path: '/referrals',
+    getParentRoute: () => AuthenticatedAccountRoute,
+  } as any)
+const AuthenticatedAccountSecurityRoute =
+  AuthenticatedAccountSecurityRouteImport.update({
+    id: '/security',
+    path: '/security',
+    getParentRoute: () => AuthenticatedAccountRoute,
+  } as any)
 const AuthenticatedAdminAiRoute = AuthenticatedAdminAiRouteImport.update({
   id: '/admin_/ai',
   path: '/admin/ai',
@@ -303,6 +361,24 @@ const P2pSellerHandleRoute = P2pSellerHandleRouteImport.update({
   path: '/p2p/seller/$handle',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAccountBalancesIndexRoute =
+  AuthenticatedAccountBalancesIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedAccountBalancesRoute,
+  } as any)
+const AuthenticatedAccountBalancesDepositRoute =
+  AuthenticatedAccountBalancesDepositRouteImport.update({
+    id: '/deposit',
+    path: '/deposit',
+    getParentRoute: () => AuthenticatedAccountBalancesRoute,
+  } as any)
+const AuthenticatedAccountBalancesWithdrawRoute =
+  AuthenticatedAccountBalancesWithdrawRouteImport.update({
+    id: '/withdraw',
+    path: '/withdraw',
+    getParentRoute: () => AuthenticatedAccountBalancesRoute,
+  } as any)
 const AuthenticatedP2pTradeIdRoute = AuthenticatedP2pTradeIdRouteImport.update({
   id: '/p2p/trade/$id',
   path: '/p2p/trade/$id',
@@ -506,7 +582,7 @@ export interface FileRoutesByFullPath {
   '/swap': typeof SwapRoute
   '/terms': typeof TermsRoute
   '/tsd': typeof TsdRoute
-  '/account': typeof AuthenticatedAccountRoute
+  '/account': typeof AuthenticatedAccountRouteWithChildren
   '/admin': typeof AuthenticatedAdminRoute
   '/api-keys': typeof AuthenticatedApiKeysRoute
   '/trades': typeof AuthenticatedTradesRoute
@@ -525,11 +601,21 @@ export interface FileRoutesByFullPath {
   '/ai/': typeof AiIndexRoute
   '/api/': typeof ApiIndexRoute
   '/p2p/': typeof P2pIndexRoute
+  '/account/ai': typeof AuthenticatedAccountAiRoute
+  '/account/alerts': typeof AuthenticatedAccountAlertsRoute
+  '/account/api-keys': typeof AuthenticatedAccountApiKeysRoute
+  '/account/balances': typeof AuthenticatedAccountBalancesRouteWithChildren
+  '/account/profile': typeof AuthenticatedAccountProfileRoute
+  '/account/referrals': typeof AuthenticatedAccountReferralsRoute
+  '/account/security': typeof AuthenticatedAccountSecurityRoute
   '/admin/ai': typeof AuthenticatedAdminAiRoute
   '/p2p/dashboard': typeof AuthenticatedP2pDashboardRoute
   '/p2p/jury': typeof AuthenticatedP2pJuryRoute
   '/ai/coin/$id': typeof AiCoinIdRoute
   '/p2p/seller/$handle': typeof P2pSellerHandleRoute
+  '/account/': typeof AuthenticatedAccountIndexRoute
+  '/account/balances/deposit': typeof AuthenticatedAccountBalancesDepositRoute
+  '/account/balances/withdraw': typeof AuthenticatedAccountBalancesWithdrawRoute
   '/p2p/trade/$id': typeof AuthenticatedP2pTradeIdRoute
   '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
   '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
@@ -557,6 +643,7 @@ export interface FileRoutesByFullPath {
   '/api/public/v1/stream': typeof ApiPublicV1StreamRoute
   '/api/public/v1/time': typeof ApiPublicV1TimeRoute
   '/api/public/v1/trades': typeof ApiPublicV1TradesRoute
+  '/account/balances/': typeof AuthenticatedAccountBalancesIndexRoute
   '/api/public/cmc/': typeof ApiPublicCmcIndexRoute
   '/api/public/v1/': typeof ApiPublicV1IndexRoute
   '/api/public/cmc/orderbook/$pair': typeof ApiPublicCmcOrderbookPairRoute
@@ -585,7 +672,6 @@ export interface FileRoutesByTo {
   '/swap': typeof SwapRoute
   '/terms': typeof TermsRoute
   '/tsd': typeof TsdRoute
-  '/account': typeof AuthenticatedAccountRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/api-keys': typeof AuthenticatedApiKeysRoute
   '/trades': typeof AuthenticatedTradesRoute
@@ -604,11 +690,20 @@ export interface FileRoutesByTo {
   '/ai': typeof AiIndexRoute
   '/api': typeof ApiIndexRoute
   '/p2p': typeof P2pIndexRoute
+  '/account/ai': typeof AuthenticatedAccountAiRoute
+  '/account/alerts': typeof AuthenticatedAccountAlertsRoute
+  '/account/api-keys': typeof AuthenticatedAccountApiKeysRoute
+  '/account/profile': typeof AuthenticatedAccountProfileRoute
+  '/account/referrals': typeof AuthenticatedAccountReferralsRoute
+  '/account/security': typeof AuthenticatedAccountSecurityRoute
   '/admin/ai': typeof AuthenticatedAdminAiRoute
   '/p2p/dashboard': typeof AuthenticatedP2pDashboardRoute
   '/p2p/jury': typeof AuthenticatedP2pJuryRoute
   '/ai/coin/$id': typeof AiCoinIdRoute
   '/p2p/seller/$handle': typeof P2pSellerHandleRoute
+  '/account': typeof AuthenticatedAccountIndexRoute
+  '/account/balances/deposit': typeof AuthenticatedAccountBalancesDepositRoute
+  '/account/balances/withdraw': typeof AuthenticatedAccountBalancesWithdrawRoute
   '/p2p/trade/$id': typeof AuthenticatedP2pTradeIdRoute
   '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
   '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
@@ -636,6 +731,7 @@ export interface FileRoutesByTo {
   '/api/public/v1/stream': typeof ApiPublicV1StreamRoute
   '/api/public/v1/time': typeof ApiPublicV1TimeRoute
   '/api/public/v1/trades': typeof ApiPublicV1TradesRoute
+  '/account/balances': typeof AuthenticatedAccountBalancesIndexRoute
   '/api/public/cmc': typeof ApiPublicCmcIndexRoute
   '/api/public/v1': typeof ApiPublicV1IndexRoute
   '/api/public/cmc/orderbook/$pair': typeof ApiPublicCmcOrderbookPairRoute
@@ -666,7 +762,7 @@ export interface FileRoutesById {
   '/swap': typeof SwapRoute
   '/terms': typeof TermsRoute
   '/tsd': typeof TsdRoute
-  '/_authenticated/account': typeof AuthenticatedAccountRoute
+  '/_authenticated/account': typeof AuthenticatedAccountRouteWithChildren
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/api-keys': typeof AuthenticatedApiKeysRoute
   '/_authenticated/trades': typeof AuthenticatedTradesRoute
@@ -685,11 +781,21 @@ export interface FileRoutesById {
   '/ai/': typeof AiIndexRoute
   '/api/': typeof ApiIndexRoute
   '/p2p/': typeof P2pIndexRoute
+  '/_authenticated/account/ai': typeof AuthenticatedAccountAiRoute
+  '/_authenticated/account/alerts': typeof AuthenticatedAccountAlertsRoute
+  '/_authenticated/account/api-keys': typeof AuthenticatedAccountApiKeysRoute
+  '/_authenticated/account/balances': typeof AuthenticatedAccountBalancesRouteWithChildren
+  '/_authenticated/account/profile': typeof AuthenticatedAccountProfileRoute
+  '/_authenticated/account/referrals': typeof AuthenticatedAccountReferralsRoute
+  '/_authenticated/account/security': typeof AuthenticatedAccountSecurityRoute
   '/_authenticated/admin_/ai': typeof AuthenticatedAdminAiRoute
   '/_authenticated/p2p/dashboard': typeof AuthenticatedP2pDashboardRoute
   '/_authenticated/p2p/jury': typeof AuthenticatedP2pJuryRoute
   '/ai/coin/$id': typeof AiCoinIdRoute
   '/p2p/seller/$handle': typeof P2pSellerHandleRoute
+  '/_authenticated/account/': typeof AuthenticatedAccountIndexRoute
+  '/_authenticated/account/balances/deposit': typeof AuthenticatedAccountBalancesDepositRoute
+  '/_authenticated/account/balances/withdraw': typeof AuthenticatedAccountBalancesWithdrawRoute
   '/_authenticated/p2p/trade/$id': typeof AuthenticatedP2pTradeIdRoute
   '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
   '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
@@ -717,6 +823,7 @@ export interface FileRoutesById {
   '/api/public/v1/stream': typeof ApiPublicV1StreamRoute
   '/api/public/v1/time': typeof ApiPublicV1TimeRoute
   '/api/public/v1/trades': typeof ApiPublicV1TradesRoute
+  '/_authenticated/account/balances/': typeof AuthenticatedAccountBalancesIndexRoute
   '/api/public/cmc/': typeof ApiPublicCmcIndexRoute
   '/api/public/v1/': typeof ApiPublicV1IndexRoute
   '/api/public/cmc/orderbook/$pair': typeof ApiPublicCmcOrderbookPairRoute
@@ -766,11 +873,21 @@ export interface FileRouteTypes {
     | '/ai/'
     | '/api/'
     | '/p2p/'
+    | '/account/ai'
+    | '/account/alerts'
+    | '/account/api-keys'
+    | '/account/balances'
+    | '/account/profile'
+    | '/account/referrals'
+    | '/account/security'
     | '/admin/ai'
     | '/p2p/dashboard'
     | '/p2p/jury'
     | '/ai/coin/$id'
     | '/p2p/seller/$handle'
+    | '/account/'
+    | '/account/balances/deposit'
+    | '/account/balances/withdraw'
     | '/p2p/trade/$id'
     | '/api/public/cmc/assets'
     | '/api/public/cmc/summary'
@@ -798,6 +915,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/stream'
     | '/api/public/v1/time'
     | '/api/public/v1/trades'
+    | '/account/balances/'
     | '/api/public/cmc/'
     | '/api/public/v1/'
     | '/api/public/cmc/orderbook/$pair'
@@ -826,7 +944,6 @@ export interface FileRouteTypes {
     | '/swap'
     | '/terms'
     | '/tsd'
-    | '/account'
     | '/admin'
     | '/api-keys'
     | '/trades'
@@ -845,11 +962,20 @@ export interface FileRouteTypes {
     | '/ai'
     | '/api'
     | '/p2p'
+    | '/account/ai'
+    | '/account/alerts'
+    | '/account/api-keys'
+    | '/account/profile'
+    | '/account/referrals'
+    | '/account/security'
     | '/admin/ai'
     | '/p2p/dashboard'
     | '/p2p/jury'
     | '/ai/coin/$id'
     | '/p2p/seller/$handle'
+    | '/account'
+    | '/account/balances/deposit'
+    | '/account/balances/withdraw'
     | '/p2p/trade/$id'
     | '/api/public/cmc/assets'
     | '/api/public/cmc/summary'
@@ -877,6 +1003,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/stream'
     | '/api/public/v1/time'
     | '/api/public/v1/trades'
+    | '/account/balances'
     | '/api/public/cmc'
     | '/api/public/v1'
     | '/api/public/cmc/orderbook/$pair'
@@ -925,11 +1052,21 @@ export interface FileRouteTypes {
     | '/ai/'
     | '/api/'
     | '/p2p/'
+    | '/_authenticated/account/ai'
+    | '/_authenticated/account/alerts'
+    | '/_authenticated/account/api-keys'
+    | '/_authenticated/account/balances'
+    | '/_authenticated/account/profile'
+    | '/_authenticated/account/referrals'
+    | '/_authenticated/account/security'
     | '/_authenticated/admin_/ai'
     | '/_authenticated/p2p/dashboard'
     | '/_authenticated/p2p/jury'
     | '/ai/coin/$id'
     | '/p2p/seller/$handle'
+    | '/_authenticated/account/'
+    | '/_authenticated/account/balances/deposit'
+    | '/_authenticated/account/balances/withdraw'
     | '/_authenticated/p2p/trade/$id'
     | '/api/public/cmc/assets'
     | '/api/public/cmc/summary'
@@ -957,6 +1094,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/stream'
     | '/api/public/v1/time'
     | '/api/public/v1/trades'
+    | '/_authenticated/account/balances/'
     | '/api/public/cmc/'
     | '/api/public/v1/'
     | '/api/public/cmc/orderbook/$pair'
@@ -1306,6 +1444,62 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TradeZcuTsdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/account/': {
+      id: '/_authenticated/account/'
+      path: '/'
+      fullPath: '/account/'
+      preLoaderRoute: typeof AuthenticatedAccountIndexRouteImport
+      parentRoute: typeof AuthenticatedAccountRoute
+    }
+    '/_authenticated/account/ai': {
+      id: '/_authenticated/account/ai'
+      path: '/ai'
+      fullPath: '/account/ai'
+      preLoaderRoute: typeof AuthenticatedAccountAiRouteImport
+      parentRoute: typeof AuthenticatedAccountRoute
+    }
+    '/_authenticated/account/alerts': {
+      id: '/_authenticated/account/alerts'
+      path: '/alerts'
+      fullPath: '/account/alerts'
+      preLoaderRoute: typeof AuthenticatedAccountAlertsRouteImport
+      parentRoute: typeof AuthenticatedAccountRoute
+    }
+    '/_authenticated/account/api-keys': {
+      id: '/_authenticated/account/api-keys'
+      path: '/api-keys'
+      fullPath: '/account/api-keys'
+      preLoaderRoute: typeof AuthenticatedAccountApiKeysRouteImport
+      parentRoute: typeof AuthenticatedAccountRoute
+    }
+    '/_authenticated/account/balances': {
+      id: '/_authenticated/account/balances'
+      path: '/balances'
+      fullPath: '/account/balances'
+      preLoaderRoute: typeof AuthenticatedAccountBalancesRouteImport
+      parentRoute: typeof AuthenticatedAccountRoute
+    }
+    '/_authenticated/account/profile': {
+      id: '/_authenticated/account/profile'
+      path: '/profile'
+      fullPath: '/account/profile'
+      preLoaderRoute: typeof AuthenticatedAccountProfileRouteImport
+      parentRoute: typeof AuthenticatedAccountRoute
+    }
+    '/_authenticated/account/referrals': {
+      id: '/_authenticated/account/referrals'
+      path: '/referrals'
+      fullPath: '/account/referrals'
+      preLoaderRoute: typeof AuthenticatedAccountReferralsRouteImport
+      parentRoute: typeof AuthenticatedAccountRoute
+    }
+    '/_authenticated/account/security': {
+      id: '/_authenticated/account/security'
+      path: '/security'
+      fullPath: '/account/security'
+      preLoaderRoute: typeof AuthenticatedAccountSecurityRouteImport
+      parentRoute: typeof AuthenticatedAccountRoute
+    }
     '/_authenticated/admin_/ai': {
       id: '/_authenticated/admin_/ai'
       path: '/admin/ai'
@@ -1340,6 +1534,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/p2p/seller/$handle'
       preLoaderRoute: typeof P2pSellerHandleRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/account/balances/': {
+      id: '/_authenticated/account/balances/'
+      path: '/'
+      fullPath: '/account/balances/'
+      preLoaderRoute: typeof AuthenticatedAccountBalancesIndexRouteImport
+      parentRoute: typeof AuthenticatedAccountBalancesRoute
+    }
+    '/_authenticated/account/balances/deposit': {
+      id: '/_authenticated/account/balances/deposit'
+      path: '/deposit'
+      fullPath: '/account/balances/deposit'
+      preLoaderRoute: typeof AuthenticatedAccountBalancesDepositRouteImport
+      parentRoute: typeof AuthenticatedAccountBalancesRoute
+    }
+    '/_authenticated/account/balances/withdraw': {
+      id: '/_authenticated/account/balances/withdraw'
+      path: '/withdraw'
+      fullPath: '/account/balances/withdraw'
+      preLoaderRoute: typeof AuthenticatedAccountBalancesWithdrawRouteImport
+      parentRoute: typeof AuthenticatedAccountBalancesRoute
     }
     '/_authenticated/p2p/trade/$id': {
       id: '/_authenticated/p2p/trade/$id'
@@ -1589,8 +1804,55 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedAccountBalancesRouteChildren {
+  AuthenticatedAccountBalancesDepositRoute: typeof AuthenticatedAccountBalancesDepositRoute
+  AuthenticatedAccountBalancesWithdrawRoute: typeof AuthenticatedAccountBalancesWithdrawRoute
+  AuthenticatedAccountBalancesIndexRoute: typeof AuthenticatedAccountBalancesIndexRoute
+}
+
+const AuthenticatedAccountBalancesRouteChildren: AuthenticatedAccountBalancesRouteChildren =
+  {
+    AuthenticatedAccountBalancesDepositRoute:
+      AuthenticatedAccountBalancesDepositRoute,
+    AuthenticatedAccountBalancesWithdrawRoute:
+      AuthenticatedAccountBalancesWithdrawRoute,
+    AuthenticatedAccountBalancesIndexRoute:
+      AuthenticatedAccountBalancesIndexRoute,
+  }
+
+const AuthenticatedAccountBalancesRouteWithChildren =
+  AuthenticatedAccountBalancesRoute._addFileChildren(
+    AuthenticatedAccountBalancesRouteChildren,
+  )
+
+interface AuthenticatedAccountRouteChildren {
+  AuthenticatedAccountAiRoute: typeof AuthenticatedAccountAiRoute
+  AuthenticatedAccountAlertsRoute: typeof AuthenticatedAccountAlertsRoute
+  AuthenticatedAccountApiKeysRoute: typeof AuthenticatedAccountApiKeysRoute
+  AuthenticatedAccountBalancesRoute: typeof AuthenticatedAccountBalancesRouteWithChildren
+  AuthenticatedAccountProfileRoute: typeof AuthenticatedAccountProfileRoute
+  AuthenticatedAccountReferralsRoute: typeof AuthenticatedAccountReferralsRoute
+  AuthenticatedAccountSecurityRoute: typeof AuthenticatedAccountSecurityRoute
+  AuthenticatedAccountIndexRoute: typeof AuthenticatedAccountIndexRoute
+}
+
+const AuthenticatedAccountRouteChildren: AuthenticatedAccountRouteChildren = {
+  AuthenticatedAccountAiRoute: AuthenticatedAccountAiRoute,
+  AuthenticatedAccountAlertsRoute: AuthenticatedAccountAlertsRoute,
+  AuthenticatedAccountApiKeysRoute: AuthenticatedAccountApiKeysRoute,
+  AuthenticatedAccountBalancesRoute:
+    AuthenticatedAccountBalancesRouteWithChildren,
+  AuthenticatedAccountProfileRoute: AuthenticatedAccountProfileRoute,
+  AuthenticatedAccountReferralsRoute: AuthenticatedAccountReferralsRoute,
+  AuthenticatedAccountSecurityRoute: AuthenticatedAccountSecurityRoute,
+  AuthenticatedAccountIndexRoute: AuthenticatedAccountIndexRoute,
+}
+
+const AuthenticatedAccountRouteWithChildren =
+  AuthenticatedAccountRoute._addFileChildren(AuthenticatedAccountRouteChildren)
+
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedAccountRoute: typeof AuthenticatedAccountRoute
+  AuthenticatedAccountRoute: typeof AuthenticatedAccountRouteWithChildren
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedApiKeysRoute: typeof AuthenticatedApiKeysRoute
   AuthenticatedTradesRoute: typeof AuthenticatedTradesRoute
@@ -1602,7 +1864,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedAccountRoute: AuthenticatedAccountRoute,
+  AuthenticatedAccountRoute: AuthenticatedAccountRouteWithChildren,
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedApiKeysRoute: AuthenticatedApiKeysRoute,
   AuthenticatedTradesRoute: AuthenticatedTradesRoute,

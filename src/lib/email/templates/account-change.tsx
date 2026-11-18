@@ -24,7 +24,7 @@ export function AccountChangeEmail(p: AccountChangeProps) {
       ]} />
       <P>If this was you, there's nothing else to do.</P>
       <Note tone="warn">If you didn't make this change: {p.ifNotYou ?? "revoke your HME Wallet link from your profile, sign out of Honest.Money everywhere, and contact support@honest.money."} Seeds will never ask for your recovery phrase.</Note>
-      <Cta href={`${SITE}/account`}>Review your account</Cta>
+      <Cta href={`${SITE}/account/security`}>Review your account</Cta>
     </Layout>
   );
 }

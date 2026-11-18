@@ -15,7 +15,7 @@ const CHAIN_NAME: Record<string, string> = {
   "3": "Dogecoin", "145": "Bitcoin Cash", "133": "Zcash", "144": "XRP", "195": "TRON", "501": "Solana",
 };
 
-export function HmeWalletLinkCard() {
+export function HmeWalletLinkCard({ showBalances = true, className = "border-y border-border py-7" }: { showBalances?: boolean; className?: string } = {}) {
   const qc = useQueryClient();
   const fetchLink = useServerFn(getMyHmeLink);
   const start = useServerFn(startHmeLink);
@@ -49,7 +49,7 @@ export function HmeWalletLinkCard() {
   const extraCoins = l ? Object.keys(l.addresses).filter((c) => (HME_WALLET_CANT_HOLD as string[]).includes(c)) : [];
   const extraWarning = hmeCantHoldWarning(extraCoins);
   return (
-    <section className="border-y border-border py-7">
+    <section className={className}>
       <div className="flex items-center gap-3"><ShieldCheck className="h-5 w-5 text-primary" /><h2 className="font-display text-xl font-bold text-foreground">HME Wallet trading pocket</h2></div>
 
       {l ? (
@@ -108,7 +108,7 @@ export function HmeWalletLinkCard() {
             </p>
           ) : null}
           <p className="border-l-2 border-warn pl-3 text-sm text-foreground">Wallet linking and balance sync work. Exchange and P2P settlement from linked pockets is not connected yet—do not fund this pocket for a Seeds trade yet.</p>
-          <HmePocketBalances addresses={l.addresses} linkId={l.id} />
+          {showBalances ? <HmePocketBalances addresses={l.addresses} linkId={l.id} /> : null}
         </div>
       ) : manifest ? (
         <div className="mt-4 flex flex-col items-center gap-3 sm:flex-row sm:items-start">

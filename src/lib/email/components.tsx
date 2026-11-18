@@ -159,7 +159,7 @@ function Footer({ kind, unsubscribeUrl }: { kind: FooterKind; unsubscribeUrl?: s
       </Text>
       <Text style={{ margin: "0 0 12px", fontSize: 13, lineHeight: "19px", color: C.stone }}>
         {reason}{" "}
-        {kind !== "security" && kind !== "peer" ? <Link href={`${SITE}/account`} style={link}>Email settings</Link> : null}
+        {kind !== "security" && kind !== "peer" ? <Link href={`${SITE}/account/alerts`} style={link}>Email settings</Link> : null}
         {unsubscribeUrl ? <>{" · "}<Link href={unsubscribeUrl} style={link}>Unsubscribe from weekly updates</Link></> : null}
       </Text>
       <Hr style={{ borderColor: C.line, margin: "16px 0" }} />

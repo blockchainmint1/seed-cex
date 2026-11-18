@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { getMyAiPlans } from "@/lib/ai/ai.functions";
 import { Sparkles } from "lucide-react";
 import { aiCoinsQuery } from "@/lib/ai/market";
 import { defaultPlan, type PlanSettings } from "@/lib/ai/plan";
@@ -12,8 +14,9 @@ import { Chip } from "@/components/ai/ui";
 
 export const Route = createFileRoute("/ai/")({
   staticData: { sitemap: true },
-  validateSearch: (s: Record<string, unknown>): { plan?: string } => ({
+  validateSearch: (s: Record<string, unknown>): { plan?: string; edit?: boolean } => ({
     plan: typeof s.plan === "string" && /^[0-9a-f-]{36}$/i.test(s.plan) ? s.plan : undefined,
+    edit: s.edit === true || s.edit === "1" || s.edit === "true" ? true : undefined,
   }),
   head: () => ({
     meta: [
@@ -29,14 +32,27 @@ export const Route = createFileRoute("/ai/")({
 });
 
 function AiPage() {
-  const { plan } = Route.useSearch();
+  const { plan, edit } = Route.useSearch();
   const { user } = useSession();
   const coinsQ = useQuery(aiCoinsQuery);
+  const fetchPlans = useServerFn(getMyAiPlans);
+  const myPlans = useQuery({ queryKey: ["ai-my-plans"], queryFn: () => fetchPlans(), enabled: Boolean(user && plan && edit) });
   const [tab, setTab] = useState<"plan" | "coins">("plan");
   const [settings, setSettings] = useState<PlanSettings>(defaultPlan);
+  // ?plan=…&edit=1 (from Profile → AI strategies) loads a locked plan into the tester to change its rules.
+  const editingPlan = edit && plan ? myPlans.data?.plans.find((p) => p.id === plan && p.status !== "ended") : undefined;
+  const [loadedFor, setLoadedFor] = useState<string | null>(null);
+  const [editingOff, setEditingOff] = useState(false);
   useEffect(() => {
-    if (plan) setTimeout(() => document.getElementById("my-plans")?.scrollIntoView({ behavior: "smooth" }), 600);
-  }, [plan]);
+    if (editingPlan && loadedFor !== editingPlan.id) {
+      setSettings({ ...defaultPlan, ...editingPlan.settings, start: defaultPlan.start, amount: editingPlan.commitTsd });
+      setLoadedFor(editingPlan.id);
+    }
+  }, [editingPlan, loadedFor]);
+  useEffect(() => {
+    if (plan && !edit) setTimeout(() => document.getElementById("my-plans")?.scrollIntoView({ behavior: "smooth" }), 600);
+  }, [plan, edit]);
+  const editing = editingPlan && !editingOff ? { id: editingPlan.id, name: editingPlan.name, commitTsd: editingPlan.commitTsd } : null;
   const coins = coinsQ.data ?? [];
 
   return (
@@ -63,7 +79,7 @@ function AiPage() {
       ) : coinsQ.error ? (
         <p className="text-sm text-destructive">Couldn't load coins. Refresh to try again.</p>
       ) : tab === "plan" ? (
-        <PlanBuilder coins={coins} settings={settings} onChange={setSettings} signedIn={Boolean(user)} />
+        <PlanBuilder coins={coins} settings={settings} onChange={setSettings} signedIn={Boolean(user)} editing={editing} onStopEditing={() => setEditingOff(true)} />
       ) : (
         <div className="space-y-3">
           <p className="max-w-3xl text-sm text-muted-foreground">

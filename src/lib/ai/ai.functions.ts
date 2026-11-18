@@ -23,6 +23,8 @@ export type MyAiPlan = {
   id: string; name: string; status: string; commitTsd: number; lockedAt: string; telegramDaily: boolean;
   settings: PlanSettings;
   lastCheck: { day: string; message: string; sentAt: string | null } | null;
+  /** Up to 14 most recent daily checks, newest first. */
+  history: { day: string; message: string; sentAt: string | null }[];
 };
 
 /** Signed-in: my locked plans, latest daily check, limits, and whether my pocket is linked. */
@@ -32,18 +34,23 @@ export const getMyAiPlans = createServerFn({ method: "GET" })
     const { supabase, userId } = context;
     const [{ data: plans }, { data: checks }, telegram] = await Promise.all([
       supabase.from("ai_plans").select("id, name, status, commit_tsd, locked_at, telegram_daily, settings").order("locked_at", { ascending: false }),
-      supabase.from("ai_plan_checks").select("plan_id, day, message, sent_at").order("day", { ascending: false }).limit(100),
+      supabase.from("ai_plan_checks").select("plan_id, day, message, sent_at").order("day", { ascending: false }).limit(300),
       supabase.from("profiles").select("telegram_verified").eq("id", userId).maybeSingle(),
     ]);
     const { aiSettings } = await import("./ai.server");
     const { swapSendContext } = await import("@/lib/xchain/send.server");
     const [settings, ctx] = await Promise.all([aiSettings(), swapSendContext(userId)]);
-    const latest = new Map<string, { day: string; message: string; sentAt: string | null }>();
-    for (const c of checks ?? []) if (!latest.has(c.plan_id)) latest.set(c.plan_id, { day: c.day, message: c.message, sentAt: c.sent_at });
+    const history = new Map<string, { day: string; message: string; sentAt: string | null }[]>();
+    for (const c of checks ?? []) {
+      const list = history.get(c.plan_id) ?? [];
+      if (list.length < 14) list.push({ day: c.day, message: c.message, sentAt: c.sent_at });
+      history.set(c.plan_id, list);
+    }
     return {
       plans: (plans ?? []).map((p): MyAiPlan => ({
         id: p.id, name: p.name, status: p.status, commitTsd: Number(p.commit_tsd), lockedAt: p.locked_at,
-        telegramDaily: p.telegram_daily, settings: p.settings as unknown as PlanSettings, lastCheck: latest.get(p.id) ?? null,
+        telegramDaily: p.telegram_daily, settings: p.settings as unknown as PlanSettings,
+        lastCheck: history.get(p.id)?.[0] ?? null, history: history.get(p.id) ?? [],
       })),
       limits: { maxCommitTsd: settings.maxCommitTsd, oneTapLimitUsd: settings.oneTapLimitUsd },
       executionEnabled: settings.executionEnabled,
@@ -90,6 +97,52 @@ export const lockAiPlan = createServerFn({ method: "POST" })
     const { runDailyChecks } = await import("./ai.server");
     await runDailyChecks({ planId: row.id, deadlineMs: 8000 }).catch((e) => console.error("[ai] first check failed", e));
     return { id: row.id };
+  });
+
+const editInput = z.object({
+  id: z.string().uuid(),
+  name: z.string().trim().min(1).max(60).optional(),
+  commitTsd: z.number().finite().optional(),
+  settings: z.record(z.string(), z.unknown()).optional(),
+});
+
+/**
+ * Signed-in: change one of my live or paused plans — name, TSD committed, or its
+ * rules. Re-runs every lock check (coins Seeds can buy, limits, linked pockets),
+ * so an edited plan is held to the same rules as a newly locked one.
+ */
+export const editMyAiPlan = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => editInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const admin = await db();
+    const { data: plan } = await admin.from("ai_plans").select("id, name, commit_tsd, settings, status")
+      .eq("id", data.id).eq("user_id", context.userId).neq("status", "ended").maybeSingle();
+    if (!plan) throw new Error("Plan not found, or it has already ended.");
+    const { data: coins } = await admin.from("ai_coins").select("id, swap_coin").eq("active", true);
+    const active = (coins ?? []).map((c) => c.id);
+    const settings = cleanSettings((data.settings ?? plan.settings) as Partial<PlanSettings>, active);
+    const name = data.name ?? plan.name;
+    const commitTsd = data.commitTsd ?? Number(plan.commit_tsd);
+    const { aiSettings } = await import("./ai.server");
+    const { swapSendContext } = await import("@/lib/xchain/send.server");
+    const [limits, ctx, { count }] = await Promise.all([
+      aiSettings(admin),
+      swapSendContext(context.userId),
+      admin.from("ai_plans").select("id", { count: "exact", head: true }).eq("user_id", context.userId).in("status", ["locked", "paused"]).neq("id", data.id),
+    ]);
+    const pockets = (ctx.link?.pockets ?? []) as string[];
+    const swapOf = new Map((coins ?? []).map((c) => [c.id, c.swap_coin]));
+    const missing = ctx.link
+      ? [...new Set(settings.coins.map((id) => aiPocketFor(swapOf.get(id))).filter((p): p is NonNullable<typeof p> => Boolean(p) && !pockets.includes(p!)))].map((p) => POCKET_NAMES[p] ?? p)
+      : [];
+    const blocker = lockBlocker({ name, commitTsd, settings, maxCommitTsd: limits.maxCommitTsd, activePlans: count ?? 0, missingPockets: missing });
+    if (blocker) throw new Error(blocker);
+    const { error } = await admin.from("ai_plans")
+      .update({ name: name.trim(), commit_tsd: commitTsd, settings: settings as never, updated_at: new Date().toISOString() })
+      .eq("id", data.id).eq("user_id", context.userId).neq("status", "ended");
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
 
 const statusInput = z.object({ id: z.string().uuid(), status: z.enum(["locked", "paused", "ended"]).optional(), telegramDaily: z.boolean().optional() });

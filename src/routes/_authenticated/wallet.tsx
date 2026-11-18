@@ -39,7 +39,7 @@ import { HmeWalletLinkCard } from "@/components/wallet/HmeWalletLinkCard";
 
 export const Route = createFileRoute("/_authenticated/wallet")({
   staticData: { sitemap: false },
-  beforeLoad: () => { throw redirect({ to: "/account" }); },
+  beforeLoad: () => { throw redirect({ to: "/account/balances" }); },
   head: () => ({
     meta: [
       { title: "Trading Pocket — Seeds" },

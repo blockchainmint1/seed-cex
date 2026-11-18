@@ -76,7 +76,7 @@ export async function runDailyChecks(opts: { planId?: string; deadlineMs?: numbe
         .map(([id, w]) => ({ symbol: symbol.get(id) ?? id, pct: w * 100 }));
       const message = dailyMessage({
         planName: p.name, day, moves: named, hold, valueUsd: value, commitTsd: Number(p.commit_tsd),
-        reviewUrl: `${SITE}/ai?plan=${p.id}`, executionLive: settings.executionEnabled,
+        reviewUrl: `${SITE}/account/ai`, executionLive: settings.executionEnabled,
       });
       const { data: inserted, error: insErr } = await db.from("ai_plan_checks")
         .upsert({ plan_id: p.id, user_id: p.user_id, day, message, suggestion: { moves: named, hold, value, current: run.current ?? {} } as never }, { onConflict: "plan_id,day", ignoreDuplicates: true })

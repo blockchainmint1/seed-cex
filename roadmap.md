@@ -52,6 +52,8 @@
 - [ ] Weekly email schedule (Mondays) — scheduling tool unavailable this session; set up after publish
 - [ ] Email footer postal address (CAN-SPAM) — needs Bobby's business mailing address
 
+- [x] /account rebuilt as exchange-style profile: tabs for overview, balances (spot/deposit/withdraw for every supported coin + network), profile, security, alerts, API keys, AI strategies (view/edit/pause/end), referrals; /api quick start, signing examples, recipes, troubleshooting
+- [ ] Seeds-signed withdrawals to outside addresses (instant-access pockets) — not built: today withdrawals happen in HME Wallet, extra coins swap to TSD first (blocked: Bobby's decision + auditor review)
 - [x] /ai: shares start even, editable in a popup (blank coins split what's left); THOR added (10 coins)
 - [ ] /ai more coins: BNB, AVAX (needs BNB Chain/Avalanche sending), ATOM (Cosmos signer), ZEC (v5 signer), Maya coins ADA/DASH/RUNE (needs a 2nd independent Maya server) (blocked: Bobby picks which to build)
 - [ ] AI basket builder: AI writes a member-approved rulebook, fixed engine executes it (concept in docs/ai-basket-strategy-concept.md; blocked: Bobby's detailed spec + linked-pocket settlement)

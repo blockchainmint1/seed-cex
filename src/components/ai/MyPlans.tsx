@@ -32,7 +32,7 @@ export function MyPlans({ coins, highlight, onLoad }: { coins: AiCoin[]; highlig
           <div className="space-y-4">
             {!q.data.telegramLinked ? (
               <p className="rounded-sm border border-warn/50 bg-warn/10 p-3 text-xs">
-                Telegram isn't connected, so daily checks only show here. <Link to="/account" className="font-semibold underline">Connect Telegram in Profile</Link>.
+                Telegram isn't connected, so daily checks only show here. <Link to="/account/alerts" className="font-semibold underline">Connect Telegram in Profile</Link>.
               </p>
             ) : null}
             {q.data.plans.map((p) => (

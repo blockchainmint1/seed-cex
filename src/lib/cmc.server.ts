@@ -29,7 +29,7 @@ export type QuoteSet = {
 };
 
 /** One shared symbol set — the quote cache is not keyed by symbols. */
-export const TRACKED = ["TXC", "USDC", "USDT", "ETH", "BNB", "BTC"];
+export const TRACKED = ["TXC", "USDC", "USDT", "ETH", "BNB", "BTC", "LTC", "DOGE", "BCH", "XRP", "TRX", "SOL", "ZEC"];
 
 let cache: { at: number; value: QuoteSet } | null = null;
 

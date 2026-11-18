@@ -6,17 +6,20 @@ import { aiSeriesQuery, type AiCoin } from "@/lib/ai/market";
 import { basketTargets, defaultPlan, isStable, runPlan, stableSeries, type PlanSettings } from "@/lib/ai/plan";
 import { fmtPct, fmtUsd, type Series } from "@/lib/ai/series";
 import { Chip, Field, inputCls, Panel, tone } from "./ui";
-import { LockPanel } from "./LockPanel";
+import { LockPanel, type EditingPlan } from "./LockPanel";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const RANGES = [["3 mo", 3], ["6 mo", 6], ["1 yr", 12], ["2 yr", 24], ["3 yr", 36], ["5 yr", 60]] as const;
 const monthsAgo = (m: number) => { const d = new Date(); d.setUTCMonth(d.getUTCMonth() - m); return d.toISOString().slice(0, 10); };
 
-export function PlanBuilder({ coins, settings, onChange, signedIn }: {
+export function PlanBuilder({ coins, settings, onChange, signedIn, editing, onStopEditing }: {
   coins: AiCoin[];
   settings: PlanSettings;
   onChange: (s: PlanSettings) => void;
   signedIn: boolean;
+  /** A locked plan being changed (from Profile → AI strategies). */
+  editing?: EditingPlan | null;
+  onStopEditing?: () => void;
 }) {
   const s = settings;
   const set = <K extends keyof PlanSettings>(k: K, v: PlanSettings[K]) => onChange({ ...s, [k]: v });
@@ -168,7 +171,7 @@ export function PlanBuilder({ coins, settings, onChange, signedIn }: {
 
             <HoldNow run={run} symbol={symbol} />
 
-            <LockPanel settings={s} signedIn={signedIn} />
+            <LockPanel settings={s} signedIn={signedIn} editing={editing} onStopEditing={onStopEditing} />
 
             <div className="grid gap-3 sm:grid-cols-2">
               <Panel title="Costs & activity">

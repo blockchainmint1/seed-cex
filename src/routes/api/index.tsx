@@ -10,13 +10,13 @@ export const Route = createFileRoute("/api/")({
       {
         name: "description",
         content:
-          "Binance-style REST and streaming API for Seeds: TSD markets, order book depth, klines, HMAC-signed order entry and a CoinMarketCap feed. API keys can trade, never withdraw.",
+          "Seeds bot API quick start, step-by-step HMAC signing examples in Bash, Node.js and Python, trading recipes and troubleshooting. Keys can trade, never withdraw.",
       },
       { property: "og:title", content: "Seeds API — Trading API for Bots & Market Makers" },
       {
         property: "og:description",
         content:
-          "Binance-style REST and SSE API for the Seeds exchange. Public market data with no key; signed order entry with keys that can never withdraw.",
+          "Build a Seeds trading bot with a quick start, signed-request examples, recipes and safety guidance. Public REST and SSE market data needs no key.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -134,9 +134,14 @@ const ERRORS: Array<[string, string]> = [
 
 const toc = [
   ["status", "Where things stand"],
+  ["quick-start", "Quick start"],
   ["markets", "Markets"],
   ["differences", "How Seeds differs"],
   ["auth", "Authentication"],
+  ["signing", "Signing step by step"],
+  ["recipes", "Recipes"],
+  ["key-safety", "Keeping your key safe"],
+  ["troubleshooting", "Troubleshooting"],
   ["endpoints", "Endpoints"],
   ["account", "Account response"],
   ["filters", "Filters"],
@@ -161,14 +166,14 @@ function ApiDocs() {
           A Binance-style REST API for the Seeds exchange. Public market data needs no key. Signed
           endpoints let a bot place and cancel orders for your account. API keys can never
           withdraw. Point an existing Binance-style client at the base URL below and most calls
-          work unchanged.
+          may work, but check the supported endpoints, parameters and non-custodial account model first.
         </p>
         <p className="mt-4 font-mono text-sm text-foreground">
           Base URL <span className="text-primary">{BASE}{V1}</span>
         </p>
         <div className="mt-6 flex flex-wrap gap-3 text-sm">
           <Link
-            to="/api-keys"
+            to="/account/api-keys"
             className="rounded-xl bg-action px-4 py-2 font-semibold text-action-foreground transition hover:brightness-105"
           >
             Create API key
@@ -221,6 +226,21 @@ function ApiDocs() {
         </ul>
       </Section>
 
+      <Section id="quick-start" title="Quick start">
+        <ol className="list-decimal space-y-3 pl-5">
+          <li>Sign in to Seeds with Honest.Money using your own account.</li>
+          <li>On Profile, link your HME Wallet trading pocket. A link is not a deposit into a Seeds balance.</li>
+          <li>Open Profile → <Link to="/account/api-keys" className="text-primary underline underline-offset-2">API keys</Link>.</li>
+          <li>Create a key with a descriptive label. Choose read for a dashboard, or read + trade for a bot that places and cancels orders. Optionally restrict it to your bot’s public outbound IP addresses.</li>
+          <li>Copy the key ID and the secret immediately: the secret is shown once. Store them in your server’s secret manager or environment as <C>SEEDS_KEY</C> and <C>SEEDS_SECRET</C>. If you lose the secret, create another key.</li>
+          <li>Check connectivity and server time with the unsigned requests below. Neither needs a key.</li>
+          <li>Run one of the signed <C>GET /account</C> examples below. Inspect <C>tradingPocket</C> and <C>authorizations</C> before attempting any trading.</li>
+        </ol>
+        <Code>{`curl -sS "${BASE}${V1}/ping"
+curl -sS "${BASE}${V1}/time"`}</Code>
+        <p>Public data, signed reads, order entry and cancellation are live. Settlement through linked HME Wallet pockets is still being built: a match is not proof of settlement. Only accounts with earlier Seeds trading authorizations currently settle immediately. A new pocket link alone does not make end-to-end bot settlement live.</p>
+      </Section>
+
       <Section id="markets" title="Markets">
         <p>
           Every market is priced in TSD except TSD/USDC. Symbols are base + quote with no separator.{" "}
@@ -265,13 +285,14 @@ function ApiDocs() {
           <li>
             <strong className="text-foreground">Two pocket modes.</strong> With{" "}
             <em>instant access</em>, Seeds can sign for the trading pocket while it stays linked.
-            With <em>approve every trade</em>, each settlement waits for the member to approve it
-            in HME Wallet. <C>/account</C> tells you which mode the account uses.
+            With <em>approve every trade</em>, the intended settlement flow requires approval
+            in HME Wallet. Pocket settlement is still being built; neither mode implies it is live.
+            <C>/account</C> reports the linked mode.
           </li>
           <li>
             <strong className="text-foreground">API keys can never withdraw.</strong> Scopes are{" "}
             <C>read</C> and <C>trade</C> only. A stolen key can place or cancel orders but cannot
-            move coins anywhere. Add an IP allowlist to a key to limit even that.
+            withdraw, but unauthorized trades can still cause losses within your trading authorizations. Add an IP allowlist to limit access.
           </li>
           <li>
             <strong className="text-foreground">Fills settle on-chain.</strong> A settled fill is a
@@ -293,7 +314,7 @@ function ApiDocs() {
       <Section id="auth" title="Authentication">
         <p>
           Create a key on the{" "}
-          <Link to="/api-keys" className="text-primary underline underline-offset-2">
+          <Link to="/account/api-keys" className="text-primary underline underline-offset-2">
             API keys
           </Link>{" "}
           page after signing in. The secret is shown once. Signed endpoints use HMAC-SHA256 the same
@@ -312,39 +333,141 @@ function ApiDocs() {
             there is one. Append <C>signature</C> (hex) as the last query parameter.
           </li>
         </ul>
-        <Code>{`import crypto from "node:crypto";
+        <p>Use the complete examples in <a href="#signing" className="text-primary underline underline-offset-2">Signing a request, step by step</a>. Keep the secret on a trusted server, never in browser code.</p>
+      </Section>
 
-const KEY = process.env.SEEDS_KEY;      // seeds_xxxxxxxxxxxxxxxxxxxxxxxx
-const SECRET = process.env.SEEDS_SECRET;
+      <Section id="signing" title="Signing a request, step by step">
+        <ol className="list-decimal space-y-2 pl-5">
+          <li>Build your parameters, including a fresh <C>timestamp</C> in Unix milliseconds and optionally <C>recvWindow</C>. Serialize once as a URL-encoded query string. Parameter order is not sorted by the server: use exactly the order and encoding you will send.</li>
+          <li>For GET and DELETE, the payload is that raw query string alone; bodies are ignored. For other methods, concatenate the query string with the raw body, with no added separator. Bodies are parsed as URL-encoded form fields, not JSON; body values override query values for parameter lookup.</li>
+          <li>Compute HMAC-SHA256 over the UTF-8 payload using the secret’s literal UTF-8 text (do not hex-decode it). Encode the digest as hex. The examples use lowercase; the verifier also accepts uppercase hex.</li>
+          <li>Append <C>&amp;signature=</C> and the digest as the last query parameter. Do not include the question mark, URL, method, headers or signature itself in the payload. Send the key ID in <C>X-SEEDS-APIKEY</C>.</li>
+          <li>Send the exact bytes you signed. Never re-sort or re-encode parameters afterward. The verifier slices the raw query at <C>&amp;signature=</C>, so parameters must not follow the signature.</li>
+        </ol>
+        <p>The examples keep every parameter in the query and send no body, including for POST. This avoids query/body ambiguity. All three read credentials from your environment and make the same first signed call. Do not enable shell tracing or log signed URLs.</p>
+        <h3 className="font-semibold text-foreground">Bash + curl + OpenSSL</h3>
+        <p>Requires Bash, curl, OpenSSL and Python 3 (only for a portable millisecond clock). Set your real credentials in the environment first.</p>
+        <Code>{`#!/usr/bin/env bash
+set -euo pipefail
+: "\${SEEDS_KEY:?Set SEEDS_KEY}" "\${SEEDS_SECRET:?Set SEEDS_SECRET}"
+BASE="${BASE}${V1}"
+timestamp=$(python3 -c 'import time; print(int(time.time() * 1000))')
+qs="recvWindow=5000&timestamp=$timestamp"
+# printf adds no newline. The secret is literal text, not hex bytes.
+sig=$(printf '%s' "$qs" | openssl dgst -sha256 -hmac "$SEEDS_SECRET" | awk '{print $NF}')
+curl -sS --header "X-SEEDS-APIKEY: $SEEDS_KEY" "$BASE/account?$qs&signature=$sig"`}</Code>
+        <p>OpenSSL’s command-line secret may be visible in the local process list. Run this demonstration only on a trusted machine; use an in-process HMAC library for a production bot.</p>
+        <h3 className="font-semibold text-foreground">Node.js (18+, save as bot.mjs)</h3>
+        <Code>{`import { createHmac } from "node:crypto";
+
 const BASE = "${BASE}${V1}";
+const { SEEDS_KEY: KEY, SEEDS_SECRET: SECRET } = process.env;
+if (!KEY || !SECRET) throw new Error("Set SEEDS_KEY and SEEDS_SECRET");
 
-function signed(path, params = {}) {
-  const qs = new URLSearchParams({ ...params, timestamp: Date.now() }).toString();
-  const sig = crypto.createHmac("sha256", SECRET).update(qs).digest("hex");
-  return \`\${BASE}\${path}?\${qs}&signature=\${sig}\`;
+async function signed(method, path, params = {}) {
+  const qs = new URLSearchParams({
+    ...params, recvWindow: "5000", timestamp: String(Date.now()),
+  }).toString();
+  const sig = createHmac("sha256", SECRET).update(qs, "utf8").digest("hex");
+  const res = await fetch(\`\${BASE}\${path}?\${qs}&signature=\${sig}\`, {
+    method, headers: { "X-SEEDS-APIKEY": KEY },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(\`HTTP \${res.status}: \${JSON.stringify(data)}\`);
+  return data;
 }
 
-// Place a limit order
-const res = await fetch(signed("/order", {
-  symbol: "${EXAMPLE}", side: "BUY", type: "LIMIT",
-  timeInForce: "GTC", price: "0.05", quantity: "100",
-}), { method: "POST", headers: { "X-SEEDS-APIKEY": KEY } });
-
-console.log(await res.json());`}</Code>
-        <Code>{`# Python
-import hashlib, hmac, os, time, urllib.parse, requests
+console.log(await signed("GET", "/account"));`}</Code>
+        <h3 className="font-semibold text-foreground">Python 3 + requests</h3>
+        <p>Install the dependency with <C>python3 -m pip install requests</C>, then run this as a server-side script.</p>
+        <Code>{`import hashlib, hmac, os, time
+from urllib.parse import urlencode
+import requests
 
 BASE = "${BASE}${V1}"
-KEY, SECRET = os.environ["SEEDS_KEY"], os.environ["SEEDS_SECRET"].encode()
+KEY = os.environ["SEEDS_KEY"]
+SECRET = os.environ["SEEDS_SECRET"].encode("utf-8")
 
 def signed(method, path, **params):
-    params["timestamp"] = int(time.time() * 1000)
-    qs = urllib.parse.urlencode(params)
-    sig = hmac.new(SECRET, qs.encode(), hashlib.sha256).hexdigest()
-    return requests.request(method, f"{BASE}{path}?{qs}&signature={sig}",
-                            headers={"X-SEEDS-APIKEY": KEY}).json()
+    params.update(recvWindow="5000", timestamp=str(int(time.time() * 1000)))
+    qs = urlencode(params)
+    sig = hmac.new(SECRET, qs.encode("utf-8"), hashlib.sha256).hexdigest()
+    res = requests.request(method, f"{BASE}{path}?{qs}&signature={sig}",
+                           headers={"X-SEEDS-APIKEY": KEY}, timeout=30)
+    data = res.json()
+    if not res.ok:
+        raise RuntimeError(f"HTTP {res.status_code}: {data}")
+    return data
 
 print(signed("GET", "/account"))`}</Code>
+      </Section>
+
+      <Section id="recipes" title="Recipes">
+        <p>These snippets use the Node.js <C>signed(method, path, params)</C> helper above. Reads require read scope; order creation and cancellation require trade scope. Every invocation signs a fresh timestamp.</p>
+        <h3 className="font-semibold text-foreground">1. Place a limit order</h3>
+        <p>Read <C>/exchangeInfo</C> first and choose a symbol, price and quantity matching its filters. This example is a real BUY if executed, not a sandbox. Only LIMIT and GTC are supported (and are the defaults). The response includes <C>orderId</C>, <C>fills</C> and <C>settlements</C>; retain them.</p>
+        <Code>{`const placed = await signed("POST", "/order", {
+  symbol: "${EXAMPLE}", side: "BUY", type: "LIMIT", timeInForce: "GTC",
+  price: "0.05", quantity: "100",
+});
+console.log(placed);`}</Code>
+        <p>A match may still await settlement. After a timeout, inspect open orders, order history and fills before deciding whether to place again. There is no client order ID/idempotency parameter in the handler; blindly retrying can create a second order.</p>
+        <h3 className="font-semibold text-foreground">2. Cancel an order</h3>
+        <Code>{`// Use the orderId returned by your own order, not a symbol or client ID.
+console.log(await signed("DELETE", "/order", { orderId: placed.orderId }));`}</Code>
+        <p>Cancel only works for your open or partially filled orders. A fill can race with cancellation; reconcile order status and trades rather than assuming nothing executed.</p>
+        <h3 className="font-semibold text-foreground">3. List open orders</h3>
+        <Code>{`console.log(await signed("GET", "/openOrders", { symbol: "${EXAMPLE}" }));
+// Omit symbol to include all markets.
+console.log(await signed("GET", "/openOrders"));`}</Code>
+        <p>The implementation returns at most 500 open/partial orders, newest first. There is no pagination parameter on this endpoint.</p>
+        <h3 className="font-semibold text-foreground">4. Poll my trades</h3>
+        <Code>{`const seen = new Set(); // Persist IDs in a database in production.
+async function pollTrades() {
+  const trades = await signed("GET", "/myTrades", {
+    symbol: "${EXAMPLE}", limit: "500",
+  });
+  for (const trade of trades) {
+    if (!seen.has(trade.id)) {
+      seen.add(trade.id);
+      console.log("New fill", trade);
+    }
+    // Reconcile settlement status/legs for already-seen IDs too.
+  }
+}
+await pollTrades(); // Schedule subsequent calls within your weight budget.`}</Code>
+        <p><C>symbol</C> is optional. <C>limit</C> defaults to 500 and is clamped to 1–1000. There is no since/fromId cursor: poll frequently enough for your volume, persist IDs, and do not assume this bounded response is a complete historical ledger.</p>
+        <h3 className="font-semibold text-foreground">5. Subscribe to public market SSE</h3>
+        <Code>{`curl -N "${BASE}${V1}/stream?symbol=${EXAMPLE}&streams=ticker,depth,trade&interval=2000"`}</Code>
+        <p>No API key or signature is needed. This is public market data, not a private order/fill stream. Listen for named events; reconnect when the connection ends (curl does not do this automatically). Browser EventSource reconnects automatically, but a custom close handler must not call its permanent <C>close()</C> method if you expect reconnection. See the stream section for bounded history and event details.</p>
+      </Section>
+
+      <Section id="key-safety" title="Keeping your key safe">
+        <ul className="list-disc space-y-3 pl-5">
+          <li>Use an IP allowlist for a bot with stable outbound networking. Matching is exact string membership against the server-observed source IP, not CIDR/subnet matching. Include the public egress address, not a private LAN address. An empty list imposes no IP restriction.</li>
+          <li>Use read-only keys for dashboards and separate keys for each bot. Enable trade scope only where needed. A trade-only key does not implicitly include read scope.</li>
+          <li>Disable pauses a key and can be reversed; delete removes it permanently. Both prevent subsequent authentication; neither is an order-cancellation operation. Inspect and cancel unwanted open orders separately using another authorized key or the website.</li>
+          <li>Rotate by creating a replacement, storing its one-time secret, deploying and testing it, then disabling/deleting the old key. For a suspected leak, disable/delete immediately rather than waiting for a graceful rollout.</li>
+          <li>Never embed the secret in browser JavaScript, a mobile bundle, public repository or logs. Sign on a trusted server. Protect both credentials with a secret manager; avoid logging signed URLs and request headers.</li>
+          <li>Synchronize the bot host’s clock (for example with NTP) and compare with <C>/time</C>. <C>recvWindow</C> defaults to 5000 ms and is capped at 60000 ms. Requests older than the window or more than 1000 ms ahead are rejected. Generate a new timestamp and signature for each request; widening the window is not a substitute for clock sync.</li>
+          <li>A leaked read key exposes account/order information. A leaked trade-capable key can place/cancel orders within your account’s trading authorizations and cause losses, but can never withdraw. Disable/delete it, inspect orders and trades, rotate credentials, and review/revoke wallet links and trading authorizations if needed.</li>
+        </ul>
+      </Section>
+
+      <Section id="troubleshooting" title="Troubleshooting">
+        <p>Errors have numeric <C>code</C> and text <C>msg</C>. Branch on code; keep secrets and signed URLs out of diagnostic logs.</p>
+        <ul className="list-disc space-y-3 pl-5">
+          <li><C>-1022</C> — “Signature for this request is not valid”: check the secret belongs to this key, use literal secret text, remove any trailing newline, preserve exact query encoding/order, append signature last, and include the raw form body for POST (but not GET/DELETE).</li>
+          <li><C>-1021</C> — “Timestamp for this request is outside of the recvWindow”: use Unix milliseconds, sync your clock, avoid queued/stale signed URLs, and account for the 1000 ms future tolerance. Re-sign after adjusting time.</li>
+          <li><C>-1004</C> — “Source IP not in key allowlist”: check the bot’s public egress IPv4/IPv6 address and exact allowlist entries. A nonempty list also rejects requests where the server cannot identify a source IP.</li>
+          <li><C>-1002</C> — “API key lacks 'read' scope” or “API key lacks 'trade' scope”: use a key explicitly granted the scope required by that method. Trade scope does not grant read.</li>
+          <li><C>-2015</C> — “Missing X-SEEDS-APIKEY header” or “Invalid or disabled API key”: send the key ID (not the secret), check the environment and whether the key is disabled/deleted.</li>
+          <li><C>-1102</C> — “Missing signature”, “Missing timestamp” or “Missing orderId”: supply the required value in the correct location. Always explicitly send a numeric timestamp; omission is not a valid signing strategy.</li>
+          <li><C>-1003</C>, HTTP 429 — “Request weight limit exceeded, back off”: stop sending requests until the next fixed minute window, add jitter, and reduce polling across all processes sharing that key. The budget is 1200 weighted units, not 1200 calls.</li>
+          <li><C>-1013</C>: check the price/quantity validation message and <C>/exchangeInfo</C> filters. <C>-1014</C>: use LIMIT/GTC. <C>-1121</C>: use a listed symbol. <C>-1130</C>: use BUY/SELL.</li>
+          <li><C>-2010</C>: read the order rejection message and check your linked trading setup/authorizations. Do not treat a pending settlement as a settled transfer. <C>-2011</C>: refresh order status; it may already be filled/canceled or not yours. <C>-2013</C>: verify the order ID and account; the status handler searches the latest 1000 orders.</li>
+          <li><C>-1100</C>: check the named parameter, such as kline interval. <C>-1000</C>: back off on server failures; for an ambiguous order submission, reconcile before retrying.</li>
+        </ul>
       </Section>
 
       <Section id="endpoints" title="Endpoints">
@@ -386,7 +509,7 @@ print(signed("GET", "/account"))`}</Code>
 {
   "accountType": "SPOT",
   "custody": "non-custodial",
-  "canTrade": false,          // true when a live trading authorization can settle fills
+  "canTrade": false,          // true when at least one unexpired, unrevoked legacy authorization exists
   "canWithdraw": false,       // always false
   "makerCommission": 0,
   "takerCommission": 0,
@@ -423,8 +546,9 @@ Order types   LIMIT only, timeInForce GTC only`}</Code>
           next minute.
         </p>
         <p>
-          Public endpoints aren’t counted per key. They’re cached for 2–5 seconds, so polling
-          faster than that returns the same data. Use the stream instead.
+          Public endpoints aren’t counted per key. Many market-data responses advertise 2–5 seconds
+          of caching; this is not a guarantee that repeated requests return identical data.
+          Use the stream for ongoing market updates.
         </p>
       </Section>
 
@@ -441,8 +565,9 @@ data: {"symbol":"${EXAMPLE}","lastPrice":"0.05000000", ...}`}</Code>
             <C>interval</C>: how often to push, 1000–30000 ms (default 2000).
           </li>
           <li>
-            <C>depth</C> events carry the top 50 levels. <C>trade</C> events carry only trades you
-            haven’t seen yet.
+            <C>depth</C> events carry the top 50 levels. <C>trade</C> events start with the latest trade, then send new trades from the most recent 50
+            since the previous poll. This is not a durable replay feed: reconnects can duplicate
+            events and busy periods can lose history. Deduplicate by trade ID and reconcile with REST.
           </li>
           <li>
             Connections close after 10 minutes with a <C>close</C> event (

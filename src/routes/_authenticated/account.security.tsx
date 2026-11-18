@@ -1,0 +1,84 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { CheckCircle2, LogOut, XCircle } from "lucide-react";
+import { getMyProfile } from "@/lib/profile.functions";
+import { listApiKeys } from "@/lib/api-keys.functions";
+import { signOutOfSeeds } from "@/lib/sign-out";
+import { Button } from "@/components/ui/button";
+import { Card, TabTitle } from "@/components/account/ui";
+import { HmeWalletLinkCard } from "@/components/wallet/HmeWalletLinkCard";
+import { usePocketLink } from "@/components/account/use-pocket";
+
+export const Route = createFileRoute("/_authenticated/account/security")({
+  staticData: { sitemap: false },
+  head: () => ({
+    meta: [
+      { title: "Security — Seeds" },
+      { name: "description", content: "Your sign-in method, linked HME Wallet trading pocket, revoke access, API key exposure and security notices." },
+      { property: "og:title", content: "Security — Seeds" },
+      { property: "og:description", content: "Sign-in, wallet link and access controls for your Seeds account." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
+  component: SecurityTab,
+});
+
+function SecurityTab() {
+  const qc = useQueryClient();
+  const loadProfile = useServerFn(getMyProfile);
+  const loadKeys = useServerFn(listApiKeys);
+  const profile = useQuery({ queryKey: ["my-profile"], queryFn: () => loadProfile() });
+  const keys = useQuery({ queryKey: ["api-keys"], queryFn: () => loadKeys() });
+  const link = usePocketLink();
+  const p = profile.data;
+  const l = link.data;
+  const tradeKeys = (keys.data ?? []).filter((k) => k.enabled && (k.scopes ?? []).includes("trade")).length;
+
+  const checks = [
+    { ok: true, label: "Sign-in through Honest.Money", hint: "Seeds stores no password. Use a strong one and two-step sign-in on Honest.Money." },
+    { ok: Boolean(l), label: "HME Wallet trading pocket linked", hint: l ? `Pocket #${l.account}, ${l.mode === "access" ? "instant trades" : "you approve every trade"}.` : "Link it below." },
+    { ok: Boolean(p?.telegram_verified && p?.notify_login), label: "Sign-in alerts on Telegram", hint: p?.telegram_verified ? (p.notify_login ? "You'll hear about every new sign-in." : "Turn on “New sign-in” in Alerts.") : "Connect Telegram in Alerts." },
+    { ok: tradeKeys === 0 || (keys.data ?? []).every((k) => !k.enabled || (k.ip_allowlist ?? []).length > 0), label: "Trading API keys locked to IP addresses", hint: tradeKeys ? `${tradeKeys} key(s) can trade. Add an IP allowlist to each.` : "No trading keys." },
+  ];
+
+  return (
+    <div className="space-y-5">
+      <TabTitle title="Security" desc="Who can get into your account, and what Seeds is allowed to do with your trading pocket." />
+
+      <Card title="Security checkup">
+        <ul className="space-y-3">
+          {checks.map((c) => (
+            <li key={c.label} className="flex gap-3">
+              {c.ok ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> : <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-warn" />}
+              <span><span className="block text-sm">{c.label}</span><span className="block text-xs text-muted-foreground">{c.hint}</span></span>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button asChild variant="outline" size="sm"><Link to="/account/alerts">Alerts</Link></Button>
+          <Button asChild variant="outline" size="sm"><Link to="/account/api-keys">API keys</Link></Button>
+        </div>
+      </Card>
+
+      <div className="rounded-md border border-border bg-surface px-5">
+        <HmeWalletLinkCard showBalances={false} className="py-6" />
+      </div>
+
+      <Card title="Security emails" desc="Always on.">
+        <p className="text-sm text-muted-foreground">
+          We email you whenever a setting, API key or wallet link changes, even if you've switched other emails off. If you get one you didn't
+          expect, revoke the wallet link above, delete your API keys and sign out of Honest.Money everywhere.
+        </p>
+      </Card>
+
+      <Card title="Session">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-muted-foreground">Signs you out of Seeds and Honest.Money on this device.</p>
+          <Button variant="outline" onClick={() => signOutOfSeeds(qc)}><LogOut /> Sign out</Button>
+        </div>
+      </Card>
+    </div>
+  );
+}

@@ -97,7 +97,7 @@ export async function alertSignIn(input: { userId: string; email?: string | null
   await notifyUser(
     input.userId,
     "notify_login",
-    `🔐 <b>Seeds</b>\nNew sign-in${input.email ? ` as <b>${esc(input.email)}</b>` : ""}.\nIf that wasn't you, revoke your trading authorizations from the wallet page.\n\n<a href="${SITE}/wallet">Open your wallet</a>`,
+    `🔐 <b>Seeds</b>\nNew sign-in${input.email ? ` as <b>${esc(input.email)}</b>` : ""}.\nIf that wasn't you, revoke Seeds' access to your trading pocket under Profile → Security.\n\n<a href="${SITE}/account/security">Open Security</a>`,
   );
 }
 

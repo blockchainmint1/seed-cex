@@ -1,448 +1,121 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { SEEDS_BOT_URL, SEEDS_BOT_USERNAME } from "@/lib/telegram-bot";
-import { useEffect, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Check, KeyRound, Send, ArrowUpRight } from "lucide-react";
-import { useSession } from "@/hooks/use-session";
 import {
-  getMyProfile,
-  sendTestAlert,
-  startTelegramConnect,
-  unlinkTelegram,
-  updateMyProfile,
-  type Profile,
-} from "@/lib/profile.functions";
-import { PAIRS } from "@/lib/chains";
+  ArrowDownToLine, ArrowUpFromLine, Bell, ExternalLink, Gift, KeyRound, LayoutDashboard, ShieldCheck, Sparkles, User, Wallet,
+} from "lucide-react";
+import { getMyProfile } from "@/lib/profile.functions";
+import { useSession } from "@/hooks/use-session";
 import { Button } from "@/components/ui/button";
-import { HmeWalletLinkCard } from "@/components/wallet/HmeWalletLinkCard";
+import { usePocketLink } from "@/components/account/use-pocket";
 
 export const Route = createFileRoute("/_authenticated/account")({
   staticData: { sitemap: false },
   head: () => ({
     meta: [
-      { title: "Profile & Trading Pocket — Seeds" },
-      {
-        name: "description",
-        content:
-          "Manage your Honest.Money identity, linked HME Wallet trading pocket, Telegram alerts and trading settings.",
-      },
-      { property: "og:title", content: "Profile & Trading Pocket — Seeds" },
-      {
-        property: "og:description",
-        content: "Your HME trading pocket and Seeds account preferences in one place.",
-      },
+      { title: "Your Seeds account — balances, security, alerts & API keys" },
+      { name: "description", content: "Your Seeds account: trading-pocket balances, deposits and withdrawals, profile, security, alerts, API keys and AI strategies." },
+      { property: "og:title", content: "Your Seeds account" },
+      { property: "og:description", content: "Balances, deposits, withdrawals, security, alerts, API keys and AI strategies in one place." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  component: AccountPage,
+  component: AccountLayout,
 });
 
-const NOTIFS = [
-  ["notify_order_filled", "Order filled", "Your resting order got matched."],
-  ["notify_settlement", "Settlement confirmed", "An on-chain leg confirmed."],
-  ["notify_settlement_failed", "Settlement failed", "A leg failed and needs a retry."],
-  ["notify_auth_expiring", "Authorization expiring", "A trading key is about to be wiped."],
-  ["notify_deposit", "Deposit detected", "Funds landed in your trading branch."],
-  ["notify_login", "New sign-in", "Someone signed into your account."],
-  ["notify_p2p", "P2P trades", "New buyer, payment sent, coins released, disputes, new chat messages."],
-  ["notify_weekly_digest", "Weekly digest", "A Sunday summary of your trading."],
+const NAV = [
+  { to: "/account", label: "Overview", icon: LayoutDashboard, exact: true },
+  { to: "/account/balances", label: "Balances", icon: Wallet },
+  { to: "/account/profile", label: "Profile", icon: User },
+  { to: "/account/security", label: "Security", icon: ShieldCheck },
+  { to: "/account/alerts", label: "Alerts", icon: Bell },
+  { to: "/account/api-keys", label: "API keys", icon: KeyRound },
+  { to: "/account/ai", label: "AI strategies", icon: Sparkles },
+  { to: "/account/referrals", label: "Referrals", icon: Gift },
 ] as const;
 
-const EMAILS = [
-  ["email_trade_confirmations", "Trade & P2P confirmations", "A receipt when an exchange trade settles or a P2P trade opens."],
-  ["email_weekly_update", "Weekly account update", "Monday summary of your trades, open orders and pocket."],
+const ELSEWHERE = [
+  { to: "/trades", label: "Orders & trades" },
+  { to: "/p2p/dashboard", label: "P2P desk" },
+  { to: "/swap", label: "Swaps" },
 ] as const;
 
-function Section({
-  title,
-  desc,
-  children,
-}: {
-  title: string;
-  desc?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="py-6">
-      <h2 className="font-display text-lg font-bold">{title}</h2>
-      {desc ? <p className="mt-1 text-sm text-muted-foreground">{desc}</p> : null}
-      <div className="mt-5 space-y-4">{children}</div>
-    </section>
-  );
+function initials(name: string | null | undefined, email: string | null | undefined) {
+  const src = (name || email || "?").trim();
+  const parts = src.split(/[\s@._-]+/).filter(Boolean);
+  return ((parts[0]?.[0] ?? "?") + (parts[1]?.[0] ?? "")).toUpperCase();
 }
 
-const inputCls =
-  "w-full rounded-sm border border-border bg-background px-3 py-2 font-mono text-sm outline-none focus:border-primary";
-
-function AccountPage() {
-  const qc = useQueryClient();
+function AccountLayout() {
   const { user } = useSession();
   const load = useServerFn(getMyProfile);
-  const save = useServerFn(updateMyProfile);
-  const connect = useServerFn(startTelegramConnect);
-  const unlink = useServerFn(unlinkTelegram);
-  const test = useServerFn(sendTestAlert);
-
-  // Set while we wait for the member to tap Start in Telegram; the profile is re-read until it links.
-  const [tgWaitUrl, setTgWaitUrl] = useState<string | null>(null);
-  const profile = useQuery({ queryKey: ["my-profile"], queryFn: () => load(), refetchInterval: (q) => (tgWaitUrl && !q.state.data?.telegram_verified ? 3000 : false) });
+  const profile = useQuery({ queryKey: ["my-profile"], queryFn: () => load() });
+  const link = usePocketLink();
   const p = profile.data;
-
-  const [form, setForm] = useState<Partial<Profile>>({});
-  const [msg, setMsg] = useState<string | null>(null);
-  const [err, setErr] = useState<string | null>(null);
-  // Telegram results show next to the Telegram buttons, so they're visible on phones too.
-  const [tgNote, setTgNote] = useState<{ ok: boolean; text: string } | null>(null);
-
-  useEffect(() => {
-    if (p) setForm(p);
-  }, [p]);
-
-  useEffect(() => {
-    if (tgWaitUrl && p?.telegram_verified) {
-      setTgWaitUrl(null);
-      setTgNote({ ok: true, text: "Telegram linked. Alerts are on." });
-    }
-  }, [tgWaitUrl, p?.telegram_verified]);
-
-  const patch = (v: Partial<Profile>) => setForm((f) => ({ ...f, ...v }));
-
-  const [savedFor, setSavedFor] = useState<string | null>(null);
-
-  const mutate = useMutation({
-    mutationFn: (vars: { section: string; data: Record<string, unknown> }) =>
-      save({ data: vars.data }),
-    onSuccess: (_r, vars) => {
-      setErr(null);
-      setMsg(null);
-      setSavedFor(vars.section);
-      qc.invalidateQueries({ queryKey: ["my-profile"] });
-    },
-    onError: (e: Error) => {
-      setMsg(null);
-      setErr(e.message);
-    },
-  });
-
-  const saveBtn = (section: string, label: string) => (
-    <span className="inline-flex flex-wrap items-center gap-3">
-      <Button
-        type="submit"
-        disabled={mutate.isPending}
-        className="rounded-md bg-action px-4 py-2 text-sm font-semibold text-action-foreground hover:opacity-90 disabled:opacity-50"
-      >
-        {mutate.isPending ? "Saving…" : label}
-      </Button>
-      {savedFor === section && !mutate.isPending ? (
-        <span className="inline-flex items-center gap-1 font-mono text-xs text-primary">
-          <Check className="h-3.5 w-3.5" /> Saved
-        </span>
-      ) : null}
-    </span>
-  );
-
-  const tg = useMutation({
-    mutationFn: async (action: "unlink" | "test") => {
-      if (action === "unlink") return unlink();
-      return test();
-    },
-    onSuccess: (_r, action) => {
-      setTgNote({ ok: true, text: action === "unlink" ? "Telegram unlinked." : "Test alert sent." });
-      qc.invalidateQueries({ queryKey: ["my-profile"] });
-    },
-    onError: (e: Error) => setTgNote({ ok: false, text: e.message }),
-  });
+  const l = link.data;
+  const active = p?.hm_status === "active" || p?.hm_status === "oceanfront";
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 px-5 py-12">
-      <header className="space-y-2">
-        <p className="font-mono text-[11px] tracking-[0.28em] text-primary uppercase">Account</p>
-        <h1 className="font-display text-3xl font-extrabold">Your profile & trading pocket</h1>
-        <p className="font-mono text-xs text-muted-foreground">{user?.email}</p>
+    <div className="mx-auto max-w-7xl px-5 py-10">
+      <header className="flex flex-wrap items-center gap-4 border-b border-border pb-6">
+        <div aria-hidden className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-action font-display text-lg font-extrabold text-action-foreground">
+          {initials(p?.display_name, user?.email)}
+        </div>
+        <div className="min-w-[12rem] flex-1">
+          <p className="font-mono text-[11px] tracking-[0.28em] text-primary uppercase">Account</p>
+          <h1 className="truncate font-display text-2xl font-extrabold md:text-3xl">{p?.display_name || user?.email || "Your account"}</h1>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            {p?.hm_member_id ? <span className="font-mono">HME {p.hm_member_id.slice(0, 8)}</span> : null}
+            {p ? (
+              <span className={`rounded-sm px-1.5 py-0.5 font-mono text-[10px] uppercase ${active ? "bg-primary/15 text-primary" : "bg-destructive/10 text-destructive"}`}>
+                {p.hm_status || "unknown"}
+              </span>
+            ) : null}
+            <span className={`rounded-sm px-1.5 py-0.5 font-mono text-[10px] uppercase ${l ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
+              {link.isPending ? "checking pocket…" : l ? `pocket #${l.account} · ${l.mode === "access" ? "instant" : "approve each"}` : "no pocket linked"}
+            </span>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild size="sm"><Link to="/account/balances/deposit"><ArrowDownToLine /> Deposit</Link></Button>
+          <Button asChild size="sm" variant="outline"><Link to="/account/balances/withdraw"><ArrowUpFromLine /> Withdraw</Link></Button>
+        </div>
       </header>
 
-      {msg ? (
-        <p className="rounded-sm border border-primary/40 bg-primary/10 px-4 py-2 font-mono text-xs text-primary">
-          {msg}
-        </p>
-      ) : null}
-      {err ? (
-        <p className="rounded-sm border border-destructive/40 bg-destructive/10 px-4 py-2 font-mono text-xs text-destructive">
-          {err}
-        </p>
-      ) : null}
-
-      <HmeWalletLinkCard />
-
-      <div className="flex flex-wrap gap-3 border-b border-border pb-6">
-        <Button asChild variant="outline"><Link to="/trades"><ArrowUpRight /> My trades</Link></Button>
-        <Button asChild variant="outline"><Link to="/p2p/dashboard"><ArrowUpRight /> My P2P desk</Link></Button>
-        <Button asChild variant="outline"><Link to="/api-keys"><KeyRound /> API keys</Link></Button>
-      </div>
-
-      {profile.isPending ? <p className="text-sm text-muted-foreground">Loading your account…</p> : null}
-      {profile.error ? <p role="alert" className="text-sm text-destructive">Could not load your settings. Refresh to retry.</p> : null}
-
-      <Section
-        title="Identity & notifications"
-        desc="Your identity comes from Honest.Money."
-      >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-1">
-            <span className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
-              Display name
-            </span>
-            <p className="rounded-sm border border-border bg-background px-3 py-2 font-mono text-sm">
-              {p?.display_name || "—"}
-            </p>
-          </div>
-          <div className="space-y-1">
-            <span className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
-              Honest.Money member
-            </span>
-            <p className="rounded-sm border border-border bg-background px-3 py-2 font-mono text-sm">
-              {p?.hm_member_id ? (
-                <>
-                  {p.hm_member_id.slice(0, 8)}…{" "}
-                  <span className={p.hm_status === "active" || p.hm_status === "oceanfront" ? "text-primary" : "text-destructive"}>
-                    {p.hm_status}
-                  </span>
-                </>
-              ) : (
-                "—"
-              )}
-            </p>
-          </div>
-        </div>
-        <p className="font-mono text-xs text-muted-foreground">
-          To change your name, email or phone, edit your{" "}
-          <a
-            href="https://honest.money/dashboard/account"
-            target="_blank"
-            rel="noreferrer"
-            className="text-primary underline underline-offset-2"
-          >
-            Honest.Money profile
-          </a>{" "}
-          — it updates here automatically.
-        </p>
-        <label className="block space-y-1">
-          <span className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
-            Timezone
-          </span>
-          <select className={inputCls} value={form.timezone ?? "UTC"} onChange={(e) => patch({ timezone: e.target.value })}>
-            {Array.from(new Set([form.timezone || "UTC", "UTC", ...Intl.supportedValuesOf("timeZone")])).map((zone) => <option key={zone} value={zone}>{zone}</option>)}
-          </select>
-        </label>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            mutate.mutate({
-              section: "profile",
-              data: { timezone: form.timezone?.trim() || "UTC" },
-            });
-          }}
-        >
-          {saveBtn("profile", "Save profile")}
-        </form>
-      <div className="border-t border-border pt-5">
-      <h3 className="mb-3 font-display font-bold">Telegram alerts</h3>
-        {tgNote ? (
-          <p
-            role="status"
-            className={`mb-3 rounded-sm border px-3 py-2 font-mono text-xs ${tgNote.ok ? "border-primary/40 bg-primary/10 text-primary" : "border-destructive/40 bg-destructive/10 text-destructive"}`}
-          >
-            {tgNote.text}
-          </p>
-        ) : null}
-        {p?.telegram_verified ? (
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="inline-flex items-center gap-2 font-mono text-xs text-primary">
-              <Check className="h-3.5 w-3.5" /> Linked to chat {p.telegram_chat_id}
-            </span>
-            <Button
-              disabled={tg.isPending}
-              onClick={() => tg.mutate("test")}
-              className="inline-flex items-center gap-2 rounded-sm border border-border px-3 py-1.5 font-mono text-xs uppercase hover:border-primary hover:text-primary"
-            >
-              <Send className="h-3.5 w-3.5" /> Send test
-            </Button>
-            <Button
-              disabled={tg.isPending}
-              onClick={() => tg.mutate("unlink")}
-              className="rounded-sm border border-border px-3 py-1.5 font-mono text-xs uppercase hover:border-destructive hover:text-destructive"
-            >
-              Unlink
-            </Button>
-            <p className="basis-full font-mono text-[11px] text-muted-foreground">
-              Not getting alerts? Open{" "}
-              <a href={SEEDS_BOT_URL} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-4">
-                @{SEEDS_BOT_USERNAME}
-              </a>{" "}
-              and tap Start, then Send test.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <Button
-              onClick={async () => {
-                // Open the tab during the click so phones don't block it, then point it at Telegram.
-                const tab = window.open("", "_blank");
-                try {
-                  const { url } = await connect();
-                  setTgWaitUrl(url);
-                  setTgNote(null);
-                  if (tab) tab.location.href = url;
-                  else window.location.href = url;
-                } catch (e) {
-                  tab?.close();
-                  setTgNote({ ok: false, text: e instanceof Error ? e.message : "Couldn't start Telegram linking." });
-                }
-              }}
-              className="inline-flex items-center gap-2 rounded-md bg-action px-4 py-2 text-sm font-semibold text-action-foreground hover:opacity-90"
-            >
-              <Send className="h-3.5 w-3.5" /> Connect Telegram
-            </Button>
-            <p className="font-mono text-[11px] text-muted-foreground">
-              {tgWaitUrl ? (
-                <>
-                  Waiting for you to tap <b>Start</b> in Telegram… This page updates by itself.{" "}
-                  <a href={tgWaitUrl} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-4">
-                    Open Telegram again
-                  </a>
-                </>
-              ) : (
-                <>Opens @{SEEDS_BOT_USERNAME} in Telegram. Tap Start and you're done.</>
-              )}
-            </p>
-          </div>
-        )}
-      </div>
-      <details className="border-t border-border pt-4">
-        <summary className="cursor-pointer text-sm font-semibold">Alert preferences</summary>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          {NOTIFS.map(([key, label, hint]) => (
-            <label key={key} className="flex items-start gap-3">
-              <input
-                type="checkbox"
-                className="mt-1 h-4 w-4 accent-[var(--primary)]"
-                checked={Boolean(form[key])}
-                onChange={(e) => patch({ [key]: e.target.checked } as Partial<Profile>)}
-              />
-              <span>
-                <span className="block text-sm text-foreground">{label}</span>
-                <span className="block font-mono text-[11px] text-muted-foreground">{hint}</span>
-              </span>
-            </label>
-          ))}
-        </div>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            mutate.mutate({
-              section: "alerts",
-              data: Object.fromEntries(NOTIFS.map(([k]) => [k, Boolean(form[k])])),
-            });
-          }}
-        >
-          <div className="mt-4">{saveBtn("alerts", "Save alerts")}</div>
-        </form>
-      </details>
-      <details className="border-t border-border pt-4">
-        <summary className="cursor-pointer text-sm font-semibold">Email</summary>
-        <p className="mt-3 text-sm text-muted-foreground">
-          Sent to {user?.email ?? "your Honest.Money email"}. Change it on your Honest.Money profile. Security notices — like when a
-          setting, API key or wallet link changes — always go out.
-        </p>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          {EMAILS.map(([key, label, hint]) => (
-            <label key={key} className="flex items-start gap-3">
-              <input
-                type="checkbox"
-                className="mt-1 h-4 w-4 accent-[var(--primary)]"
-                checked={Boolean(form[key])}
-                onChange={(e) => patch({ [key]: e.target.checked } as Partial<Profile>)}
-              />
-              <span>
-                <span className="block text-sm text-foreground">{label}</span>
-                <span className="block font-mono text-[11px] text-muted-foreground">{hint}</span>
-              </span>
-            </label>
-          ))}
-        </div>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            mutate.mutate({
-              section: "email",
-              data: Object.fromEntries(EMAILS.map(([k]) => [k, Boolean(form[k])])),
-            });
-          }}
-        >
-          <div className="mt-4">{saveBtn("email", "Save email settings")}</div>
-        </form>
-      </details>
-      </Section>
-
-      <details className="border-t border-border pt-5">
-        <summary className="cursor-pointer font-display text-lg font-bold">Trading preferences</summary>
-      <Section
-        title="Order preferences"
-        desc="Your preferred market and order confirmation setting."
-      >
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="block space-y-1 sm:col-span-2">
-            <span className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
-              Default market
-            </span>
-            <select
-              className={inputCls}
-              value={form.default_pair ?? ""}
-              onChange={(e) => patch({ default_pair: e.target.value || null })}
-            >
-              <option value="">No preference</option>
-              {PAIRS.map((pair) => (
-                <option key={pair.id} value={pair.id}>
-                  {pair.id.replace("_", " / ")}
-                </option>
+      <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[13rem_minmax(0,1fr)]">
+        <nav aria-label="Account sections" className="min-w-0 lg:sticky lg:top-24 lg:self-start">
+          <ul className="-mx-5 flex gap-1 overflow-x-auto border-b border-border px-5 pb-2 lg:mx-0 lg:flex-col lg:border-b-0 lg:px-0 lg:pb-0">
+            {NAV.map((n) => (
+              <li key={n.to} className="shrink-0">
+                <Link
+                  to={n.to}
+                  activeOptions={{ exact: "exact" in n && n.exact }}
+                  className="flex items-center gap-2.5 whitespace-nowrap rounded-sm px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground data-[status=active]:bg-primary/10 data-[status=active]:font-semibold data-[status=active]:text-primary"
+                >
+                  <n.icon className="h-4 w-4" /> {n.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-6 hidden border-t border-border pt-4 lg:block">
+            <p className="px-3 font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">Elsewhere</p>
+            <ul className="mt-2">
+              {ELSEWHERE.map((n) => (
+                <li key={n.to}>
+                  <Link to={n.to} className="flex items-center justify-between rounded-sm px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">
+                    {n.label} <ExternalLink className="h-3 w-3" />
+                  </Link>
+                </li>
               ))}
-            </select>
-          </label>
+            </ul>
+          </div>
+        </nav>
+        <div className="min-w-0">
+          {profile.error ? <p role="alert" className="mb-4 text-sm text-destructive">Could not load your account. Refresh to retry.</p> : null}
+          <Outlet />
         </div>
-        <label className="flex items-start gap-3">
-          <input
-            type="checkbox"
-            className="mt-1 h-4 w-4 accent-[var(--primary)]"
-            checked={Boolean(form.confirm_before_order)}
-            onChange={(e) => patch({ confirm_before_order: e.target.checked })}
-          />
-          <span>
-            <span className="block text-sm text-foreground">Confirm before placing an order</span>
-            <span className="block font-mono text-[11px] text-muted-foreground">
-              Review your order before submitting it.
-            </span>
-          </span>
-        </label>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            mutate.mutate({
-              section: "defaults",
-              data: {
-                default_pair: form.default_pair ?? null,
-                confirm_before_order: Boolean(form.confirm_before_order),
-              },
-            });
-          }}
-        >
-          {saveBtn("defaults", "Save defaults")}
-        </form>
-      </Section>
-
-      </details>
+      </div>
     </div>
   );
 }

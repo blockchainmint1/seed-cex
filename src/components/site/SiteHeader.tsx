@@ -1,8 +1,8 @@
 import { Link, useLocation } from "@tanstack/react-router";
+import { signOutOfSeeds } from "@/lib/sign-out";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { ChevronDown, Menu, Moon, Sun, X } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
 import { useTheme } from "@/hooks/use-theme";
 import { SiteLogo } from "@/components/site/SiteLogo";
@@ -56,21 +56,7 @@ export function SiteHeader() {
   const here = useLocation({ select: (l) => l.href });
   const signInSearch = pathname === "/auth" || pathname === "/sso" ? undefined : { redirect: here };
 
-  async function signOut() {
-    await qc.cancelQueries();
-    qc.clear();
-    // Remember this was a deliberate sign-out so the next SSO run forces the
-    // login box (prompt=login) instead of silently re-signing the member in.
-    try {
-      sessionStorage.setItem("seeds-signed-out", "1");
-    } catch {
-      /* private mode — best effort */
-    }
-    await supabase.auth.signOut();
-    // HME rule: our sign-out only ends the Seeds session — also end the
-    // honest.money one, or the member gets signed right back in.
-    window.location.href = `https://honest.money/logout?return_to=${encodeURIComponent(window.location.origin + "/")}`;
-  }
+  const signOut = () => signOutOfSeeds(qc);
 
   const [menuOpen, setMenuOpen] = useState(false);
   useEffect(() => setMenuOpen(false), [pathname]);
