@@ -243,12 +243,21 @@ export const getMyP2p = createServerFn({ method: "GET" })
     const { data: blocks } = await db.from("p2p_blocks").select("blocked_id").eq("blocker_id", me);
     const blockedNames = await namesFor((blocks ?? []).map((b) => b.blocked_id));
     await touchSeen(me);
+    // Re-read the HME pocket for my own sell ads, and say plainly why it can't count yet.
+    const { refreshOffer, pocketStatus } = await engine();
+    const sellAssets = [...new Set((offers ?? []).filter((o) => o.side !== "buy").map((o) => o.asset as P2pAsset))];
+    const pocket: Record<string, string | null> = {};
+    await Promise.all(sellAssets.map(async (a) => { pocket[a] = (await pocketStatus(me, a).catch(() => ({ blocker: "Couldn't read your pocket" }))).blocker; }));
+    const fresh: Record<string, number> = {};
+    await Promise.all((offers ?? []).filter((o) => o.side !== "buy").map(async (o) => { const v = await refreshOffer(o.id).catch(() => null); if (v !== null) fresh[o.id] = v; }));
+    const { activeLink } = await import("@/lib/pocket-send/pocket.server");
+    const linked = Boolean(await activeLink(me).catch(() => null));
     return {
       profile,
       displayName: acct?.display_name ?? null,
       blocked: (blocks ?? []).map((b) => ({ id: b.blocked_id, handle: blockedNames[b.blocked_id] })),
       stats: (await statsFor([me]))[me],
-      hasWallet: Boolean(wallet?.txc_address),
+      hasWallet: linked || Boolean(wallet?.txc_address),
       offers: (offers ?? []).map((o) => ({
         id: o.id,
         side: (o.side === "buy" ? "buy" : "sell") as "sell" | "buy",
@@ -266,7 +275,8 @@ export const getMyP2p = createServerFn({ method: "GET" })
         terms: o.terms,
         windowMinutes: o.window_minutes,
         active: o.active,
-        verified: Number(o.verified_balance),
+        verified: fresh[o.id] ?? Number(o.verified_balance),
+        pocketBlocker: o.side === "buy" ? null : (pocket[o.asset] ?? null),
         instructions: (o.p2p_offer_instructions as { instructions: string } | null)?.instructions ?? "",
       })),
       trades: (trades ?? []).map((t) => ({
@@ -457,10 +467,10 @@ export const openTrade = createServerFn({ method: "POST" })
     const asset = o.asset as P2pAsset;
     let to = buyAd ? undefined : data.buyerAddress;
     if (!to) {
-      const { data: w } = await db.from("wallets").select("txc_address, evm_address").eq("user_id", buyerId).maybeSingle();
-      to = (P2P_ASSETS[asset].family === "evm" ? w?.evm_address : w?.txc_address) ?? undefined;
+      const { receiveAddress } = await import("@/lib/pocket-send/pocket.server");
+      to = (await receiveAddress(buyerId, P2P_ASSETS[asset].leg)) ?? undefined;
     }
-    if (!to) throw new Error(buyAd ? "The buyer hasn't set up a wallet yet" : "Set up your wallet first so we know where to send your coins");
+    if (!to) throw new Error(buyAd ? "The buyer hasn't linked a wallet yet" : "Link your HME Wallet first (Account → Security) so we know where to send your coins");
 
     let instructions = (o.p2p_offer_instructions as { instructions: string } | null)?.instructions ?? "";
     if (buyAd) {
@@ -600,6 +610,11 @@ export const getP2pTrade = createServerFn({ method: "GET" })
       paidAt: t.paid_at,
       releasedAt: t.released_at,
       releaseTxid: t.release_txid,
+      releaseRequest: await (async () => {
+        const { latestApprovals } = await import("@/lib/pocket-send/approvals.server");
+        const a = Object.values(await latestApprovals("p2p_release", t.id))[0];
+        return a ? { status: a.status, expiresAt: a.expires_at } : null;
+      })(),
       disputeReason: t.dispute_reason,
       resolution: t.resolution,
       seller: { handle: names[t.seller_id], stats: st[t.seller_id] },
@@ -712,11 +727,13 @@ export const p2pAction = createServerFn({ method: "POST" })
       if (t.status === "paid" && me === t.seller_id) throw new Error("Buyer says they paid — open a dispute instead");
       const resolution = me === t.buyer_id ? "buyer_cancelled" : "seller_cancelled";
       await db.from("p2p_trades").update({ status: "cancelled", cancelled_at: now, resolution }).eq("id", t.id);
+      const { cancelApprovals } = await import("@/lib/pocket-send/approvals.server");
+      await cancelApprovals({ purpose: "p2p_release", refId: t.id }, "The trade was cancelled.");
       await systemMessage(t.id, `Trade cancelled by the ${me === t.buyer_id ? "buyer" : "seller"}. Coins unreserved.`);
       await p2pAlert(me === t.buyer_id ? t.seller_id : t.buyer_id, t.id, `❌ The ${me === t.buyer_id ? "buyer" : "seller"} cancelled the ${t.crypto_amount} ${t.asset} trade.`);
     } else if (data.action === "release") {
       if (me !== t.seller_id) throw new Error("Only the seller can release");
-      return { txid: await releaseTrade(t.id, me) };
+      return await releaseTrade(t.id, me);
     } else {
       if (!["open", "paid"].includes(t.status)) throw new Error("Nothing to dispute");
       if (me === t.buyer_id && t.status !== "paid") throw new Error("Mark the trade paid before opening a dispute");
@@ -845,7 +862,7 @@ export const resolveDispute = createServerFn({ method: "POST" })
     const db = await admin();
     const { releaseTrade, systemMessage } = await engine();
     if (data.outcome === "release") {
-      return { txid: await releaseTrade(data.id, context.userId, "release_by_arbitration") };
+      return await releaseTrade(data.id, context.userId, "release_by_arbitration");
     }
     await db
       .from("p2p_trades")
@@ -858,6 +875,8 @@ export const resolveDispute = createServerFn({ method: "POST" })
       .eq("id", data.id)
       .eq("status", "disputed");
     await systemMessage(data.id, "Arbitration ruled for the seller: trade cancelled, coins stay with the seller.");
+    const { cancelApprovals } = await import("@/lib/pocket-send/approvals.server");
+    await cancelApprovals({ purpose: "p2p_release", refId: data.id }, "The dispute was ruled for the seller; the trade was cancelled.");
     const { data: rt } = await db.from("p2p_trades").select("seller_id, buyer_id").eq("id", data.id).maybeSingle();
     if (rt) {
       const { p2pAlert } = await engine();

@@ -36,6 +36,13 @@
 
 - [x] Merge profile and wallet around required HME Wallet linking; consolidate settings and remove legacy vault onboarding from the account experience
 - [ ] Activate linked-pocket exchange/P2P settlement and wallet-approval transactions before enabling HME-only live trading (separate settlement integration)
+  - [x] Exchange + P2P read the member's HME pocket (instant-access link) instead of old authorizations (Nov 18)
+  - [x] Every send from a pocket waits for the owner's Telegram tap (built as the safe default; Bobby to confirm vs. "only above a limit")
+  - [x] Same two-factor rule as withdrawals: two-factor on before the wallet link (built as default; Bobby to confirm)
+  - [x] Unanswered/declined approvals cancel the trade; nothing is sent (15-minute window, swept every minute)
+  - [ ] First real pocket-paid P2P release and exchange trade, small amounts (blocked: Bobby turns on two-factor, re-links, then tries one)
+  - [ ] P2P dispute "Admin: release" now needs the seller's Telegram tap — decide if admins may force it instead (blocked: Bobby's decision)
+  - [ ] Approve-each-trade (HME Wallet) links: sending from HME Wallet itself (blocked: HME Wallet signing flow not built)
 
 - [x] Admin console (/admin) — accounts, totals, open trades/orders
 - [x] Grant admin role to operator accounts

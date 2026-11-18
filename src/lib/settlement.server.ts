@@ -158,6 +158,23 @@ export async function settleUtxoLeg(
     throw new Error(`The ${symbol} leg has already been broadcast`);
   }
 
+  // No old-style authorization: pay from the member's HME pocket (needs their Telegram approval).
+  const { data: legacy } = await supabaseAdmin
+    .from("wallet_delegations")
+    .select("id")
+    .eq("user_id", seller)
+    .eq("chain", chain)
+    .eq("asset", symbol)
+    .is("revoked_at", null)
+    .gt("expires_at", new Date().toISOString())
+    .limit(1)
+    .maybeSingle();
+  if (!legacy) {
+    const { settlePocketLeg } = await import("./pocket-send/trade.server");
+    const r = await settlePocketLeg(userId, tradeId, chain);
+    return { txid: r.txid, amount: r.amount, to: r.to, feeSats: 0, inputs: 0 };
+  }
+
   const column = RECEIVE_COLUMN[chain];
   const { data: buyerWallet } = await supabaseAdmin
     .from("wallets")
@@ -332,6 +349,9 @@ export type SettlementPreview = {
   feeRate: number;
   nodeOnline: boolean;
   symbol: string;
+  /** "pocket" = paid from the member's HME pocket after a Telegram approval. */
+  source?: "pocket" | "legacy";
+  approval?: string | null;
 };
 
 /** Dry run: everything settleUtxoLeg checks, minus decrypting or broadcasting. */
@@ -387,7 +407,11 @@ export async function previewUtxoSettlement(
   const fromAddress = del?.trading_address ?? null;
 
   if (!del) {
-    return { ...base, amount, toAddress, reason: `The seller has no live ${symbol} authorization` };
+    // No old-style authorization: the leg is paid from the member's HME pocket.
+    const { previewPocketLeg } = await import("./pocket-send/trade.server");
+    const p = await previewPocketLeg(userId, tradeId, chain);
+    return { ...base, ready: p.ready, reason: p.reason, amount: p.amount, fromAddress: p.fromAddress,
+      toAddress: p.toAddress, balance: p.balance, source: "pocket", approval: p.approval };
   }
   if (new Date(del.expires_at).getTime() <= Date.now()) {
     return { ...base, amount, fromAddress, toAddress, reason: "The seller's authorization expired" };

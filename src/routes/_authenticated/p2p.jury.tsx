@@ -78,7 +78,7 @@ function Jury() {
               <div className="mt-3 border-t border-border pt-3">
                 {x.notes.map((n, i) => <p key={i} className="font-mono text-xs text-muted-foreground">{n.vote}: {n.note || "—"}</p>)}
                 <div className="mt-2 flex gap-2">
-                  <Button size="sm" onClick={() => { if (confirm("Send the seller's coins to the buyer?")) r.mutate({ id: x.id, outcome: "release" }); }}>Admin: release</Button>
+                  <Button size="sm" onClick={() => { if (confirm("Ask the seller to approve sending their coins to the buyer in Telegram?")) r.mutate({ id: x.id, outcome: "release" }); }}>Admin: release</Button>
                   <Button size="sm" variant="outline" onClick={() => r.mutate({ id: x.id, outcome: "refund" })}>Admin: cancel</Button>
                   <Link to="/p2p/trade/$id" params={{ id: x.id }} className="self-center font-mono text-xs text-primary">Open trade →</Link>
                 </div>

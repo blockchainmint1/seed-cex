@@ -215,7 +215,7 @@ function BuyDialog({ offer, onClose }: { offer: Offer; onClose: () => void }) {
               <label className="block">
                 <span className="font-mono text-[11px] text-muted-foreground uppercase">How should they pay you? (leave blank to reuse your saved details for {method})</span>
                 <textarea rows={3} value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder="Zelle: you@email.com (Jane D.)" className="mt-1 w-full rounded-sm border border-border bg-background p-2 text-sm" />
-                <span className="font-mono text-[11px] text-muted-foreground">Coins come from your authorized trading pocket and are reserved until you release.</span>
+                <span className="font-mono text-[11px] text-muted-foreground">Coins come from your HME trading pocket, stay reserved, and leave only when you tap Approve in Telegram.</span>
               </label>
             ) : (
               <p className="text-xs text-muted-foreground">Coins go to your own Seeds wallet address. Payment instructions appear once the trade opens.</p>

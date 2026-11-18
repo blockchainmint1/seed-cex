@@ -119,6 +119,17 @@ export function LegPanel({ tradeId, leg }: { tradeId: string; leg: Leg }) {
             <p className="text-destructive">{data?.reason ?? "not ready"}</p>
           )}
 
+          {(data as { source?: string } | undefined)?.source === "pocket" ? (
+            <p className="text-muted-foreground">
+              {(() => {
+                const st = (data as { approval?: string | null }).approval;
+                if (st === "approved") return "approved in Telegram · sending once both sides approve";
+                if (st === "pending") return "waiting for the sender's Telegram approval";
+                if (st === "declined" || st === "expired" || st === "cancelled") return `send ${st} · nothing was sent`;
+                return "sends from the HME pocket after a Telegram approval";
+              })()}
+            </p>
+          ) : (
           <button
             onClick={() => settle.mutate()}
             disabled={!data?.ready || settle.isPending}
@@ -126,6 +137,7 @@ export function LegPanel({ tradeId, leg }: { tradeId: string; leg: Leg }) {
           >
             {settle.isPending ? "broadcasting…" : "Send on-chain"}
           </button>
+          )}
 
           {settle.error ? (
             <p className="text-destructive">

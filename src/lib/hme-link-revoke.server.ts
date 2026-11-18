@@ -14,6 +14,9 @@ export async function revokeActiveHmeLinks(userId: string, by: SeedsRevokeSource
   if (error) throw new Error("Could not revoke the link. Try again.");
   for (const l of data ?? []) {
     await supabaseAdmin.from("hme_trade_proposals").update({ status: "expired" }).eq("link_id", l.id).eq("status", "pending");
+    // Any "approve this send?" still waiting on this link can never be used now.
+    const { cancelApprovals } = await import("@/lib/pocket-send/approvals.server");
+    await cancelApprovals({ linkId: l.id }, "Seeds' access to your pocket was revoked.").catch(() => 0);
   }
   if (data?.length) {
     const { emailAccountChange } = await import("@/lib/email/send.server");

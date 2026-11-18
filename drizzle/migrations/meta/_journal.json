@@ -218,6 +218,20 @@
       "when": 1795041166793,
       "tag": "0030_orders_market_type",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1795043927718,
+      "tag": "0031_send_approvals",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1795044270349,
+      "tag": "0032_trade_settle_lock",
+      "breakpoints": true
     }
   ]
 }

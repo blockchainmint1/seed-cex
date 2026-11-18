@@ -5,12 +5,11 @@
  * a trade we reserve that amount against the pocket's live on-chain balance and
  * keep re-checking it; if the pocket drops below what's reserved the trade is
  * flagged and the seller's score takes the hit. Release sends straight from the
- * seller's pocket to the buyer through the normal withdrawal gates.
+ * seller's HME pocket to the buyer, only after the seller taps Approve in Telegram.
  */
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { LegId } from "@/lib/chains";
 import { P2P_ASSETS, type P2pAsset } from "@/lib/p2p-config";
-import { previewWithdrawal, withdrawAsset } from "./withdrawal.server";
 
 export const LIVE_STATUSES = ["open", "paid", "disputed"] as const;
 
@@ -18,24 +17,23 @@ export function legFor(asset: P2pAsset): LegId {
   return P2P_ASSETS[asset].leg;
 }
 
-/** A throwaway valid destination so we can read the pocket balance via preview. */
-async function probeAddress(sellerId: string, asset: P2pAsset): Promise<string> {
-  const { data } = await supabaseAdmin
-    .from("wallets")
-    .select("txc_address, evm_address")
-    .eq("user_id", sellerId)
-    .maybeSingle();
-  const evm = P2P_ASSETS[asset].family === "evm";
-  return (evm ? data?.evm_address : data?.txc_address) ?? "";
+/**
+ * Live balance in the seller's HME trading pocket, or null when the pocket can't
+ * send yet (no instant-access link, two-factor after the link, no Telegram) or
+ * can't be read. A pocket that can't send never counts as verified liquidity.
+ */
+export async function pocketBalance(sellerId: string, asset: P2pAsset): Promise<number | null> {
+  return (await pocketStatus(sellerId, asset)).balance;
 }
 
-/** Live balance in the seller's authorized trading pocket, or null if unreadable / unauthorized. */
-export async function pocketBalance(sellerId: string, asset: P2pAsset): Promise<number | null> {
-  const to = await probeAddress(sellerId, asset);
-  if (!to) return null;
-  const p = await previewWithdrawal(sellerId, legFor(asset), to, 1e-8).catch(() => null);
-  if (!p || p.balance === null) return null;
-  return p.balance;
+/** Balance plus the plain reason it isn't usable (for the seller's own desk). */
+export async function pocketStatus(sellerId: string, asset: P2pAsset): Promise<{ balance: number | null; blocker: string | null }> {
+  const { pocketSender, pocketLegBalance } = await import("@/lib/pocket-send/pocket.server");
+  const leg = legFor(asset);
+  const s = await pocketSender(sellerId, leg);
+  if (!s.ok) return { balance: null, blocker: s.reason };
+  const b = await pocketLegBalance(s.address, leg);
+  return { balance: b.balance, blocker: b.balance === null ? (b.reason ?? "Couldn't read your pocket") : null };
 }
 
 export async function lockedAmount(sellerId: string, asset: string, excludeTradeId?: string) {
@@ -106,27 +104,90 @@ export async function watchTrade(tradeId: string) {
   return t;
 }
 
-/** Send the seller's coins to the buyer and mark the trade released. */
+/**
+ * Release step 1: ask the seller to approve the send in Telegram. Nothing moves
+ * here. Returns once the request is out; the send happens when they tap Approve.
+ */
 export async function releaseTrade(tradeId: string, actorId: string, resolution?: string) {
   const { data: t } = await supabaseAdmin.from("p2p_trades").select("*").eq("id", tradeId).maybeSingle();
   if (!t) throw new Error("Trade not found");
   if (!["open", "paid", "disputed"].includes(t.status)) throw new Error(`Trade is ${t.status}`);
-  const sent = await withdrawAsset(
-    t.seller_id,
-    legFor(t.asset as P2pAsset),
-    t.buyer_address,
-    Number(t.crypto_amount),
-  );
+  const leg = legFor(t.asset as P2pAsset);
+  const { pocketSender, pocketLegBalance, coverProblem, validDestination } = await import("@/lib/pocket-send/pocket.server");
+  const s = await pocketSender(t.seller_id, leg);
+  if (!s.ok) throw new Error(actorId === t.seller_id ? s.reason : `The seller's pocket can't send yet: ${s.reason}`);
+  if (!(await validDestination(leg, t.buyer_address))) throw new Error("The buyer's receiving address isn't valid for this coin");
+  const amount = Number(t.crypto_amount);
+  const problem = coverProblem(leg, await pocketLegBalance(s.address, leg, amount), amount);
+  if (problem) throw new Error(problem);
+
+  const { requestSendApproval } = await import("@/lib/pocket-send/approvals.server");
+  const ap = await requestSendApproval({
+    userId: t.seller_id, linkId: s.link.id, purpose: "p2p_release", refId: t.id, leg, amount,
+    from: s.address, to: t.buyer_address,
+    what: resolution ? "P2P trade · released by Seeds after a dispute review" : `P2P sale · $${Number(t.fiat_amount).toFixed(2)}`,
+    meta: { resolution: resolution ?? null, actor_id: actorId },
+  });
+  await systemMessage(t.id, "Release requested — waiting for the seller to approve the send in Telegram.");
+  return { pending: true as const, approvalId: ap.id, expiresAt: ap.expires_at };
+}
+
+/**
+ * Release step 2 (after a Telegram decision): send if approved, or tell both sides
+ * it didn't happen. Safe to call more than once.
+ */
+export async function continueP2pRelease(tradeId: string) {
+  const { data: t } = await supabaseAdmin.from("p2p_trades").select("*").eq("id", tradeId).maybeSingle();
+  if (!t) return null;
+  const leg = legFor(t.asset as P2pAsset);
+  const { latestApprovals, spendApproval, recordApprovalTx, recordApprovalError } = await import("@/lib/pocket-send/approvals.server");
+  const ap = (await latestApprovals("p2p_release", t.id))[leg];
+  if (!ap) return null;
+
+  if (ap.status === "declined" || ap.status === "expired" || ap.status === "cancelled") {
+    if (!["open", "paid", "disputed"].includes(t.status)) return null;
+    const word = ap.status === "declined" ? "declined" : ap.status === "expired" ? "wasn't approved in time" : "was cancelled";
+    await systemMessage(t.id, `The release ${word === "declined" ? "was declined" : word} in Telegram. Nothing was sent; the coins stay reserved.`);
+    await p2pAlert(t.seller_id, t.id, `The release of ${t.crypto_amount} ${t.asset} ${word === "declined" ? "was declined" : word}. Nothing was sent. Tap Release on the trade page when you're ready.`);
+    return null;
+  }
+  if (ap.status !== "approved") return null;
+  if (!["open", "paid", "disputed"].includes(t.status)) return null;
+
+  const { pocketSender, sendFromPocket } = await import("@/lib/pocket-send/pocket.server");
+  const s = await pocketSender(t.seller_id, leg);
+  if (!s.ok) {
+    await p2pAlert(t.seller_id, t.id, `Couldn't release ${t.crypto_amount} ${t.asset}: ${s.reason}`);
+    return null;
+  }
+  const amount = Number(t.crypto_amount);
+  const spent = await spendApproval({ purpose: "p2p_release", refId: t.id, leg, userId: t.seller_id, linkId: s.link.id, amount, to: t.buyer_address })
+    .catch(() => null);
+  if (!spent) return null; // another worker already took it
+  let sent: { txid: string };
+  try {
+    sent = await sendFromPocket({ link: s.link, leg, from: s.address, to: t.buyer_address, amount, record: (txid) => recordApprovalTx(spent.id, txid) });
+    await recordApprovalTx(spent.id, sent.txid);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Send failed";
+    await recordApprovalError(spent.id, msg);
+    await systemMessage(t.id, `Release failed: ${msg} Nothing was sent.`);
+    await p2pAlert(t.seller_id, t.id, `⚠ Release of ${t.crypto_amount} ${t.asset} failed: ${msg}`);
+    return null;
+  }
+  const resolution = (spent.meta?.resolution as string | null | undefined) ?? null;
+  const actorId = (spent.meta?.actor_id as string | null | undefined) ?? t.seller_id;
   await supabaseAdmin
     .from("p2p_trades")
     .update({
       status: "released",
       released_at: new Date().toISOString(),
       release_txid: sent.txid,
-      resolution: resolution ?? null,
+      resolution,
       resolved_by: resolution ? actorId : null,
     })
-    .eq("id", t.id);
+    .eq("id", t.id)
+    .in("status", ["open", "paid", "disputed"]);
   await systemMessage(t.id, `Released ${t.crypto_amount} ${t.asset} to the buyer. Transaction ${sent.txid}`);
   await Promise.all([
     p2pAlert(t.buyer_id, t.id, `✅ ${t.crypto_amount} ${t.asset} is on its way to your wallet.\nTx: <code>${sent.txid}</code>`),

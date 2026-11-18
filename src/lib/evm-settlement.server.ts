@@ -98,6 +98,9 @@ export type EvmPreview = {
   balance: number | null;
   gasBalance: number | null;
   amount: number;
+  /** "pocket" = paid from the member's HME pocket after a Telegram approval. */
+  source?: "pocket" | "legacy";
+  approval?: string | null;
 };
 
 export async function previewEvmSettlement(
@@ -140,7 +143,12 @@ export async function previewEvmSettlement(
 
   const toAddress = wallet?.evm_address ?? null;
   if (!del) {
-    return { ...base, toAddress, reason: `No live ${def.symbol} authorization on any supported chain` };
+    // No old-style authorization: the leg is paid from the member's HME pocket.
+    const { previewPocketLeg } = await import("./pocket-send/trade.server");
+    const p = await previewPocketLeg(userId, tradeId, leg);
+    return { ...base, ready: p.ready, reason: p.reason, chain: (p.chain as ChainId | null), chainName: p.chainName,
+      fromAddress: p.fromAddress, toAddress: p.toAddress, balance: p.balance, gasBalance: p.feeBalance,
+      source: "pocket", approval: p.approval };
   }
 
   const chain = getChain(del.chain);
@@ -227,7 +235,11 @@ export async function settleEvmLeg(
   }
 
   const del = await loadEvmDelegation(sender, leg);
-  if (!del) throw new Error(`No live ${def.symbol} authorization — the sender must authorize the branch`);
+  if (!del) {
+    const { settlePocketLeg } = await import("./pocket-send/trade.server");
+    const r = await settlePocketLeg(userId, tradeId, leg);
+    return { hash: r.txid, chain: r.chain as ChainId, leg, amount: r.amount, to: r.to };
+  }
   if (new Date(del.expiresAt).getTime() <= Date.now()) {
     throw new Error(`The ${def.symbol} authorization has expired`);
   }
@@ -361,7 +373,8 @@ export async function watchEvmLeg(
 
   const sender = delivererOf(t, legRole(t.pair, leg));
   const del = await loadEvmDelegation(sender ?? "", leg);
-  const chain = del?.chain ?? (def.evmChains?.[0] as ChainId);
+  const pocketChain = del ? null : await (await import("./pocket-send/trade.server")).pocketLegChain(t.id, leg);
+  const chain = del?.chain ?? (pocketChain as ChainId | null) ?? (def.evmChains?.[0] as ChainId);
   const status = await fetchEvmTxStatus(chain, hash);
 
   if (status.confirmations !== null) {

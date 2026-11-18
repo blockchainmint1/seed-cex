@@ -97,6 +97,9 @@ export type TsdPreview = {
   amount: number;
   propertyId: number;
   nodeOnline: boolean;
+  /** "pocket" = paid from the member's HME pocket after a Telegram approval. */
+  source?: "pocket" | "legacy";
+  approval?: string | null;
 };
 
 export async function previewTsdSettlement(
@@ -137,7 +140,13 @@ export async function previewTsdSettlement(
   ]);
 
   const toAddress = wallet?.txc_address ?? null;
-  if (!del) return { ...base, toAddress, reason: `The seller has no live ${symbol} authorization` };
+  if (!del) {
+    // No old-style authorization: the leg is paid from the member's HME pocket.
+    const { previewPocketLeg } = await import("./pocket-send/trade.server");
+    const p = await previewPocketLeg(userId, tradeId, leg);
+    return { ...base, ready: p.ready, reason: p.reason, fromAddress: p.fromAddress, toAddress: p.toAddress,
+      balance: p.balance, feeBalance: p.feeBalance, source: "pocket", approval: p.approval };
+  }
 
   const ctx = { ...base, fromAddress: del.address, toAddress };
   if (new Date(del.expiresAt).getTime() <= Date.now()) {
@@ -207,7 +216,11 @@ export async function settleTsdLeg(
   }
 
   const del = await loadTsdDelegation(sender, symbol);
-  if (!del) throw new Error(`No live ${symbol} authorization — the seller must authorize the branch`);
+  if (!del) {
+    const { settlePocketLeg } = await import("./pocket-send/trade.server");
+    const r = await settlePocketLeg(userId, tradeId, leg);
+    return { txid: r.txid, amount: r.amount, to: r.to, propertyId };
+  }
   if (new Date(del.expiresAt).getTime() <= Date.now()) {
     throw new Error(`The ${symbol} authorization has expired`);
   }

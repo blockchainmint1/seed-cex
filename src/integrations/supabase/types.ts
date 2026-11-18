@@ -1626,6 +1626,75 @@ export type Database = {
         }
         Relationships: []
       }
+      send_approvals: {
+        Row: {
+          amount: number
+          asset: string
+          created_at: string
+          decided_at: string | null
+          error: string | null
+          expires_at: string
+          from_address: string
+          id: string
+          leg: string
+          link_id: string
+          meta: Json
+          purpose: string
+          ref_id: string
+          status: string
+          telegram_chat_id: string | null
+          telegram_message_id: number | null
+          to_address: string
+          txid: string | null
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          asset: string
+          created_at?: string
+          decided_at?: string | null
+          error?: string | null
+          expires_at: string
+          from_address: string
+          id?: string
+          leg: string
+          link_id: string
+          meta?: Json
+          purpose: string
+          ref_id: string
+          status?: string
+          telegram_chat_id?: string | null
+          telegram_message_id?: number | null
+          to_address: string
+          txid?: string | null
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          asset?: string
+          created_at?: string
+          decided_at?: string | null
+          error?: string | null
+          expires_at?: string
+          from_address?: string
+          id?: string
+          leg?: string
+          link_id?: string
+          meta?: Json
+          purpose?: string
+          ref_id?: string
+          status?: string
+          telegram_chat_id?: string | null
+          telegram_message_id?: number | null
+          to_address?: string
+          txid?: string | null
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       site_page_views: {
         Row: {
           country: string | null
@@ -1855,6 +1924,7 @@ export type Database = {
           maker_order_id: string | null
           pair: string
           price: number
+          settle_started_at: string | null
           side: Database["public"]["Enums"]["order_side"]
           status: Database["public"]["Enums"]["trade_status"]
           taker_id: string | null
@@ -1871,6 +1941,7 @@ export type Database = {
           maker_order_id?: string | null
           pair?: string
           price: number
+          settle_started_at?: string | null
           side: Database["public"]["Enums"]["order_side"]
           status?: Database["public"]["Enums"]["trade_status"]
           taker_id?: string | null
@@ -1887,6 +1958,7 @@ export type Database = {
           maker_order_id?: string | null
           pair?: string
           price?: number
+          settle_started_at?: string | null
           side?: Database["public"]["Enums"]["order_side"]
           status?: Database["public"]["Enums"]["trade_status"]
           taker_id?: string | null

@@ -1,0 +1,2 @@
+ALTER TABLE public.trades ADD COLUMN IF NOT EXISTS settle_started_at timestamptz;
+COMMENT ON COLUMN public.trades.settle_started_at IS 'Set once by the server when it starts sending a matched trade''s legs; a second worker that sees it set does nothing, so two Telegram approvals arriving at once can never start two sends.';

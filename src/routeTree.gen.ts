@@ -90,6 +90,7 @@ import { Route as ApiPublicHmeLinkSubmitRouteImport } from './routes/api/public/
 import { Route as ApiPublicHmeLinkTradesRouteImport } from './routes/api/public/hme-link/trades'
 import { Route as ApiPublicJobsAiDailyRouteImport } from './routes/api/public/jobs/ai-daily'
 import { Route as ApiPublicJobsPulseWithdrawalsRouteImport } from './routes/api/public/jobs/pulse-withdrawals'
+import { Route as ApiPublicJobsSendApprovalsRouteImport } from './routes/api/public/jobs/send-approvals'
 import { Route as ApiPublicJobsTsdRoutesRouteImport } from './routes/api/public/jobs/tsd-routes'
 import { Route as ApiPublicMinehmeProfileUpdateRouteImport } from './routes/api/public/minehme/profile-update'
 import { Route as ApiPublicNectarpayWebhookRouteImport } from './routes/api/public/nectarpay/webhook'
@@ -536,6 +537,12 @@ const ApiPublicJobsPulseWithdrawalsRoute =
     path: '/api/public/jobs/pulse-withdrawals',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicJobsSendApprovalsRoute =
+  ApiPublicJobsSendApprovalsRouteImport.update({
+    id: '/api/public/jobs/send-approvals',
+    path: '/api/public/jobs/send-approvals',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicJobsTsdRoutesRoute = ApiPublicJobsTsdRoutesRouteImport.update({
   id: '/api/public/jobs/tsd-routes',
   path: '/api/public/jobs/tsd-routes',
@@ -743,6 +750,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hme-link/trades': typeof ApiPublicHmeLinkTradesRouteWithChildren
   '/api/public/jobs/ai-daily': typeof ApiPublicJobsAiDailyRoute
   '/api/public/jobs/pulse-withdrawals': typeof ApiPublicJobsPulseWithdrawalsRoute
+  '/api/public/jobs/send-approvals': typeof ApiPublicJobsSendApprovalsRoute
   '/api/public/jobs/tsd-routes': typeof ApiPublicJobsTsdRoutesRoute
   '/api/public/minehme/profile-update': typeof ApiPublicMinehmeProfileUpdateRoute
   '/api/public/nectarpay/webhook': typeof ApiPublicNectarpayWebhookRoute
@@ -846,6 +854,7 @@ export interface FileRoutesByTo {
   '/api/public/hme-link/trades': typeof ApiPublicHmeLinkTradesRouteWithChildren
   '/api/public/jobs/ai-daily': typeof ApiPublicJobsAiDailyRoute
   '/api/public/jobs/pulse-withdrawals': typeof ApiPublicJobsPulseWithdrawalsRoute
+  '/api/public/jobs/send-approvals': typeof ApiPublicJobsSendApprovalsRoute
   '/api/public/jobs/tsd-routes': typeof ApiPublicJobsTsdRoutesRoute
   '/api/public/minehme/profile-update': typeof ApiPublicMinehmeProfileUpdateRoute
   '/api/public/nectarpay/webhook': typeof ApiPublicNectarpayWebhookRoute
@@ -954,6 +963,7 @@ export interface FileRoutesById {
   '/api/public/hme-link/trades': typeof ApiPublicHmeLinkTradesRouteWithChildren
   '/api/public/jobs/ai-daily': typeof ApiPublicJobsAiDailyRoute
   '/api/public/jobs/pulse-withdrawals': typeof ApiPublicJobsPulseWithdrawalsRoute
+  '/api/public/jobs/send-approvals': typeof ApiPublicJobsSendApprovalsRoute
   '/api/public/jobs/tsd-routes': typeof ApiPublicJobsTsdRoutesRoute
   '/api/public/minehme/profile-update': typeof ApiPublicMinehmeProfileUpdateRoute
   '/api/public/nectarpay/webhook': typeof ApiPublicNectarpayWebhookRoute
@@ -1062,6 +1072,7 @@ export interface FileRouteTypes {
     | '/api/public/hme-link/trades'
     | '/api/public/jobs/ai-daily'
     | '/api/public/jobs/pulse-withdrawals'
+    | '/api/public/jobs/send-approvals'
     | '/api/public/jobs/tsd-routes'
     | '/api/public/minehme/profile-update'
     | '/api/public/nectarpay/webhook'
@@ -1165,6 +1176,7 @@ export interface FileRouteTypes {
     | '/api/public/hme-link/trades'
     | '/api/public/jobs/ai-daily'
     | '/api/public/jobs/pulse-withdrawals'
+    | '/api/public/jobs/send-approvals'
     | '/api/public/jobs/tsd-routes'
     | '/api/public/minehme/profile-update'
     | '/api/public/nectarpay/webhook'
@@ -1272,6 +1284,7 @@ export interface FileRouteTypes {
     | '/api/public/hme-link/trades'
     | '/api/public/jobs/ai-daily'
     | '/api/public/jobs/pulse-withdrawals'
+    | '/api/public/jobs/send-approvals'
     | '/api/public/jobs/tsd-routes'
     | '/api/public/minehme/profile-update'
     | '/api/public/nectarpay/webhook'
@@ -1354,6 +1367,7 @@ export interface RootRouteChildren {
   ApiPublicHmeLinkTradesRoute: typeof ApiPublicHmeLinkTradesRouteWithChildren
   ApiPublicJobsAiDailyRoute: typeof ApiPublicJobsAiDailyRoute
   ApiPublicJobsPulseWithdrawalsRoute: typeof ApiPublicJobsPulseWithdrawalsRoute
+  ApiPublicJobsSendApprovalsRoute: typeof ApiPublicJobsSendApprovalsRoute
   ApiPublicJobsTsdRoutesRoute: typeof ApiPublicJobsTsdRoutesRoute
   ApiPublicMinehmeProfileUpdateRoute: typeof ApiPublicMinehmeProfileUpdateRoute
   ApiPublicNectarpayWebhookRoute: typeof ApiPublicNectarpayWebhookRoute
@@ -1949,6 +1963,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicJobsPulseWithdrawalsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/jobs/send-approvals': {
+      id: '/api/public/jobs/send-approvals'
+      path: '/api/public/jobs/send-approvals'
+      fullPath: '/api/public/jobs/send-approvals'
+      preLoaderRoute: typeof ApiPublicJobsSendApprovalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/jobs/tsd-routes': {
       id: '/api/public/jobs/tsd-routes'
       path: '/api/public/jobs/tsd-routes'
@@ -2285,6 +2306,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHmeLinkTradesRoute: ApiPublicHmeLinkTradesRouteWithChildren,
   ApiPublicJobsAiDailyRoute: ApiPublicJobsAiDailyRoute,
   ApiPublicJobsPulseWithdrawalsRoute: ApiPublicJobsPulseWithdrawalsRoute,
+  ApiPublicJobsSendApprovalsRoute: ApiPublicJobsSendApprovalsRoute,
   ApiPublicJobsTsdRoutesRoute: ApiPublicJobsTsdRoutesRoute,
   ApiPublicMinehmeProfileUpdateRoute: ApiPublicMinehmeProfileUpdateRoute,
   ApiPublicNectarpayWebhookRoute: ApiPublicNectarpayWebhookRoute,

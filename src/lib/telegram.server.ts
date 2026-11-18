@@ -9,7 +9,7 @@ export function telegramConfigured(): boolean {
 }
 
 /** Calls one Telegram Bot API method through the gateway. Throws member-readable errors. */
-async function telegramCall(method: string, body: Record<string, unknown>): Promise<void> {
+export async function telegramCall(method: string, body: Record<string, unknown>): Promise<unknown> {
   const lovableKey = process.env["LOVABLE_API_KEY"];
   const telegramKey = process.env["TELEGRAM_API_KEY"];
   if (!lovableKey || !telegramKey) {
@@ -32,11 +32,12 @@ async function telegramCall(method: string, body: Record<string, unknown>): Prom
     throw new Error(friendlyTelegramError(res.status, text));
   }
 
-  const json = (await res.json()) as { ok?: boolean; description?: string };
+  const json = (await res.json()) as { ok?: boolean; description?: string; result?: unknown };
   if (json.ok === false) {
     console.error(`Telegram API ${method} error: ${json.description}`);
     throw new Error(friendlyTelegramError(200, json.description ?? ""));
   }
+  return json.result;
 }
 
 export type InlineKeyboard = { inline_keyboard: Array<Array<{ text: string; callback_data?: string; url?: string }>> };
@@ -107,10 +108,15 @@ type CallbackQuery = {
   message?: { message_id?: number; chat?: { id?: number; type?: string } };
 };
 
-/** A tap on a button in a Seeds alert. Today: the one-tap "Revoke Seeds' access" flow (ask → confirm). */
+/** A tap on a button in a Seeds alert: Approve/Decline a pocket send, or the one-tap "Revoke Seeds' access" flow (ask → confirm). */
 async function handleCallback(cq: CallbackQuery): Promise<string> {
   const answer = (text: string, alert = false) =>
     cq.id ? telegramCall("answerCallbackQuery", { callback_query_id: cq.id, text, show_alert: alert }).catch(() => {}) : Promise.resolve();
+  // "Approve this send?" buttons (pocket sends) have their own signed format.
+  const { handleApprovalTap } = await import("./pocket-send/approvals.server");
+  const approval = await handleApprovalTap(cq);
+  if (approval) return `send_${approval}`;
+
   const chatId = cq.message?.chat?.id;
   const messageId = cq.message?.message_id;
   const { parseRevokeData, revokeSignatureOk, revokeDecision } = await import("./telegram-actions");

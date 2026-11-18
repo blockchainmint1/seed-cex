@@ -47,7 +47,11 @@ function TradeRoom() {
   const err = (e: unknown) => toast.error((e as Error).message);
   const action = useMutation({
     mutationFn: (v: { action: "paid" | "cancel" | "release" | "dispute"; reason?: string }) => act({ data: { id, ...v } }),
-    onSuccess: refresh, onError: err,
+    onSuccess: (r, v) => {
+      if (v.action === "release") toast.success("Check Telegram — tap Approve to send the coins. Nothing moves until you do.");
+      refresh();
+    },
+    onError: err,
   });
   const [msg, setMsg] = useState("");
   const chat = useMutation({ mutationFn: () => send({ data: { id, body: msg } }), onSuccess: () => { setMsg(""); refresh(); }, onError: err });
@@ -160,7 +164,11 @@ function TradeRoom() {
           {seller && t.status === "open" ? <Button variant="outline" onClick={() => action.mutate({ action: "cancel" })}>Cancel (hurts your score)</Button> : null}
           {seller && (t.status === "paid" || t.status === "open") ? (
             <Button disabled={action.isPending} onClick={() => { if (confirm(`Only release once $${t.fiat.toFixed(2)} is in your account. Release ${t.crypto} ${t.asset}?`)) action.mutate({ action: "release" }); }}>
-              {action.isPending ? "Sending…" : `Payment received — release ${t.asset}`}
+              {action.isPending
+                ? "Asking Telegram…"
+                : t.releaseRequest?.status === "pending"
+                  ? "Ask again in Telegram"
+                  : `Payment received — release ${t.asset}`}
             </Button>
           ) : null}
           {(t.role !== "admin") && (t.status === "paid" || (seller && t.status === "open")) ? (
@@ -168,6 +176,20 @@ function TradeRoom() {
           ) : null}
         </div>
 
+        {!ended && t.releaseRequest && ["pending", "approved"].includes(t.releaseRequest.status) ? (
+          <p className="rounded-sm border border-primary/40 bg-primary/5 p-3 text-sm">
+            {t.releaseRequest.status === "approved"
+              ? "Approved in Telegram — sending now."
+              : seller
+                ? "Open Telegram and tap Approve to send the coins. The request ends 15 minutes after you asked; nothing moves until you tap."
+                : "The seller is approving the release in Telegram."}
+          </p>
+        ) : null}
+        {!ended && t.releaseRequest && ["declined", "expired"].includes(t.releaseRequest.status) && seller ? (
+          <p className="text-sm text-muted-foreground">
+            The last release request was {t.releaseRequest.status === "declined" ? "declined" : "not approved in time"}. Nothing was sent; tap release again when you're ready.
+          </p>
+        ) : null}
         {t.status === "released" && t.releaseTxid ? (
           <p className="break-all font-mono text-xs text-primary">Released · tx {t.releaseTxid}</p>
         ) : null}

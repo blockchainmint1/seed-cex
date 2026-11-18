@@ -64,7 +64,7 @@ function Desk() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-3xl font-extrabold">My P2P desk</h1>
-          <p className="text-sm text-muted-foreground">Sell from your own trading pocket. Buyers pay you directly.</p>
+          <p className="text-sm text-muted-foreground">Sell from your own HME trading pocket. Buyers pay you directly; coins leave only when you tap Approve in Telegram.</p>
         </div>
         <div className="flex gap-2">
           {d.profile ? <AwayToggle away={d.profile.away} /> : null}
@@ -90,7 +90,11 @@ function Desk() {
                   <div className="font-mono"><span className={o.side === "buy" ? "text-primary" : "text-destructive"}>{o.side === "buy" ? "BUY" : "SELL"}</span> {o.asset} @ {o.priceMode === "market" ? `market ${o.marginPct >= 0 ? "+" : ""}${o.marginPct}%` : `$${fmtCoinPrice(o.price)}`} <span className="text-xs text-muted-foreground">fee {o.feePct}% · ${o.minFiat}–${o.maxFiat}</span></div>
                   {o.side === "sell" ? <div className={`flex items-center gap-1 font-mono text-[11px] ${o.verified > 0 ? "text-primary" : "text-destructive"}`}>
                     <BadgeCheck className="h-3 w-3" />
-                    {o.verified > 0 ? `${o.verified} ${o.asset} verified & available` : `No verified ${o.asset} — authorize and fund your trading pocket on the Wallet page`}
+                    {o.verified > 0
+                      ? `${o.verified} ${o.asset} verified & available in your HME trading pocket`
+                      : o.pocketBlocker
+                        ? `Not live yet: ${o.pocketBlocker}`
+                        : `No ${o.asset} in your HME trading pocket yet — deposit some from Account → Balances`}
                   </div> : null}
                   <div className="text-xs text-muted-foreground">{o.methods.join(", ")} · {o.active ? "Live" : "Paused"}</div>
                 </div>
@@ -99,7 +103,9 @@ function Desk() {
             ))}
           </ul>
           <p className="mt-3 text-xs text-muted-foreground">
-            Only coins in your authorized trading pocket count. <Link to="/wallet" className="text-primary">Fund it on the Wallet page.</Link>
+            Only coins in your HME trading pocket count, and only once two-factor and Telegram are on.{" "}
+            <Link to="/account/security" className="text-primary">Security settings</Link> ·{" "}
+            <Link to="/account/balances" className="text-primary">Balances</Link>
           </p>
         </Panel>
       </div>
