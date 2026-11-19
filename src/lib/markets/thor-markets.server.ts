@@ -10,12 +10,18 @@ import {
   type Candle, type DayStats, type ThorMarket, type Timeframe,
 } from "./thor-markets";
 
-/** Public Midgard servers, tried in order. */
+/**
+ * Public Midgard servers, tried in order. Liquify is the only one reliably
+ * answering (Nine Realms' Midgard no longer resolves, Nov 2026; THORSwap's
+ * often answers with a bot check), so it's tried twice: slow answers are common.
+ */
 const MIDGARD = [
   "https://gateway.liquify.com/chain/thorchain_midgard",
-  "https://midgard.ninerealms.com",
+  "https://gateway.liquify.com/chain/thorchain_midgard",
   "https://midgard.thorswap.net",
 ];
+/** THORNode servers (live pool state, no history): the backup for prices when Midgard is down. */
+const THORNODE = ["https://thorchain.ibs.team/api", "https://api-thorchain.rorcual.xyz", "https://gateway.liquify.com/chain/thorchain_api"];
 
 const cache = new Map<string, { at: number; value: unknown }>();
 const inflight = new Map<string, Promise<unknown>>();
@@ -43,7 +49,7 @@ async function midgard<T>(path: string): Promise<T> {
   let last: unknown = null;
   for (const base of MIDGARD) {
     try {
-      const r = await fetch(base + path, { headers: { accept: "application/json" }, signal: AbortSignal.timeout(8_000) });
+      const r = await fetch(base + path, { headers: { accept: "application/json" }, signal: AbortSignal.timeout(10_000) });
       if (!r.ok) { last = new Error(`HTTP ${r.status}`); continue; }
       const text = await r.text();
       if (!text.trimStart().startsWith("{") && !text.trimStart().startsWith("[")) { last = new Error("not JSON"); continue; }
@@ -80,8 +86,35 @@ export function marketsNeedFetch(slug?: string, tf?: Timeframe): boolean {
   return isStale("pools", TTL.pools) || THOR_MARKETS.some((m) => isStale(`hourly:${m.pool}`, TTL.hourly));
 }
 
+type NodePool = { asset: string; status: string; balance_asset: string; asset_tor_price?: string };
+
+/** Live pool prices straight from THORNode, shaped like Midgard's (no 24h volume there). */
+async function nodePools(): Promise<Pool[]> {
+  let last: unknown = null;
+  for (const base of THORNODE) {
+    try {
+      const r = await fetch(base + "/thorchain/pools", { headers: { accept: "application/json" }, signal: AbortSignal.timeout(10_000) });
+      if (!r.ok) { last = new Error(`HTTP ${r.status}`); continue; }
+      const list = (await r.json()) as NodePool[];
+      if (!Array.isArray(list)) { last = new Error("not a list"); continue; }
+      return list.map((p) => ({
+        asset: p.asset,
+        status: String(p.status).toLowerCase(),
+        assetPrice: "0",
+        assetPriceUSD: p.asset_tor_price ? String(Number(p.asset_tor_price) / 1e8) : "0",
+        assetDepth: p.balance_asset,
+        volume24h: "0",
+      }));
+    } catch (e) {
+      last = e;
+    }
+  }
+  console.error("[thor-markets] every THORNode server failed /thorchain/pools", String(last));
+  throw new Error("THORChain market data is unavailable right now. Try again in a minute.");
+}
+
 function pools() {
-  return cached("pools", TTL.pools, () => midgard<Pool[]>("/v2/pools"));
+  return cached("pools", TTL.pools, () => midgard<Pool[]>("/v2/pools").catch(() => nodePools()));
 }
 
 /** Last 25 hourly candles (with volume) for the 24-hour figures. */
