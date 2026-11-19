@@ -76,7 +76,9 @@ function SellerPage() {
             <div className={o.fundsOk ? "mt-1 flex items-center gap-1 font-mono text-[11px] text-primary" : "mt-1 flex items-center gap-1 font-mono text-[11px] text-destructive"}>
               <BadgeCheck className="h-3 w-3" /> {o.fundsOk ? "funds verified in trading pocket" : "no verified funds in trading pocket"}
             </div>
-            <div className="mt-2 text-xs text-muted-foreground">${Number(o.min_fiat)}–${Number(o.max_fiat)} · {o.payment_methods.join(", ")}</div>
+            <div className="mt-2 text-xs text-muted-foreground">
+              {o.maxFiat != null ? `$${o.minFiat.toLocaleString()}–$${Math.floor(o.maxFiat).toLocaleString()}` : "Not available until the seller adds funds"} · {o.payment_methods.join(", ")}
+            </div>
           </div>
         ))}
       </div>

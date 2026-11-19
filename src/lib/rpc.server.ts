@@ -198,16 +198,29 @@ export type ScannedUtxo = {
   height: number;
 };
 
+// The node runs one scantxoutset at a time and refuses a second ("Scan already in progress"),
+// which would read as an unreadable pocket. Callers asking for the same addresses at the
+// same moment share one scan. No answer is reused after it finishes, so coin selection
+// before a send always sees the current UTXO set.
+const scanInflight = new Map<string, Promise<{ utxos: ScannedUtxo[]; total: number } | null>>();
+
 export async function scanAddressUtxos(
   chain: RpcChain,
   addresses: string[],
 ): Promise<{ utxos: ScannedUtxo[]; total: number } | null> {
   if (addresses.length === 0) return { utxos: [], total: 0 };
-  const res = await tryRpc<{
-    success: boolean;
-    total_amount: number;
-    unspents: ScannedUtxo[];
-  }>(chain, "scantxoutset", ["start", addresses.map((a) => `addr(${a})`)]);
-  if (!res?.success) return null;
-  return { utxos: res.unspents ?? [], total: res.total_amount ?? 0 };
+  const key = `${chain}:${[...addresses].sort().join(",")}`;
+  const running = scanInflight.get(key);
+  if (running) return running;
+  const job = (async () => {
+    const res = await tryRpc<{
+      success: boolean;
+      total_amount: number;
+      unspents: ScannedUtxo[];
+    }>(chain, "scantxoutset", ["start", addresses.map((a) => `addr(${a})`)]);
+    if (!res?.success) return null;
+    return { utxos: res.unspents ?? [], total: res.total_amount ?? 0 };
+  })().finally(() => scanInflight.delete(key));
+  scanInflight.set(key, job);
+  return job;
 }

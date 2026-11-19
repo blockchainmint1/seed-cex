@@ -96,6 +96,17 @@ function Desk() {
                         ? `Not live yet: ${o.pocketBlocker}`
                         : `No ${o.asset} in your HME trading pocket yet — deposit some from Account → Balances`}
                   </div> : null}
+                  {o.side === "sell" && o.shown && o.verified > 0 ? (
+                    o.shown.live ? (
+                      o.shown.reduced ? (
+                        <div className="text-xs text-foreground">
+                          Buyers see <b>${o.shown.min.toLocaleString()}–${Math.floor(o.shown.max).toLocaleString()}</b>: your pocket covers up to ${Math.floor(o.shown.max).toLocaleString()} of your ${o.maxFiat.toLocaleString()} max. Add about {fmtShort(o.shown.shortCoins)} {o.asset} to offer the full range.
+                        </div>
+                      ) : null
+                    ) : (
+                      <div className="text-xs text-destructive">Hidden from buyers: your pocket can't cover your ${o.minFiat.toLocaleString()} minimum. Add {o.asset} or lower the minimum.</div>
+                    )
+                  ) : null}
                   <div className="text-xs text-muted-foreground">{o.methods.join(", ")} · {o.active ? "Live" : "Paused"}</div>
                 </div>
                 <Button size="sm" variant="outline" onClick={() => setEditing(o)}>Edit</Button>
@@ -273,7 +284,13 @@ function OfferForm({ offer, onDone }: { offer: OfferRow | null; onDone: () => vo
         },
       }),
     onSuccess: (r) => {
-      toast.success(f.side === "buy" ? "Buy ad saved" : r.verified ? `Saved — ${r.verified} ${f.asset} verified` : "Saved, but no verified funds yet");
+      toast.success(
+        f.side === "buy" ? "Buy ad saved"
+        : !r.verified ? "Saved, but no verified funds yet"
+        : r.shown && !r.shown.live ? `Saved, but hidden: your pocket can't cover the $${r.shown.min} minimum yet`
+        : r.shown?.reduced ? `Saved — buyers see up to $${Math.floor(r.shown.max).toLocaleString()} until your pocket covers your full $${Number(f.maxFiat).toLocaleString()}`
+        : `Saved — ${r.verified} ${f.asset} verified`,
+      );
       qc.invalidateQueries({ queryKey: ["p2p-me"] });
       onDone();
     },
@@ -388,4 +405,10 @@ function BlockedChip({ id, handle }: { id: string; handle: string }) {
       {handle} <button className="text-primary" onClick={() => m.mutate()}>Unblock</button>
     </li>
   );
+}
+
+/** Coins with a sensible number of digits ("50", "1.25", "0.0042"). */
+function fmtShort(n: number): string {
+  if (!(n > 0)) return "0";
+  return n >= 100 ? Math.ceil(n).toLocaleString() : Number(n.toPrecision(3)).toString();
 }

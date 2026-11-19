@@ -3,6 +3,7 @@ import { adminUnlocked, requireAdmin } from "@/lib/admin-guard";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { P2P_ASSET_IDS, P2P_ASSETS, type P2pAsset } from "@/lib/p2p-config";
+import { offerRange } from "@/lib/p2p-range";
 
 const admin = async () => (await import("@/integrations/supabase/client.server")).supabaseAdmin;
 const engine = () => import("./p2p.server");
@@ -92,7 +93,9 @@ export const listOffers = createServerFn({ method: "GET" })
       const price = livePrice[o.id];
       const verified = Number(o.verified_balance);
       const availableUsd = data.side === "sell" ? verified * price : Number(o.max_fiat);
-      const maxFiat = Math.min(Number(o.max_fiat), availableUsd);
+      // The max buyers see is cut to what the seller's pocket actually covers.
+      const range = offerRange({ side: data.side, minFiat: Number(o.min_fiat), maxFiat: Number(o.max_fiat), available: verified, price });
+      const maxFiat = range.max;
       const s = stats[o.seller_id];
       const pr = presence(o.seller_id);
       const h = hme?.find((x) => x.id === o.seller_id);
@@ -123,7 +126,7 @@ export const listOffers = createServerFn({ method: "GET" })
       };
     });
     // A seller out of funds can't cover their own minimum: the shown max (clamped by funds) falls below it.
-    list = list.filter((o) => o.maxFiat >= o.minFiat);
+    list = list.filter((o) => o.maxFiat >= o.minFiat && o.maxFiat > 0);
     if (data.onlineOnly) list = list.filter((o) => o.seller.online);
     if (data.amount) list = list.filter((o) => data.amount! >= o.minFiat && data.amount! <= o.maxFiat);
     list.sort((a, b) => b.rank - a.rank);
@@ -177,8 +180,9 @@ export const getSellerProfile = createServerFn({ method: "GET" })
       statsFor([p.user_id]),
       db
         .from("p2p_offers")
-        .select("id, asset, price, price_mode, margin_pct, fee_pct, min_fiat, max_fiat, payment_methods, verified_balance, window_minutes")
+        .select("id, asset, price, price_mode, margin_pct, fee_pct, min_fiat, max_fiat, payment_methods, verified_balance, verified_at, window_minutes")
         .eq("seller_id", p.user_id)
+        .eq("side", "sell")
         .eq("active", true),
       db.from("p2p_feedback").select("from_id, positive, comment, created_at").eq("to_id", p.user_id).order("created_at", { ascending: false }).limit(50),
       db
@@ -190,6 +194,17 @@ export const getSellerProfile = createServerFn({ method: "GET" })
         .limit(30),
     ]);
     const names = await namesFor((fb ?? []).map((f) => f.from_id));
+    // Same rule as the marketplace: re-read stale pockets, and show only the range the pocket covers.
+    const { refreshOffer } = await engine();
+    await Promise.all(
+      (offers ?? [])
+        .filter((o) => !o.verified_at || Date.now() - new Date(o.verified_at).getTime() > 5 * 60_000)
+        .slice(0, 8)
+        .map(async (o) => {
+          const v = await refreshOffer(o.id).catch(() => null);
+          if (v !== null) o.verified_balance = v;
+        }),
+    );
     return {
       handle: p.handle,
       bio: p.bio,
@@ -202,7 +217,12 @@ export const getSellerProfile = createServerFn({ method: "GET" })
       since: p.created_at,
       stats: stats[p.user_id],
       offers: await Promise.all(
-        (offers ?? []).map(async ({ verified_balance, ...o }) => ({ ...o, price: await effectivePrice(o), fundsOk: Number(verified_balance) > 0 })),
+        (offers ?? []).map(async ({ verified_balance, verified_at: _v, min_fiat, max_fiat, ...o }) => {
+          const price = await effectivePrice(o);
+          // Only the covered range leaves the server, never the pocket balance itself.
+          const r = offerRange({ side: "sell", minFiat: Number(min_fiat), maxFiat: Number(max_fiat), available: Number(verified_balance), price });
+          return { ...o, price, fundsOk: Number(verified_balance) > 0, minFiat: r.min, maxFiat: r.live ? r.max : null };
+        }),
       ),
       feedback: (fb ?? []).map((f) => ({ by: names[f.from_id], positive: f.positive, comment: f.comment, at: f.created_at })),
       history: (history ?? []).map((h) => ({
@@ -252,6 +272,13 @@ export const getMyP2p = createServerFn({ method: "GET" })
     await Promise.all((offers ?? []).filter((o) => o.side !== "buy").map(async (o) => { const v = await refreshOffer(o.id).catch(() => null); if (v !== null) fresh[o.id] = v; }));
     const { activeLink } = await import("@/lib/pocket-send/pocket.server");
     const linked = Boolean(await activeLink(me).catch(() => null));
+    // What buyers actually see on each sell ad: the max is cut to what the pocket covers.
+    const { effectivePrice } = await engine();
+    const ranges: Record<string, ReturnType<typeof offerRange>> = {};
+    await Promise.all((offers ?? []).filter((o) => o.side !== "buy").map(async (o) => {
+      const price = await effectivePrice(o).catch(() => 0);
+      ranges[o.id] = offerRange({ side: "sell", minFiat: Number(o.min_fiat), maxFiat: Number(o.max_fiat), available: fresh[o.id] ?? Number(o.verified_balance), price });
+    }));
     return {
       profile,
       displayName: acct?.display_name ?? null,
@@ -276,6 +303,7 @@ export const getMyP2p = createServerFn({ method: "GET" })
         windowMinutes: o.window_minutes,
         active: o.active,
         verified: fresh[o.id] ?? Number(o.verified_balance),
+        shown: ranges[o.id] ?? null,
         pocketBlocker: o.side === "buy" ? null : (pocket[o.asset] ?? null),
         instructions: (o.p2p_offer_instructions as { instructions: string } | null)?.instructions ?? "",
       })),
@@ -417,7 +445,10 @@ export const saveOffer = createServerFn({ method: "POST" })
     await db.from("p2p_offer_instructions").upsert({ offer_id: id!, instructions: data.instructions });
     const { refreshOffer } = await engine();
     const verified = await refreshOffer(id!).catch(() => 0);
-    return { id, verified };
+    const { effectivePrice } = await engine();
+    const price = data.side === "sell" ? await effectivePrice(row).catch(() => 0) : 0;
+    const shown = data.side === "sell" ? offerRange({ side: "sell", minFiat: data.minFiat, maxFiat: data.maxFiat, available: verified ?? 0, price }) : null;
+    return { id, verified, shown };
   });
 
 /* ---------------------------------- trades --------------------------------- */
@@ -493,7 +524,11 @@ export const openTrade = createServerFn({ method: "POST" })
     // Lock: the seller's pocket must cover this trade on top of everything already reserved.
     const [bal, locked] = await Promise.all([pocketBalance(sellerId, asset), lockedAmount(sellerId, asset)]);
     if (bal === null) throw new Error(buyAd ? "We couldn't read your trading pocket — authorize it on the Wallet page first" : "We couldn't verify the seller's funds right now — try another seller");
-    if (bal - locked + 1e-8 < crypto) throw new Error(buyAd ? "Your trading pocket doesn't have enough for that amount" : "The seller doesn't have enough verified funds for that amount");
+    if (bal - locked + 1e-8 < crypto) {
+      if (buyAd) throw new Error("Your trading pocket doesn't have enough for that amount");
+      const r = offerRange({ side: "sell", minFiat: Number(o.min_fiat), maxFiat: Number(o.max_fiat), available: bal - locked, price });
+      throw new Error(r.live ? `This seller's pocket covers up to $${r.max.toFixed(2)} right now. Try a smaller amount.` : "This seller doesn't have enough funds in their trading pocket right now. Try another seller.");
+    }
 
     const { data: t, error } = await db
       .from("p2p_trades")
