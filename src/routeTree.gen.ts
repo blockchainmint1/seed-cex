@@ -22,6 +22,7 @@ import { Route as LbtcRouteImport } from './routes/lbtc'
 import { Route as LinkAccountRouteImport } from './routes/link-account'
 import { Route as ListRouteImport } from './routes/list'
 import { Route as ManifestoRouteImport } from './routes/manifesto'
+import { Route as McpRouteImport } from './routes/mcp'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as RiskRouteImport } from './routes/risk'
@@ -31,6 +32,7 @@ import { Route as StatsRouteImport } from './routes/stats'
 import { Route as SwapRouteImport } from './routes/swap'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as TsdRouteImport } from './routes/tsd'
+import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticated/account'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedApiKeysRouteImport } from './routes/_authenticated/api-keys'
@@ -59,6 +61,7 @@ import { Route as TradePlsTsdRouteImport } from './routes/trade.pls-tsd'
 import { Route as TradeTsdTxcRouteImport } from './routes/trade.tsd-txc'
 import { Route as TradeTsdUsdcRouteImport } from './routes/trade.tsd-usdc'
 import { Route as TradeZcuTsdRouteImport } from './routes/trade.zcu-tsd'
+import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as AuthenticatedAccountIndexRouteImport } from './routes/_authenticated/account.index'
 import { Route as AuthenticatedAccountAiRouteImport } from './routes/_authenticated/account.ai'
 import { Route as AuthenticatedAccountAlertsRouteImport } from './routes/_authenticated/account.alerts'
@@ -191,6 +194,11 @@ const ManifestoRoute = ManifestoRouteImport.update({
   path: '/manifesto',
   getParentRoute: () => rootRouteImport,
 } as any)
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PrivacyRoute = PrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
@@ -236,6 +244,12 @@ const TsdRoute = TsdRouteImport.update({
   path: '/tsd',
   getParentRoute: () => rootRouteImport,
 } as any)
+const Char91DotwellKnownChar93OauthProtectedResourceRoute =
+  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedAccountRoute = AuthenticatedAccountRouteImport.update({
   id: '/account',
   path: '/account',
@@ -374,6 +388,11 @@ const TradeTsdUsdcRoute = TradeTsdUsdcRouteImport.update({
 const TradeZcuTsdRoute = TradeZcuTsdRouteImport.update({
   id: '/trade/zcu-tsd',
   path: '/trade/zcu-tsd',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
+  id: '/.lovable/oauth/consent',
+  path: '/.lovable/oauth/consent',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAccountIndexRoute =
@@ -755,6 +774,7 @@ export interface FileRoutesByFullPath {
   '/link-account': typeof LinkAccountRoute
   '/list': typeof ListRoute
   '/manifesto': typeof ManifestoRoute
+  '/mcp': typeof McpRoute
   '/privacy': typeof PrivacyRoute
   '/register': typeof RegisterRoute
   '/risk': typeof RiskRoute
@@ -764,6 +784,7 @@ export interface FileRoutesByFullPath {
   '/swap': typeof SwapRoute
   '/terms': typeof TermsRoute
   '/tsd': typeof TsdRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/account': typeof AuthenticatedAccountRouteWithChildren
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/api-keys': typeof AuthenticatedApiKeysRoute
@@ -792,6 +813,7 @@ export interface FileRoutesByFullPath {
   '/api/': typeof ApiIndexRoute
   '/markets/': typeof MarketsIndexRoute
   '/p2p/': typeof P2pIndexRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/account/ai': typeof AuthenticatedAccountAiRoute
   '/account/alerts': typeof AuthenticatedAccountAlertsRoute
   '/account/api-keys': typeof AuthenticatedAccountApiKeysRoute
@@ -873,6 +895,7 @@ export interface FileRoutesByTo {
   '/link-account': typeof LinkAccountRoute
   '/list': typeof ListRoute
   '/manifesto': typeof ManifestoRoute
+  '/mcp': typeof McpRoute
   '/privacy': typeof PrivacyRoute
   '/register': typeof RegisterRoute
   '/risk': typeof RiskRoute
@@ -882,6 +905,7 @@ export interface FileRoutesByTo {
   '/swap': typeof SwapRoute
   '/terms': typeof TermsRoute
   '/tsd': typeof TsdRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/api-keys': typeof AuthenticatedApiKeysRoute
   '/trades': typeof AuthenticatedTradesRoute
   '/wallet': typeof AuthenticatedWalletRoute
@@ -908,6 +932,7 @@ export interface FileRoutesByTo {
   '/api': typeof ApiIndexRoute
   '/markets': typeof MarketsIndexRoute
   '/p2p': typeof P2pIndexRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/account/ai': typeof AuthenticatedAccountAiRoute
   '/account/alerts': typeof AuthenticatedAccountAlertsRoute
   '/account/api-keys': typeof AuthenticatedAccountApiKeysRoute
@@ -989,6 +1014,7 @@ export interface FileRoutesById {
   '/link-account': typeof LinkAccountRoute
   '/list': typeof ListRoute
   '/manifesto': typeof ManifestoRoute
+  '/mcp': typeof McpRoute
   '/privacy': typeof PrivacyRoute
   '/register': typeof RegisterRoute
   '/risk': typeof RiskRoute
@@ -998,6 +1024,7 @@ export interface FileRoutesById {
   '/swap': typeof SwapRoute
   '/terms': typeof TermsRoute
   '/tsd': typeof TsdRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/_authenticated/account': typeof AuthenticatedAccountRouteWithChildren
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/api-keys': typeof AuthenticatedApiKeysRoute
@@ -1026,6 +1053,7 @@ export interface FileRoutesById {
   '/api/': typeof ApiIndexRoute
   '/markets/': typeof MarketsIndexRoute
   '/p2p/': typeof P2pIndexRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/_authenticated/account/ai': typeof AuthenticatedAccountAiRoute
   '/_authenticated/account/alerts': typeof AuthenticatedAccountAlertsRoute
   '/_authenticated/account/api-keys': typeof AuthenticatedAccountApiKeysRoute
@@ -1109,6 +1137,7 @@ export interface FileRouteTypes {
     | '/link-account'
     | '/list'
     | '/manifesto'
+    | '/mcp'
     | '/privacy'
     | '/register'
     | '/risk'
@@ -1118,6 +1147,7 @@ export interface FileRouteTypes {
     | '/swap'
     | '/terms'
     | '/tsd'
+    | '/.well-known/oauth-protected-resource'
     | '/account'
     | '/admin'
     | '/api-keys'
@@ -1146,6 +1176,7 @@ export interface FileRouteTypes {
     | '/api/'
     | '/markets/'
     | '/p2p/'
+    | '/.lovable/oauth/consent'
     | '/account/ai'
     | '/account/alerts'
     | '/account/api-keys'
@@ -1227,6 +1258,7 @@ export interface FileRouteTypes {
     | '/link-account'
     | '/list'
     | '/manifesto'
+    | '/mcp'
     | '/privacy'
     | '/register'
     | '/risk'
@@ -1236,6 +1268,7 @@ export interface FileRouteTypes {
     | '/swap'
     | '/terms'
     | '/tsd'
+    | '/.well-known/oauth-protected-resource'
     | '/api-keys'
     | '/trades'
     | '/wallet'
@@ -1262,6 +1295,7 @@ export interface FileRouteTypes {
     | '/api'
     | '/markets'
     | '/p2p'
+    | '/.lovable/oauth/consent'
     | '/account/ai'
     | '/account/alerts'
     | '/account/api-keys'
@@ -1342,6 +1376,7 @@ export interface FileRouteTypes {
     | '/link-account'
     | '/list'
     | '/manifesto'
+    | '/mcp'
     | '/privacy'
     | '/register'
     | '/risk'
@@ -1351,6 +1386,7 @@ export interface FileRouteTypes {
     | '/swap'
     | '/terms'
     | '/tsd'
+    | '/.well-known/oauth-protected-resource'
     | '/_authenticated/account'
     | '/_authenticated/admin'
     | '/_authenticated/api-keys'
@@ -1379,6 +1415,7 @@ export interface FileRouteTypes {
     | '/api/'
     | '/markets/'
     | '/p2p/'
+    | '/.lovable/oauth/consent'
     | '/_authenticated/account/ai'
     | '/_authenticated/account/alerts'
     | '/_authenticated/account/api-keys'
@@ -1462,6 +1499,7 @@ export interface RootRouteChildren {
   LinkAccountRoute: typeof LinkAccountRoute
   ListRoute: typeof ListRoute
   ManifestoRoute: typeof ManifestoRoute
+  McpRoute: typeof McpRoute
   PrivacyRoute: typeof PrivacyRoute
   RegisterRoute: typeof RegisterRoute
   RiskRoute: typeof RiskRoute
@@ -1471,6 +1509,7 @@ export interface RootRouteChildren {
   SwapRoute: typeof SwapRoute
   TermsRoute: typeof TermsRoute
   TsdRoute: typeof TsdRoute
+  Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   AboutKycRoute: typeof AboutKycRoute
   IgniteConfirmedRoute: typeof IgniteConfirmedRoute
   InviteCodeRoute: typeof InviteCodeRoute
@@ -1493,6 +1532,7 @@ export interface RootRouteChildren {
   ApiIndexRoute: typeof ApiIndexRoute
   MarketsIndexRoute: typeof MarketsIndexRoute
   P2pIndexRoute: typeof P2pIndexRoute
+  DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   AiCoinIdRoute: typeof AiCoinIdRoute
   ApiPublicTrackRoute: typeof ApiPublicTrackRoute
   P2pSellerHandleRoute: typeof P2pSellerHandleRoute
@@ -1626,6 +1666,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ManifestoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/privacy': {
       id: '/privacy'
       path: '/privacy'
@@ -1687,6 +1734,13 @@ declare module '@tanstack/react-router' {
       path: '/tsd'
       fullPath: '/tsd'
       preLoaderRoute: typeof TsdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.well-known/oauth-protected-resource': {
+      id: '/.well-known/oauth-protected-resource'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource'
+      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/account': {
@@ -1883,6 +1937,13 @@ declare module '@tanstack/react-router' {
       path: '/trade/zcu-tsd'
       fullPath: '/trade/zcu-tsd'
       preLoaderRoute: typeof TradeZcuTsdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.lovable/oauth/consent': {
+      id: '/.lovable/oauth/consent'
+      path: '/.lovable/oauth/consent'
+      fullPath: '/.lovable/oauth/consent'
+      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/account/': {
@@ -2508,6 +2569,7 @@ const rootRouteChildren: RootRouteChildren = {
   LinkAccountRoute: LinkAccountRoute,
   ListRoute: ListRoute,
   ManifestoRoute: ManifestoRoute,
+  McpRoute: McpRoute,
   PrivacyRoute: PrivacyRoute,
   RegisterRoute: RegisterRoute,
   RiskRoute: RiskRoute,
@@ -2517,6 +2579,8 @@ const rootRouteChildren: RootRouteChildren = {
   SwapRoute: SwapRoute,
   TermsRoute: TermsRoute,
   TsdRoute: TsdRoute,
+  Char91DotwellKnownChar93OauthProtectedResourceRoute:
+    Char91DotwellKnownChar93OauthProtectedResourceRoute,
   AboutKycRoute: AboutKycRoute,
   IgniteConfirmedRoute: IgniteConfirmedRoute,
   InviteCodeRoute: InviteCodeRoute,
@@ -2539,6 +2603,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiIndexRoute: ApiIndexRoute,
   MarketsIndexRoute: MarketsIndexRoute,
   P2pIndexRoute: P2pIndexRoute,
+  DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   AiCoinIdRoute: AiCoinIdRoute,
   ApiPublicTrackRoute: ApiPublicTrackRoute,
   P2pSellerHandleRoute: P2pSellerHandleRoute,

@@ -1,0 +1,231 @@
+{
+  "version": 1,
+  "sdk_version": "3.6.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://wpeiyrmbukfxcdltgylf.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "seeds",
+      "version": "0.1.0",
+      "title": "SEEDS"
+    },
+    "tools": [
+      {
+        "name": "list_markets",
+        "title": "List markets",
+        "description": "Live prices in TSD (1 TSD = 1 US dollar) for the major coins Seeds shows from THORChain, with 24-hour change, high, low, volume and pool liquidity.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": true
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_market_candles",
+        "title": "Get market candles",
+        "description": "Price candles (open, high, low, close, volume in TSD) for one Seeds market, newest last. Use list_markets to see the market slugs.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": true
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "market": {
+              "type": "string",
+              "enum": [
+                "btc-tsd",
+                "eth-tsd",
+                "bnb-tsd",
+                "sol-tsd",
+                "xrp-tsd",
+                "doge-tsd",
+                "ltc-tsd",
+                "bch-tsd",
+                "avax-tsd",
+                "trx-tsd",
+                "zec-tsd",
+                "atom-tsd"
+              ],
+              "description": "Market slug, e.g. btc-tsd or eth-tsd."
+            },
+            "timeframe": {
+              "type": "string",
+              "enum": [
+                "15m",
+                "1h",
+                "4h",
+                "1d",
+                "1w"
+              ],
+              "default": "1d",
+              "description": "Candle size."
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 30,
+              "description": "How many of the newest candles to return (1-200)."
+            }
+          },
+          "required": [
+            "market"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_my_account",
+        "title": "Get my account",
+        "description": "The signed-in member's Seeds account summary: display name, reputation, completed trades, security and alert settings.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_my_orders",
+        "title": "List my orders",
+        "description": "The signed-in member's own Seeds order-book orders, newest first. Optionally filter by status or pair.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "open",
+                "partial",
+                "filled",
+                "cancelled"
+              ],
+              "description": "Only orders with this status."
+            },
+            "pair": {
+              "type": "string",
+              "enum": [
+                "TSD_TXC",
+                "TSD_USDC",
+                "LTC_TSD",
+                "ISK_TSD",
+                "ZCU_TSD",
+                "BTC_TSD",
+                "ETH_TSD",
+                "PLS_TSD",
+                "HEX_TSD",
+                "PHEX_TSD"
+              ],
+              "description": "Only this pair, e.g. TSD_TXC or BTC_TSD."
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25,
+              "description": "How many orders to return (1-100)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_my_trades",
+        "title": "List my trades",
+        "description": "The signed-in member's own Seeds order-book trades (as maker or taker), newest first, with settlement status.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25,
+              "description": "How many trades to return (1-100)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_my_swaps",
+        "title": "List my swaps",
+        "description": "The signed-in member's own cross-chain swaps (THORChain or Maya), newest first, with status and transaction ids.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "description": "How many swaps to return (1-50)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_my_p2p_listings",
+        "title": "List my P2P listings",
+        "description": "The signed-in member's own peer-to-peer marketplace listings: coin, price, limits, payment methods and whether each is active.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}

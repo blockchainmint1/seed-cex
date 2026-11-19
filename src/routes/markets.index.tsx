@@ -1,5 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useWebMCP } from "use-webmcp-tool";
+import { runWebMCPTool } from "@/lib/webmcp-telemetry";
 import { ArrowRight } from "lucide-react";
 import { PAIRS } from "@/lib/chains";
 import { fmtTsdCompact } from "@/lib/markets/thor-markets";
@@ -36,6 +38,20 @@ function MarketsPage() {
   const { markets } = Route.useLoaderData();
   const q = useQuery({ ...thorMarketsQuery, initialData: markets ?? undefined });
   const rows = q.data ?? [];
+
+  // Lets an agent browser read the table the member is looking at.
+  useWebMCP({
+    name: "list_shown_markets",
+    description: "List the markets shown in the Primary markets table: price in TSD (1 TSD = $1), 24-hour change and volume.",
+    annotations: { readOnlyHint: true },
+    execute: () =>
+      runWebMCPTool("list_shown_markets", () => {
+        if (!rows.length) return q.error ? "Prices couldn't load; try again shortly." : "Prices are still loading.";
+        return rows
+          .map((m) => `${m.base}/TSD: ${m.price ?? "n/a"} TSD, ${m.day.changePct == null ? "n/a" : m.day.changePct.toFixed(2) + "%"} 24h, volume ${fmtTsdCompact(m.day.volume)}${m.live ? "" : " (paused)"}`)
+          .join("\n");
+      }),
+  });
   return (
     <div className="mx-auto max-w-7xl px-5 py-10">
       <p className="font-mono text-[11px] tracking-[0.3em] text-primary uppercase">Markets</p>
