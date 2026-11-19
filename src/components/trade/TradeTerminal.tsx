@@ -16,6 +16,8 @@ import { useSession } from "@/hooks/use-session";
 import { getPair, PAIRS, type PairId } from "@/lib/chains";
 import { fmtAgo, fmtAmount, fmtPrice, fmtTime } from "@/lib/format";
 import { MarketOrderConfirm } from "@/components/trade/MarketOrderConfirm";
+import { ThorChartPanel } from "@/components/markets/ThorChartPanel";
+import { thorMarketForBookBase } from "@/lib/markets/thor-markets";
 import {
   DEFAULT_MARKET_SLIPPAGE_PCT,
   MARKET_SLIPPAGE_OPTIONS,
@@ -106,6 +108,8 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
     refetchInterval: 60_000,
   });
   const px = (v: number | string) => fmtPrice(v, pair.priceDigits ?? 5);
+  // BTC, ETH and LTC also trade on THORChain: show its candlesticks (TSD = $1) above the book's own prints.
+  const thor = pair.quote === "TSD" ? thorMarketForBookBase(pair.base) : null;
   const refQuote = ref.data?.quotes.find((q) => q.symbol === pair.base);
   // Outside reference price for the base coin, in dollars (TSD = $1).
   const refPrice = pair.base === "TXC" ? (ref.data?.txcUsd ?? null) : (refQuote?.price ?? null);
@@ -358,7 +362,15 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_320px_300px]">
         {/* chart + my activity */}
         <div className="min-w-0 space-y-4">
-          <Panel title="Price" right={<span className="font-mono text-[10px] text-muted-foreground">last {series.data?.length ?? 0} prints</span>}>
+          {thor ? (
+            <Panel
+              title={`${pair.base} price · THORChain`}
+              right={<Link to="/markets/$slug" params={{ slug: thor.slug }} className="font-mono text-[10px] text-primary hover:underline">full chart →</Link>}
+            >
+              <ThorChartPanel slug={thor.slug} base={thor.base} initial="1h" height={320} />
+            </Panel>
+          ) : null}
+          <Panel title={thor ? "Seeds order book prints" : "Price"} right={<span className="font-mono text-[10px] text-muted-foreground">last {series.data?.length ?? 0} prints</span>}>
             <div className="p-4">
               <Sparkline points={(series.data ?? []).map((s) => s.price)} />
               <div className="mt-2 flex justify-between font-mono text-[10px] text-muted-foreground">

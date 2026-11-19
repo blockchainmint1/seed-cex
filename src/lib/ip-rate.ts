@@ -10,6 +10,8 @@ export const IP_LIMITS = {
   trackPerSessionDay: 300,
   /** Public price lookups (swap quotes, TSD quotes, any-coin search/quote) per minute. */
   quote: 40,
+  /** Market prices and charts read from THORChain, counted only when the cache misses. */
+  chart: 60,
 } as const;
 
 /** Start of the current one-minute window. */

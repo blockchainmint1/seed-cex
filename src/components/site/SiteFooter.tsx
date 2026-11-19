@@ -7,7 +7,7 @@ const columns: { heading: string; links: FooterLink[] }[] = [
   {
     heading: "Trade",
     links: [
-      { label: "Markets", to: "/trade/tsd-txc" },
+      { label: "Markets", to: "/markets" },
       { label: "P2P", to: "/p2p" },
       { label: "Swap", to: "/swap" },
       { label: "Seeds AI", to: "/ai" },

@@ -62,7 +62,7 @@ export function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   useEffect(() => setMenuOpen(false), [pathname]);
   const phoneLinks = [
-    { label: "Markets", to: "/trade/tsd-txc" },
+    { label: "Markets", to: "/markets" },
     { label: "P2P", to: "/p2p" },
     { label: "Swap", to: "/swap" },
     { label: "AI", to: "/ai" },
@@ -80,7 +80,7 @@ export function SiteHeader() {
 
         <nav className="hidden items-center gap-5 text-[13px] font-semibold tracking-[0.04em] uppercase lg:flex">
           <Link
-            to="/trade/tsd-txc"
+            to="/markets"
             className="text-muted-foreground transition-colors hover:text-foreground"
             activeProps={{ className: "text-primary" }}
           >

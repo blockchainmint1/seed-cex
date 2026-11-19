@@ -42,6 +42,8 @@ import { Route as AiIndexRouteImport } from './routes/ai.index'
 import { Route as ApiIndexRouteImport } from './routes/api/index'
 import { Route as IgniteConfirmedRouteImport } from './routes/ignite_.confirmed'
 import { Route as InviteCodeRouteImport } from './routes/invite.$code'
+import { Route as MarketsIndexRouteImport } from './routes/markets.index'
+import { Route as MarketsSlugRouteImport } from './routes/markets.$slug'
 import { Route as P2pIndexRouteImport } from './routes/p2p.index'
 import { Route as PayTokenRouteImport } from './routes/pay.$token'
 import { Route as ProofCodeRouteImport } from './routes/proof.code'
@@ -287,6 +289,16 @@ const IgniteConfirmedRoute = IgniteConfirmedRouteImport.update({
 const InviteCodeRoute = InviteCodeRouteImport.update({
   id: '/invite/$code',
   path: '/invite/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MarketsIndexRoute = MarketsIndexRouteImport.update({
+  id: '/markets/',
+  path: '/markets/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MarketsSlugRoute = MarketsSlugRouteImport.update({
+  id: '/markets/$slug',
+  path: '/markets/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const P2pIndexRoute = P2pIndexRouteImport.update({
@@ -761,6 +773,7 @@ export interface FileRoutesByFullPath {
   '/about/kyc': typeof AboutKycRoute
   '/ignite/confirmed': typeof IgniteConfirmedRoute
   '/invite/$code': typeof InviteCodeRoute
+  '/markets/$slug': typeof MarketsSlugRoute
   '/pay/$token': typeof PayTokenRoute
   '/proof/code': typeof ProofCodeRoute
   '/register/confirmed': typeof RegisterConfirmedRoute
@@ -777,6 +790,7 @@ export interface FileRoutesByFullPath {
   '/trade/zcu-tsd': typeof TradeZcuTsdRoute
   '/ai/': typeof AiIndexRoute
   '/api/': typeof ApiIndexRoute
+  '/markets/': typeof MarketsIndexRoute
   '/p2p/': typeof P2pIndexRoute
   '/account/ai': typeof AuthenticatedAccountAiRoute
   '/account/alerts': typeof AuthenticatedAccountAlertsRoute
@@ -875,6 +889,7 @@ export interface FileRoutesByTo {
   '/about/kyc': typeof AboutKycRoute
   '/ignite/confirmed': typeof IgniteConfirmedRoute
   '/invite/$code': typeof InviteCodeRoute
+  '/markets/$slug': typeof MarketsSlugRoute
   '/pay/$token': typeof PayTokenRoute
   '/proof/code': typeof ProofCodeRoute
   '/register/confirmed': typeof RegisterConfirmedRoute
@@ -891,6 +906,7 @@ export interface FileRoutesByTo {
   '/trade/zcu-tsd': typeof TradeZcuTsdRoute
   '/ai': typeof AiIndexRoute
   '/api': typeof ApiIndexRoute
+  '/markets': typeof MarketsIndexRoute
   '/p2p': typeof P2pIndexRoute
   '/account/ai': typeof AuthenticatedAccountAiRoute
   '/account/alerts': typeof AuthenticatedAccountAlertsRoute
@@ -991,6 +1007,7 @@ export interface FileRoutesById {
   '/about/kyc': typeof AboutKycRoute
   '/ignite_/confirmed': typeof IgniteConfirmedRoute
   '/invite/$code': typeof InviteCodeRoute
+  '/markets/$slug': typeof MarketsSlugRoute
   '/pay/$token': typeof PayTokenRoute
   '/proof/code': typeof ProofCodeRoute
   '/register_/confirmed': typeof RegisterConfirmedRoute
@@ -1007,6 +1024,7 @@ export interface FileRoutesById {
   '/trade/zcu-tsd': typeof TradeZcuTsdRoute
   '/ai/': typeof AiIndexRoute
   '/api/': typeof ApiIndexRoute
+  '/markets/': typeof MarketsIndexRoute
   '/p2p/': typeof P2pIndexRoute
   '/_authenticated/account/ai': typeof AuthenticatedAccountAiRoute
   '/_authenticated/account/alerts': typeof AuthenticatedAccountAlertsRoute
@@ -1109,6 +1127,7 @@ export interface FileRouteTypes {
     | '/about/kyc'
     | '/ignite/confirmed'
     | '/invite/$code'
+    | '/markets/$slug'
     | '/pay/$token'
     | '/proof/code'
     | '/register/confirmed'
@@ -1125,6 +1144,7 @@ export interface FileRouteTypes {
     | '/trade/zcu-tsd'
     | '/ai/'
     | '/api/'
+    | '/markets/'
     | '/p2p/'
     | '/account/ai'
     | '/account/alerts'
@@ -1223,6 +1243,7 @@ export interface FileRouteTypes {
     | '/about/kyc'
     | '/ignite/confirmed'
     | '/invite/$code'
+    | '/markets/$slug'
     | '/pay/$token'
     | '/proof/code'
     | '/register/confirmed'
@@ -1239,6 +1260,7 @@ export interface FileRouteTypes {
     | '/trade/zcu-tsd'
     | '/ai'
     | '/api'
+    | '/markets'
     | '/p2p'
     | '/account/ai'
     | '/account/alerts'
@@ -1338,6 +1360,7 @@ export interface FileRouteTypes {
     | '/about/kyc'
     | '/ignite_/confirmed'
     | '/invite/$code'
+    | '/markets/$slug'
     | '/pay/$token'
     | '/proof/code'
     | '/register_/confirmed'
@@ -1354,6 +1377,7 @@ export interface FileRouteTypes {
     | '/trade/zcu-tsd'
     | '/ai/'
     | '/api/'
+    | '/markets/'
     | '/p2p/'
     | '/_authenticated/account/ai'
     | '/_authenticated/account/alerts'
@@ -1450,6 +1474,7 @@ export interface RootRouteChildren {
   AboutKycRoute: typeof AboutKycRoute
   IgniteConfirmedRoute: typeof IgniteConfirmedRoute
   InviteCodeRoute: typeof InviteCodeRoute
+  MarketsSlugRoute: typeof MarketsSlugRoute
   PayTokenRoute: typeof PayTokenRoute
   ProofCodeRoute: typeof ProofCodeRoute
   RegisterConfirmedRoute: typeof RegisterConfirmedRoute
@@ -1466,6 +1491,7 @@ export interface RootRouteChildren {
   TradeZcuTsdRoute: typeof TradeZcuTsdRoute
   AiIndexRoute: typeof AiIndexRoute
   ApiIndexRoute: typeof ApiIndexRoute
+  MarketsIndexRoute: typeof MarketsIndexRoute
   P2pIndexRoute: typeof P2pIndexRoute
   AiCoinIdRoute: typeof AiCoinIdRoute
   ApiPublicTrackRoute: typeof ApiPublicTrackRoute
@@ -1738,6 +1764,20 @@ declare module '@tanstack/react-router' {
       path: '/invite/$code'
       fullPath: '/invite/$code'
       preLoaderRoute: typeof InviteCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/markets/': {
+      id: '/markets/'
+      path: '/markets'
+      fullPath: '/markets/'
+      preLoaderRoute: typeof MarketsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/markets/$slug': {
+      id: '/markets/$slug'
+      path: '/markets/$slug'
+      fullPath: '/markets/$slug'
+      preLoaderRoute: typeof MarketsSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/p2p/': {
@@ -2480,6 +2520,7 @@ const rootRouteChildren: RootRouteChildren = {
   AboutKycRoute: AboutKycRoute,
   IgniteConfirmedRoute: IgniteConfirmedRoute,
   InviteCodeRoute: InviteCodeRoute,
+  MarketsSlugRoute: MarketsSlugRoute,
   PayTokenRoute: PayTokenRoute,
   ProofCodeRoute: ProofCodeRoute,
   RegisterConfirmedRoute: RegisterConfirmedRoute,
@@ -2496,6 +2537,7 @@ const rootRouteChildren: RootRouteChildren = {
   TradeZcuTsdRoute: TradeZcuTsdRoute,
   AiIndexRoute: AiIndexRoute,
   ApiIndexRoute: ApiIndexRoute,
+  MarketsIndexRoute: MarketsIndexRoute,
   P2pIndexRoute: P2pIndexRoute,
   AiCoinIdRoute: AiCoinIdRoute,
   ApiPublicTrackRoute: ApiPublicTrackRoute,

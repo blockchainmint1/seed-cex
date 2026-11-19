@@ -100,6 +100,7 @@
 - [ ] Ask TSD Bridge: pay USDC straight into THORChain (router deposit with our memo) and credit THORChain payouts to mint addresses — removes the gas step (blocked: TSD Bridge team)
 - [ ] Auditor review of TSD routes before opening to members (blocked: auditor)
 - [ ] View-only THORChain order book on market pages (waiting on Bobby's go-ahead)
+- [x] Primary markets from THORChain (Nov 19): /markets with 12 coin/TSD markets (BTC, ETH first), /markets/{coin}-tsd candlestick charts (15m/1H/4H/1D/1W, TSD = $1), THORChain chart on BTC/ETH/LTC order books, homepage + header/footer point to /markets
 
 ## Locked trading balance (2-of-2 + 30-day refund, TXC/ISK)
 - [x] Lock rules: script, address, Seeds key derivation, BIP143 signing, refund path, lock strength (src/lib/lock/, tested against live node)

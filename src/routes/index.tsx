@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { getMarketStats } from "@/lib/market.functions";
 import { getCmcSummary } from "@/lib/cmc.functions";
 import { fmtAmount, fmtPrice } from "@/lib/format";
+import { fmtTsdCompact, THOR_MARKETS, thorMarketForBookBase } from "@/lib/markets/thor-markets";
+import { Change, Price, thorMarketsQuery } from "@/components/markets/ThorMarketBits";
 import { PAIRS } from "@/lib/chains";
 import seedsCoin from "@/assets/seeds-cold-storage-coin.jpg.asset.json";
 import { IgnitePromo } from "@/components/ignite/IgnitePromo";
@@ -31,10 +33,8 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-// Market rows arrive as "BASE_QUOTE" (CMC format); map each back to its page.
-const PAIR_LABELS: Record<string, string> = Object.fromEntries(PAIRS.map((p) => [`${p.base}_${p.quote}`, p.label]));
-const PAIR_ROUTE: Record<string, string> = Object.fromEntries(PAIRS.map((p) => [`${p.base}_${p.quote}`, `/trade/${p.slug}`]));
-const PAIR_DIGITS: Record<string, number> = Object.fromEntries(PAIRS.map((p) => [`${p.base}_${p.quote}`, p.priceDigits ?? 5]));
+// Primary THORChain markets plus the order-book pairs THORChain doesn't trade.
+const ACTIVE_MARKETS = THOR_MARKETS.length + PAIRS.filter((p) => !(p.quote === "TSD" && thorMarketForBookBase(p.base))).length;
 
 function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
@@ -61,8 +61,10 @@ function Index() {
     refetchInterval: 30_000,
   });
 
-  const markets = (summary.data ?? []).slice(0, 6);
-  const totalVolume = markets.reduce((sum, m) => sum + (m.base_volume ?? 0), 0);
+  const thor = useQuery(thorMarketsQuery);
+  const markets = (thor.data ?? []).slice(0, 6);
+  // Seeds' own order-book volume (not THORChain's).
+  const totalVolume = (summary.data ?? []).reduce((sum, m) => sum + (m.base_volume ?? 0), 0);
 
   return (
     <>
@@ -109,7 +111,7 @@ function Index() {
               Get started
             </Link>
             <Link
-              to="/trade/tsd-txc"
+              to="/markets"
               className="rounded-md border border-foreground/70 px-6 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-foreground/5"
             >
               View markets
@@ -119,8 +121,8 @@ function Index() {
           <div className="mt-14 grid grid-cols-2 gap-6 md:grid-cols-4">
             <Stat
               label="Active markets"
-              value={String(PAIRS.length)}
-              hint="spot trading pairs"
+              value={String(ACTIVE_MARKETS)}
+              hint="THORChain + Seeds order books"
             />
             <Stat
               label="24h volume"
@@ -184,71 +186,58 @@ function Index() {
               </h2>
             </div>
             <Link
-              to="/trade/tsd-txc"
+              to="/markets"
               className="font-mono text-xs tracking-wider text-primary uppercase hover:underline"
             >
               View all markets →
             </Link>
           </div>
 
-          <div className="mt-8 overflow-hidden rounded-sm border border-border">
+          <div className="mt-8 overflow-x-auto rounded-sm border border-border">
             <table className="w-full text-left">
               <thead className="bg-surface font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
                 <tr>
-                  <th className="px-4 py-3">Pair</th>
-                  <th className="px-4 py-3 text-right">Last price</th>
-                  <th className="px-4 py-3 text-right">24h volume</th>
+                  <th className="px-4 py-3">Market</th>
+                  <th className="px-4 py-3 text-right">Price (TSD)</th>
+                  <th className="hidden px-4 py-3 text-right sm:table-cell">24h volume</th>
                   <th className="px-4 py-3 text-right">24h change</th>
-                  <th className="px-4 py-3"></th>
+                  <th className="hidden px-4 py-3 sm:table-cell"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {markets.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="px-4 py-8 text-center text-sm text-muted-foreground">
-                      Markets loading…
+                      {thor.error ? (thor.error as Error).message : "Markets loading…"}
                     </td>
                   </tr>
                 ) : (
-                  markets.map((m) => {
-                    const route = PAIR_ROUTE[m.trading_pairs];
-                    const change = m.price_change_percent_24h ?? 0;
-                    const positive = change >= 0;
-                    return (
-                      <tr key={m.trading_pairs} className="hover:bg-surface/50">
-                        <td className="px-4 py-4 font-mono text-sm text-foreground">
-                          {PAIR_LABELS[m.trading_pairs] ?? m.trading_pairs}
-                        </td>
-                        <td className="px-4 py-4 text-right num text-sm text-foreground">
-                          {fmtPrice(m.last_price ?? 0, PAIR_DIGITS[m.trading_pairs] ?? 5)}
-                        </td>
-                        <td className="px-4 py-4 text-right num text-sm text-muted-foreground">
-                          {fmtAmount(m.base_volume ?? 0)}
-                        </td>
-                        <td
-                          className={`px-4 py-4 text-right num text-sm ${ positive ?"text-success" : "text-destructive"
-                          }`}
+                  markets.map((m) => (
+                    <tr key={m.slug} className="hover:bg-surface/50">
+                      <td className="px-4 py-4 font-mono text-sm text-foreground">
+                        <Link to="/markets/$slug" params={{ slug: m.slug }} className="hover:text-primary">
+                          {m.base} / TSD
+                        </Link>
+                      </td>
+                      <td className="px-4 py-4 text-right text-sm text-foreground"><Price v={m.price} /></td>
+                      <td className="hidden px-4 py-4 text-right num text-sm text-muted-foreground sm:table-cell">{fmtTsdCompact(m.day.volume)}</td>
+                      <td className="px-4 py-4 text-right num text-sm"><Change pct={m.day.changePct} /></td>
+                      <td className="hidden px-4 py-4 text-right sm:table-cell">
+                        <Link
+                          to="/markets/$slug"
+                          params={{ slug: m.slug }}
+                          className="inline-flex rounded-sm border border-border px-3 py-1.5 font-mono text-[10px] tracking-wider text-foreground uppercase transition-colors hover:border-primary hover:text-primary"
                         >
-                          {positive ? "+" : ""}
-                          {change.toFixed(2)}%
-                        </td>
-                        <td className="px-4 py-4 text-right">
-                          {route ? (
-                            <Link
-                              to={route}
-                              className="inline-flex rounded-sm border border-border px-3 py-1.5 font-mono text-[10px] tracking-wider text-foreground uppercase transition-colors hover:border-primary hover:text-primary"
-                            >
-                              Trade
-                            </Link>
-                          ) : null}
-                        </td>
-                      </tr>
-                    );
-                  })
+                          Chart
+                        </Link>
+                      </td>
+                    </tr>
+                  ))
                 )}
               </tbody>
             </table>
           </div>
+          <p className="mt-2 font-mono text-[10px] text-muted-foreground">Live THORChain prices · 1 TSD = $1</p>
         </div>
       </section>
 
