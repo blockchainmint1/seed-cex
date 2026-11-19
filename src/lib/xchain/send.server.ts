@@ -392,7 +392,15 @@ export async function listSwapSends(userId: string) {
     .select("id, from_asset, to_asset, amount_in, amount_usd, expected_out, min_out, destination, txid, approve_txid, out_txid, status, error, created_at")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
-    .limit(20);
+    .limit(40);
   if (error) throw new Error(error.message);
-  return data ?? [];
+  // A TSD swap's THORChain step is shown inside that TSD swap, not as a second swap.
+  const { data: legs, error: legErr } = await supabaseAdmin
+    .from("tsd_routes")
+    .select("swap_send_id")
+    .eq("user_id", userId)
+    .not("swap_send_id", "is", null);
+  if (legErr) throw new Error(legErr.message);
+  const legIds = new Set((legs ?? []).map((l) => l.swap_send_id));
+  return (data ?? []).filter((s) => !legIds.has(s.id)).slice(0, 20);
 }

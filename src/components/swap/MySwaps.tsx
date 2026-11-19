@@ -1,0 +1,137 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { Check, Circle, Coins, ExternalLink, Loader2 } from "lucide-react";
+import { SWAP_COINS, swapCoin } from "@/lib/xchain/assets";
+import type { getSwapSendContext } from "@/lib/xchain/swap.functions";
+import { answerTsdSwap, getTsdRoutes } from "@/lib/xchain/tsd-route.functions";
+import { isTerminal, routeSteps, stepIndex, type RouteDirection } from "@/lib/xchain/tsd-route";
+
+type SendRow = Awaited<ReturnType<typeof getSwapSendContext>>["sends"][number];
+type RouteRow = Awaited<ReturnType<typeof getTsdRoutes>>["routes"][number];
+
+const num = (n: number | null | undefined, d = 8) => (n == null || !Number.isFinite(n) ? "—" : n.toLocaleString("en-US", { maximumFractionDigits: d }));
+const when = (iso: string) => new Date(iso).toLocaleString("en-US", { dateStyle: "short", timeStyle: "short" });
+const TRACKER = (txid: string) => `https://runescan.io/tx/${txid.replace(/^0x/i, "").toUpperCase()}`;
+
+const ROUTE_LABEL: Record<string, string> = {
+  reserved: "Starting", sending_tsd: "Sending TSD", bridging: "TSD Bridge converting", swapping: "Swapping", gas_pending: "Paying network fee",
+  swap_sent: "THORChain swapping", minting: "Sending USDC to TSD Bridge", needs_ok: "Price moved — your call", done: "Delivered",
+  refunded: "Refunded", kept_usdc: "Stopped — USDC in your pocket", failed: "Stopped",
+};
+const SEND_LABEL: Record<string, string> = { signing: "Sending…", sent: "Swapping", done: "Delivered", refunded: "Refunded", failed: "Not sent", unknown: "Checking" };
+
+function coinLabel(asset: string) {
+  const c = SWAP_COINS.find((x) => x.asset === asset);
+  return c ? { symbol: c.symbol, network: c.network } : { symbol: asset, network: "" };
+}
+
+function Track({ txid }: { txid: string }) {
+  return (
+    <a href={TRACKER(txid)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-mono text-[11px] text-primary underline">
+      Track on RuneScan <ExternalLink className="h-3 w-3" />
+    </a>
+  );
+}
+
+/**
+ * One history for every swap the member started on this page. A TSD swap is a
+ * single row with its steps; its THORChain step is part of it, never a second row.
+ */
+export function MySwaps({ signedIn, sends }: { signedIn: boolean; sends: SendRow[] }) {
+  const qc = useQueryClient();
+  const fetchRoutes = useServerFn(getTsdRoutes);
+  const { data } = useQuery({
+    queryKey: ["tsd-routes"],
+    queryFn: () => fetchRoutes(),
+    enabled: signedIn,
+    refetchInterval: (q) => (q.state.data?.routes.some((r) => !isTerminal(r.stage)) ? 15_000 : 60_000),
+  });
+  const answer = useServerFn(answerTsdSwap);
+  const act = useMutation({
+    mutationFn: (v: { id: string; choice: "continue" | "stop" }) => answer({ data: v }),
+    onSettled: () => qc.invalidateQueries({ queryKey: ["tsd-routes"] }),
+  });
+  const routes: RouteRow[] = data?.routes ?? [];
+  // Older swaps may predate the server hiding TSD steps; never show one twice.
+  const legIds = new Set(routes.map((r) => r.swap_send_id).filter(Boolean));
+  const rows = [
+    ...routes.map((r) => ({ kind: "tsd" as const, at: r.created_at, r })),
+    ...sends.filter((s) => !legIds.has(s.id)).map((s) => ({ kind: "send" as const, at: s.created_at, s })),
+  ].sort((a, b) => b.at.localeCompare(a.at));
+  if (!rows.length) return null;
+
+  return (
+    <div className="rounded-sm border border-border bg-surface">
+      <h2 className="border-b border-border px-4 py-3 font-mono text-[11px] tracking-[0.2em] uppercase">My swaps</h2>
+      <ul className="divide-y divide-border">
+        {rows.map((row) => {
+          if (row.kind === "send") {
+            const s = row.s;
+            const from = coinLabel(s.from_asset), to = coinLabel(s.to_asset);
+            return (
+              <li key={`s-${s.id}`} className="space-y-2 px-4 py-3 text-xs">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <span className="font-semibold">
+                    {num(Number(s.amount_in))} {from.symbol} → {to.symbol}
+                    <span className="ml-2 font-mono text-[10px] font-normal text-muted-foreground">{from.network} → {to.network}</span>
+                  </span>
+                  <span className={`font-mono text-[11px] ${s.status === "done" ? "text-primary" : s.status === "failed" ? "text-destructive" : ""}`}>{SEND_LABEL[s.status] ?? s.status}</span>
+                </div>
+                <p className="font-mono text-[11px] text-muted-foreground">
+                  {s.status === "done" ? "Got" : "Expecting"} ≈ {num(Number(s.expected_out))} {to.symbol} · {when(s.created_at)}
+                </p>
+                {s.error ? <p className="text-[11px] text-muted-foreground">{s.error}</p> : null}
+                {s.txid && s.status !== "failed" ? <Track txid={s.txid} /> : null}
+              </li>
+            );
+          }
+          const r = row.r;
+          const sym = swapCoin(r.coin)?.symbol ?? r.coin;
+          const direct = r.coin === "USDC";
+          const buy = r.direction === "buy";
+          const steps = routeSteps(r.direction as RouteDirection, direct ? "USDC" : sym);
+          const at = stepIndex(r.direction as RouteDirection, r.stage === "gas_pending" ? (r.resume_stage ?? "swapping") : r.stage, direct);
+          const stopped = ["failed", "refunded", "kept_usdc"].includes(r.stage);
+          return (
+            <li key={`t-${r.id}`} className="space-y-2 px-4 py-3 text-xs">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <span className="font-semibold">{buy ? `${num(Number(r.amount_in), 2)} TSD → ${sym}` : `${num(Number(r.amount_in))} ${sym} → TSD`}</span>
+                <span className={`font-mono text-[11px] ${r.stage === "done" ? "text-primary" : stopped ? "text-destructive" : ""}`}>{ROUTE_LABEL[r.stage] ?? r.stage}</span>
+              </div>
+              <ol className="flex flex-wrap gap-x-4 gap-y-1">
+                {steps.map((s, i) => (
+                  <li key={s} className={`flex items-center gap-1.5 ${i < at ? "text-foreground" : "text-muted-foreground"}`}>
+                    {i < at ? <Check className="h-3.5 w-3.5 text-primary" /> : i === at && !stopped ? <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" /> : <Circle className="h-3 w-3" />}
+                    {s}
+                  </li>
+                ))}
+              </ol>
+              <p className="font-mono text-[11px] text-muted-foreground">
+                {r.stage === "done" ? `Got ${num(Number(r.amount_out ?? r.shown_out), buy ? 8 : 2)} ${buy ? sym : "TSD"}` : `Expecting ≈ ${num(Number(r.shown_out), buy ? 8 : 2)} ${buy ? sym : "TSD"}`}
+                {" · "}
+                {when(r.created_at)}
+              </p>
+              {r.error ? <p className="text-[11px] text-muted-foreground">{r.error}</p> : null}
+              {r.swap_txid ? <Track txid={r.swap_txid} /> : null}
+              {r.stage === "needs_ok" ? (
+                <div className="flex flex-wrap items-center gap-2 border-t border-border pt-2">
+                  <span className="flex-1 text-[11px]">
+                    <Coins className="mr-1 inline h-3.5 w-3.5 text-primary" />
+                    New price: ≈ {num(Number(r.fresh_out), 8)} {buy ? sym : "USDC"}
+                  </span>
+                  <button type="button" disabled={act.isPending} onClick={() => act.mutate({ id: r.id, choice: "continue" })} className="h-8 rounded-md bg-action px-3 font-semibold text-action-foreground disabled:opacity-50">
+                    Continue at new price
+                  </button>
+                  <button type="button" disabled={act.isPending} onClick={() => act.mutate({ id: r.id, choice: "stop" })} className="h-8 rounded-md border border-border px-3 disabled:opacity-50">
+                    {buy ? "Keep the USDC" : "Cancel"}
+                  </button>
+                </div>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+      {act.error ? <p role="alert" className="px-4 pb-3 font-mono text-xs text-destructive">{(act.error as Error).message}</p> : null}
+    </div>
+  );
+}

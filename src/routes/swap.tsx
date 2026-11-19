@@ -8,10 +8,11 @@ import { PROTOCOL_LABEL, SWAP_COINS, swapCoin, swapCoinGroup, type Protocol, typ
 import { getSwapQuotes, getSwapSendContext, getSwapStatus, sendSwap } from "@/lib/xchain/swap.functions";
 import { landsOutsideHmeWallet, receivePocket, sendBlocker, sendSource, SWAP_LIMITS } from "@/lib/xchain/send-rules";
 import { useSession } from "@/hooks/use-session";
-import { MyTsdSwaps, TSD_BUY_COINS, TSD_SELL_COINS, TsdRouteResult } from "@/components/swap/TsdRoute";
+import { TSD_BUY_COINS, TSD_SELL_COINS, TsdRouteResult } from "@/components/swap/TsdRoute";
 import { getTsdRouteQuote } from "@/lib/xchain/tsd-route.functions";
 import { fmtCompact } from "@/lib/format";
 import { SwapTabs } from "@/components/swap/SwapTabs";
+import { MySwaps } from "@/components/swap/MySwaps";
 
 type SwapSearch = { from?: string; to?: string; amount?: string };
 const sideOk = (v: unknown): v is Side => v === "TSD" || (typeof v === "string" && Boolean(swapCoin(v as SwapCoinId)));
@@ -430,8 +431,7 @@ function SwapPage() {
               })}
             </div>
           ) : null}
-          {sendCtx?.sends?.length ? <MySwaps sends={sendCtx.sends} /> : null}
-          <MyTsdSwaps signedIn={Boolean(user)} />
+          <MySwaps signedIn={Boolean(user)} sends={sendCtx?.sends ?? []} />
         </section>
 
         <aside className="space-y-4">
@@ -608,86 +608,6 @@ function SendPanel(props: {
           {(mutation.error as Error).message}
         </p>
       ) : null}
-    </div>
-  );
-}
-
-const STATUS_LABEL: Record<string, string> = {
-  signing: "Sending…",
-  sent: "Swapping",
-  done: "Delivered",
-  refunded: "Refunded",
-  failed: "Not sent",
-  unknown: "Checking",
-};
-
-function assetLabel(asset: string) {
-  const c = SWAP_COINS.find((x) => x.asset === asset);
-  return c ? `${c.symbol} · ${c.network}` : asset;
-}
-
-function MySwaps({ sends }: { sends: SendCtx["sends"] }) {
-  return (
-    <div className="rounded-sm border border-border bg-surface">
-      <h2 className="border-b border-border px-4 py-3 font-mono text-[11px] tracking-[0.2em] uppercase">My swaps</h2>
-      <ul className="divide-y divide-border sm:hidden">
-        {sends.map((s) => (
-          <li key={s.id} className="space-y-1 px-4 py-3 font-mono text-xs">
-            <div className="flex items-baseline justify-between gap-3">
-              <span className={s.status === "failed" ? "text-destructive" : s.status === "done" ? "text-primary" : ""}>{STATUS_LABEL[s.status] ?? s.status}</span>
-              <span className="text-[10px] text-muted-foreground">{new Date(s.created_at).toLocaleString("en-US", { dateStyle: "short", timeStyle: "short" })}</span>
-            </div>
-            <p>
-              {coins(Number(s.amount_in))} {assetLabel(s.from_asset)} → ~{coins(Number(s.expected_out))} {assetLabel(s.to_asset)}
-            </p>
-            {s.error ? <p className="text-[10px] text-muted-foreground">{s.error}</p> : null}
-            {s.txid && s.status !== "failed" ? (
-              <a href={TRACKER(s.txid)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary underline">
-                Track on RuneScan <ExternalLink className="h-3 w-3" />
-              </a>
-            ) : null}
-          </li>
-        ))}
-      </ul>
-      <div className="hidden overflow-x-auto sm:block">
-        <table className="w-full min-w-[40rem] font-mono text-xs">
-          <thead>
-            <tr className="text-left text-[10px] tracking-wider text-muted-foreground uppercase">
-              <th className="px-4 py-2 font-normal">When</th>
-              <th className="px-2 py-2 font-normal">Sent</th>
-              <th className="px-2 py-2 font-normal">For</th>
-              <th className="px-2 py-2 font-normal">Status</th>
-              <th className="px-4 py-2 font-normal">Track</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sends.map((s) => (
-              <tr key={s.id} className="border-t border-border align-top">
-                <td className="px-4 py-2 whitespace-nowrap">{new Date(s.created_at).toLocaleString("en-US", { dateStyle: "short", timeStyle: "short" })}</td>
-                <td className="px-2 py-2">
-                  {coins(Number(s.amount_in))} <span className="block text-[10px] text-muted-foreground">{assetLabel(s.from_asset)}</span>
-                </td>
-                <td className="px-2 py-2">
-                  ~{coins(Number(s.expected_out))} <span className="block text-[10px] text-muted-foreground">{assetLabel(s.to_asset)}</span>
-                </td>
-                <td className="px-2 py-2">
-                  <span className={s.status === "failed" ? "text-destructive" : s.status === "done" ? "text-primary" : ""}>{STATUS_LABEL[s.status] ?? s.status}</span>
-                  {s.error ? <span className="block max-w-56 text-[10px] text-muted-foreground">{s.error}</span> : null}
-                </td>
-                <td className="px-4 py-2">
-                  {s.txid && s.status !== "failed" ? (
-                    <a href={TRACKER(s.txid)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary underline">
-                      RuneScan <ExternalLink className="h-3 w-3" />
-                    </a>
-                  ) : (
-                    "—"
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
     </div>
   );
 }

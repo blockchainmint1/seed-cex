@@ -625,7 +625,16 @@ export async function listTsdRoutes(userId: string) {
     .order("created_at", { ascending: false })
     .limit(10);
   if (error) throw new Error(error.message);
-  return data ?? [];
+  const rows = data ?? [];
+  // The THORChain step's transaction, so the swap can be tracked on RuneScan.
+  const legIds = rows.map((r) => r.swap_send_id).filter((x): x is string => Boolean(x));
+  const txids = new Map<string, string | null>();
+  if (legIds.length) {
+    const { data: legs, error: legErr } = await supabaseAdmin.from("swap_sends").select("id, txid").eq("user_id", userId).in("id", legIds);
+    if (legErr) throw new Error(legErr.message);
+    for (const l of legs ?? []) txids.set(l.id, l.txid);
+  }
+  return rows.map((r) => ({ ...r, swap_txid: r.swap_send_id ? (txids.get(r.swap_send_id) ?? null) : null }));
 }
 
 export { isTerminal };
