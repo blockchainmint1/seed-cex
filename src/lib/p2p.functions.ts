@@ -753,7 +753,9 @@ export const p2pAction = createServerFn({ method: "POST" })
 
     if (data.action === "paid") {
       if (me !== t.buyer_id || t.status !== "open") throw new Error("Only the buyer can mark an open trade paid");
-      await db.from("p2p_trades").update({ status: "paid", paid_at: now }).eq("id", t.id);
+      // Compare-and-set: a double tap (or two tabs) must not post the message or alert twice.
+      const { data: moved } = await db.from("p2p_trades").update({ status: "paid", paid_at: now }).eq("id", t.id).eq("status", "open").select("id");
+      if (!moved?.length) return { ok: true };
       await systemMessage(t.id, "Buyer marked the payment as sent. Seller: check your account, then release.");
       await p2pAlert(t.seller_id, t.id, `💵 The buyer says they sent $${Number(t.fiat_amount).toFixed(2)} by ${t.payment_method}. Check your account, then release ${t.crypto_amount} ${t.asset}.`);
     } else if (data.action === "cancel") {
@@ -761,7 +763,9 @@ export const p2pAction = createServerFn({ method: "POST" })
         throw new Error("This trade can't be cancelled now — open a dispute instead");
       if (t.status === "paid" && me === t.seller_id) throw new Error("Buyer says they paid — open a dispute instead");
       const resolution = me === t.buyer_id ? "buyer_cancelled" : "seller_cancelled";
-      await db.from("p2p_trades").update({ status: "cancelled", cancelled_at: now, resolution }).eq("id", t.id);
+      // Compare-and-set: only the first of several taps cancels, messages and alerts.
+      const { data: moved } = await db.from("p2p_trades").update({ status: "cancelled", cancelled_at: now, resolution }).eq("id", t.id).eq("status", t.status).select("id");
+      if (!moved?.length) return { ok: true };
       const { cancelApprovals } = await import("@/lib/pocket-send/approvals.server");
       await cancelApprovals({ purpose: "p2p_release", refId: t.id }, "The trade was cancelled.");
       await systemMessage(t.id, `Trade cancelled by the ${me === t.buyer_id ? "buyer" : "seller"}. Coins unreserved.`);
@@ -772,10 +776,13 @@ export const p2pAction = createServerFn({ method: "POST" })
     } else {
       if (!["open", "paid"].includes(t.status)) throw new Error("Nothing to dispute");
       if (me === t.buyer_id && t.status !== "paid") throw new Error("Mark the trade paid before opening a dispute");
-      await db
+      const { data: moved } = await db
         .from("p2p_trades")
         .update({ status: "disputed", dispute_reason: data.reason ?? "", disputed_by: me })
-        .eq("id", t.id);
+        .eq("id", t.id)
+        .eq("status", t.status)
+        .select("id");
+      if (!moved?.length) return { ok: true };
       await systemMessage(
         t.id,
         "Dispute opened. Coins stay reserved. Upload your proof (receipts, screenshots) in the chat — the community jury and Seeds admins will review.",

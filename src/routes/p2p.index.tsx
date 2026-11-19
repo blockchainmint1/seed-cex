@@ -3,7 +3,6 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { BadgeCheck, Lock, Users } from "lucide-react";
-import { toast } from "sonner";
 import { listOffers, openTrade } from "@/lib/p2p.functions";
 import { fmtCoinPrice, P2P_ASSET_IDS, P2P_ASSETS, PAYMENT_METHODS, type P2pAsset } from "@/lib/p2p-config";
 import { SellerBadge } from "@/components/p2p/SellerBadge";
@@ -180,7 +179,6 @@ function BuyDialog({ offer, onClose }: { offer: Offer; onClose: () => void }) {
   const m = useMutation({
     mutationFn: () => open({ data: { offerId: offer.id, fiat: n, method, instructions: sellAd && instructions.trim() ? instructions.trim() : undefined } }),
     onSuccess: (r) => navigate({ to: "/p2p/trade/$id", params: { id: r.id } }),
-    onError: (e) => toast.error((e as Error).message),
   });
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
@@ -220,6 +218,22 @@ function BuyDialog({ offer, onClose }: { offer: Offer; onClose: () => void }) {
             ) : (
               <p className="text-xs text-muted-foreground">Coins go to your HME trading pocket. Payment instructions appear once the trade opens.</p>
             )}
+            {!offer.seller.online ? (
+              <p className="border-l-2 border-warn pl-3 text-xs text-foreground">
+                {offer.seller.handle} is offline right now. You can still open the trade, but they may not reply or send your coins until they're back.
+              </p>
+            ) : null}
+            {m.error ? (
+              <p role="alert" className="rounded-sm border border-destructive/60 bg-destructive/10 p-3 text-xs text-foreground">
+                {(m.error as Error).message}
+                {/wallet/i.test((m.error as Error).message) ? (
+                  <>
+                    {" "}
+                    <Link to="/account/security" className="font-semibold text-primary underline">Link it now</Link>
+                  </>
+                ) : null}
+              </p>
+            ) : null}
             <Button className="w-full" disabled={m.isPending || n < offer.minFiat || n > offer.maxFiat} onClick={() => m.mutate()}>
               {m.isPending ? "Verifying funds…" : "Open trade"}
             </Button>

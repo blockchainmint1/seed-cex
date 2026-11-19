@@ -1,4 +1,5 @@
 import { HonestMoneyScripts } from "@/components/site/HonestMoneyScripts";
+import { Toaster } from "@/components/ui/sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -166,6 +167,8 @@ function RootComponent() {
         <SiteFooter />
         <VisitCounter />
         <HonestMoneyScripts />
+        {/* Pop-up messages (errors and confirmations) site-wide; without this every toast is silent. */}
+        <Toaster position="top-center" closeButton />
       </div>
     </QueryClientProvider>
   );

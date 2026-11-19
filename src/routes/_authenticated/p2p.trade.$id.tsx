@@ -158,10 +158,10 @@ function TradeRoom() {
           {buyer && t.status === "open" ? (
             <>
               <Button disabled={action.isPending || Boolean(t.flagged)} onClick={() => action.mutate({ action: "paid" })}>I've paid</Button>
-              <Button variant="outline" onClick={() => action.mutate({ action: "cancel" })}>Cancel trade</Button>
+              <Button variant="outline" disabled={action.isPending} onClick={() => action.mutate({ action: "cancel" })}>Cancel trade</Button>
             </>
           ) : null}
-          {seller && t.status === "open" ? <Button variant="outline" onClick={() => action.mutate({ action: "cancel" })}>Cancel (hurts your score)</Button> : null}
+          {seller && t.status === "open" ? <Button variant="outline" disabled={action.isPending} onClick={() => action.mutate({ action: "cancel" })}>Cancel (hurts your score)</Button> : null}
           {seller && (t.status === "paid" || t.status === "open") ? (
             <Button disabled={action.isPending} onClick={() => { if (confirm(`Only release once $${t.fiat.toFixed(2)} is in your account. Release ${t.crypto} ${t.asset}?`)) action.mutate({ action: "release" }); }}>
               {action.isPending
