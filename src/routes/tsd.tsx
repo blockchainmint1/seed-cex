@@ -137,8 +137,8 @@ export default function TsdPage() {
           </p>
           <p className="mt-2 font-display text-xl font-bold">On-chain, direct</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Seeds settles TSD wallet-to-wallet from your authorized trading branch. No exchange
-            deposits.
+            Seeds settles TSD wallet-to-wallet from your own HME Wallet trading pocket. No
+            exchange deposits.
           </p>
         </div>
       </section>
@@ -150,9 +150,9 @@ export default function TsdPage() {
             <h2 className="font-display text-xl font-bold">How to start trading with TSD</h2>
             <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-muted-foreground">
               <li>
-                Open your Seeds vault and unlock your wallet on the{" "}
-                <Link to="/wallet" className="text-primary underline-offset-4 hover:underline">
-                  wallet page
+                Sign in with Honest.Money and link your HME Wallet trading pocket on{" "}
+                <Link to="/account/security" className="text-primary underline-offset-4 hover:underline">
+                  Account → Security
                 </Link>
                 .
               </li>
@@ -166,10 +166,10 @@ export default function TsdPage() {
                 >
                   tsd.honest.money
                 </a>{" "}
-                and send it to your Seeds trading address.
+                and send it to your trading pocket&rsquo;s TSD address (Account → Balances → Deposit).
               </li>
               <li>
-                Create a TSD trading authorization with a cap and expiry you choose.
+                Connect Telegram alerts so you can approve each trade with one tap.
               </li>
               <li>
                 Pick a market like{" "}
@@ -192,10 +192,10 @@ export default function TsdPage() {
           <div>
             <h2 className="font-display text-xl font-bold">Non-custodial, end to end</h2>
             <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-              TSD on Seeds is never "deposited" into an exchange account. Your balance stays in a
-              wallet derived from your own seed phrase. Seeds can only sign trades inside the cap
-              and expiry you authorized — and when the authorization expires, the key is wiped and
-              the wipe is published on the{" "}
+              TSD on Seeds is never "deposited" into an exchange account. Your balance stays in your own
+              HME Wallet trading pocket. Every coin that leaves it needs your Telegram approval,
+              and when you revoke the link, Seeds&rsquo; trading key is deleted — the count of keys
+              Seeds holds is published on the{" "}
               <Link to="/custody" className="text-primary underline-offset-4 hover:underline">
                 custody ledger
               </Link>

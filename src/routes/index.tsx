@@ -98,8 +98,8 @@ function Index() {
           </h1>
           <p className="mt-6 max-w-2xl text-base leading-relaxed text-muted-foreground">
             Seeds gives you the speed, depth, and ease of a centralized exchange — without ever
-            taking custody of your funds. Your seed stays encrypted in your browser. We settle trades
-            directly from your wallet. It's the easiest way to get started with crypto: like
+            taking custody of your funds. Your recovery phrase stays in HME Wallet on your phone. We
+            settle trades directly from your own trading pocket. It's the easiest way to get started with crypto: like
             LocalBitcoins and Binance had a baby.
           </p>
 
@@ -150,17 +150,17 @@ function Index() {
             {
               n: "01",
               title: "Create an account in seconds",
-              body: "Sign up with email or connect your wallet. No KYC up front. No deposit forms. No waiting for approvals.",
+              body: "Sign in with your Honest.Money membership. No KYC. No deposit forms. No waiting for approvals.",
             },
             {
               n: "02",
-              title: "Your seed, your keys, your coins",
-              body: "Generate or import a BIP-39 seed in your browser. It's encrypted locally with AES-256-GCM before anything leaves your device.",
+              title: "Your wallet, your keys, your coins",
+              body: "Link the separate trading pocket in your HME Wallet with a QR code. Your recovery phrase and savings never leave your phone.",
             },
             {
               n: "03",
               title: "Trade like a CEX, settle like a wallet",
-              body: "Place limit or market orders on a live order book. Trades settle directly on-chain from your authorized trading branch — no omnibus account.",
+              body: "Place limit or market orders on a live order book. Trades settle on-chain from your own trading pocket after you approve in Telegram — no omnibus account.",
             },
           ].map((c) => (
             <div key={c.n} className="bg-surface p-8">
@@ -302,9 +302,9 @@ function Index() {
           </p>
           <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground">
             <strong className="text-foreground">Seeds is non-custodial.</strong> You control the
-            keys. You authorize a capped, expiring trading branch for settlement. Trades are
-            irreversible once broadcast. Start small, authorize only what you are actively trading,
-            and never share your full seed with anyone.
+            keys in HME Wallet and link one separate trading pocket for settlement. Trades are
+            irreversible once broadcast. Start small, keep only what you are actively trading in the
+            pocket, and never share your recovery phrase with anyone.
           </p>
         </div>
       </section>

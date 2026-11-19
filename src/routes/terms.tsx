@@ -58,20 +58,21 @@ export const Route = createFileRoute("/terms")({
 
 function Terms() {
   return (
-    <LegalShell title="Terms of Use" updated="July 2026">
+    <LegalShell title="Terms of Use" updated="November 2026">
       <Section heading="1. What Seeds is">
         <p>
-          Seeds is non-custodial software. It helps you generate a wallet, encrypt it, and find a
-          counterparty for USDC/TXC trades. Seeds is not a bank, broker, money transmitter, or
+          Seeds is non-custodial software. It connects to the trading pocket in your HME Wallet and
+          helps you find a counterparty for trades. Seeds is not a bank, broker, money transmitter, or
           investment adviser, and it does not hold your assets on your behalf.
         </p>
       </Section>
       <Section heading="2. You own your keys">
         <p>
-          Your recovery phrase is generated in your browser and encrypted with a password that never
-          leaves your device. We store only ciphertext. If you lose your password or your recovery
-          phrase, <strong className="text-foreground">nobody — including us — can restore access to
-          your funds.</strong> Back up your phrase offline before funding a wallet.
+          Your wallet and its recovery phrase are created and kept by HME Wallet, not by Seeds. Seeds
+          never creates, imports, receives or stores a recovery phrase, and never receives the keys to
+          your savings. If you lose your recovery phrase, <strong className="text-foreground">nobody
+          — including us — can restore access to your funds.</strong> Back up your phrase offline
+          before funding your wallet.
         </p>
       </Section>
       <Section heading="3. Settlement status">

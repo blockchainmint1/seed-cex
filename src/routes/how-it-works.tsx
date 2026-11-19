@@ -17,17 +17,17 @@ export const Route = createFileRoute("/how-it-works")({
   staticData: { sitemap: true },
   head: () => ({
     meta: [
-      { title: "How Seeds Works — Shared-Wallet, Non-Custodial Exchange" },
+      { title: "How Seeds Works — Non-Custodial Exchange with HME Wallet" },
       {
         name: "description",
         content:
-          "Seeds is an exchange with no deposits. You keep the seed; we hold a capped, expiring authorization on a dedicated trading branch — and we destroy the key when time runs out.",
+          "Seeds is an exchange with no deposits. You sign in with Honest.Money and link a separate trading pocket from HME Wallet. Your recovery phrase and savings never leave your phone.",
       },
       { property: "og:title", content: "How Seeds Works — No Deposits, Ever" },
       {
         property: "og:description",
         content:
-          "Shared-wallet co-custody: your recovery phrase never leaves your browser unencrypted, and Seeds only ever holds a capped, expiring trading key that we can prove we've deleted.",
+          "Sign in with Honest.Money, link your HME Wallet trading pocket, and trade wallet to wallet. Seeds never sees your recovery phrase or your savings.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -39,56 +39,56 @@ export const Route = createFileRoute("/how-it-works")({
 const steps = [
   {
     icon: Sprout,
-    title: "Plant your seed",
-    body: "Sign up and Seeds generates a BIP-39 recovery phrase in your browser. It is encrypted there with your password (PBKDF2 → AES-256-GCM) and only the ciphertext is stored. We never see the phrase, the password, or a private key — not once.",
+    title: "Sign in with Honest.Money",
+    body: "Seeds uses your Honest.Money membership login. There is no separate Seeds password, and Seeds never creates, imports or stores a recovery phrase. Your wallet lives in HME Wallet on your phone.",
   },
   {
     icon: Wallet,
-    title: "Two branches: savings and trading",
-    body: "From your phrase, keys derive down standard BIP-44 paths. Your savings branch is yours alone — we have no derivation for it, ever. A separate shared trading branch (m/44'/696969'/1106'/0/0 on TEXITcoin) exists purely for exchange settlement.",
+    title: "Savings and a separate trading pocket",
+    body: "HME Wallet keeps your savings apart from a trading pocket made just for Seeds (pocket 1106 on TEXITcoin to start; HME Wallet issues a new number after a revoke). Seeds never receives savings keys.",
   },
   {
     icon: KeyRound,
-    title: "You grant a capped, expiring authorization",
-    body: "To trade, you move only what you want onto the trading branch and grant Seeds a per-asset authorization: this asset, up to this amount, until this time. It is enforced in the database before any key is touched — over the cap or past the expiry, the request dies.",
+    title: "Link the pocket with a QR code",
+    body: "Turn on two-factor, then scan a 10-minute QR code in HME Wallet. Choose instant access until you revoke it, or approve every trade in HME Wallet so Seeds holds no key at all. Linking moves no coins.",
   },
   {
     icon: ArrowLeftRight,
     title: "Trade on a real order book",
-    body: "Orders match by price-time priority across TXC, TSD, USDC, USDT, LTC, ISK, and ZCU. When a match fills, each leg settles on-chain from the maker's trading branch to the taker's address — a real, signed, broadcast transaction with a real txid.",
+    body: "Place limit or market orders. When a match fills, both traders tap Approve in Telegram within 15 minutes, then each pocket sends its side on the blockchain — a real, signed transaction with a real txid.",
   },
   {
     icon: Flame,
-    title: "Expiry hits → the key is destroyed",
-    body: "When your authorization expires — or when you revoke it — the delegated key material is hard-deleted from our systems. Not revoked-by-flag. Gone. We can't sign another satoshi even if we wanted to.",
+    title: "Revoke any time → the key is deleted",
+    body: "Revoke on Seeds (or with the Telegram button) and Seeds' trading key for your pocket is deleted and waiting requests are cancelled. Your coins stay in your pocket. Revoke in HME Wallet too to retire that pocket.",
   },
   {
     icon: Eye,
     title: "We prove what we hold, publicly",
-    body: "The Custody Ledger publishes a live attestation: how many keys we hold, how many are expired-and-purged, and aggregate counts only. No addresses, no balances, no user data. Anyone can watch us hold almost nothing.",
+    body: "The Custody Ledger publishes how many trading keys Seeds holds and how many have been deleted — counts only. No addresses, no balances, no member data.",
   },
 ];
 
 const contrasts = [
   {
     theirs: "You deposit funds into the exchange's omnibus wallet.",
-    ours: "No deposits. Funds stay at addresses derived from your seed.",
+    ours: "No deposits. Coins stay in your own HME Wallet trading pocket.",
   },
   {
     theirs: "They hold 100% of your balance, for as long as you use them.",
-    ours: "We hold a capped key, only for assets you authorize, only until the time you set.",
+    ours: "Seeds can only reach the trading pocket you link, and only until you revoke.",
   },
   {
     theirs: "Withdrawals are a permission slip you request from them.",
-    ours: "Revoke the authorization and sweep your branch back to savings — no approval needed.",
+    ours: "Most coins leave straight from HME Wallet. Every send from your pocket needs your Telegram tap.",
   },
   {
     theirs: "A breach or insolvency can mean total loss (see: Mt. Gox, FTX, Celsius…).",
-    ours: "A breach gets attackers ciphertext and expired keys. Your savings branch is unreachable.",
+    ours: "Seeds never holds your recovery phrase or savings keys, so a breach can't reach them.",
   },
   {
     theirs: "You must trust their solvency attestations.",
-    ours: "You can verify our custody on-chain — the attestation counts are public and auditable.",
+    ours: "You can check every settlement on-chain, and our key counts are public.",
   },
 ];
 
@@ -102,9 +102,9 @@ function HowItWorks() {
           An exchange with no deposits.
         </h1>
         <p className="text-lg leading-relaxed text-muted-foreground">
-          Every centralized exchange asks you to hand over your coins first. Seeds never does. You
-          keep the seed phrase; we hold a narrow, expiring authorization on one dedicated trading
-          branch — and when the clock runs out, we destroy the key and publish proof.
+          Every centralized exchange asks you to hand over your coins first. Seeds never does. Your
+          wallet and recovery phrase stay in HME Wallet on your phone; you link one separate trading
+          pocket to Seeds, and you can cut that link at any time.
         </p>
       </header>
 
@@ -147,24 +147,23 @@ function HowItWorks() {
         </div>
       </section>
 
-      {/* Derivation diagram */}
+      {/* Wallet diagram */}
       <section className="mt-16 rounded-md border border-border bg-surface p-6 sm:p-8">
         <h2 className="font-display text-xl font-bold text-foreground">
-          One seed, two branches
+          One wallet, two separate parts
         </h2>
         <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-          Your recovery phrase derives an entire tree of keys. Seeds only ever touches one isolated
-          branch — the trading branch — and only within your authorization. The savings branch is
-          cryptographically out of reach.
+          Your HME Wallet recovery phrase creates both your savings and your trading pocket. Seeds
+          only ever sees the trading pocket you link. Your savings are out of its reach.
         </p>
         <pre className="mt-5 overflow-x-auto rounded-sm border border-border bg-background p-4 font-mono text-xs leading-relaxed text-foreground">
-{`your seed phrase (never leaves your browser unencrypted)
-├── m/44'/696969'/0'/0/…   SAVINGS BRANCH
-│    └─ yours alone. Seeds has no keys here. ever.
-└── m/44'/696969'/1106'/0/0 SHARED TRADING BRANCH
-     ├─ per-asset authorization: asset + cap + expiry
-     ├─ enforced in the database before any signing
-     └─ key hard-deleted at expiry / revocation`}
+{`HME Wallet recovery phrase (stays on your phone, never sent to Seeds)
+├── SAVINGS
+│    └─ yours alone. Seeds never receives these keys.
+└── TRADING POCKET (TEXITcoin m/44'/696969'/1106'/… to start)
+     ├─ linked to Seeds by QR code: instant access or approve every trade
+     ├─ every coin that leaves needs your Telegram tap
+     └─ revoke on Seeds → Seeds' trading key is deleted`}
         </pre>
       </section>
 
@@ -201,15 +200,14 @@ function HowItWorks() {
         </h2>
         <ul className="mt-4 list-disc space-y-2 pl-5 text-sm leading-relaxed text-muted-foreground">
           <li>
-            <strong className="text-foreground">Your seed phrase is your root of trust.</strong>{" "}
-            Lose it and lose your password, and no one — including us — can recover your funds.
-            Write it down. Keep it offline.
+            <strong className="text-foreground">Your HME Wallet recovery phrase is your root of trust.</strong>{" "}
+            Lose it and no one — including us — can recover your funds. Write it down. Keep it
+            offline. Seeds will never ask for it.
           </li>
           <li>
-            <strong className="text-foreground">Authorizations are real control.</strong> While an
-            authorization is active, Seeds can settle trades within its cap — that's the point. The
-            cap and the clock bound exactly what that can mean, and expiry is destructive, not
-            decorative.
+            <strong className="text-foreground">Instant access is real control.</strong> While an
+            instant-access link is active, Seeds keeps an encrypted key for your trading pocket so
+            trades can settle. Choose approve-every-trade if you'd rather Seeds hold no key at all.
           </li>
           <li>
             <strong className="text-foreground">Settlement is on-chain.</strong> Every fill produces
@@ -225,7 +223,7 @@ function HowItWorks() {
           to="/auth"
           className="rounded-md bg-action px-5 py-2.5 text-sm font-semibold text-action-foreground transition-opacity hover:opacity-90"
         >
-          <Lock className="mr-2 inline h-3.5 w-3.5" /> Open your vault
+          <Lock className="mr-2 inline h-3.5 w-3.5" /> Sign in with Honest.Money
         </Link>
         <Link
           to="/custody"

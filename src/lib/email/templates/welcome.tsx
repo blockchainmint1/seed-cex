@@ -13,7 +13,7 @@ export function WelcomeEmail({ name }: WelcomeProps) {
         { title: "Pick a market and place an order", body: "Every order shows the price, the fee and what settles where before you confirm." },
       ]} />
       <Cta href={`${SITE}/account`}>Open your profile</Cta>
-      <Note>Your recovery phrase restores your wallet. Store it offline. If it's lost, your assets may not be recoverable, and nobody can reset it for you.</Note>
+      <Note>Your HME Wallet recovery phrase restores your wallet. Store it offline, and never give it to anyone — Seeds will never ask for it. If it's lost, your assets may not be recoverable, and nobody can reset it for you.</Note>
       <P muted>Want the full picture first? Read <a href={`${SITE}/how-it-works`} style={{ color: "#0A7A35" }}>how Seeds works</a>.</P>
     </Layout>
   );

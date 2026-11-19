@@ -67,7 +67,7 @@ function StatsPage() {
         <Metric label="Markets" value={n(stats.totals.pairs)} hint="Live trade pairs" />
         <Metric label="Trades (24h)" value={n(stats.totals.trades24h)} hint={`${n(stats.totals.tradesAll)} all time`} />
         <Metric label="Open orders" value={n(stats.totals.openOrders)} hint="Resting on the book" />
-        <Metric label="Vaults" value={n(stats.totals.vaults)} hint="Browser-encrypted seeds" />
+        <Metric label="Old browser wallets" value={n(stats.totals.vaults)} hint="From before HME Wallet; no new ones" />
         <Metric label="Settled legs" value={n(stats.totals.settledLegs)} hint="Confirmed on-chain" />
         <Metric label="Pending legs" value={n(stats.totals.pendingLegs)} hint="Awaiting confirmation" />
         <Metric label="Failed legs" value={n(stats.totals.failedLegs)} hint="Retryable" />

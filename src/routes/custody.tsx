@@ -81,7 +81,7 @@ function Custody() {
         When you share your trading branch, you set an expiry. At that moment the encrypted key is
         deleted outright — not flagged, not archived. A sweep runs every hour and writes the
         surviving count to a public log, so the number below is the whole of what Seeds can sign
-        with. Your savings branch is never shared and never appears here.
+        with. Your HME Wallet savings are never shared and never appear here.
       </p>
 
       <dl className="mt-10 grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2">

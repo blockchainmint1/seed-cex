@@ -24,14 +24,14 @@ export const Route = createFileRoute("/proof/code")({
 });
 
 const facts: { k: string; v: string }[] = [
-  { k: "Seed standard", v: "BIP-39, 12 or 24 words, generated or imported in your browser" },
-  { k: "Vault encryption", v: "PBKDF2-SHA256 → AES-256-GCM. Ciphertext only ever leaves the browser" },
-  { k: "TXC / TSD savings branch", v: "m/44'/696969'/0'/0/0 — Seeds never sees this key" },
-  { k: "Shared trading branch", v: "m/44'/696969'/1106'/0/0 — the only branch you can delegate" },
+  { k: "Recovery phrase", v: "Created and kept in HME Wallet on your phone. Seeds never creates, imports or receives one" },
+  { k: "Savings", v: "Stay in HME Wallet. Seeds never receives savings keys" },
+  { k: "Trading pocket", v: "TEXITcoin m/44'/696969'/1106'/0/0 to start; HME Wallet issues a new pocket number after a revoke" },
+  { k: "Wallet link", v: "Scanned from HME Wallet. Seeds gets the pocket's public keys, plus an encrypted pocket key only in instant-access mode" },
   { k: "TEXITcoin coin type", v: "SLIP-0044 696969, address version byte 66" },
   { k: "TSD", v: "Omni Layer property #39 on TEXITcoin, Omni Core 0.9.1" },
   { k: "EVM branch", v: "One address shared across Ethereum, Base, BNB Chain and ZeroChill" },
-  { k: "Authorization", v: "Per-asset cap + expiry. The key material is deleted at expiry, not flagged" },
+  { k: "Signing", v: "Instant access until you revoke, or approve every trade in HME Wallet. Every send needs your Telegram tap" },
   { k: "Settlement", v: "Seller signs to the buyer's address directly. Seeds never holds a pooled balance" },
   { k: "API keys", v: "Read and trade scopes only. There is no withdrawal endpoint to abuse" },
 ];
@@ -114,9 +114,9 @@ function CodePage() {
         <h2 className="font-display text-xl font-bold">How to verify it yourself</h2>
         <ol className="space-y-3 text-sm text-muted-foreground">
           <li>
-            <span className="text-foreground">1. Derive the addresses offline.</span> Put your seed
-            into any standard BIP-39 tool, use the paths above, and confirm they match the addresses
-            Seeds shows you. If they match, we are only ever touching the branch you delegated.
+            <span className="text-foreground">1. Compare addresses.</span> The receive addresses on
+            Account → Balances should match your trading pocket in HME Wallet. Never type your
+            recovery phrase into any website or tool to check — not even ours.
           </li>
           <li>
             <span className="text-foreground">2. Watch the chain, not our database.</span> Every
@@ -146,9 +146,9 @@ function CodePage() {
             exposes depth, trades and klines with no key, so the book you see is the book bots see.
           </li>
           <li>
-            <span className="text-foreground">5. Sweep at any time.</span> Revoke an authorization
-            and move funds back to your savings branch. Nothing on our side can stop it — we do not
-            hold your savings key.
+            <span className="text-foreground">5. Revoke at any time.</span> Revoke on Seeds or in HME
+            Wallet and move coins back to your savings in HME Wallet. Nothing on our side can stop
+            it — we do not hold your savings keys.
           </li>
         </ol>
       </section>
