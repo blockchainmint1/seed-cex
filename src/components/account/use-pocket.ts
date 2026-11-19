@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getMyHmeLink } from "@/lib/hme-link.functions";
@@ -46,19 +47,23 @@ export function usePocketBalances(addresses: Record<string, string> | undefined,
   const priceRead = useServerFn(getReferencePrices);
   const a = addresses ?? {};
   const hasExtra = EXTRA.some((c) => Boolean(a[c]));
+  // Balances come from Seeds' shared copy (up to a minute old); Refresh asks the chains again.
+  const freshNext = useRef(false);
 
   const balances = useQuery({
     queryKey: ["hme-pocket-balances", linkId, addresses],
     enabled: Boolean(linkId && addresses),
-    refetchInterval: 60_000,
+    refetchInterval: 120_000,
     queryFn: async (): Promise<Raw> => {
+      const fresh = freshNext.current;
+      freshNext.current = false;
       const r = await Promise.allSettled([
-        a.TXC ? txcRead({ data: { address: a.TXC } }) : Promise.resolve(null),
-        a.TXC ? tsdRead({ data: { address: a.TXC } }) : Promise.resolve(null),
-        utxoRead({ data: { ltcAddress: a.LTC, iskAddress: a.ISK } }),
-        a.BTC ? btcRead({ data: { address: a.BTC } }) : Promise.resolve(null),
-        a.EVM ? evmRead({ data: { address: a.EVM } }) : Promise.resolve(null),
-        hasExtra ? extraRead() : Promise.resolve([]),
+        a.TXC ? txcRead({ data: { address: a.TXC, fresh } }) : Promise.resolve(null),
+        a.TXC ? tsdRead({ data: { address: a.TXC, fresh } }) : Promise.resolve(null),
+        utxoRead({ data: { ltcAddress: a.LTC, iskAddress: a.ISK, fresh } }),
+        a.BTC ? btcRead({ data: { address: a.BTC, fresh } }) : Promise.resolve(null),
+        a.EVM ? evmRead({ data: { address: a.EVM, fresh } }) : Promise.resolve(null),
+        hasExtra ? extraRead({ data: { fresh } }) : Promise.resolve([]),
       ]);
       const v = <T,>(x: PromiseSettledResult<T>, d: T) => (x.status === "fulfilled" ? x.value : d);
       const extra = v(r[5], []);
@@ -108,7 +113,11 @@ export function usePocketBalances(addresses: Record<string, string> | undefined,
     }
   const total = rows.reduce((s, r) => s + (r.usd ?? 0), 0);
   const unpriced = rows.some((r) => (r.balance ?? 0) > 0 && r.usd == null);
-  return { balances, prices, rows, total, unpriced };
+  const refreshNow = () => {
+    freshNext.current = true;
+    return balances.refetch();
+  };
+  return { balances, prices, rows, total, unpriced, refreshNow };
 }
 
 export const fmtCoin = (n: number | null) => (n == null ? "—" : n.toLocaleString("en-US", { maximumFractionDigits: 8 }));

@@ -114,6 +114,10 @@ export async function recordMarketSnapshot(): Promise<SnapshotResult> {
       prunedRaw = Number((p as { raw_removed?: number } | null)?.raw_removed) || 0;
       prunedHourly = Number((p as { hourly_removed?: number } | null)?.hourly_removed) || 0;
     }
+
+    // Week-old shared display copies (mostly balances of members who stopped visiting).
+    const { error: cacheErr } = await supabaseAdmin.rpc("shared_cache_prune");
+    if (cacheErr) notes.push(`cache prune: ${cacheErr.message}`.slice(0, 200));
   }
 
   return { bucket, markets, chains, network, rolledUp, prunedRaw, prunedHourly, notes };

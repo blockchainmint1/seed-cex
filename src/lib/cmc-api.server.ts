@@ -78,6 +78,20 @@ export async function allSnapshots(): Promise<PairSnapshot[]> {
   return Promise.all(PAIRS.map(snapshot));
 }
 
+/** The CMC summary everyone sees (homepage + public feed), rebuilt at most every few seconds. */
+export async function sharedSummary() {
+  const { shared } = await import("./cache/shared-cache.server");
+  const { CACHE_TIMES } = await import("./cache/shared-cache-rules");
+  return shared("cmc:summary", CACHE_TIMES.summary, async () => toSummary(await allSnapshots()));
+}
+
+/** The CMC ticker for the public feed, rebuilt at most every few seconds. */
+export async function sharedTicker() {
+  const { shared } = await import("./cache/shared-cache.server");
+  const { CACHE_TIMES } = await import("./cache/shared-cache-rules");
+  return shared("cmc:ticker", CACHE_TIMES.summary, async () => toTicker(await allSnapshots()));
+}
+
 function quoteVolume(tape: TapeEntry[]): number {
   const cutoff = Date.now() - 86_400_000;
   const recent = tape.filter((t) => new Date(t.createdAt).getTime() >= cutoff);

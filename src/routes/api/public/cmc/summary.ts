@@ -9,8 +9,8 @@ export const Route = createFileRoute("/api/public/cmc/summary")({
         return corsPreflight();
       },
       GET: async () => {
-        const { allSnapshots, toSummary, marketJson } = await import("@/lib/cmc-api.server");
-        return marketJson(toSummary(await allSnapshots()));
+        const { sharedSummary, marketJson } = await import("@/lib/cmc-api.server");
+        return marketJson(await sharedSummary());
       },
     },
   },

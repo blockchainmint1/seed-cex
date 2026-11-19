@@ -24,7 +24,7 @@ export function RevokeSeedsDialog({ extraCoins, pending, onConfirm }: { extraCoi
   const read = useServerFn(getMyExtraPocketBalances);
   const balances = useQuery({
     queryKey: ["hme-extra-before-revoke"],
-    queryFn: () => read(),
+    queryFn: () => read({ data: { fresh: true } }),
     enabled: open && extraCoins.length > 0,
     staleTime: 0,
   });

@@ -12,10 +12,15 @@ export const getTsdSnapshot = createServerFn({ method: "GET" }).handler(async ()
 
 /** TSD balance for a single TEXITcoin address. */
 export const getTsdBalance = createServerFn({ method: "POST" })
-  .inputValidator(addressInput)
+  .inputValidator((input: unknown) =>
+    z.object({ address: z.string().trim().min(20).max(120), fresh: z.boolean().optional() }).parse(input),
+  )
   .handler(async ({ data }) => {
     const { fetchOmniBalance } = await import("./omni.server");
-    return fetchOmniBalance(data.address);
+    const { shared } = await import("./cache/shared-cache.server");
+    const { CACHE_TIMES, balanceKey } = await import("./cache/shared-cache-rules");
+    // Display only; sends and P2P set-asides read the chain live.
+    return shared(balanceKey("tsd", data.address), { ...CACHE_TIMES.balance, force: data.fresh, good: (b) => b.online }, () => fetchOmniBalance(data.address));
   });
 
 /** Wrapped-asset balances (wBTC/wLTC/wETH) for a TEXITcoin address. */

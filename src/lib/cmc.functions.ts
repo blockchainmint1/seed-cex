@@ -1,15 +1,15 @@
 import { createServerFn } from "@tanstack/react-start";
-import { fetchQuotes, TRACKED } from "./cmc.server";
-import { allSnapshots, toSummary } from "./cmc-api.server";
 
-
-/** Public reference prices from CoinMarketCap for the assets Seeds supports. */
+/** Public reference prices from CoinMarketCap for the assets Seeds supports (one shared copy a minute). */
 export const getReferencePrices = createServerFn({ method: "GET" }).handler(async () => {
-  return fetchQuotes(TRACKED);
+  const { fetchQuotes, TRACKED } = await import("./cmc.server");
+  const { shared } = await import("./cache/shared-cache.server");
+  const { CACHE_TIMES } = await import("./cache/shared-cache-rules");
+  return shared("cmc:quotes", { ...CACHE_TIMES.referencePrices, good: (q) => q.online }, () => fetchQuotes(TRACKED));
 });
 
-/** Live CMC-compatible market summary for all configured pairs. */
+/** Live CMC-compatible market summary for all configured pairs (one shared copy every few seconds). */
 export const getCmcSummary = createServerFn({ method: "GET" }).handler(async () => {
-  const snaps = await allSnapshots();
-  return toSummary(snaps);
+  const { sharedSummary } = await import("./cmc-api.server");
+  return sharedSummary();
 });

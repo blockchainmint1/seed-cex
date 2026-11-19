@@ -29,7 +29,7 @@ export const Route = createFileRoute("/_authenticated/account/balances/")({
 function SpotBalances() {
   const link = usePocketLink();
   const l = link.data;
-  const { rows, total, unpriced, balances } = usePocketBalances(l?.addresses, l?.id);
+  const { rows, total, unpriced, balances, refreshNow } = usePocketBalances(l?.addresses, l?.id);
   const [hideZero, setHideZero] = useState(false);
   const [q, setQ] = useState("");
 
@@ -64,7 +64,7 @@ function SpotBalances() {
           <div className="flex flex-wrap gap-2">
             <Button asChild><Link to="/account/balances/deposit"><ArrowDownToLine /> Deposit</Link></Button>
             <Button asChild variant="outline"><Link to="/account/balances/withdraw"><ArrowUpFromLine /> Withdraw</Link></Button>
-            <Button variant="ghost" disabled={balances.isFetching} onClick={() => balances.refetch()}>
+            <Button variant="ghost" disabled={balances.isFetching} onClick={() => void refreshNow()}>
               <RefreshCw className={balances.isFetching ? "animate-spin motion-reduce:animate-none" : ""} /> {balances.isFetching ? "Syncing…" : "Refresh"}
             </Button>
           </div>

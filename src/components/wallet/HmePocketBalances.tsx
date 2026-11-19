@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Copy, Check, QrCode, RefreshCw } from "lucide-react";
@@ -23,16 +23,19 @@ export function HmePocketBalances({ addresses, linkId }: { addresses: Record<str
   const evmRead = useServerFn(getEvmPortfolio);
   const extraRead = useServerFn(getMyExtraPocketBalances);
   const hasExtra = ["DOGE", "BCH", "ZEC", "XRP", "TRX", "SOL"].some((c) => Boolean(addresses[c]));
+  const freshNext = useRef(false);
   const query = useQuery({
     queryKey: ["hme-pocket-balances", linkId, addresses],
     queryFn: async () => {
+      const fresh = freshNext.current;
+      freshNext.current = false;
       const results = await Promise.allSettled([
-        addresses.TXC ? txcRead({ data: { address: addresses.TXC } }) : Promise.resolve(null),
-        addresses.TXC ? tsdRead({ data: { address: addresses.TXC } }) : Promise.resolve(null),
-        utxoRead({ data: { ltcAddress: addresses.LTC, iskAddress: addresses.ISK } }),
-        addresses.BTC ? btcRead({ data: { address: addresses.BTC } }) : Promise.resolve(null),
-        addresses.EVM ? evmRead({ data: { address: addresses.EVM } }) : Promise.resolve(null),
-        hasExtra ? extraRead() : Promise.resolve([]),
+        addresses.TXC ? txcRead({ data: { address: addresses.TXC, fresh } }) : Promise.resolve(null),
+        addresses.TXC ? tsdRead({ data: { address: addresses.TXC, fresh } }) : Promise.resolve(null),
+        utxoRead({ data: { ltcAddress: addresses.LTC, iskAddress: addresses.ISK, fresh } }),
+        addresses.BTC ? btcRead({ data: { address: addresses.BTC, fresh } }) : Promise.resolve(null),
+        addresses.EVM ? evmRead({ data: { address: addresses.EVM, fresh } }) : Promise.resolve(null),
+        hasExtra ? extraRead({ data: { fresh } }) : Promise.resolve([]),
       ]);
       const [txc, tsd, utxo, btc, evm, extra] = results;
       return {
@@ -44,7 +47,7 @@ export function HmePocketBalances({ addresses, linkId }: { addresses: Record<str
         extra: extra.status === "fulfilled" && Array.isArray(extra.value) ? extra.value : [],
       };
     },
-    refetchInterval: 60_000,
+    refetchInterval: 120_000,
   });
   const [receive, setReceive] = useState<{ symbol: string; network: string; address: string } | null>(null);
   const [copied, setCopied] = useState(false);
@@ -73,7 +76,7 @@ export function HmePocketBalances({ addresses, linkId }: { addresses: Record<str
   return <div className="mt-7">
     <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
       <h3 className="font-display text-base font-bold">Trading pocket balances</h3>
-      <Button variant="ghost" size="sm" disabled={query.isFetching} onClick={() => query.refetch()}>
+      <Button variant="ghost" size="sm" disabled={query.isFetching} onClick={() => { freshNext.current = true; void query.refetch(); }}>
         <RefreshCw className={query.isFetching ? "animate-spin motion-reduce:animate-none" : ""} /> {query.isFetching ? "Syncing…" : "Refresh"}
       </Button>
     </div>

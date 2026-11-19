@@ -2154,6 +2154,27 @@ export type Database = {
         }
         Relationships: []
       }
+      shared_cache: {
+        Row: {
+          key: string
+          lease_until: string | null
+          refreshed_at: string
+          value: Json
+        }
+        Insert: {
+          key: string
+          lease_until?: string | null
+          refreshed_at?: string
+          value: Json
+        }
+        Update: {
+          key?: string
+          lease_until?: string | null
+          refreshed_at?: string
+          value?: Json
+        }
+        Relationships: []
+      }
       site_page_views: {
         Row: {
           country: string | null
@@ -3106,6 +3127,11 @@ export type Database = {
         }
         Returns: string
       }
+      shared_cache_claim: {
+        Args: { _fresh_ms: number; _key: string; _lease_ms: number }
+        Returns: boolean
+      }
+      shared_cache_prune: { Args: never; Returns: number }
       site_page_views_prune: { Args: never; Returns: undefined }
       site_stats_breakdown: {
         Args: { _days?: number; _dimension: string; _limit?: number }

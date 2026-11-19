@@ -68,11 +68,13 @@ export const wrapMyBranchBalance = createServerFn({ method: "POST" })
 /** Native BTC balance at an address (deposit branch). */
 export const getBtcBalance = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
-    z.object({ address: z.string().trim().min(20).max(120) }).parse(input),
+    z.object({ address: z.string().trim().min(20).max(120), fresh: z.boolean().optional() }).parse(input),
   )
   .handler(async ({ data }) => {
     const { fetchBtcBalance } = await import("./btc/io.server");
-    return fetchBtcBalance(data.address);
+    const { shared } = await import("./cache/shared-cache.server");
+    const { CACHE_TIMES, balanceKey } = await import("./cache/shared-cache-rules");
+    return shared(balanceKey("btc", data.address), { ...CACHE_TIMES.balance, force: data.fresh, good: (b) => b.online }, () => fetchBtcBalance(data.address));
   });
 
 /** Re-poll a single order against the issuer. */

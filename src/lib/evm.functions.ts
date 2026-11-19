@@ -14,11 +14,16 @@ export const getEvmBalances = createServerFn({ method: "POST" })
   });
 
 export const getEvmPortfolio = createServerFn({ method: "POST" })
-  .inputValidator((input) => z.object({ address: evmAddress }).parse(input))
+  .inputValidator((input) => z.object({ address: evmAddress, fresh: z.boolean().optional() }).parse(input))
   .handler(async ({ data }) => {
     const { fetchEvmBalances } = await import("./evm.server");
+    const { shared } = await import("./cache/shared-cache.server");
+    const { CACHE_TIMES, balanceKey } = await import("./cache/shared-cache-rules");
     const chains = ["base", "ethereum", "bsc", "zcu", "pulsechain"] as const;
-    const results = await Promise.all(chains.map((c) => fetchEvmBalances(c, data.address)));
+    // One copy per chain, kept only when that chain answered; gas checks and sends read live.
+    const results = await Promise.all(chains.map((c) =>
+      shared(balanceKey(`evm-${c}`, data.address), { ...CACHE_TIMES.balance, force: data.fresh, good: (rows) => rows.length > 0 && rows.every((r) => r.online) },
+        () => fetchEvmBalances(c, data.address))));
     return results.flat();
   });
 
