@@ -24,7 +24,7 @@ export function dailyMessage(p: {
     for (const h of p.hold) lines.push(`• ${esc(h.symbol)} ${h.pct.toFixed(0)}%`);
   }
   lines.push("", `Plan value: ${usd(p.valueUsd)} (${change >= 0 ? "+" : ""}${(change * 100).toFixed(1)}% on ${p.commitTsd.toLocaleString("en-US")} TSD)`);
-  if (!p.executionLive) lines.push("<i>Paper plan — buying from your pocket isn't switched on yet.</i>");
+  if (!p.executionLive) lines.push("<i>Paper plan — real buying is off for this plan, so nothing is bought or sold.</i>");
   lines.push(`Review: ${p.reviewUrl}`);
   return lines.join("\n");
 }

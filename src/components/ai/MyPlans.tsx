@@ -17,6 +17,8 @@ export function MyPlans({ coins, highlight, onLoad }: { coins: AiCoin[]; highlig
     mutationFn: (v: { id: string; status?: "locked" | "paused" | "ended"; telegramDaily?: boolean }) => update({ data: v }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["ai-my-plans"] }),
   });
+  // Beta testers switch real buying on in Account → AI strategies (it has the confirm step and the day's trades).
+  const canReal = q.data?.tester === true && q.data?.testerExecutionOn === true;
   const symbol = (id: string) => coins.find((c) => c.id === id)?.symbol.toUpperCase() ?? id;
 
   return (
@@ -56,6 +58,11 @@ export function MyPlans({ coins, highlight, onLoad }: { coins: AiCoin[]; highlig
                 )}
                 {p.status !== "ended" ? (
                   <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                    {canReal && p.status === "locked" ? (
+                      <Link to="/account/ai" className={`${p.execute ? "seed-btn-ghost" : "seed-btn w-auto"} min-h-0 px-3 py-1.5 text-xs`}>
+                        {p.execute ? "Real buying: on · manage" : "Turn on real buying"}
+                      </Link>
+                    ) : null}
                     <button className="seed-btn-ghost min-h-0 px-3 py-1.5 text-xs" onClick={() => onLoad(p.settings)}>Open in tester</button>
                     <button className="seed-btn-ghost min-h-0 px-3 py-1.5 text-xs" disabled={m.isPending}
                       onClick={() => m.mutate({ id: p.id, status: p.status === "locked" ? "paused" : "locked" })}>
