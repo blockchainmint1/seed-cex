@@ -61,8 +61,11 @@ export const Route = createFileRoute("/api/public/hme-link/submit")({
 
         // Replacing a live link: same pocket only, and never fewer coins (Seeds would wipe keys to coins HME Wallet can't move).
         const { data: active } = await supabaseAdmin.from("hme_links")
-          .select("id, account, paths").eq("user_id", req.user_id).eq("status", "active").maybeSingle();
-        const problem = replaceProblem(active ? { account: active.account, paths: active.paths as string[] } : null, { account: b.account!, chains });
+          .select("id, account, paths, mode, key_ciphertext").eq("user_id", req.user_id).eq("status", "active").maybeSingle();
+        const problem = replaceProblem(
+          active ? { account: active.account, paths: active.paths as string[], mode: active.mode, hasKey: Boolean(active.key_ciphertext) } : null,
+          { account: b.account!, chains, mode: b.mode },
+        );
         if (problem) return json({ error: problem }, 409);
 
         let keyCiphertext: string | null = null;

@@ -10,7 +10,8 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getLeg, type LegId } from "@/lib/chains";
 import { APPROVAL_TTL_MS, approvalMatches, approvalTapDecision, parseApprovalData, type ApprovalChoice } from "./rules";
 
-export type ApprovalPurpose = "trade_leg" | "p2p_release";
+/** trade_leg / p2p_release: settlement sends. swap_out: a swap paying out to an outside address (audit 2026-11-19 H2). */
+export type ApprovalPurpose = "trade_leg" | "p2p_release" | "swap_out";
 
 export type ApprovalRow = {
   id: string;
@@ -34,7 +35,6 @@ const COLS =
   "id, user_id, link_id, purpose, ref_id, leg, asset, amount, from_address, to_address, status, meta, expires_at, telegram_chat_id, telegram_message_id";
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-const short = (a: string) => (a.length > 18 ? `${a.slice(0, 10)}…${a.slice(-6)}` : a);
 const fmt = (n: number) => Number(n).toLocaleString("en-US", { maximumFractionDigits: 8 });
 
 function norm(r: Record<string, unknown>): ApprovalRow {
@@ -71,7 +71,10 @@ export async function requestSendApproval(p: {
   linkId: string;
   purpose: ApprovalPurpose;
   refId: string;
-  leg: LegId;
+  /** Settlement leg id, or the swap coin id for swap_out. */
+  leg: string;
+  /** Coin symbol shown and stored; defaults to the settlement leg's symbol. */
+  asset?: string;
   amount: number;
   from: string;
   to: string;
@@ -89,7 +92,7 @@ export async function requestSendApproval(p: {
     .maybeSingle();
   if (live) {
     const row = norm(live);
-    const same = row.user_id === p.userId && row.link_id === p.linkId && Math.abs(row.amount - p.amount) <= 1e-8 && row.to_address === p.to;
+    const same = row.user_id === p.userId && row.link_id === p.linkId && Math.abs(row.amount - p.amount) <= 1e-8 && row.from_address === p.from && row.to_address === p.to;
     if (same && Date.parse(row.expires_at) > Date.now()) return row;
     await supabaseAdmin.from("send_approvals").update({ status: Date.parse(row.expires_at) > Date.now() ? "cancelled" : "expired", decided_at: new Date().toISOString(), error: "Replaced by a new request" })
       .eq("id", row.id).in("status", ["pending", "approved"]);
@@ -99,7 +102,7 @@ export async function requestSendApproval(p: {
   const chatId = prof?.telegram_verified ? String(prof.telegram_chat_id ?? "") : "";
   if (!chatId) throw new Error("Connect Telegram (Account → Alerts). Every send from your pocket waits for your tap in Telegram.");
 
-  const symbol = getLeg(p.leg).symbol;
+  const symbol = p.asset ?? getLeg(p.leg as LegId).symbol;
   const { data: ins, error } = await supabaseAdmin
     .from("send_approvals")
     .insert({
@@ -127,7 +130,7 @@ export async function requestSendApproval(p: {
   const text =
     `🔐 <b>Approve this send?</b>\n` +
     `<b>${fmt(p.amount)} ${esc(symbol)}</b> from your trading pocket\n` +
-    `to <code>${esc(short(p.to))}</code>\n` +
+    `to <code>${esc(p.to)}</code>\n` +
     `${esc(p.what)}\n\n` +
     `Nothing moves until you tap Approve. This request ends in ${mins} minutes.\n` +
     `If you didn't start this, tap Decline and check your account.`;
@@ -158,24 +161,27 @@ export async function requestSendApproval(p: {
  */
 export async function spendApproval(p: {
   purpose: ApprovalPurpose;
-  refId: string;
+  /** Look up by what it was for (settlement) … */
+  refId?: string;
+  /** … or by its own id (swap_out, where the Swap page holds the id). */
+  id?: string;
   leg: string;
   userId: string;
   linkId: string;
   amount: number;
+  from: string;
   to: string;
 }): Promise<ApprovalRow> {
-  const { data } = await supabaseAdmin
-    .from("send_approvals")
-    .select(COLS)
-    .eq("purpose", p.purpose).eq("ref_id", p.refId).eq("leg", p.leg).eq("status", "approved")
-    .maybeSingle();
+  if (!p.refId && !p.id) throw new Error("No approval to spend. Nothing was sent.");
+  let q = supabaseAdmin.from("send_approvals").select(COLS).eq("purpose", p.purpose).eq("leg", p.leg).eq("status", "approved");
+  q = p.id ? q.eq("id", p.id) : q.eq("ref_id", p.refId!);
+  const { data } = await q.maybeSingle();
   const row = data ? norm(data) : null;
   if (
     !row ||
     !approvalMatches(
-      { status: row.status, expiresAtMs: Date.parse(row.expires_at), userId: row.user_id, linkId: row.link_id, leg: row.leg, amount: row.amount, toAddress: row.to_address },
-      { userId: p.userId, linkId: p.linkId, leg: p.leg, amount: p.amount, toAddress: p.to, nowMs: Date.now() },
+      { status: row.status, expiresAtMs: Date.parse(row.expires_at), userId: row.user_id, linkId: row.link_id, leg: row.leg, amount: row.amount, fromAddress: row.from_address, toAddress: row.to_address },
+      { userId: p.userId, linkId: p.linkId, leg: p.leg, amount: p.amount, fromAddress: p.from, toAddress: p.to, nowMs: Date.now() },
     )
   ) {
     throw new Error("This send hasn't been approved in Telegram (or the approval ended). Nothing was sent.");
@@ -217,6 +223,8 @@ async function editApprovalMessage(r: ApprovalRow, text: string) {
 
 /** After a decision, move the thing it was for along (send, or cancel). Never throws. */
 async function continueAfter(r: ApprovalRow) {
+  // A swap_out send is finished by the member's open Swap page, which re-quotes and spends the approval.
+  if (r.purpose === "swap_out") return;
   try {
     if (r.purpose === "trade_leg") {
       const { autoSettleTrade } = await import("@/lib/autosettle.server");
@@ -263,7 +271,7 @@ export async function handleApprovalTap(cq: CallbackQuery): Promise<string | nul
     await answer("This button isn't valid for this chat.", true);
     return "refused";
   }
-  const what = `${fmt(row.amount)} ${esc(row.asset)} to <code>${esc(short(row.to_address))}</code>`;
+  const what = `${fmt(row.amount)} ${esc(row.asset)} to <code>${esc(row.to_address)}</code>`;
   if (decision === "already_decided") {
     await answer(row.status === "used" ? "Already approved and sent." : `This request is already ${row.status}.`);
     return "already_decided";
@@ -287,10 +295,8 @@ export async function handleApprovalTap(cq: CallbackQuery): Promise<string | nul
   }
 
   // Approve: re-check the sender is still allowed (same link, two-factor first, Telegram on).
-  const { pocketSender } = await import("./pocket.server");
-  const s = await pocketSender(row.user_id, row.leg as LegId);
-  if (!s.ok || s.link.id !== row.link_id || s.address !== row.from_address) {
-    const why = s.ok ? "Your wallet link changed since this request." : s.reason;
+  const why = await approveBlocker(row);
+  if (why) {
     await supabaseAdmin.from("send_approvals").update({ status: "cancelled", decided_at: new Date().toISOString(), error: why.slice(0, 500) })
       .eq("id", row.id).eq("status", "pending");
     await editApprovalMessage(row, `❌ <b>Can't send</b>\n${what}\n${esc(why)}\nNothing was sent.`);
@@ -301,10 +307,28 @@ export async function handleApprovalTap(cq: CallbackQuery): Promise<string | nul
   const { data: ok } = await supabaseAdmin.from("send_approvals").update({ status: "approved", decided_at: new Date().toISOString() })
     .eq("id", row.id).eq("status", "pending").gt("expires_at", new Date().toISOString()).select("id");
   if (!ok?.length) { await answer("This request was already decided or ended."); return "already_decided"; }
-  await editApprovalMessage(row, `✅ <b>Approved</b>\n${what}\nSending now. You'll get a message when it's on the way.`);
+  await editApprovalMessage(row, row.purpose === "swap_out"
+    ? `✅ <b>Approved</b>\n${what}\nYour open Seeds Swap page sends it now, after one last price check. If you closed that page, nothing is sent.`
+    : `✅ <b>Approved</b>\n${what}\nSending now. You'll get a message when it's on the way.`);
   await answer("Approved. Sending now.");
   await continueAfter({ ...row, status: "approved" });
   return "approved";
+}
+
+/** Why an Approve tap can't be honoured any more (link changed, two-factor, Telegram…), or null. */
+async function approveBlocker(row: ApprovalRow): Promise<string | null> {
+  if (row.purpose === "swap_out") {
+    const { loadLink } = await import("@/lib/xchain/send.server");
+    const link = await loadLink(row.user_id);
+    if (!link || link.id !== row.link_id || !link.hasKey) return "Your wallet link changed since this request.";
+    if (!Object.values(link.addresses).includes(row.from_address)) return "Your wallet link changed since this request.";
+    return null;
+  }
+  const { pocketSender } = await import("./pocket.server");
+  const s = await pocketSender(row.user_id, row.leg as LegId);
+  if (!s.ok) return s.reason;
+  if (s.link.id !== row.link_id || s.address !== row.from_address) return "Your wallet link changed since this request.";
+  return null;
 }
 
 /** Scheduled sweep: end requests past their time and move their trades along. */
@@ -317,7 +341,7 @@ export async function expireDueApprovals() {
     .select(COLS);
   const rows = (data ?? []).map(norm);
   for (const r of rows) {
-    await editApprovalMessage(r, `⌛ <b>Send request ended</b>\n${fmt(r.amount)} ${esc(r.asset)} to <code>${esc(short(r.to_address))}</code>\nIt wasn't approved in time, so nothing was sent.`);
+    await editApprovalMessage(r, `⌛ <b>Send request ended</b>\n${fmt(r.amount)} ${esc(r.asset)} to <code>${esc(r.to_address)}</code>\nIt wasn't approved in time, so nothing was sent.`);
     await continueAfter(r);
   }
   return { expired: rows.length };

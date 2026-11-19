@@ -94,10 +94,19 @@ export const updateMyProfile = createServerFn({ method: "POST" })
     return row as unknown as Profile;
   });
 
+/** Connecting or unlinking Telegram moves where send approvals go: needs a fresh code when two-factor is on. */
+async function requireTelegramChangeCode(userId: string, claims: unknown) {
+  const { hasTwoFactor } = await import("./two-factor.server");
+  const { freshTwoFactor, telegramChangeProblem } = await import("./two-factor");
+  const problem = telegramChangeProblem({ on: await hasTwoFactor(userId), fresh: freshTwoFactor(claims as never, Math.floor(Date.now() / 1000)) });
+  if (problem) throw new Error(problem);
+}
+
 /** One-tap Telegram linking: returns a t.me link carrying a single-use code (stored hashed, 15 minutes). */
 export const startTelegramConnect = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    await requireTelegramChangeCode(context.userId, context.claims);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { newStartCode, sha256hex, telegramConfigured } = await import("./telegram.server");
     const { connectUrl } = await import("./telegram-bot");
@@ -113,7 +122,9 @@ export const startTelegramConnect = createServerFn({ method: "POST" })
 export const unlinkTelegram = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    await requireTelegramChangeCode(context.userId, context.claims);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: before } = await supabaseAdmin.from("profiles").select("telegram_chat_id, telegram_verified").eq("id", context.userId).maybeSingle();
     const { error } = await supabaseAdmin
       .from("profiles")
       .update({
@@ -124,6 +135,8 @@ export const unlinkTelegram = createServerFn({ method: "POST" })
       })
       .eq("id", context.userId);
     if (error) throw new Error(error.message);
+    const { telegramChatChanged } = await import("./telegram.server");
+    await telegramChatChanged(context.userId, before?.telegram_verified ? before.telegram_chat_id : null, null);
     const { emailAccountChange } = await import("@/lib/email/send.server");
     await emailAccountChange(context.userId, "Telegram alerts", ["Unlinked Telegram; alerts there have stopped"]);
     return { unlinked: true as const };

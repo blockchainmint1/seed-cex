@@ -76,3 +76,15 @@ describe("withdrawals need a wallet link made after two-factor was on", () => {
     expect(withdrawLinkProblem("ready")).toBeNull();
   });
 });
+
+import { TELEGRAM_CODE_NEEDED, telegramChangeProblem } from "./two-factor";
+
+describe("changing Telegram (audit #2 H1: code only, no wait)", () => {
+  test("with two-factor on, connecting or unlinking needs a recent code", () => {
+    expect(telegramChangeProblem({ on: true, fresh: false })).toBe(TELEGRAM_CODE_NEEDED);
+    expect(telegramChangeProblem({ on: true, fresh: true })).toBeNull();
+  });
+  test("without two-factor there's no code to ask for", () => {
+    expect(telegramChangeProblem({ on: false, fresh: false })).toBeNull();
+  });
+});

@@ -321,7 +321,7 @@ function Privacy() {
           />
         </Sub>
         <Sub title="Saved by the Honest.Money script">
-          <p>Every page of Seeds loads a small script from Honest.Money that tracks referrals across the ecosystem. It:</p>
+          <p>Seeds&rsquo; public information pages (such as the homepage, Ignite and these policies) load a small script from Honest.Money that tracks referrals across the ecosystem. It never runs on your Account, Admin, sign-in, trading, swap, P2P or wallet pages. It:</p>
           <List
             items={[
               <>saves a <B>referral cookie</B> (&ldquo;hm_ref&rdquo;) for 30 days when you arrive through someone&rsquo;s referral link, shared across honest.money sites;</>,
@@ -370,7 +370,7 @@ function Privacy() {
             items={[
               "the page address, without anything typed after a \"?\", and with invite codes and payment-link numbers hidden;",
               "the name of the website that sent you, if any (for example honest.money), on the first page of a visit;",
-              "your country, as a two-letter code worked out by our hosting provider — never your IP address;",
+              "your country, as a two-letter code our hosting provider works out from your IP address as the page loads. We keep the country, never the IP address itself;",
               "whether you're on a desktop, phone or tablet;",
               "a random visit number that lives only until you close the tab, so several pages count as one visit.",
             ]}
@@ -378,7 +378,10 @@ function Privacy() {
           <p>
             It doesn&rsquo;t save your name, member ID, email, IP address or wallet, and uses no cookies. Only
             totals are shown on the stats page; nobody outside the Seeds team can see single visits. Each
-            record is deleted after one year.
+            record is deleted after one year. To stop anyone flooding the counter, we also keep a scrambled
+            (one-way hashed) form of your connection&rsquo;s address for ten minutes, just to count how many pages
+            it opened that minute; it can&rsquo;t be turned back into the address and is then deleted. The same
+            short-lived count limits how often one connection can ask for swap prices.
           </p>
         </Sub>
       </Section>

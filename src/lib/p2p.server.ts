@@ -161,7 +161,7 @@ export async function continueP2pRelease(tradeId: string) {
     return null;
   }
   const amount = Number(t.crypto_amount);
-  const spent = await spendApproval({ purpose: "p2p_release", refId: t.id, leg, userId: t.seller_id, linkId: s.link.id, amount, to: t.buyer_address })
+  const spent = await spendApproval({ purpose: "p2p_release", refId: t.id, leg, userId: t.seller_id, linkId: s.link.id, amount, from: s.address, to: t.buyer_address })
     .catch(() => null);
   if (!spent) return null; // another worker already took it
   let sent: { txid: string };

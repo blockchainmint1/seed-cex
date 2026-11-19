@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ArrowDownUp, Check, Clock, ExternalLink, ShieldCheck, Wallet, X } from "lucide-react";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PROTOCOL_LABEL, SWAP_COINS, swapCoin, swapCoinGroup, type Protocol, type SwapCoin, type SwapCoinId } from "@/lib/xchain/assets";
-import { getSwapQuotes, getSwapSendContext, getSwapStatus, sendSwap } from "@/lib/xchain/swap.functions";
-import { landsOutsideHmeWallet, receivePocket, sendBlocker, sendSource, SWAP_LIMITS, TRACKER_NAME, trackerUrl } from "@/lib/xchain/send-rules";
+import { getSwapApproval, getSwapQuotes, getSwapSendContext, getSwapStatus, sendSwap } from "@/lib/xchain/swap.functions";
+import { isOwnPocketDestination, landsOutsideHmeWallet, receivePocket, sendBlocker, sendSource, SWAP_LIMITS, TRACKER_NAME, trackerUrl } from "@/lib/xchain/send-rules";
+import { CodeField } from "@/components/account/CodeField";
+import { proveTwoFactor } from "@/components/account/two-factor";
 import { useSession } from "@/hooks/use-session";
 import { TSD_BUY_COINS, TSD_SELL_COINS, TsdRouteResult } from "@/components/swap/TsdRoute";
 import { getTsdRouteQuote } from "@/lib/xchain/tsd-route.functions";
@@ -544,14 +546,43 @@ function SendPanel(props: {
 }) {
   const qc = useQueryClient();
   const send = useServerFn(sendSwap);
+  const checkApproval = useServerFn(getSwapApproval);
   const [agree, setAgree] = useState(false);
+  const [code, setCode] = useState("");
+  const [approval, setApproval] = useState<{ id: string; expiresAt: string } | null>(null);
+  const [approvalEnded, setApprovalEnded] = useState<string | null>(null);
+  // Paying anywhere but the member's own pocket needs a fresh code + a Telegram tap (audit H2).
+  const outside = !isOwnPocketDestination(props.to, props.ctx?.link?.addresses as Record<string, string> | undefined, props.destination);
+  const input = { from: props.from.id, to: props.to.id, amount: props.amount, destination: props.destination, shownOut: props.expectedOut, protocol: props.protocol };
   const mutation = useMutation({
-    mutationFn: () =>
-      send({ data: { from: props.from.id, to: props.to.id, amount: props.amount, destination: props.destination, shownOut: props.expectedOut, protocol: props.protocol } }),
-    onSettled: () => qc.invalidateQueries({ queryKey: ["swap-send-ctx"] }),
+    mutationFn: async (approvalId?: string) => {
+      if (outside && !approvalId) await proveTwoFactor(code);
+      return send({ data: { ...input, approvalId } });
+    },
+    onSuccess: (r) => {
+      if (r.needsApproval) { setApproval({ id: r.approvalId, expiresAt: r.expiresAt }); setApprovalEnded(null); }
+      else setApproval(null);
+    },
+    onError: () => setApproval(null),
+    onSettled: () => { setCode(""); qc.invalidateQueries({ queryKey: ["swap-send-ctx"] }); },
   });
+  const tap = useQuery({
+    queryKey: ["swap-approval", approval?.id ?? null],
+    queryFn: () => checkApproval({ data: { id: approval!.id } }),
+    enabled: Boolean(approval) && !mutation.isPending,
+    refetchInterval: 3000,
+  });
+  const tapStatus = tap.data?.status;
+  useEffect(() => {
+    if (!approval || !tapStatus || mutation.isPending) return;
+    if (tapStatus === "approved") mutation.mutate(approval.id);
+    else if (tapStatus !== "pending") {
+      setApproval(null);
+      setApprovalEnded(tapStatus === "declined" ? "You declined it in Telegram. Nothing was sent." : "The Telegram request ended without an Approve tap. Nothing was sent.");
+    }
+  }, [approval, tapStatus, mutation]);
 
-  if (mutation.data) {
+  if (mutation.data && !mutation.data.needsApproval) {
     return (
       <div className="space-y-2 rounded-sm border border-primary bg-primary/10 p-3 text-xs">
         <p className="font-semibold">Sent. {PROTOCOL_LABEL[props.protocol]} is swapping it now.</p>
@@ -589,6 +620,21 @@ function SendPanel(props: {
       <p className="text-xs">
         To <span className="block truncate font-mono text-[10px] text-muted-foreground">{props.destination}</span>
       </p>
+      {approval ? (
+        <div role="status" className="space-y-1 rounded-sm border border-primary bg-primary/10 p-3 text-xs">
+          <p className="font-semibold">Check Telegram and tap Approve.</p>
+          <p className="text-muted-foreground">Keep this page open: it sends as soon as it sees your tap, after one last price check. Nothing moves until then.</p>
+        </div>
+      ) : null}
+      {approvalEnded ? <p className="text-xs text-muted-foreground">{approvalEnded}</p> : null}
+      {outside && !approval ? (
+        <div className="space-y-2 rounded-sm border border-border p-3">
+          <p className="text-xs text-muted-foreground">
+            This pays an outside address, not your own pocket, so it needs the code from your authenticator app and then your Approve tap in Telegram.
+          </p>
+          <CodeField id="swap-outside-code" value={code} onChange={setCode} />
+        </div>
+      ) : null}
       <label className="flex items-start gap-2 text-xs text-muted-foreground">
         <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-0.5 accent-primary" />
         <span>
@@ -597,11 +643,11 @@ function SendPanel(props: {
       </label>
       <button
         type="button"
-        disabled={!agree || mutation.isPending}
-        onClick={() => mutation.mutate()}
+        disabled={!agree || mutation.isPending || Boolean(approval) || (outside && code.length !== 6)}
+        onClick={() => mutation.mutate(undefined)}
         className="h-10 w-full rounded-md bg-action text-sm font-semibold text-action-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
       >
-        {mutation.isPending ? "Re-checking and sending…" : `Send ${props.amount} ${props.from.symbol}`}
+        {mutation.isPending ? "Re-checking and sending…" : approval ? "Waiting for your tap in Telegram…" : outside ? `Ask Telegram to approve ${props.amount} ${props.from.symbol}` : `Send ${props.amount} ${props.from.symbol}`}
       </button>
       {mutation.error ? (
         <p role="alert" className="font-mono text-xs text-destructive">

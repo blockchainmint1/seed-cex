@@ -132,3 +132,31 @@ export const TRACKER_NAME: Record<Protocol, string> = { thorchain: "RuneScan", m
 export function thorTxId(txid: string): string {
   return txid.replace(/^0x/i, "").toUpperCase();
 }
+
+/* --------------------------- outside destinations --------------------------- */
+
+/** Error text the Swap page recognises to show its authenticator-code box. */
+export const SWAP_CODE_NEEDED = "Enter the 6-digit code from your authenticator app to send this swap to an outside address.";
+
+/**
+ * True when a swap pays out to the member's own linked pocket for that coin.
+ * EVM addresses compare without case (checksums); every other chain compares exactly.
+ */
+export function isOwnPocketDestination(to: SwapCoin, addresses: Partial<Record<string, string>> | null | undefined, destination: string): boolean {
+  const pocket = receivePocket(to);
+  const own = pocket ? addresses?.[pocket] : undefined;
+  if (!own || !destination) return false;
+  return pocket === "EVM" ? own.toLowerCase() === destination.trim().toLowerCase() : own === destination.trim();
+}
+
+/**
+ * Audit 2026-11-19 H2: a swap paying out anywhere except the member's own pocket is a
+ * withdrawal, so it needs two-factor on, a code entered in the last 10 minutes, and a
+ * verified Telegram chat for the Approve tap. Null when the request may be sent to Telegram.
+ */
+export function outsideSwapProblem(i: { twoFactorOn: boolean; fresh: boolean; telegramVerified: boolean }): string | null {
+  if (!i.twoFactorOn) return "Sending a swap to an outside address needs two-factor sign-in. Turn it on in Account → Security, or send it to your own pocket.";
+  if (!i.fresh) return SWAP_CODE_NEEDED;
+  if (!i.telegramVerified) return "Connect Telegram (Account → Alerts). A swap to an outside address waits for your Approve tap in Telegram.";
+  return null;
+}

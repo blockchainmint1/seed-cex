@@ -1,3 +1,4 @@
+import { HonestMoneyScripts } from "@/components/site/HonestMoneyScripts";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -114,8 +115,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
     ],
     scripts: [
-      { src: "https://honest.money/hm.js", async: true },
-      { src: "https://help.honest.money/api/public/widget.js", defer: true, "data-ecosystem": "seeds", "data-brand-name": "Seeds", "data-context": "Seeds", "data-theme": "auto" } as never,
       {
         children:
           "try{if(localStorage.getItem('seeds-theme')==='light')document.documentElement.classList.remove('dark')}catch(e){}",
@@ -166,6 +165,7 @@ function RootComponent() {
         </main>
         <SiteFooter />
         <VisitCounter />
+        <HonestMoneyScripts />
       </div>
     </QueryClientProvider>
   );

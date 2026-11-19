@@ -135,8 +135,8 @@ export function tradeApprovalOutcome(legs: LegApproval[]): "send" | "wait" | "ca
 
 /** An approval may be spent only for exactly what was approved. */
 export function approvalMatches(
-  row: { status: string; expiresAtMs: number; userId: string; linkId: string; leg: string; amount: number; toAddress: string },
-  want: { userId: string; linkId: string; leg: string; amount: number; toAddress: string; nowMs: number },
+  row: { status: string; expiresAtMs: number; userId: string; linkId: string; leg: string; amount: number; fromAddress: string; toAddress: string },
+  want: { userId: string; linkId: string; leg: string; amount: number; fromAddress: string; toAddress: string; nowMs: number },
 ): boolean {
   return (
     row.status === "approved" &&
@@ -145,6 +145,7 @@ export function approvalMatches(
     row.linkId === want.linkId &&
     row.leg === want.leg &&
     Math.abs(row.amount - want.amount) <= 1e-8 &&
+    row.fromAddress === want.fromAddress &&
     row.toAddress === want.toAddress
   );
 }

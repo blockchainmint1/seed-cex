@@ -4,6 +4,7 @@
  * "Add new coins" button and the server agree on what a link holds.
  */
 import { POCKET_SPECS, accountPath, parseAccountPath, type PocketCoin } from "./pockets/coins";
+import { HME_WALLET_CANT_HOLD } from "./pockets/hme-support";
 
 /** Pockets requested from every wallet today (HME Wallet derives these five). */
 export const ALLOWED_CHAINS = ["TXC", "ISK", "BTC", "LTC", "EVM"] as const;
@@ -54,11 +55,25 @@ export function refuseDroppedCoins(coins: PocketCoin[]): string {
  * and any link that leaves out a coin the active link holds (an older wallet
  * or approve-every-trade would otherwise wipe keys to coins HME Wallet can't move).
  */
-export function replaceProblem(active: LinkLike | null, incoming: { account: number; chains: PocketCoin[] }): string | null {
+export function replaceProblem(
+  active: (LinkLike & { mode?: string; hasKey?: boolean }) | null,
+  incoming: { account: number; chains: PocketCoin[]; mode?: string },
+): string | null {
   if (!active) return null;
   if (incoming.account !== active.account) return REFUSE_OTHER_POCKET;
+  // Audit carry-over: instant access -> approve-each-trade hands Seeds no key, so Seeds would
+  // drop its key to coins HME Wallet can't move. That must be a deliberate revoke, not a re-link.
+  if (active.mode === "access" && active.hasKey && incoming.mode !== undefined && incoming.mode !== "access") {
+    const extra = linkCoins(active).filter((c) => (HME_WALLET_CANT_HOLD as string[]).includes(c));
+    if (extra.length) return refuseApproveSwitch(extra);
+  }
   const dropped = linkCoins(active).filter((c) => !incoming.chains.includes(c));
   return dropped.length ? refuseDroppedCoins(dropped) : null;
+}
+
+export function refuseApproveSwitch(coins: PocketCoin[]): string {
+  return `Switching to approve-each-trade would delete Seeds' key to your ${coins.join(", ")} pocket, and HME Wallet can't move those coins. ` +
+    "Swap them back to TSD on Seeds first, then revoke Seeds' access (Account → Security) and link again. Nothing was changed.";
 }
 
 /** Short member-facing names for a list of pocket coins. */

@@ -134,7 +134,7 @@ function NoKyc() {
             "Trading records: orders, trades, settlements, prices, sizes and times.",
             "P2P records: your seller profile (handle, bio, country, languages, hours, score, feedback), your ads, trade chats and any files either side uploads in a dispute.",
             "For the Ignite class only: your full name, email, country and phone number, so we can run the class. That is contact information for an event, not an identity check.",
-            "Site analytics: pages, referring website, country and rough device type, with no IP address or name. Kept 90 days in detail, and Seeds\u2019 own anonymous visit counts for a year.",
+            "Site analytics: pages, referring website, country (worked out from your IP address by our host, which we don't keep) and rough device type, with no IP address or name. Kept 90 days in detail, and Seeds\u2019 own anonymous visit counts for a year.",
           ]}
         />
         <p>

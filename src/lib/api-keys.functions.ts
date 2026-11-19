@@ -24,7 +24,7 @@ export const createApiKey = createServerFn({ method: "POST" })
     z
       .object({
         label: z.string().trim().min(1).max(60).default("Bot key"),
-        scopes: z.array(z.enum(SCOPES)).min(1).default(["read"]),
+        scopes: z.array(z.enum(SCOPES)).min(1).max(SCOPES.length).default(["read"]),
         ipAllowlist: z.array(z.string().trim().max(45)).max(10).default([]),
       })
       .parse(input ?? {}),

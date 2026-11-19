@@ -2566,6 +2566,7 @@ export type Database = {
       reserve_gas_topup: {
         Args: {
           _daily_max_usd: number
+          _member_daily_max_usd?: number
           _per_route_max_usd: number
           _route_id: string
           _to_address: string
@@ -2611,6 +2612,7 @@ export type Database = {
           _per_swap_max_usd: number
           _pocket: string
           _protocol: string
+          _route_id?: string
           _router: string
           _to_asset: string
           _user_id: string

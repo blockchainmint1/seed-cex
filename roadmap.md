@@ -156,3 +156,15 @@
 - [x] Maya swaps: send BTC/ETH/USDC/USDT through Maya from pockets, and TSD routes pick the better of THORChain/Maya with fallback (admin-only pilot, same caps) (Nov 19)
 - [x] Maya second server: Bobby decided not to run our own box for now (Nov 19); use Liquify's independent public Maya server (api-maya.liquify.com) as the second check, counted only when its node id differs
 - [ ] Maya pilot: first small real Maya swap (blocked: Bobby presses Send)
+
+## Security audit #2 (Nov 19) — Bobby's choices: swaps to outside addresses = Telegram tap + 2FA code; new Telegram = code only, no wait; Honest.Money scripts on public pages only; no limit-order guard yet
+- [x] H1 Telegram connect/disconnect needs a fresh 2FA code (when 2FA on); old chat told
+- [x] H2 Swaps (THORChain, Maya, TSD routes) paying outside the member's own pocket need fresh 2FA code + Telegram tap
+- [x] H3 Remove legacy instant-withdrawal functions and legacy-authorization auto-send
+- [x] H4 Honest.Money scripts off Account/Admin/welcome/wallet pages
+- [x] M1 Pilot swap/TSD/PulseChain paths use full admin check (12-hour code)
+- [x] M3 Visit counter rate limit + scheduled prune
+- [x] M5 Size caps on every list input (zod advisory)
+- [x] L1 approval match includes sending address; L2 full address on P2P approvals; L3 rate-limit public quote lookups; L5 onboarding save = update; L6 privacy wording on country
+- [x] Carry-overs: daily swap cap counts open TSD routes; gas top-up per-member cap; re-link keeps in-flight TSD routes; public quotes without Seeds' TSD Bridge key; no key on redirects; approve-mode re-link keeps extra-coin keys
+- [ ] Auditor response file

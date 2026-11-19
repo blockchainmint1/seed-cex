@@ -23,7 +23,7 @@ import { addressFor, solAddress } from "@/lib/pockets/encode";
 import { PROTOCOL_LABEL, swapCoin, type Protocol, type SwapCoin } from "./assets";
 import { destinationValid, toBaseUnits } from "./safety";
 import { allowanceData, approveData, DECIMALS_CALL, depositWithExpiryData, NATIVE_ASSET, roundTo1e8Units, tokenContract, toTokenUnits } from "./evm-router";
-import { MIN_SEND_QUOTE_SECONDS, requoteOk, SEND_PROTOCOL, SEND_PROTOCOLS, sendBlocker, sendSource, SWAP_LIMITS, swapProgress, thorTxId, type SendKind, type ThorTxStatus } from "./send-rules";
+import { isOwnPocketDestination, outsideSwapProblem, MIN_SEND_QUOTE_SECONDS, requoteOk, SEND_PROTOCOL, SEND_PROTOCOLS, sendBlocker, sendSource, SWAP_LIMITS, swapProgress, thorTxId, type SendKind, type ThorTxStatus } from "./send-rules";
 import type { SendPlan } from "./router.server";
 
 export type SwapLink = { id: string; mode: string; account: number; hasKey: boolean; pockets: PocketCoin[]; addresses: Partial<Record<PocketCoin, string>> };
@@ -284,7 +284,13 @@ export async function withPocketKey<T>(ciphertext: string | null, pocket: Pocket
 /** A TSD route's THORChain leg: the route was gated when it started; the leg allows more drift (it runs later). */
 export type RouteLegOptions = { routeId: string; tolerance: number };
 
-export async function sendSwapFromPocket(userId: string, isAdmin: boolean, input: SendSwapInput, leg?: RouteLegOptions) {
+/** Member-started sends only: the session's claims (fresh two-factor) and, on the second call, the Telegram approval. */
+export type MemberSendOptions = { claims: unknown; approvalId?: string };
+
+/** Returned instead of sending when a swap to an outside address is waiting for the member's Telegram tap. */
+export type SwapNeedsApproval = { needsApproval: true; approvalId: string; expiresAt: string };
+
+export async function sendSwapFromPocket(userId: string, isAdmin: boolean, input: SendSwapInput, leg?: RouteLegOptions, member?: MemberSendOptions) {
   const from = swapCoin(input.from);
   const to = swapCoin(input.to);
   const protocol: Protocol = input.protocol ?? SEND_PROTOCOL;
@@ -321,11 +327,42 @@ export async function sendSwapFromPocket(userId: string, isAdmin: boolean, input
   if (from.evm && !plan.router) throw new Error(`${label} named no confirmed router contract.`);
 
   const fromAddress = link!.addresses[src.pocket]!;
+
+  // Audit 2026-11-19 H2: paying out anywhere but the member's own pocket is a withdrawal.
+  // It needs a fresh two-factor code and a Telegram Approve tap for exactly this send.
+  // TSD-route legs (leg set) always pay the member's own pocket and never get here unchecked.
+  if (!isOwnPocketDestination(to, link!.addresses, input.destination)) {
+    if (leg || !member) throw new Error("This swap can only pay out to your own pocket. Nothing was sent.");
+    const amountCoins = Number(amount) / 1e8;
+    const { spendApproval, requestSendApproval } = await import("@/lib/pocket-send/approvals.server");
+    if (!member.approvalId) {
+      const { hasTwoFactor } = await import("@/lib/two-factor.server");
+      const { freshTwoFactor } = await import("@/lib/two-factor");
+      const { data: prof } = await supabaseAdmin.from("profiles").select("telegram_verified").eq("id", userId).maybeSingle();
+      const problem = outsideSwapProblem({
+        twoFactorOn: await hasTwoFactor(userId),
+        fresh: freshTwoFactor(member.claims as never, Math.floor(Date.now() / 1000)),
+        telegramVerified: prof?.telegram_verified === true,
+      });
+      if (problem) throw new Error(problem);
+      const ap = await requestSendApproval({
+        userId, linkId: link!.id, purpose: "swap_out", refId: crypto.randomUUID(), leg: from.id, asset: from.symbol,
+        amount: amountCoins, from: fromAddress, to: input.destination,
+        what: `Swap to about ${route.expectedOut} ${to.symbol} (${to.network}) via ${label}, paid to an outside address`,
+        meta: { from: from.id, to: to.id, protocol, shownOut: input.shownOut },
+      });
+      return { needsApproval: true, approvalId: ap.id, expiresAt: ap.expires_at } satisfies SwapNeedsApproval;
+    }
+    await spendApproval({
+      purpose: "swap_out", id: member.approvalId, leg: from.id, userId, linkId: link!.id,
+      amount: amountCoins, from: fromAddress, to: input.destination,
+    });
+  }
   const { data: id, error } = await supabaseAdmin.rpc("reserve_swap_send", {
     _user_id: userId, _link_id: link!.id, _protocol: protocol, _pocket: src.pocket, _from_asset: from.asset, _to_asset: to.asset,
     _amount_in: Number(amount) / 1e8, _amount_usd: Math.round(inputUsd! * 100) / 100, _expected_out: route.expectedOut, _min_out: route.minOut ?? 0,
     _from_address: fromAddress, _destination: input.destination, _vault: plan.vault, _router: plan.router ?? "", _memo: plan.memo,
-    _per_swap_max_usd: SWAP_LIMITS.perSwapUsd, _daily_max_usd: SWAP_LIMITS.dailyUsd,
+    _per_swap_max_usd: SWAP_LIMITS.perSwapUsd, _daily_max_usd: SWAP_LIMITS.dailyUsd, _route_id: leg?.routeId,
   });
   if (error || !id) throw new Error(cleanDbError(error?.message ?? "Could not reserve this swap."));
   const rowId = id as string;
@@ -357,7 +394,7 @@ export async function sendSwapFromPocket(userId: string, isAdmin: boolean, input
       `Expected about ${route.expectedOut} ${to.symbol} to ${input.destination}; refund instead if it would be under ${route.minOut ?? "the limit"}`,
       `Network transaction ${sent.txid}`,
     ]);
-    return { id: rowId, txid: sent.txid, expectedOut: route.expectedOut, minOut: route.minOut, protocol };
+    return { needsApproval: false as const, id: rowId, txid: sent.txid, expectedOut: route.expectedOut, minOut: route.minOut, protocol };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     // A txid we stored may still have reached the network if the broadcast timed out.

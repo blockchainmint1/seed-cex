@@ -69,56 +69,15 @@ export const listAuthorizations = createServerFn({ method: "GET" })
   });
 
 /**
- * Authorize a capped, expiring slice of the caller's wallet on one chain.
- *
- * What is handed over is a *branch* key (account 9'), never the seed and never
- * the savings branch. The server proves the key matches the address it claims
- * before storing it, encrypted, under SEEDS_DELEGATION_KEY.
+ * Retired (audit #2, 2026-11-19, H3). Browser-vault authorizations handed Seeds a key that
+ * could send without withdrawal levels, two-factor or a Telegram tap. Nobody ever held one,
+ * and the database now refuses new rows too. Trading uses the HME Wallet link instead.
  */
 export const grantAuthorization = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(grantInput)
-  .handler(async ({ data, context }) => {
-    const chain = getChain(data.chain);
-    if (data.path !== chain.sharedPath) {
-      throw new Error("Only the dedicated trading branch can be authorized");
-    }
-    if (!chain.assets.some((a) => a.symbol === data.asset)) {
-      throw new Error(`${data.asset} is not supported on ${chain.name}`);
-    }
-
-    // Never trust the claimed address — re-derive it from the key.
-    const priv = hexToBytes(data.privateKeyHex.toLowerCase());
-    const derived = chain.bech32Hrp
-      ? p2wpkhAddressFromPubkey(secp256k1.getPublicKey(priv, true), chain.bech32Hrp)
-      : chain.evmChainId === null
-        ? p2pkhAddressFromPubkey(secp256k1.getPublicKey(priv, true), chain.p2pkhVersion ?? 66)
-        : evmAddressFromPubkey(secp256k1.getPublicKey(priv, false));
-    if (derived.toLowerCase() !== data.address.toLowerCase()) {
-      throw new Error("The authorized key does not match its address");
-    }
-
-    const { encryptDelegatedKey } = await import("@/lib/delegation.server");
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-    const expires = new Date(Date.now() + data.hours * 3_600_000).toISOString();
-    const { error } = await supabaseAdmin.from("wallet_delegations").upsert(
-      {
-        user_id: context.userId,
-        chain: data.chain,
-        asset: data.asset,
-        trading_path: data.path,
-        trading_address: derived,
-        key_ciphertext: encryptDelegatedKey(data.privateKeyHex.toLowerCase()),
-        max_amount: data.maxAmount,
-        expires_at: expires,
-        revoked_at: null,
-        label: data.label ?? null,
-      },
-      { onConflict: "user_id,chain,asset" },
-    );
-    if (error) throw new Error(error.message);
-    return { ok: true, expiresAt: expires };
+  .handler(async (): Promise<{ ok: true; expiresAt: string }> => {
+    throw new Error("Old trading authorizations are retired. Link your HME Wallet from Account → Security instead.");
   });
 
 /** Revocation is a hard DELETE — the ciphertext stops existing. */

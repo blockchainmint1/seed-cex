@@ -40,7 +40,8 @@ function Sso() {
     if (!token) return setError("Missing sign-in ticket.");
     (async () => {
       try {
-        const ref = (window as unknown as { honestMoney?: { ref: () => string } }).honestMoney?.ref?.() || undefined;
+        // Honest.Money's script doesn't run on this page (audit M4), so read the referral it saved directly.
+        const ref = savedHmRef() || undefined;
         const r = await redeem({ data: { token, ref } });
         if (!r.tokenHash) return setLegacy({ state: r.legacy ?? "failed", to: r.to ?? "your email" });
         const { error: err } = await supabase.auth.verifyOtp({ type: "magiclink", token_hash: r.tokenHash });
@@ -88,3 +89,11 @@ function LegacyNotice({ state, to }: { state: "sent" | "limited" | "failed"; to:
   );
 }
 
+
+/** The referral code Honest.Money's script saved on an earlier public page (cookie, else local storage). */
+function savedHmRef(): string {
+  const m = document.cookie.match(/(?:^|; )hm_ref=([^;]+)/);
+  let v = m ? decodeURIComponent(m[1]) : "";
+  if (!v) try { v = localStorage.getItem("hm_ref") ?? ""; } catch { v = ""; }
+  return v.toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 40);
+}

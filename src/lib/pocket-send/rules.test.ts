@@ -93,11 +93,12 @@ describe("exchange trades move all-or-nothing", () => {
 });
 
 test("an approval is spent only for exactly what was approved", () => {
-  const row = { status: "approved", expiresAtMs: 2_000, userId: "u", linkId: "l", leg: "tsd", amount: 250, toAddress: "Tbuyer" };
-  const want = { userId: "u", linkId: "l", leg: "tsd", amount: 250, toAddress: "Tbuyer", nowMs: 1_000 };
+  const row = { status: "approved", expiresAtMs: 2_000, userId: "u", linkId: "l", leg: "tsd", amount: 250, fromAddress: "Tpocket", toAddress: "Tbuyer" };
+  const want = { userId: "u", linkId: "l", leg: "tsd", amount: 250, fromAddress: "Tpocket", toAddress: "Tbuyer", nowMs: 1_000 };
   expect(approvalMatches(row, want)).toBe(true);
   expect(approvalMatches(row, { ...want, amount: 251 })).toBe(false);
   expect(approvalMatches(row, { ...want, toAddress: "Tother" })).toBe(false);
+  expect(approvalMatches(row, { ...want, fromAddress: "Tnewpocket" })).toBe(false);
   expect(approvalMatches(row, { ...want, linkId: "l2" })).toBe(false);
   expect(approvalMatches(row, { ...want, nowMs: 2_000 })).toBe(false);
   expect(approvalMatches({ ...row, status: "used" }, want)).toBe(false);

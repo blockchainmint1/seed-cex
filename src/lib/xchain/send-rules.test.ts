@@ -123,3 +123,25 @@ describe("sending into Maya", () => {
     expect(trackerUrl("thorchain", "0xabc")).toBe("https://runescan.io/tx/ABC");
   });
 });
+
+import { isOwnPocketDestination, outsideSwapProblem, SWAP_CODE_NEEDED } from "./send-rules";
+
+describe("swaps paying an outside address (audit #2 H2)", () => {
+  const btc = swapCoin("BTC")!;
+  const eth = swapCoin("ETH")!;
+  const pockets = { BTC: "bc1qown", EVM: "0xAbCdEf0000000000000000000000000000000001" };
+  test("the member's own pocket is not outside; EVM ignores letter case", () => {
+    expect(isOwnPocketDestination(btc, pockets, "bc1qown")).toBe(true);
+    expect(isOwnPocketDestination(eth, pockets, "0xabcdef0000000000000000000000000000000001")).toBe(true);
+  });
+  test("any other address is outside, and so is a coin with no pocket", () => {
+    expect(isOwnPocketDestination(btc, pockets, "bc1qsomeoneelse")).toBe(false);
+    expect(isOwnPocketDestination(btc, {}, "bc1qown")).toBe(false);
+  });
+  test("outside needs two-factor on, a fresh code, then a Telegram tap", () => {
+    expect(outsideSwapProblem({ twoFactorOn: false, fresh: true, telegramVerified: true })).toContain("two-factor");
+    expect(outsideSwapProblem({ twoFactorOn: true, fresh: false, telegramVerified: true })).toBe(SWAP_CODE_NEEDED);
+    expect(outsideSwapProblem({ twoFactorOn: true, fresh: true, telegramVerified: false })).toContain("Telegram");
+    expect(outsideSwapProblem({ twoFactorOn: true, fresh: true, telegramVerified: true })).toBeNull();
+  });
+});

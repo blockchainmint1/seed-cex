@@ -13,14 +13,12 @@ const quoteInput = z.object({
 export const getTsdRouteQuote = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => quoteInput.parse(input))
   .handler(async ({ data }) => {
+    const { requireIpAllowance } = await import("@/lib/ip-rate.server");
+    const { IP_LIMITS } = await import("@/lib/ip-rate");
+    await requireIpAllowance("quote", IP_LIMITS.quote);
     const { quoteTsdRoute } = await import("./tsd-route.server");
     return quoteTsdRoute(data.direction, swapCoin(data.coin)!, data.amount);
   });
-
-async function callerIsAdmin(supabase: { from: (t: "user_roles") => any }, userId: string): Promise<boolean> {
-  const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId).eq("role", "admin").maybeSingle();
-  return Boolean(data);
-}
 
 /** Signed-in: the member's TSD swaps, nudged forward first (each step is claimed, so this is safe to repeat). */
 export const getTsdRoutes = createServerFn({ method: "GET" })
@@ -44,7 +42,9 @@ export const startTsdSwap = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => startInput.parse(input))
   .handler(async ({ data, context }) => {
-    const isAdmin = await callerIsAdmin(context.supabase as never, context.userId);
+    const { pilotAdminAccess } = await import("@/lib/admin-guard");
+    const { SEND_PILOT_ADMIN_ONLY } = await import("./send-rules");
+    const isAdmin = await pilotAdminAccess(context as never, SEND_PILOT_ADMIN_ONLY);
     const { startTsdRoute } = await import("./tsd-route.server");
     return startTsdRoute(context.userId, isAdmin, data);
   });

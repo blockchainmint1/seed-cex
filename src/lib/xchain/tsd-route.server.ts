@@ -273,10 +273,23 @@ async function notify(r: Row, text: string) {
   }
 }
 
+/**
+ * The pocket key for this route's next step. A same-pocket re-link (HME Wallet adding coins)
+ * replaces the link record but not the pocket, so the route carries on with the new record
+ * as long as every address it uses is still the same (audit 2026-11-19 carry-over). A revoke stops it.
+ */
 async function ciphertextFor(r: Row): Promise<string | null> {
-  const { data } = await supabaseAdmin.from("hme_links").select("key_ciphertext, status").eq("id", r.link_id!).maybeSingle();
-  if (!data || data.status !== "active") throw new Error("Your trading pocket was unlinked, so Seeds stopped this swap.");
-  return data.key_ciphertext;
+  const { data } = await supabaseAdmin.from("hme_links").select("key_ciphertext, status, revoked_by, account").eq("id", r.link_id!).maybeSingle();
+  if (data?.status === "active") return data.key_ciphertext;
+  if (data && data.revoked_by === "replaced") {
+    const { loadLink } = await import("./send.server");
+    const now = await loadLink(r.user_id);
+    const addrs = now ? Object.values(now.addresses) : [];
+    if (now && now.hasKey && now.account === data.account && now.addresses.TXC === r.txc_address && now.addresses.EVM === r.evm_address && addrs.includes(r.coin_address)) {
+      return now.ciphertext;
+    }
+  }
+  throw new Error("Your trading pocket was unlinked, so Seeds stopped this swap.");
 }
 
 const minutesSince = (iso: string) => (Date.now() - Date.parse(iso)) / 60_000;
@@ -308,6 +321,7 @@ async function sendLeg(r: Row, coin: SwapCoin): Promise<Partial<Row>> {
         from: buy ? BRIDGE_USDC_ID : coin.id, to: buy ? coin.id : BRIDGE_USDC_ID,
         amount: fmt(amountIn, buy ? 6 : 8), destination: buy ? r.coin_address : r.evm_address, shownOut, protocol,
       }, { routeId: r.id, tolerance: TSD_ROUTE.legTolerance });
+      if (sent.needsApproval) throw new Error("A TSD swap pays only your own pocket. Nothing was sent.");
       return move("swap_sent", { swap_send_id: sent.id, protocol });
     } catch (e) {
       if (e instanceof PriceMovedError) {

@@ -47,6 +47,18 @@ export function withdrawalTwoFactorProblem(input: { on: boolean; fresh: boolean;
   return null;
 }
 
+export const TELEGRAM_CODE_NEEDED =
+  "Enter the 6-digit code from your authenticator app to change where your Telegram approvals go.";
+
+/**
+ * Audit 2026-11-19 H1: the Telegram chat approves coins leaving a pocket, so connecting or
+ * unlinking it needs a code entered in the last 10 minutes whenever two-factor is on.
+ * Bobby's choice: code only, no waiting period. Null when the change may go ahead.
+ */
+export function telegramChangeProblem(input: { on: boolean; fresh: boolean }): string | null {
+  return input.on && !input.fresh ? TELEGRAM_CODE_NEEDED : null;
+}
+
 /** Admin reset of a member's authenticator: why it can't happen, or null. */
 export function resetProblem(input: { actorId: string; targetId: string; note: string; actorFresh: boolean; targetOn: boolean }): string | null {
   if (input.actorId === input.targetId) return "You can't reset your own two-factor. Ask another admin.";

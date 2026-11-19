@@ -107,7 +107,7 @@ export async function settlePocketLeg(userId: string, tradeId: string, leg: LegI
   let approvalId: string | null = null;
   let sent: Awaited<ReturnType<typeof sendFromPocket>>;
   try {
-    const approval = await spendApproval({ purpose: "trade_leg", refId: t.id, leg, userId: sender, linkId: s.link.id, amount, to });
+    const approval = await spendApproval({ purpose: "trade_leg", refId: t.id, leg, userId: sender, linkId: s.link.id, amount, from: s.address, to });
     approvalId = approval.id;
     sent = await sendFromPocket({
       link: s.link, leg, from: s.address, to, amount,

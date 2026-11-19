@@ -3,12 +3,20 @@ import { z } from "zod";
 import { DEX_NETWORK_IDS, DEX_NETWORKS, isAddress, isNative, NATIVE, tokenRisk, type DexNetwork, type TokenRisk } from "./venues";
 
 const net = z.enum(DEX_NETWORK_IDS as unknown as [DexNetwork, ...DexNetwork[]]);
-const tokenAddr = z.string().refine((a) => isAddress(a), "Not a coin address");
+/** Audit 2026-11-19 L3: public lookups fan out to blockchain providers, so each connection is rate-limited. */
+async function limitQuotes() {
+  const { requireIpAllowance } = await import("@/lib/ip-rate.server");
+  const { IP_LIMITS } = await import("@/lib/ip-rate");
+  await requireIpAllowance("quote", IP_LIMITS.quote);
+}
+
+const tokenAddr = z.string().max(64).refine((a) => isAddress(a), "Not a coin address");
 
 /** Find coins by name, symbol or pasted contract address on Ethereum, Base, BNB Chain and PulseChain. */
 export const searchDexCoins = createServerFn({ method: "GET" })
   .inputValidator((i: unknown) => z.object({ q: z.string().max(80), network: net.optional() }).parse(i))
   .handler(async ({ data }) => {
+    await limitQuotes();
     const { searchDexTokens } = await import("./market.server");
     const rows = await searchDexTokens(data.q, data.network);
     if (rows.length || !isAddress(data.q.trim())) return rows;
@@ -43,6 +51,7 @@ export const quoteDexSwap = createServerFn({ method: "POST" })
     z.object({ network: net, tokenIn: tokenAddr, tokenOut: tokenAddr, amount: z.string().regex(/^\d+(\.\d+)?$/).max(40) }).parse(i),
   )
   .handler(async ({ data }): Promise<DexQuote> => {
+    await limitQuotes();
     const { fromUnits, quoteExactRoute, quoteRoutes, reverseRoute, toUnits, tokenInfo } = await import("./quote.server");
     const { tokenMarket } = await import("./market.server");
     if (data.tokenIn.toLowerCase() === data.tokenOut.toLowerCase()) throw new Error("Pick two different coins");

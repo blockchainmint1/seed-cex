@@ -27,7 +27,9 @@ export const requestPulseWithdrawalFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => requestInput.parse(input))
   .handler(async ({ data, context }) => {
-    const isAdmin = await callerIsAdmin(context.supabase as never, context.userId);
+    const { pilotAdminAccess } = await import("@/lib/admin-guard");
+    const { PULSE_WITHDRAW_PILOT_ADMIN_ONLY } = await import("./withdraw-rules");
+    const isAdmin = await pilotAdminAccess(context as never, PULSE_WITHDRAW_PILOT_ADMIN_ONLY);
     const { requestPulseWithdrawal } = await import("./withdraw.server");
     return requestPulseWithdrawal(context.userId, isAdmin, data, context.claims as never);
   });

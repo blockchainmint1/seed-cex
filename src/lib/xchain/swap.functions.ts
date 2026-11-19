@@ -25,6 +25,9 @@ const quoteInput = z.object({
 export const getSwapQuotes = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => quoteInput.parse(input))
   .handler(async ({ data }) => {
+    const { requireIpAllowance } = await import("@/lib/ip-rate.server");
+    const { IP_LIMITS } = await import("@/lib/ip-rate");
+    await requireIpAllowance("quote", IP_LIMITS.quote);
     const from = swapCoin(data.from)!;
     const to = swapCoin(data.to)!;
     if (from.id === to.id) throw new Error("Pick two different coins.");
@@ -61,6 +64,8 @@ const sendInput = z.object({
   destination: z.string().trim().min(10).max(128),
   shownOut: z.number().positive(),
   protocol: z.enum(["thorchain", "maya"]).optional().default("thorchain"),
+  /** Set on the second call, after the member tapped Approve in Telegram (outside addresses only). */
+  approvalId: z.string().uuid().optional(),
 });
 
 /** Signed-in: send a THORChain or Maya swap from the member's instant-access trading pocket. */
@@ -68,7 +73,26 @@ export const sendSwap = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => sendInput.parse(input))
   .handler(async ({ data, context }) => {
-    const isAdmin = await callerIsAdmin(context.supabase as never, context.userId);
+    const { pilotAdminAccess } = await import("@/lib/admin-guard");
+    const isAdmin = await pilotAdminAccess(context as never, SEND_PILOT_ADMIN_ONLY);
     const { sendSwapFromPocket } = await import("./send.server");
-    return sendSwapFromPocket(context.userId, isAdmin, data);
+    return sendSwapFromPocket(context.userId, isAdmin, data, undefined, { claims: context.claims, approvalId: data.approvalId });
+  });
+
+/** Signed-in: where my outside-address swap approval stands (the Swap page polls this). */
+export const getSwapApproval = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: row } = await context.supabase
+      .from("send_approvals")
+      .select("id, status, expires_at")
+      .eq("id", data.id)
+      .eq("user_id", context.userId)
+      .eq("purpose", "swap_out")
+      .maybeSingle();
+    if (!row) return { status: "missing" as const, expiresAt: null };
+    const live = Date.parse(row.expires_at) > Date.now();
+    const status = (row.status === "pending" || row.status === "approved") && !live ? "expired" : row.status;
+    return { status: status as string, expiresAt: row.expires_at };
   });

@@ -19,9 +19,12 @@ export const setMyOnboarding = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({ status: z.enum(["done", "skipped"]) }).parse(d))
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin
+    // Update only: an account's profile row is created at sign-in, never here (audit 2026-11-19 L5).
+    const { data: rows, error } = await supabaseAdmin
       .from("profiles")
-      .upsert({ id: context.userId, onboarding_status: data.status, onboarding_at: new Date().toISOString() }, { onConflict: "id" });
-    if (error) throw new Error("Couldn't save. Try again.");
+      .update({ onboarding_status: data.status, onboarding_at: new Date().toISOString() })
+      .eq("id", context.userId)
+      .select("id");
+    if (error || !rows?.length) throw new Error("Couldn't save. Try again.");
     return { status: data.status };
   });

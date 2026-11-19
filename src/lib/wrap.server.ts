@@ -70,11 +70,16 @@ export async function issuerFetch<T>(
         signal: controller.signal,
       });
     let res = await doFetch(`${cfg.baseUrl}${path}`);
-    // The issuer's app domain redirects to its custom domain; follow one hop
-    // preserving method and body.
+    // Follow one hop preserving method and body, but only on the same https origin:
+    // our API key must never be handed to another host (audit 2026-11-19 L1).
     if ([301, 302, 303, 307, 308].includes(res.status)) {
       const location = res.headers.get("location");
-      if (location) res = await doFetch(new URL(location, cfg.baseUrl).toString());
+      const next = location ? new URL(location, cfg.baseUrl) : null;
+      if (!next || next.protocol !== "https:" || next.origin !== new URL(cfg.baseUrl).origin) {
+        console.error(`[issuer] refused redirect off ${new URL(cfg.baseUrl).host} to ${next?.host ?? "nowhere"}`);
+        throw new Error("TSD Bridge moved to a different address. Nothing was sent; the Seeds team has to update the bridge address.");
+      }
+      res = await doFetch(next.toString());
     }
     const text = await res.text();
     let parsed: unknown = null;

@@ -201,6 +201,10 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
   const code = parseStartCode(msg.text);
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const now = new Date().toISOString();
+  const { data: owner } = code
+    ? await supabaseAdmin.from("profiles").select("telegram_chat_id, telegram_verified")
+        .eq("telegram_code", await sha256hex(code)).gt("telegram_code_expires_at", now).maybeSingle()
+    : { data: null };
   const { data: rows } = code
     ? await supabaseAdmin.from("profiles")
         .update({ telegram_chat_id: String(chatId), telegram_verified: true, telegram_code: null, telegram_code_expires_at: null })
@@ -212,8 +216,34 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
     return "no_match";
   }
   await sendTelegram(String(chatId), "<b>Seeds</b>\nAlerts are on. You'll hear from us when your orders fill and settle.").catch(() => {});
+  await telegramChatChanged(userId, owner?.telegram_verified ? owner.telegram_chat_id : null, String(chatId));
   const { emailAccountChange } = await import("@/lib/email/send.server");
   await emailAccountChange(userId, "Telegram alerts", [`Linked Telegram chat ending ${String(chatId).slice(-4)}`],
     "unlink Telegram on your profile, then sign out of Honest.Money everywhere and contact support@honest.money.");
   return "linked";
+}
+
+/**
+ * After the member's Telegram chat changed (new chat, or unlinked): tell the previous chat,
+ * and close any send approvals still waiting there so they can't be tapped from either chat.
+ * Never throws.
+ */
+export async function telegramChatChanged(userId: string, oldChatId: string | null | undefined, newChatId: string | null) {
+  if ((oldChatId ?? null) === newChatId) return;
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: live } = await supabaseAdmin.from("send_approvals").select("id").eq("user_id", userId).in("status", ["pending", "approved"]).limit(1);
+    if (live?.length) {
+      const { data: links } = await supabaseAdmin.from("hme_links").select("id").eq("user_id", userId);
+      const { cancelApprovals } = await import("@/lib/pocket-send/approvals.server");
+      for (const l of links ?? []) await cancelApprovals({ linkId: l.id }, "Your Telegram chat for Seeds changed.");
+    }
+    if (oldChatId) {
+      await sendTelegram(String(oldChatId), newChatId
+        ? "<b>Seeds</b>\nYour Seeds alerts and send approvals moved to a different Telegram chat. If that wasn't you, sign out of Honest.Money everywhere, then contact support@honest.money."
+        : "<b>Seeds</b>\nTelegram was unlinked from your Seeds account, so alerts and send approvals stop here. If that wasn't you, sign out of Honest.Money everywhere, then contact support@honest.money.");
+    }
+  } catch (e) {
+    console.error("[telegram] chat-change follow-up failed", e);
+  }
 }

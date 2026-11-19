@@ -56,3 +56,19 @@ export async function requireAdmin(ctx: RoleCtx): Promise<void> {
   if (!(await hasAdminRole(ctx))) throw new Error(NOT_ADMIN);
   if (!adminCodeFresh(ctx.claims as SessionClaims, Math.floor(Date.now() / 1000))) throw new Error(ADMIN_LOCKED);
 }
+
+/** Shown when an admin tries a pilot money action with the console locked. */
+export const PILOT_ADMIN_LOCKED =
+  "This is in a test with the Seeds team, and your admin console is locked. Open Admin, enter the code from your authenticator app, then try again.";
+
+/**
+ * Audit 2026-11-19 M1: pilot money paths (swaps, TSD swaps, PulseChain sends) count someone
+ * as an admin only with the role AND a code in the last 12 hours, like every other admin power.
+ * A locked admin gets PILOT_ADMIN_LOCKED while the pilot is admin-only; otherwise they're a member.
+ */
+export async function pilotAdminAccess(ctx: RoleCtx, pilotAdminOnly: boolean): Promise<boolean> {
+  if (!(await hasAdminRole(ctx))) return false;
+  if (adminCodeFresh(ctx.claims as SessionClaims, Math.floor(Date.now() / 1000))) return true;
+  if (pilotAdminOnly) throw new Error(PILOT_ADMIN_LOCKED);
+  return false;
+}

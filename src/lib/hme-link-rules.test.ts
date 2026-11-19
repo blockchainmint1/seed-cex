@@ -38,6 +38,17 @@ describe("replacing an active link", () => {
     expect(msg).toContain("DOGE");
     expect(msg).toContain("XMR");
   });
+  test("instant access -> approve-each-trade is refused while the link holds coins HME Wallet can't move", () => {
+    const active = { ...link(1106, ["TXC", "EVM", "DOGE", "SOL"]), mode: "access", hasKey: true };
+    const msg = replaceProblem(active, { account: 1106, chains: ["TXC", "EVM", "DOGE", "SOL"], mode: "approve" });
+    expect(msg).toContain("DOGE");
+    expect(msg).toContain("SOL");
+    expect(replaceProblem(active, { account: 1106, chains: ["TXC", "EVM", "DOGE", "SOL"], mode: "access" })).toBeNull();
+  });
+  test("instant access -> approve-each-trade is fine when every coin is one HME Wallet holds", () => {
+    const active = { ...link(1106, core), mode: "access", hasKey: true };
+    expect(replaceProblem(active, { account: 1106, chains: core, mode: "approve" })).toBeNull();
+  });
   test("dropping even one coin is refused", () => {
     const msg = replaceProblem(link(1106, ["TXC", "SOL"]), { account: 1106, chains: ["TXC"] });
     expect(msg).toContain("SOL");

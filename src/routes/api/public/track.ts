@@ -8,9 +8,12 @@ import {
   referrerSource,
   shouldCountHost,
 } from "@/lib/site-traffic";
+import { IP_LIMITS } from "@/lib/ip-rate";
 
 // Seeds' own anonymous visit counter (feeds the public /stats traffic section).
 // Public by design: stores no IP, member id or email; only counts the live site.
+// Audit 2026-11-19 M3: same-origin is only a browser defence, so each connection
+// (hashed, kept 10 minutes) and each session id are also capped.
 const payloadSchema = z.object({
   path: z.string().min(1).max(500),
   referrer: z.string().max(1000).optional().nullable(),
@@ -47,8 +50,14 @@ export const Route = createFileRoute("/api/public/track")({
         const ua = request.headers.get("user-agent") ?? "";
         if (!shouldCountHost(host) || isBotUA(ua)) return noContent();
 
-        const country = (request.headers.get("cf-ipcountry") ?? "").toUpperCase();
+        const { ipAllowed } = await import("@/lib/ip-rate.server");
+        if (!(await ipAllowed("track", request.headers, IP_LIMITS.track))) return new Response("Too many requests", { status: 429 });
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { count } = await supabaseAdmin.from("site_page_views").select("id", { count: "exact", head: true })
+          .eq("session_id", parsed.data.sessionId).gt("created_at", new Date(Date.now() - 86_400_000).toISOString());
+        if ((count ?? 0) >= IP_LIMITS.trackPerSessionDay) return noContent();
+
+        const country = (request.headers.get("cf-ipcountry") ?? "").toUpperCase();
         const { error } = await supabaseAdmin.from("site_page_views").insert({
           path: normalizePath(parsed.data.path),
           referrer_host: referrerSource(parsed.data.referrer),
