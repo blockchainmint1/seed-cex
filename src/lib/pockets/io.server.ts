@@ -19,8 +19,9 @@ const BOOK: Record<"DOGE" | "BCH" | "ZEC" | "DASH", string> = {
 const COSMOS_LCD = ["https://cosmos-rest.publicnode.com", "https://rest.cosmos.directory/cosmoshub"];
 const THORNODE = ["https://gateway.liquify.com/chain/thorchain_api", "https://thorchain.ibs.team/api", "https://api-thorchain.rorcual.xyz"]; // same public nodes the swap router reads
 const KOIOS = ["https://api.koios.rest/api/v1"];
-const XRP_RPC = ["https://xrplcluster.com", "https://s1.ripple.com:51234"];
-const TRON_API = ["https://api.trongrid.io"];
+// Several XRP Ledger servers so one busy server never shows "Not available" (reads only; sending has its own list).
+const XRP_RPC = ["https://xrplcluster.com", "https://xrpl.ws", "https://s1.ripple.com:51234", "https://s2.ripple.com:51234"];
+const TRON_API = ["https://api.trongrid.io", "https://tron-rpc.publicnode.com"];
 const SOL_RPC = ["https://api.mainnet-beta.solana.com", "https://solana-rpc.publicnode.com"];
 const DECIMALS: Record<ExtraCoin, number> = { DOGE: 8, BCH: 8, ZEC: 8, XRP: 6, TRX: 6, SOL: 9, DASH: 8, ATOM: 6, RUNE: 8, ADA: 6 };
 const UA = { "User-Agent": "seeds-exchange/1.0", accept: "application/json" };
