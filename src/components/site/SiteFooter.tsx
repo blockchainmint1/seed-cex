@@ -12,6 +12,7 @@ const columns: { heading: string; links: FooterLink[] }[] = [
       { label: "Swap", to: "/swap" },
       { label: "Seeds AI", to: "/ai" },
       { label: "TSD", to: "/tsd" },
+      { label: "List on Seeds", to: "/list" },
     ],
   },
   {

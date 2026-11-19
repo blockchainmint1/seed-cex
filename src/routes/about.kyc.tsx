@@ -176,9 +176,10 @@ function NoKyc() {
         </Sub>
         <Sub title="Where Seeds will make money">
           <p>
-            <B>Coin listing fees.</B> In the future, teams that want their coin listed on Seeds
-            may pay us a listing fee. That fee is paid by the coin&rsquo;s team, not by the people
-            trading it. It doesn&rsquo;t add anything to your trades, deposits or withdrawals, and
+            <B>Coin listing fees.</B> Teams that want their coin listed on Seeds pay us a listing
+            fee (the packages are on{" "}
+            <Link to="/list" className={linkCls}>List on Seeds</Link>). That fee is paid by the
+            coin&rsquo;s team, not by the people trading it. It doesn&rsquo;t add anything to your trades, deposits or withdrawals, and
             a listed coin is not a recommendation from us to buy it.
           </p>
         </Sub>

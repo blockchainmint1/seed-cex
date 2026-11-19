@@ -20,6 +20,7 @@ import { Route as HowItWorksRouteImport } from './routes/how-it-works'
 import { Route as IgniteRouteImport } from './routes/ignite'
 import { Route as LbtcRouteImport } from './routes/lbtc'
 import { Route as LinkAccountRouteImport } from './routes/link-account'
+import { Route as ListRouteImport } from './routes/list'
 import { Route as ManifestoRouteImport } from './routes/manifesto'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as RegisterRouteImport } from './routes/register'
@@ -68,6 +69,7 @@ import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authentic
 import { Route as AuthenticatedAdminAccountsRouteImport } from './routes/_authenticated/admin.accounts'
 import { Route as AuthenticatedAdminAiRouteImport } from './routes/_authenticated/admin.ai'
 import { Route as AuthenticatedAdminIgniteRouteImport } from './routes/_authenticated/admin.ignite'
+import { Route as AuthenticatedAdminListingsRouteImport } from './routes/_authenticated/admin.listings'
 import { Route as AuthenticatedAdminMarketsRouteImport } from './routes/_authenticated/admin.markets'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
@@ -169,6 +171,11 @@ const LbtcRoute = LbtcRouteImport.update({
 const LinkAccountRoute = LinkAccountRouteImport.update({
   id: '/link-account',
   path: '/link-account',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ListRoute = ListRouteImport.update({
+  id: '/list',
+  path: '/list',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ManifestoRoute = ManifestoRouteImport.update({
@@ -418,6 +425,12 @@ const AuthenticatedAdminIgniteRoute =
   AuthenticatedAdminIgniteRouteImport.update({
     id: '/ignite',
     path: '/ignite',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminListingsRoute =
+  AuthenticatedAdminListingsRouteImport.update({
+    id: '/listings',
+    path: '/listings',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminMarketsRoute =
@@ -688,6 +701,7 @@ export interface FileRoutesByFullPath {
   '/ignite': typeof IgniteRoute
   '/lbtc': typeof LbtcRoute
   '/link-account': typeof LinkAccountRoute
+  '/list': typeof ListRoute
   '/manifesto': typeof ManifestoRoute
   '/privacy': typeof PrivacyRoute
   '/register': typeof RegisterRoute
@@ -734,6 +748,7 @@ export interface FileRoutesByFullPath {
   '/admin/accounts': typeof AuthenticatedAdminAccountsRoute
   '/admin/ai': typeof AuthenticatedAdminAiRoute
   '/admin/ignite': typeof AuthenticatedAdminIgniteRoute
+  '/admin/listings': typeof AuthenticatedAdminListingsRoute
   '/admin/markets': typeof AuthenticatedAdminMarketsRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
@@ -796,6 +811,7 @@ export interface FileRoutesByTo {
   '/ignite': typeof IgniteRoute
   '/lbtc': typeof LbtcRoute
   '/link-account': typeof LinkAccountRoute
+  '/list': typeof ListRoute
   '/manifesto': typeof ManifestoRoute
   '/privacy': typeof PrivacyRoute
   '/register': typeof RegisterRoute
@@ -839,6 +855,7 @@ export interface FileRoutesByTo {
   '/admin/accounts': typeof AuthenticatedAdminAccountsRoute
   '/admin/ai': typeof AuthenticatedAdminAiRoute
   '/admin/ignite': typeof AuthenticatedAdminIgniteRoute
+  '/admin/listings': typeof AuthenticatedAdminListingsRoute
   '/admin/markets': typeof AuthenticatedAdminMarketsRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
@@ -903,6 +920,7 @@ export interface FileRoutesById {
   '/ignite': typeof IgniteRoute
   '/lbtc': typeof LbtcRoute
   '/link-account': typeof LinkAccountRoute
+  '/list': typeof ListRoute
   '/manifesto': typeof ManifestoRoute
   '/privacy': typeof PrivacyRoute
   '/register': typeof RegisterRoute
@@ -949,6 +967,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/accounts': typeof AuthenticatedAdminAccountsRoute
   '/_authenticated/admin/ai': typeof AuthenticatedAdminAiRoute
   '/_authenticated/admin/ignite': typeof AuthenticatedAdminIgniteRoute
+  '/_authenticated/admin/listings': typeof AuthenticatedAdminListingsRoute
   '/_authenticated/admin/markets': typeof AuthenticatedAdminMarketsRoute
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
@@ -1013,6 +1032,7 @@ export interface FileRouteTypes {
     | '/ignite'
     | '/lbtc'
     | '/link-account'
+    | '/list'
     | '/manifesto'
     | '/privacy'
     | '/register'
@@ -1059,6 +1079,7 @@ export interface FileRouteTypes {
     | '/admin/accounts'
     | '/admin/ai'
     | '/admin/ignite'
+    | '/admin/listings'
     | '/admin/markets'
     | '/admin/settings'
     | '/admin/users'
@@ -1121,6 +1142,7 @@ export interface FileRouteTypes {
     | '/ignite'
     | '/lbtc'
     | '/link-account'
+    | '/list'
     | '/manifesto'
     | '/privacy'
     | '/register'
@@ -1164,6 +1186,7 @@ export interface FileRouteTypes {
     | '/admin/accounts'
     | '/admin/ai'
     | '/admin/ignite'
+    | '/admin/listings'
     | '/admin/markets'
     | '/admin/settings'
     | '/admin/users'
@@ -1227,6 +1250,7 @@ export interface FileRouteTypes {
     | '/ignite'
     | '/lbtc'
     | '/link-account'
+    | '/list'
     | '/manifesto'
     | '/privacy'
     | '/register'
@@ -1273,6 +1297,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/accounts'
     | '/_authenticated/admin/ai'
     | '/_authenticated/admin/ignite'
+    | '/_authenticated/admin/listings'
     | '/_authenticated/admin/markets'
     | '/_authenticated/admin/settings'
     | '/_authenticated/admin/users'
@@ -1337,6 +1362,7 @@ export interface RootRouteChildren {
   IgniteRoute: typeof IgniteRoute
   LbtcRoute: typeof LbtcRoute
   LinkAccountRoute: typeof LinkAccountRoute
+  ListRoute: typeof ListRoute
   ManifestoRoute: typeof ManifestoRoute
   PrivacyRoute: typeof PrivacyRoute
   RegisterRoute: typeof RegisterRoute
@@ -1484,6 +1510,13 @@ declare module '@tanstack/react-router' {
       path: '/link-account'
       fullPath: '/link-account'
       preLoaderRoute: typeof LinkAccountRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/list': {
+      id: '/list'
+      path: '/list'
+      fullPath: '/list'
+      preLoaderRoute: typeof ListRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/manifesto': {
@@ -1820,6 +1853,13 @@ declare module '@tanstack/react-router' {
       path: '/ignite'
       fullPath: '/admin/ignite'
       preLoaderRoute: typeof AuthenticatedAdminIgniteRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/listings': {
+      id: '/_authenticated/admin/listings'
+      path: '/listings'
+      fullPath: '/admin/listings'
+      preLoaderRoute: typeof AuthenticatedAdminListingsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/markets': {
@@ -2212,6 +2252,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminAccountsRoute: typeof AuthenticatedAdminAccountsRoute
   AuthenticatedAdminAiRoute: typeof AuthenticatedAdminAiRoute
   AuthenticatedAdminIgniteRoute: typeof AuthenticatedAdminIgniteRoute
+  AuthenticatedAdminListingsRoute: typeof AuthenticatedAdminListingsRoute
   AuthenticatedAdminMarketsRoute: typeof AuthenticatedAdminMarketsRoute
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
@@ -2222,6 +2263,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminAccountsRoute: AuthenticatedAdminAccountsRoute,
   AuthenticatedAdminAiRoute: AuthenticatedAdminAiRoute,
   AuthenticatedAdminIgniteRoute: AuthenticatedAdminIgniteRoute,
+  AuthenticatedAdminListingsRoute: AuthenticatedAdminListingsRoute,
   AuthenticatedAdminMarketsRoute: AuthenticatedAdminMarketsRoute,
   AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
@@ -2284,6 +2326,7 @@ const rootRouteChildren: RootRouteChildren = {
   IgniteRoute: IgniteRoute,
   LbtcRoute: LbtcRoute,
   LinkAccountRoute: LinkAccountRoute,
+  ListRoute: ListRoute,
   ManifestoRoute: ManifestoRoute,
   PrivacyRoute: PrivacyRoute,
   RegisterRoute: RegisterRoute,

@@ -138,3 +138,8 @@
 - [ ] Swapping from the member's EVM pocket: exact-amount spend permission + swap, server re-quote floor, Telegram Approve tap, admin-only small test first (next build)
 - [ ] First small real swap per network (blocked: send step built, Bobby's pocket funded on that network, two-factor + re-link done)
 
+## List on Seeds (Bobby, Nov 18)
+- [x] /list page (footer link): why Seeds, stop getting rugged, 3 packages $1,000/$2,500/$5,000, comparison, signed-in application form, /admin/listings review + admin Telegram ping
+- [ ] Bobby to confirm package contents, one-time vs yearly, payment method, and "sponsored" label on paid spotlights
+- [ ] Build what packages promise that doesn't exist yet: "New" badge, homepage spotlight, how-to-buy guide pages, trading contests (after launch)
+

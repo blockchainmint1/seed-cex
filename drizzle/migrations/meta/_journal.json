@@ -232,6 +232,13 @@
       "when": 1795044270349,
       "tag": "0032_trade_settle_lock",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1795046527912,
+      "tag": "0033_listing_applications",
+      "breakpoints": true
     }
   ]
 }

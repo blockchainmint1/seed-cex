@@ -2,7 +2,7 @@ import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, CandlestickChart, ExternalLink, Flame, LayoutDashboard, LockKeyhole, Settings, ShieldCheck, Sparkles, UserCog, Users } from "lucide-react";
+import { ArrowLeft, CandlestickChart, Coins, ExternalLink, Flame, LayoutDashboard, LockKeyhole, Settings, ShieldCheck, Sparkles, UserCog, Users } from "lucide-react";
 import { getAdminGate } from "@/lib/admin.functions";
 import { getMyProfile } from "@/lib/profile.functions";
 import { useSession } from "@/hooks/use-session";
@@ -34,6 +34,7 @@ const NAV = [
   { to: "/admin/accounts", label: "Accounts", icon: Users },
   { to: "/admin/markets", label: "Orders & trades", icon: CandlestickChart },
   { to: "/admin/ai", label: "Seeds AI", icon: Sparkles },
+  { to: "/admin/listings", label: "Listings", icon: Coins },
   { to: "/admin/users", label: "Admin access", icon: UserCog },
   { to: "/admin/settings", label: "Settings", icon: Settings },
 ] as const;

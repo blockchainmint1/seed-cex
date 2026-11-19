@@ -889,6 +889,69 @@ export type Database = {
         }
         Relationships: []
       }
+      listing_applications: {
+        Row: {
+          admin_note: string | null
+          coin_name: string
+          community: string | null
+          contact_email: string
+          contact_name: string
+          contact_telegram: string | null
+          contract: string | null
+          created_at: string
+          id: string
+          network: string
+          notes: string | null
+          package: string
+          reviewed_by: string | null
+          status: string
+          ticker: string
+          updated_at: string
+          user_id: string
+          website: string
+        }
+        Insert: {
+          admin_note?: string | null
+          coin_name: string
+          community?: string | null
+          contact_email: string
+          contact_name: string
+          contact_telegram?: string | null
+          contract?: string | null
+          created_at?: string
+          id?: string
+          network: string
+          notes?: string | null
+          package: string
+          reviewed_by?: string | null
+          status?: string
+          ticker: string
+          updated_at?: string
+          user_id: string
+          website: string
+        }
+        Update: {
+          admin_note?: string | null
+          coin_name?: string
+          community?: string | null
+          contact_email?: string
+          contact_name?: string
+          contact_telegram?: string | null
+          contract?: string | null
+          created_at?: string
+          id?: string
+          network?: string
+          notes?: string | null
+          package?: string
+          reviewed_by?: string | null
+          status?: string
+          ticker?: string
+          updated_at?: string
+          user_id?: string
+          website?: string
+        }
+        Relationships: []
+      }
       lock_signed_outpoints: {
         Row: {
           created_at: string
