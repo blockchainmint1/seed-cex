@@ -1,7 +1,7 @@
 import { describe, expect, test as it } from "bun:test";
 import { swapCoin, SWAP_COINS } from "./assets";
 import {
-  destinationValid, limitOk, memoAssetMatches, memoSafe, pickBest, toBaseUnits, toleranceBps, vaultMembership,
+  destinationValid, independentAnswers, limitOk, memoAssetMatches, memoSafe, pickBest, toBaseUnits, toleranceBps, vaultMembership,
 } from "./safety";
 
 const BTC = swapCoin("BTC")!;
@@ -120,5 +120,23 @@ describe("amounts and addresses", () => {
       { protocol: "maya", ok: false, expectedOut: 2 },
     ]);
     expect(best?.protocol).toBe("thorchain");
+  });
+});
+
+describe("independent servers", () => {
+  it("two addresses reaching the same machine count once", () => {
+    const v = ["vault1"];
+    expect(independentAnswers([{ nodeId: "AA", value: v }, { nodeId: "aa", value: v }])).toHaveLength(1);
+  });
+  it("a server that won't say which machine it is doesn't count", () => {
+    expect(independentAnswers([{ nodeId: "aa", value: 1 }, { nodeId: null, value: 2 }, null])).toEqual([1]);
+  });
+  it("two different machines both count, so the vault check can pass", () => {
+    const answers = independentAnswers([{ nodeId: "e763", value: ["v1"] }, { nodeId: "3b40", value: ["v1"] }]);
+    expect(vaultMembership("v1", answers).error).toBeNull();
+  });
+  it("one machine behind two addresses can't pass the vault check", () => {
+    const answers = independentAnswers([{ nodeId: "e763", value: ["v1"] }, { nodeId: "E763", value: ["v1"] }]);
+    expect(vaultMembership("v1", answers).error).not.toBeNull();
   });
 });

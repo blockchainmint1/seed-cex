@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { swapCoin } from "./assets";
 import { approveData, depositWithExpiryData, roundTo1e8Units, selector, tokenContract, toTokenUnits } from "./evm-router";
-import { landsOutsideHmeWallet, receivePocket, requoteOk, sendBlocker, sendSource, swapProgress, SWAP_LIMITS, thorTxId } from "./send-rules";
+import { landsOutsideHmeWallet, receivePocket, requoteOk, sendBlocker, sendSource, swapProgress, SWAP_LIMITS, thorTxId, trackerUrl } from "./send-rules";
 
 const c = (id: string) => swapCoin(id)!;
 const link = { mode: "access", hasKey: true, pockets: ["BTC", "LTC", "EVM"] };
@@ -87,5 +87,39 @@ describe("coins that land outside HME Wallet", () => {
   test("DOGE, SOL, XRP, TRX, BCH and ZEC are flagged; BTC, LTC and ETH are not", () => {
     for (const id of ["DOGE", "SOL", "XRP", "TRX", "BCH", "ZEC"]) expect(landsOutsideHmeWallet(swapCoin(id)!)).toBe(true);
     for (const id of ["BTC", "LTC", "ETH"]) expect(landsOutsideHmeWallet(swapCoin(id)!)).toBe(false);
+  });
+});
+
+describe("sending into Maya", () => {
+  test("Bitcoin, Ether, USDC and USDT can be sent into Maya", () => {
+    expect(sendSource(c("BTC"), "maya")).toEqual({ pocket: "BTC", kind: "btc" });
+    expect(sendSource(c("ETH"), "maya")).toEqual({ pocket: "EVM", kind: "evm" });
+    expect(sendSource(c("USDC"), "maya")).toEqual({ pocket: "EVM", kind: "erc20" });
+    expect(sendSource(c("USDT"), "maya")).toEqual({ pocket: "EVM", kind: "erc20" });
+  });
+  test("other coins are not sent into Maya, even ones Seeds sends into THORChain", () => {
+    for (const id of ["LTC", "DOGE", "XRP", "SOL", "ZEC", "DASH", "ADA", "WSTETH", "MOCA", "ETH.ARB", "USDC.ARB"]) expect(sendSource(c(id), "maya")).toBeNull();
+    expect(sendSource(c("LTC"))).not.toBeNull();
+  });
+  test("a coin THORChain can send but Maya can't says so", () => {
+    expect(sendBlocker({ from: c("LTC"), link, isAdmin: true, amountUsd: 10, protocol: "maya" })).toBe("Seeds sends LTC through THORChain only for now.");
+  });
+  test("Maya sends keep the same pilot rules and limits", () => {
+    expect(sendBlocker({ from: c("BTC"), link, isAdmin: false, amountUsd: 10, protocol: "maya" })).toMatch(/small test/);
+    expect(sendBlocker({ from: c("BTC"), link, isAdmin: true, amountUsd: SWAP_LIMITS.perSwapUsd + 1, protocol: "maya" })).toMatch(/limited/);
+    expect(sendBlocker({ from: c("BTC"), link, isAdmin: true, amountUsd: 10, protocol: "maya" })).toBeNull();
+  });
+  test("a Maya CACAO payout is not delivery; only a payout on the coin's own chain is", () => {
+    const signed = { outbound_signed: { completed: true } };
+    expect(swapProgress({ out_txs: [{ id: "M1", memo: "OUT:AB", chain: "MAYA" }], stages: signed }, "BTC").status).toBe("sent");
+    expect(swapProgress({ out_txs: [{ id: "M1", memo: "OUT:AB", chain: "MAYA" }, { id: "B1", memo: "OUT:AB", chain: "BTC" }], stages: signed }, "BTC")).toEqual({ status: "done", outTxid: "B1" });
+  });
+  test("a Maya refund with no payout on the coin's chain is a refund", () => {
+    const signed = { outbound_signed: { completed: true } };
+    expect(swapProgress({ out_txs: [{ id: "R1", memo: "REFUND:AB", chain: "ETH" }], stages: signed }, "BTC")).toEqual({ status: "refunded", outTxid: "R1" });
+  });
+  test("Maya swaps are tracked on MayaScan, THORChain swaps on RuneScan", () => {
+    expect(trackerUrl("maya", "0xabc")).toBe("https://www.mayascan.org/tx/ABC");
+    expect(trackerUrl("thorchain", "0xabc")).toBe("https://runescan.io/tx/ABC");
   });
 });

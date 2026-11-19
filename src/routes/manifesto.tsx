@@ -838,10 +838,10 @@ function Manifesto() {
                 </li>
                 <li>
                   <span className="font-semibold text-foreground">
-                    Cross-chain swaps are quotes only.
+                    Cross-chain swaps are still in a small test.
                   </span>{" "}
-                  Our swap page compares live THORChain and Maya prices. It does not send anything
-                  yet, because one wrong address there is a permanent loss.
+                  Our swap page compares live THORChain and Maya prices. Only the Seeds team can send
+                  swaps for now, with small limits, because one wrong address there is a permanent loss.
                 </li>
                 <li>
                   <span className="font-semibold text-foreground">We are new.</span> The companies

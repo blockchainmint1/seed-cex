@@ -10,7 +10,7 @@
 
 - [x] Cross-chain swaps: THORChain routes for BTC, ETH, LTC, DOGE, BCH, XRP, SOL, ZEC, BNB, TRX (+ USDC/USDT on Ethereum) — live quotes, safety checks, /swap page
 - [x] Cross-chain swaps: every live THORChain + Maya pool (46 coins, 17 networks) quotable on /swap with per-protocol memo shortcodes
-- [x] Cross-chain swaps: add Maya Protocol as second route with best-price comparison (price-only until a second independent Maya server exists)
+- [x] Cross-chain swaps: add Maya Protocol as second route with best-price comparison (send-ready since Nov 19 via Liquify's Maya server)
 - [x] Multichain pockets: Seeds-side keys/addresses/balances/signing for DOGE, BCH, XRP, TRX, SOL (+ ZEC addresses/balances); HME link accepts optional pockets
 - [ ] HME Wallet extra pocket keys: built and audited on HME's side, not published; members must re-link from Seeds to share them (blocked: HME publish)
 - [ ] HME Wallet revoke: sweeps TXC before TSD/tokens, leaving TSD with no TXC for fees — ask HME to move tokens first (blocked: HME team)
@@ -152,3 +152,7 @@
 - [ ] Bobby: listings one-time or yearly; monthly marketing budget; March 31, 2027 targets (blocked: Bobby's call)
 - [ ] Bobby: conference coin count/size/first event; badge-only vs TSD claim reward (blocked: Bobby's call; lawyer review before any reward)
 - [ ] Build when approved: "Who sent you?" on /list + finder payouts; invite click/sign-up counts; coach badge + directory; conference claim codes (/c/{code}); Founding 1,000 badge
+
+- [x] Maya swaps: send BTC/ETH/USDC/USDT through Maya from pockets, and TSD routes pick the better of THORChain/Maya with fallback (admin-only pilot, same caps) (Nov 19)
+- [x] Maya second server: Bobby decided not to run our own box for now (Nov 19); use Liquify's independent public Maya server (api-maya.liquify.com) as the second check, counted only when its node id differs
+- [ ] Maya pilot: first small real Maya swap (blocked: Bobby presses Send)

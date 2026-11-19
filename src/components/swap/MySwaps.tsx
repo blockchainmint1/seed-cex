@@ -4,18 +4,18 @@ import { Check, Circle, Coins, ExternalLink, Loader2 } from "lucide-react";
 import { SWAP_COINS, swapCoin } from "@/lib/xchain/assets";
 import type { getSwapSendContext } from "@/lib/xchain/swap.functions";
 import { answerTsdSwap, getTsdRoutes } from "@/lib/xchain/tsd-route.functions";
-import { isTerminal, routeSteps, stepIndex, type RouteDirection } from "@/lib/xchain/tsd-route";
+import { isTerminal, routeSteps, stepIndex, SWAPPER_SHORT, type RouteDirection } from "@/lib/xchain/tsd-route";
+import { TRACKER_NAME, trackerUrl } from "@/lib/xchain/send-rules";
 
 type SendRow = Awaited<ReturnType<typeof getSwapSendContext>>["sends"][number];
 type RouteRow = Awaited<ReturnType<typeof getTsdRoutes>>["routes"][number];
 
 const num = (n: number | null | undefined, d = 8) => (n == null || !Number.isFinite(n) ? "—" : n.toLocaleString("en-US", { maximumFractionDigits: d }));
 const when = (iso: string) => new Date(iso).toLocaleString("en-US", { dateStyle: "short", timeStyle: "short" });
-const TRACKER = (txid: string) => `https://runescan.io/tx/${txid.replace(/^0x/i, "").toUpperCase()}`;
 
 const ROUTE_LABEL: Record<string, string> = {
   reserved: "Starting", sending_tsd: "Sending TSD", bridging: "TSD Bridge converting", swapping: "Swapping", gas_pending: "Paying network fee",
-  swap_sent: "THORChain swapping", minting: "Sending USDC to TSD Bridge", needs_ok: "Price moved — your call", done: "Delivered",
+  swap_sent: "Swapping", minting: "Sending USDC to TSD Bridge", needs_ok: "Price moved — your call", done: "Delivered",
   refunded: "Refunded", kept_usdc: "Stopped — USDC in your pocket", failed: "Stopped",
 };
 const SEND_LABEL: Record<string, string> = { signing: "Sending…", sent: "Swapping", done: "Delivered", refunded: "Refunded", failed: "Not sent", unknown: "Checking" };
@@ -25,17 +25,18 @@ function coinLabel(asset: string) {
   return c ? { symbol: c.symbol, network: c.network } : { symbol: asset, network: "" };
 }
 
-function Track({ txid }: { txid: string }) {
+function Track({ txid, protocol }: { txid: string; protocol: string }) {
+  const p = protocol === "maya" ? "maya" : "thorchain";
   return (
-    <a href={TRACKER(txid)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-mono text-[11px] text-primary underline">
-      Track on RuneScan <ExternalLink className="h-3 w-3" />
+    <a href={trackerUrl(p, txid)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-mono text-[11px] text-primary underline">
+      Track on {TRACKER_NAME[p]} <ExternalLink className="h-3 w-3" />
     </a>
   );
 }
 
 /**
  * One history for every swap the member started on this page. A TSD swap is a
- * single row with its steps; its THORChain step is part of it, never a second row.
+ * single row with its steps; its swap step is part of it, never a second row.
  */
 export function MySwaps({ signedIn, sends }: { signedIn: boolean; sends: SendRow[] }) {
   const qc = useQueryClient();
@@ -81,7 +82,7 @@ export function MySwaps({ signedIn, sends }: { signedIn: boolean; sends: SendRow
                   {s.status === "done" ? "Got" : "Expecting"} ≈ {num(Number(s.expected_out))} {to.symbol} · {when(s.created_at)}
                 </p>
                 {s.error ? <p className="text-[11px] text-muted-foreground">{s.error}</p> : null}
-                {s.txid && s.status !== "failed" ? <Track txid={s.txid} /> : null}
+                {s.txid && s.status !== "failed" ? <Track txid={s.txid} protocol={s.protocol} /> : null}
               </li>
             );
           }
@@ -89,7 +90,7 @@ export function MySwaps({ signedIn, sends }: { signedIn: boolean; sends: SendRow
           const sym = swapCoin(r.coin)?.symbol ?? r.coin;
           const direct = r.coin === "USDC";
           const buy = r.direction === "buy";
-          const steps = routeSteps(r.direction as RouteDirection, direct ? "USDC" : sym);
+          const steps = routeSteps(r.direction as RouteDirection, direct ? "USDC" : sym, SWAPPER_SHORT[r.protocol] ?? "THORChain");
           const at = stepIndex(r.direction as RouteDirection, r.stage === "gas_pending" ? (r.resume_stage ?? "swapping") : r.stage, direct);
           const stopped = ["failed", "refunded", "kept_usdc"].includes(r.stage);
           return (
@@ -112,7 +113,7 @@ export function MySwaps({ signedIn, sends }: { signedIn: boolean; sends: SendRow
                 {when(r.created_at)}
               </p>
               {r.error ? <p className="text-[11px] text-muted-foreground">{r.error}</p> : null}
-              {r.swap_txid ? <Track txid={r.swap_txid} /> : null}
+              {r.swap_txid ? <Track txid={r.swap_txid} protocol={r.protocol} /> : null}
               {r.stage === "needs_ok" ? (
                 <div className="flex flex-wrap items-center gap-2 border-t border-border pt-2">
                   <span className="flex-1 text-[11px]">

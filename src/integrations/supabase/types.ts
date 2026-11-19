@@ -2066,6 +2066,7 @@ export type Database = {
           gas_txid: string | null
           id: string
           link_id: string | null
+          protocol: string
           resume_stage: string | null
           shown_out: number
           shown_usdc: number
@@ -2100,6 +2101,7 @@ export type Database = {
           gas_txid?: string | null
           id?: string
           link_id?: string | null
+          protocol?: string
           resume_stage?: string | null
           shown_out: number
           shown_usdc: number
@@ -2134,6 +2136,7 @@ export type Database = {
           gas_txid?: string | null
           id?: string
           link_id?: string | null
+          protocol?: string
           resume_stage?: string | null
           shown_out?: number
           shown_usdc?: number
@@ -2628,6 +2631,7 @@ export type Database = {
           _evm_address: string
           _link_id: string
           _per_swap_max_usd: number
+          _protocol: string
           _shown_out: number
           _shown_usdc: number
           _txc_address: string

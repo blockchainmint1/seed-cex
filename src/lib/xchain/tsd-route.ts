@@ -8,7 +8,7 @@
  *   sell (coin -> TSD): coin pocket -> THORChain -> USDC in EVM pocket -> TSD Bridge mint -> TSD in TXC pocket
  */
 import type { PocketCoin } from "@/lib/pockets/coins";
-import type { SwapCoin } from "./assets";
+import type { Protocol, SwapCoin } from "./assets";
 import { receivePocket, sendSource, SEND_PILOT_ADMIN_ONLY, SWAP_LIMITS, type LinkLike } from "./send-rules";
 
 export type RouteDirection = "buy" | "sell";
@@ -47,12 +47,32 @@ export type RouteStage =
 export const TERMINAL_STAGES: RouteStage[] = ["done", "refunded", "kept_usdc", "failed"];
 export const isTerminal = (s: string) => (TERMINAL_STAGES as string[]).includes(s);
 
-/** Steps the member sees, in order, for the progress tracker. */
-export function routeSteps(direction: RouteDirection, coinSymbol: string): string[] {
+/** Steps the member sees, in order, for the progress tracker. `swapper` names the swap network (THORChain or Maya). */
+export function routeSteps(direction: RouteDirection, coinSymbol: string, swapper = "THORChain"): string[] {
   if (coinSymbol === "USDC") return direction === "buy" ? ["TSD sent", "TSD Bridge pays USDC", "USDC in your pocket"] : ["USDC sent", "TSD Bridge issues TSD", "TSD in your pocket"];
   return direction === "buy"
-    ? ["TSD sent", "TSD Bridge pays USDC", "THORChain swaps", `${coinSymbol} in your pocket`]
-    : [`${coinSymbol} sent`, "THORChain swaps to USDC", "TSD Bridge issues TSD", "TSD in your pocket"];
+    ? ["TSD sent", "TSD Bridge pays USDC", `${swapper} swaps`, `${coinSymbol} in your pocket`]
+    : [`${coinSymbol} sent`, `${swapper} swaps to USDC`, "TSD Bridge issues TSD", "TSD in your pocket"];
+}
+
+/** Short name of a swap network for step labels. */
+export const SWAPPER_SHORT: Record<string, string> = { thorchain: "THORChain", maya: "Maya" };
+
+/**
+ * Which swap networks may carry a TSD route's coin leg, best price first. Only
+ * networks Seeds can send the leg's coin into, that also trade the far coin.
+ */
+export function legProtocols(direction: RouteDirection, coin: SwapCoin, usdcCoin: SwapCoin): Protocol[] {
+  const from = direction === "buy" ? usdcCoin : coin;
+  const to = direction === "buy" ? coin : usdcCoin;
+  return (["thorchain", "maya"] as Protocol[]).filter((p) => sendSource(from, p) !== null && to.protocols.includes(p));
+}
+
+/** Of the quoted networks, the one paying the most; null when none can. */
+export function pickLeg<T extends { protocol: Protocol; ok: boolean; expectedOut: number }>(quotes: T[]): T | null {
+  let best: T | null = null;
+  for (const q of quotes) if (q.ok && q.expectedOut > 0 && (!best || q.expectedOut > best.expectedOut)) best = q;
+  return best;
 }
 
 /**

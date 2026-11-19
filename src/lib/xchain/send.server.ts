@@ -1,5 +1,5 @@
 /**
- * Send a THORChain swap from a member's instant-access HME trading pocket.
+ * Send a THORChain or Maya swap from a member's instant-access HME trading pocket.
  *
  * Order matters, and every step fails closed:
  *  1. Re-quote on the server (never trust the browser's quote) and require every
@@ -20,10 +20,10 @@ import { decryptDelegatedKey } from "@/lib/delegation.server";
 import type { PocketCoin } from "@/lib/pockets/coins";
 import { pocketReceiveAddress, receivePrivateKey } from "@/lib/pockets/derive";
 import { addressFor, solAddress } from "@/lib/pockets/encode";
-import { swapCoin, type SwapCoin } from "./assets";
+import { PROTOCOL_LABEL, swapCoin, type Protocol, type SwapCoin } from "./assets";
 import { destinationValid, toBaseUnits } from "./safety";
 import { allowanceData, approveData, DECIMALS_CALL, depositWithExpiryData, NATIVE_ASSET, roundTo1e8Units, tokenContract, toTokenUnits } from "./evm-router";
-import { MIN_SEND_QUOTE_SECONDS, requoteOk, SEND_PROTOCOL, sendBlocker, sendSource, SWAP_LIMITS, swapProgress, thorTxId, type SendKind, type ThorTxStatus } from "./send-rules";
+import { MIN_SEND_QUOTE_SECONDS, requoteOk, SEND_PROTOCOL, SEND_PROTOCOLS, sendBlocker, sendSource, SWAP_LIMITS, swapProgress, thorTxId, type SendKind, type ThorTxStatus } from "./send-rules";
 import type { SendPlan } from "./router.server";
 
 export type SwapLink = { id: string; mode: string; account: number; hasKey: boolean; pockets: PocketCoin[]; addresses: Partial<Record<PocketCoin, string>> };
@@ -229,6 +229,14 @@ async function signAndBroadcast(
   }
 }
 
+/** The protocol can't take this swap right now (no route, paused, a pre-send check failed). Nothing was reserved or sent. */
+export class RouteUnavailableError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "RouteUnavailableError";
+  }
+}
+
 /** The fresh quote is worse than allowed; carries the new expected output so a route can ask the member. */
 export class PriceMovedError extends Error {
   constructor(public freshOut: number, message: string) {
@@ -251,7 +259,7 @@ export async function tellMember(userId: string, telegram: string, emailLines: s
   }
 }
 
-export type SendSwapInput = { from: string; to: string; amount: string; destination: string; shownOut: number };
+export type SendSwapInput = { from: string; to: string; amount: string; destination: string; shownOut: number; protocol?: Protocol };
 
 /**
  * Decrypt one pocket key, prove it controls `address`, run `fn`, then wipe it.
@@ -279,16 +287,20 @@ export type RouteLegOptions = { routeId: string; tolerance: number };
 export async function sendSwapFromPocket(userId: string, isAdmin: boolean, input: SendSwapInput, leg?: RouteLegOptions) {
   const from = swapCoin(input.from);
   const to = swapCoin(input.to);
+  const protocol: Protocol = input.protocol ?? SEND_PROTOCOL;
+  if (!SEND_PROTOCOLS.includes(protocol)) throw new Error("Unknown swap network.");
+  const label = PROTOCOL_LABEL[protocol];
   if (!from || !to || from.id === to.id) throw new Error("Pick two different coins.");
+  if (!to.protocols.includes(protocol)) throw new Error(`${label} doesn't offer ${to.symbol} on ${to.network}.`);
   if (!destinationValid(to, input.destination)) throw new Error(`That doesn't look like a ${to.network} address (${to.addressHint}).`);
-  const src = sendSource(from);
-  if (!src) throw new Error(`Seeds can't send ${from.symbol} on ${from.network} yet.`);
+  const src = sendSource(from, protocol);
+  if (!src) throw new Error(`Seeds can't send ${from.symbol} on ${from.network} through ${label} yet.`);
   let amount = toBaseUnits(input.amount);
   if (amount == null || amount <= 0n) throw new Error("Enter an amount with at most 8 decimal places.");
 
   const link = await loadLink(userId);
   // Early, cheap gate (no price yet) so non-pilot members never trigger quotes.
-  const early = sendBlocker({ from, link, isAdmin: isAdmin || Boolean(leg), amountUsd: 0 });
+  const early = sendBlocker({ from, link, isAdmin: isAdmin || Boolean(leg), amountUsd: 0, protocol });
   if (early) throw new Error(early);
 
   if (src.kind === "erc20") amount = roundTo1e8Units(amount, await tokenDecimals(tokenContract(from.asset)!));
@@ -297,20 +309,20 @@ export async function sendSwapFromPocket(userId: string, isAdmin: boolean, input
   if (amount <= 0n) throw new Error("Amount too small.");
 
   const { quoteForSend } = await import("./router.server");
-  const { route, plan, inputUsd } = await quoteForSend(SEND_PROTOCOL, from, to, amount, input.destination);
-  const blocker = sendBlocker({ from, link, isAdmin: isAdmin || Boolean(leg), amountUsd: inputUsd });
+  const { route, plan, inputUsd } = await quoteForSend(protocol, from, to, amount, input.destination);
+  const blocker = sendBlocker({ from, link, isAdmin: isAdmin || Boolean(leg), amountUsd: inputUsd, protocol });
   if (blocker) throw new Error(blocker);
-  if (!route.ok) throw new Error(route.error ?? "THORChain has no route right now.");
-  if (!plan) throw new Error(`Not safe to send right now: ${route.blockedReason ?? "a safety check failed"}.`);
-  if (plan.expiry - Date.now() / 1000 < MIN_SEND_QUOTE_SECONDS) throw new Error("THORChain's quote is about to expire. Try again.");
+  if (!route.ok) throw new RouteUnavailableError(route.error ?? `${label} has no route right now.`);
+  if (!plan) throw new RouteUnavailableError(`Not safe to send through ${label} right now: ${route.blockedReason ?? "a safety check failed"}.`);
+  if (plan.expiry - Date.now() / 1000 < MIN_SEND_QUOTE_SECONDS) throw new RouteUnavailableError(`${label}'s quote is about to expire. Try again.`);
   if (!requoteOk(input.shownOut, route.expectedOut, leg?.tolerance)) {
     throw new PriceMovedError(route.expectedOut, `The price moved more than ${Math.round((leg?.tolerance ?? 0.01) * 100)}% since you looked (now ${route.expectedOut} ${to.symbol}). Check the new quote and try again.`);
   }
-  if (from.evm && !plan.router) throw new Error("THORChain named no confirmed router contract.");
+  if (from.evm && !plan.router) throw new Error(`${label} named no confirmed router contract.`);
 
   const fromAddress = link!.addresses[src.pocket]!;
   const { data: id, error } = await supabaseAdmin.rpc("reserve_swap_send", {
-    _user_id: userId, _link_id: link!.id, _protocol: SEND_PROTOCOL, _pocket: src.pocket, _from_asset: from.asset, _to_asset: to.asset,
+    _user_id: userId, _link_id: link!.id, _protocol: protocol, _pocket: src.pocket, _from_asset: from.asset, _to_asset: to.asset,
     _amount_in: Number(amount) / 1e8, _amount_usd: Math.round(inputUsd! * 100) / 100, _expected_out: route.expectedOut, _min_out: route.minOut ?? 0,
     _from_address: fromAddress, _destination: input.destination, _vault: plan.vault, _router: plan.router ?? "", _memo: plan.memo,
     _per_swap_max_usd: SWAP_LIMITS.perSwapUsd, _daily_max_usd: SWAP_LIMITS.dailyUsd,
@@ -340,12 +352,12 @@ export async function sendSwapFromPocket(userId: string, isAdmin: boolean, input
 
     const sent = await signAndBroadcast(src.kind, priv, from, fromAddress, amount, plan, record);
     await update({ status: "sent", txid: sent.txid, approve_txid: sent.approveTxid ?? null });
-    void tellMember(userId, `Swap sent: ${Number(amount) / 1e8} ${from.symbol} → about ${route.expectedOut} ${to.symbol} via THORChain. Tx ${sent.txid}`, [
+    void tellMember(userId, `Swap sent: ${Number(amount) / 1e8} ${from.symbol} → about ${route.expectedOut} ${to.symbol} via ${label}. Tx ${sent.txid}`, [
       `Sent ${Number(amount) / 1e8} ${from.symbol} (${from.network}) from your trading pocket`,
       `Expected about ${route.expectedOut} ${to.symbol} to ${input.destination}; refund instead if it would be under ${route.minOut ?? "the limit"}`,
       `Network transaction ${sent.txid}`,
     ]);
-    return { id: rowId, txid: sent.txid, expectedOut: route.expectedOut, minOut: route.minOut };
+    return { id: rowId, txid: sent.txid, expectedOut: route.expectedOut, minOut: route.minOut, protocol };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     // A txid we stored may still have reached the network if the broadcast timed out.
@@ -357,12 +369,12 @@ export async function sendSwapFromPocket(userId: string, isAdmin: boolean, input
   }
 }
 
-/** Check THORChain for progress on this member's open swaps (at most 5, every 30s each). */
+/** Check THORChain / Maya for progress on this member's open swaps (at most 5, every 30s each). */
 export async function refreshSwapSends(userId: string) {
   const stale = new Date(Date.now() - 30_000).toISOString();
   const { data } = await supabaseAdmin
     .from("swap_sends")
-    .select("id, txid, status, protocol")
+    .select("id, txid, status, protocol, to_asset")
     .eq("user_id", userId)
     .in("status", ["sent", "unknown"])
     .not("txid", "is", null)
@@ -372,16 +384,18 @@ export async function refreshSwapSends(userId: string) {
   if (!data?.length) return;
   const { protocolTxStatus } = await import("./router.server");
   await Promise.all(data.map(async (r) => {
-    const s = (await protocolTxStatus(SEND_PROTOCOL, thorTxId(r.txid!))) as ThorTxStatus & { tx?: unknown } | null;
+    const p: Protocol = r.protocol === "maya" ? "maya" : "thorchain";
+    const s = (await protocolTxStatus(p, thorTxId(r.txid!))) as ThorTxStatus & { tx?: unknown } | null;
     const seen = Boolean(s && (s.tx || s.stages?.inbound_observed?.completed));
-    const prog = swapProgress(s);
+    // Maya also lists CACAO payouts on its own chain: only a payout on the coin's chain is delivery.
+    const prog = swapProgress(s, p === "maya" ? r.to_asset.split(".")[0] : undefined);
     const status = prog.status !== "sent" ? prog.status : seen ? "sent" : r.status;
     await supabaseAdmin.from("swap_sends").update({ status, out_txid: prog.outTxid, checked_at: new Date().toISOString() }).eq("id", r.id);
     if (status !== r.status && (status === "done" || status === "refunded")) {
       const { notifyUser } = await import("@/lib/telegram.server");
       void notifyUser(userId, "notify_settlement", status === "done"
-        ? `Swap delivered by THORChain. Tx ${prog.outTxid ?? r.txid}`
-        : `THORChain refunded your swap (price protection or a network issue). Refund tx ${prog.outTxid ?? "pending"}`);
+        ? `Swap delivered by ${PROTOCOL_LABEL[p]}. Tx ${prog.outTxid ?? r.txid}`
+        : `${PROTOCOL_LABEL[p]} refunded your swap (price protection or a network issue). Refund tx ${prog.outTxid ?? "pending"}`);
     }
   }));
 }
@@ -389,7 +403,7 @@ export async function refreshSwapSends(userId: string) {
 export async function listSwapSends(userId: string) {
   const { data, error } = await supabaseAdmin
     .from("swap_sends")
-    .select("id, from_asset, to_asset, amount_in, amount_usd, expected_out, min_out, destination, txid, approve_txid, out_txid, status, error, created_at")
+    .select("id, protocol, from_asset, to_asset, amount_in, amount_usd, expected_out, min_out, destination, txid, approve_txid, out_txid, status, error, created_at")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(40);

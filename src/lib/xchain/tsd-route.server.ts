@@ -7,19 +7,20 @@
  *    never signed again — it is only checked;
  *  - TSD Bridge answers are validated (payout = member's own pocket, amount, fee) before
  *    any coin is sent to the bridge;
- *  - the THORChain leg goes through sendSwapFromPocket (fresh quote, two-server vault
- *    checks, reserve_swap_send caps), with extra drift allowed only up to legTolerance.
+ *  - the swap leg (THORChain or Maya, whichever quoted best; the other is the fallback
+ *    when the chosen one can't take it) goes through sendSwapFromPocket (fresh quote,
+ *    two-server vault checks, reserve_swap_send caps), with drift allowed only up to legTolerance.
  * The cron job (/api/public/jobs/tsd-routes) and the Swap page both call advanceRoute.
  */
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Database } from "@/integrations/supabase/types";
-import { swapCoin, type SwapCoin } from "./assets";
+import { PROTOCOL_LABEL, swapCoin, type Protocol, type SwapCoin } from "./assets";
 import { gasWalletConfigured } from "./gas.server";
 import { toBaseUnits } from "./safety";
 import { landsOutsideHmeWallet, receivePocket, requoteOk, sendSource, SWAP_LIMITS } from "./send-rules";
 import {
   afterBridgeFee, BRIDGE_USDC_CONTRACT, BRIDGE_USDC_ID, bridgeProgress, gasNeedWei, gasPreflight, isTerminal, legPriceOk, mintOrderProblem,
-  GAS_SWAP_LEG, GAS_USDC_TRANSFER, redeemOrderProblem, routeBlocker, routeGasUnits, TSD_ROUTE, type RouteDirection, type RouteStage,
+  GAS_SWAP_LEG, GAS_USDC_TRANSFER, legProtocols, pickLeg, redeemOrderProblem, routeBlocker, routeGasUnits, TSD_ROUTE, type RouteDirection, type RouteStage,
 } from "./tsd-route";
 
 type Row = Database["public"]["Tables"]["tsd_routes"]["Row"];
@@ -72,13 +73,30 @@ export type TsdRouteQuote = {
   /** ETH the route's Ethereum leg will cost, and what it is worth, when the member pays it. */
   gasEth: number | null;
   gasUsd: number | null;
+  /** Swap network for the coin leg (null for TSD <-> USDC, which is the bridge alone). */
+  protocol: Protocol | null;
+  /** What the other network offered, for comparison (same units as out / usdc). */
+  alt: { protocol: Protocol; out: number } | null;
 };
+
+/** Quote the coin leg on every network that can carry it; best first. */
+async function legQuotes(direction: RouteDirection, coin: SwapCoin, units: bigint) {
+  const { protocolQuote } = await import("./router.server");
+  const ps = legProtocols(direction, coin, usdc());
+  const from = direction === "buy" ? usdc() : coin;
+  const to = direction === "buy" ? coin : usdc();
+  const all = await Promise.all(ps.map(async (p) => ({ p, ...(await protocolQuote(p, from, to, units, null)) })));
+  const best = pickLeg(all.map((x) => ({ protocol: x.p, ok: x.route.ok, expectedOut: x.route.expectedOut, x })));
+  const alt = best ? all.find((x) => x.p !== best.protocol && x.route.ok) : undefined;
+  return { best: best?.x ?? null, alt: alt ? { protocol: alt.p, out: alt.route.expectedOut } : null, first: all[0] ?? null };
+}
 
 export async function quoteTsdRoute(direction: RouteDirection, coin: SwapCoin, amountStr: string): Promise<TsdRouteQuote> {
   const amount = Number(amountStr);
   const base: TsdRouteQuote = {
     direction, coin: coin.id, ok: false, error: null, amountIn: amount, usdc: 0, out: 0, outUsd: null, minOut: null,
     amountUsd: null, bridgeFeeBps: 0, swapFeeUsd: null, seconds: null, gasCovered: false, gasEth: null, gasUsd: null,
+    protocol: null, alt: null,
   };
   if (!(amount > 0) || toBaseUnits(amountStr) == null) return { ...base, error: "Enter an amount with at most 8 decimal places." };
   const { bridgeSettings, tsdBridgeConfigured } = await import("./tsd-bridge.server");
@@ -89,7 +107,6 @@ export async function quoteTsdRoute(direction: RouteDirection, coin: SwapCoin, a
   base.gasEth = gas.needWei > 0n ? Number(gas.needWei) / 1e18 : null;
   base.gasUsd = gas.needWei > 0n && gas.priceUsd != null ? (Number(gas.needWei) / 1e18) * gas.priceUsd : null;
   if (!s.live) return { ...base, error: "TSD Bridge is paused right now." };
-  const { thorQuote } = await import("./router.server");
 
   if (direction === "buy") {
     if (amount < s.minAmount) return { ...base, error: `TSD Bridge's minimum is ${s.minAmount} TSD.` };
@@ -98,11 +115,12 @@ export async function quoteTsdRoute(direction: RouteDirection, coin: SwapCoin, a
     const q = { ...base, bridgeFeeBps: s.redeemFeeBps, usdc: usdcOut, amountUsd: amount };
     if (coin.id === BRIDGE_USDC_ID) return { ...q, ok: true, out: usdcOut, outUsd: usdcOut, minOut: usdcOut, swapFeeUsd: 0, seconds: BRIDGE_SECONDS };
     const units = toBaseUnits(fmt(usdcOut));
-    const { route } = await thorQuote(usdc(), coin, units!, null);
-    if (!route.ok) return { ...q, error: route.error ?? "THORChain has no route right now." };
+    const { best, alt, first } = await legQuotes("buy", coin, units!);
+    if (!best) return { ...q, error: first?.route.error ?? "No swap network has a route right now." };
+    const route = best.route;
     return {
       ...q, ok: true, out: route.expectedOut, outUsd: route.expectedOutUsd, minOut: route.minOut, swapFeeUsd: route.fees.totalUsd,
-      seconds: BRIDGE_SECONDS + (route.seconds ?? 0),
+      seconds: BRIDGE_SECONDS + (route.seconds ?? 0), protocol: best.p, alt,
     };
   }
 
@@ -112,17 +130,22 @@ export async function quoteTsdRoute(direction: RouteDirection, coin: SwapCoin, a
   let swapFeeUsd: number | null = 0;
   let seconds = BRIDGE_SECONDS;
   let amountUsd: number | null = amount;
+  let protocol: Protocol | null = null;
+  let alt: TsdRouteQuote["alt"] = null;
   if (coin.id !== BRIDGE_USDC_ID) {
-    const { route, inputUsd } = await thorQuote(coin, usdc(), toBaseUnits(amountStr)!, null);
-    if (!route.ok) return { ...q, error: route.error ?? "THORChain has no route right now." };
+    const legs = await legQuotes("sell", coin, toBaseUnits(amountStr)!);
+    if (!legs.best) return { ...q, error: legs.first?.route.error ?? "No swap network has a route right now." };
+    const { route, inputUsd } = legs.best;
     usdcIn = route.expectedOut;
     swapFeeUsd = route.fees.totalUsd;
     seconds += route.seconds ?? 0;
     amountUsd = inputUsd;
+    protocol = legs.best.p;
+    alt = legs.alt ? { protocol: legs.alt.protocol, out: afterBridgeFee(legs.alt.out, s.mintFeeBps) } : null;
   }
   if (usdcIn < s.minAmount) return { ...q, amountUsd, error: `That's about ${fmt(usdcIn, 2)} USDC — under TSD Bridge's ${s.minAmount} minimum.` };
   const tsd = afterBridgeFee(usdcIn, s.mintFeeBps);
-  return { ...q, ok: true, usdc: usdcIn, out: tsd, outUsd: tsd, minOut: null, amountUsd, swapFeeUsd, seconds };
+  return { ...q, ok: true, usdc: usdcIn, out: tsd, outUsd: tsd, minOut: null, amountUsd, swapFeeUsd, seconds, protocol, alt };
 }
 
 /* ---------------------------------- start ---------------------------------- */
@@ -177,7 +200,7 @@ export async function startTsdRoute(userId: string, isAdmin: boolean, input: Sta
     _user_id: userId, _link_id: link!.id, _direction: input.direction, _coin: coin.id, _coin_asset: coin.asset,
     _amount_in: q.amountIn, _amount_usd: Math.round((q.amountUsd ?? 0) * 100) / 100, _shown_usdc: q.usdc, _shown_out: q.out,
     _bridge_fee_bps: q.bridgeFeeBps, _txc_address: txc, _evm_address: evm, _coin_address: coinAddress,
-    _per_swap_max_usd: SWAP_LIMITS.perSwapUsd, _daily_max_usd: SWAP_LIMITS.dailyUsd,
+    _per_swap_max_usd: SWAP_LIMITS.perSwapUsd, _daily_max_usd: SWAP_LIMITS.dailyUsd, _protocol: q.protocol ?? "thorchain",
   });
   if (error || !id) throw new Error(clean(error?.message ?? "Could not start this swap."));
   await advanceRoute(id as string);
@@ -263,26 +286,43 @@ async function usdcBalance(address: string): Promise<number | null> {
   return fetchTokenBalance(ETH, BRIDGE_USDC_CONTRACT, address, 6);
 }
 
-/** The THORChain leg, from USDC (buy) or from the coin (sell). */
+const legProtocol = (r: Pick<Row, "protocol">): Protocol => (r.protocol === "maya" ? "maya" : "thorchain");
+
+/**
+ * The swap leg, from USDC (buy) or from the coin (sell). Tries the network chosen at
+ * the quote first; if that network can't take the swap right now (paused, no route,
+ * a pre-send check failed — nothing reserved or sent), the other one is tried with
+ * the same price reference and limits.
+ */
 async function sendLeg(r: Row, coin: SwapCoin): Promise<Partial<Row>> {
-  const { sendSwapFromPocket, PriceMovedError } = await import("./send.server");
+  const { sendSwapFromPocket, PriceMovedError, RouteUnavailableError } = await import("./send.server");
   const buy = r.direction === "buy";
   const amountIn = buy ? Number(r.usdc_amount) : Number(r.amount_in);
   const shownOut = buy ? (Number(r.shown_out) * amountIn) / Number(r.shown_usdc) : Number(r.shown_usdc);
-  try {
-    const sent = await sendSwapFromPocket(r.user_id, false, {
-      from: buy ? BRIDGE_USDC_ID : coin.id, to: buy ? coin.id : BRIDGE_USDC_ID,
-      amount: fmt(amountIn, buy ? 6 : 8), destination: buy ? r.coin_address : r.evm_address, shownOut,
-    }, { routeId: r.id, tolerance: TSD_ROUTE.legTolerance });
-    return move("swap_sent", { swap_send_id: sent.id });
-  } catch (e) {
-    if (e instanceof PriceMovedError) {
-      const fresh = e.freshOut; // coin (buy) or USDC (sell)
-      void notify(r, `Seeds paused your TSD swap: the price moved more than ${TSD_ROUTE.legTolerance * 100}%. Open Seeds → Swap to continue at the new price${buy ? " or keep the USDC" : ""}.`);
-      return move("needs_ok", { fresh_out: fresh });
+  const chosen = legProtocol(r);
+  const order = [chosen, ...legProtocols(r.direction as RouteDirection, coin, usdc()).filter((p) => p !== chosen)];
+  let lastUnavailable: Error | null = null;
+  for (const protocol of order) {
+    try {
+      const sent = await sendSwapFromPocket(r.user_id, false, {
+        from: buy ? BRIDGE_USDC_ID : coin.id, to: buy ? coin.id : BRIDGE_USDC_ID,
+        amount: fmt(amountIn, buy ? 6 : 8), destination: buy ? r.coin_address : r.evm_address, shownOut, protocol,
+      }, { routeId: r.id, tolerance: TSD_ROUTE.legTolerance });
+      return move("swap_sent", { swap_send_id: sent.id, protocol });
+    } catch (e) {
+      if (e instanceof PriceMovedError) {
+        const fresh = e.freshOut; // coin (buy) or USDC (sell)
+        void notify(r, `Seeds paused your TSD swap: the price moved more than ${TSD_ROUTE.legTolerance * 100}%. Open Seeds → Swap to continue at the new price${buy ? " or keep the USDC" : ""}.`);
+        return move("needs_ok", { fresh_out: fresh });
+      }
+      if (e instanceof RouteUnavailableError) {
+        lastUnavailable = e;
+        continue;
+      }
+      throw e;
     }
-    throw e;
   }
+  throw lastUnavailable ?? new Error("No swap network can take this swap right now.");
 }
 
 /** Run one step of a route. Returns true if the stage changed (the caller may step again). */
@@ -363,7 +403,7 @@ async function step(r: Row): Promise<boolean> {
           }));
           void tellMember(r.user_id, `TSD swap started: sent ${r.amount_in} TSD to TSD Bridge for ${coin.symbol}. Tx ${sent.txid}`, [
             `Sent ${r.amount_in} TSD from your trading pocket to TSD Bridge (order ${r.bridge_order_id})`,
-            `TSD Bridge pays USDC to your own EVM pocket ${r.evm_address}, then THORChain swaps it to ${coin.symbol}`,
+            `TSD Bridge pays USDC to your own EVM pocket ${r.evm_address}, then ${PROTOCOL_LABEL[legProtocol(r)]} swaps it to ${coin.symbol}`,
             `Network transaction ${sent.txid}`,
           ]);
           return go(move("bridging", { tsd_txid: sent.txid }));
@@ -523,36 +563,38 @@ async function step(r: Row): Promise<boolean> {
   }
 }
 
-/** Follow the THORChain leg through swap_sends (refreshed from THORNode). */
+/** Follow the swap leg through swap_sends (refreshed from THORChain / Maya). */
 async function followLeg(r: Row, coin: SwapCoin, go: (p: Partial<Row>) => Promise<boolean>): Promise<boolean> {
   const { refreshSwapSends } = await import("./send.server");
   await refreshSwapSends(r.user_id).catch(() => undefined);
   const { data: s } = await supabaseAdmin.from("swap_sends").select("status, txid, out_txid, expected_out").eq("id", r.swap_send_id!).single();
-  if (!s) return go({ error: "Lost track of the THORChain step; the team will check." });
+  if (!s) return go({ error: "Lost track of the swap step; the team will check." });
   const buy = r.direction === "buy";
+  const label = PROTOCOL_LABEL[legProtocol(r)];
   if (s.status === "done") {
     if (buy) {
       const hmeNote = landsOutsideHmeWallet(coin) ? ` HME Wallet can't hold ${coin.symbol} — swap it back to TSD on Seeds before you revoke Seeds' access.` : "";
       void notify(r, `Done: your ${coin.symbol} is in your trading pocket. Tx ${s.out_txid ?? s.txid}.${hmeNote}`);
       return go(move("done", { amount_out: s.expected_out }));
     }
-    const out = await legOutputUsdc(s.txid!);
+    const out = await legOutputUsdc(legProtocol(r), s.txid!);
     return go(move("minting", { usdc_amount: out ?? Number(s.expected_out) }));
   }
   if (s.status === "refunded") {
-    void notify(r, buy ? "THORChain refunded the USDC to your EVM pocket (price protection). Nothing was lost." : `THORChain refunded your ${coin.symbol} to your pocket. Nothing was lost.`);
-    return go(move(buy ? "kept_usdc" : "refunded", { error: buy ? "THORChain refunded the USDC to your EVM pocket." : null }));
+    void notify(r, buy ? `${label} refunded the USDC to your EVM pocket (price protection). Nothing was lost.` : `${label} refunded your ${coin.symbol} to your pocket. Nothing was lost.`);
+    return go(move(buy ? "kept_usdc" : "refunded", { error: buy ? `${label} refunded the USDC to your EVM pocket.` : null }));
   }
-  if (s.status === "failed") return go(move(buy ? "kept_usdc" : "failed", { error: buy ? "The THORChain step didn't go out. Your USDC is in your EVM pocket." : "The THORChain step didn't go out. Nothing was sent." }));
+  if (s.status === "failed") return go(move(buy ? "kept_usdc" : "failed", { error: buy ? `The ${label} step didn't go out. Your USDC is in your EVM pocket.` : `The ${label} step didn't go out. Nothing was sent.` }));
   return go({});
 }
 
-/** USDC THORChain actually paid out (1e8 units in /tx/status), or null if unreadable. */
-async function legOutputUsdc(txid: string): Promise<number | null> {
+/** USDC the swap network actually paid out on Ethereum (1e8 units in /tx/status), or null if unreadable. */
+async function legOutputUsdc(protocol: Protocol, txid: string): Promise<number | null> {
   const { protocolTxStatus } = await import("./router.server");
   const { thorTxId } = await import("./send-rules");
-  const s = (await protocolTxStatus("thorchain", thorTxId(txid))) as { out_txs?: Array<{ memo?: string; coins?: Array<{ asset?: string; amount?: string }> }> } | null;
-  const out = s?.out_txs?.find((o) => /^OUT/i.test(o.memo ?? ""));
+  const s = (await protocolTxStatus(protocol, thorTxId(txid))) as { out_txs?: Array<{ memo?: string; chain?: string; coins?: Array<{ asset?: string; amount?: string }> }> } | null;
+  // Maya also lists CACAO payouts on its own chain; only the Ethereum USDC payout counts.
+  const out = s?.out_txs?.find((o) => /^OUT/i.test(o.memo ?? "") && (o.coins ?? []).some((x) => (x.asset ?? "").toUpperCase() === usdc().asset.toUpperCase()));
   const c = out?.coins?.find((x) => (x.asset ?? "").toUpperCase() === usdc().asset.toUpperCase());
   const n = c?.amount ? Number(c.amount) / 1e8 : NaN;
   return Number.isFinite(n) && n > 0 ? n : null;
@@ -620,13 +662,13 @@ export async function answerRoute(userId: string, id: string, choice: "continue"
 export async function listTsdRoutes(userId: string) {
   const { data, error } = await supabaseAdmin
     .from("tsd_routes")
-    .select("id, direction, coin, amount_in, amount_usd, shown_usdc, shown_out, fresh_out, usdc_amount, amount_out, stage, resume_stage, error, tsd_txid, usdc_txid, bridge_out_txid, swap_send_id, created_at, updated_at")
+    .select("id, protocol, direction, coin, amount_in, amount_usd, shown_usdc, shown_out, fresh_out, usdc_amount, amount_out, stage, resume_stage, error, tsd_txid, usdc_txid, bridge_out_txid, swap_send_id, created_at, updated_at")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(10);
   if (error) throw new Error(error.message);
   const rows = data ?? [];
-  // The THORChain step's transaction, so the swap can be tracked on RuneScan.
+  // The swap step's transaction, so the swap can be tracked on RuneScan / MayaScan.
   const legIds = rows.map((r) => r.swap_send_id).filter((x): x is string => Boolean(x));
   const txids = new Map<string, string | null>();
   if (legIds.length) {

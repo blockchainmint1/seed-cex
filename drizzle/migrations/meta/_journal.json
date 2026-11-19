@@ -239,6 +239,13 @@
       "when": 1795046527912,
       "tag": "0033_listing_applications",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1795054054522,
+      "tag": "0034_maya_swap_protocol",
+      "breakpoints": true
     }
   ]
 }

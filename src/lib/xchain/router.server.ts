@@ -7,16 +7,17 @@
  */
 import { PROTOCOL_LABEL, SEEDS_AFFILIATE, SWAP_COINS, type Protocol, type SwapCoin } from "./assets";
 import {
-  fromBaseUnits, limitOk, memoSafe, MIN_QUOTE_LIFE_SECONDS, toleranceBps, vaultMembership,
+  fromBaseUnits, independentAnswers, limitOk, memoSafe, MIN_QUOTE_LIFE_SECONDS, toleranceBps, vaultMembership,
 } from "./safety";
 
 type ProtocolDef = { prefix: string; nodes: string[] };
 
 /**
  * Public nodes, tried in order. THORChain: Liquify gateway plus Rujira's
- * developer endpoints (same list TSD Bridge verified). Maya: only the Maya team's
- * own node answers publicly (Nov 17 2026), so Maya can quote but cannot pass the
- * two-independent-servers vault check until a second operator is added here.
+ * developer endpoints (same list TSD Bridge verified). Maya: the Maya team's own
+ * node plus Liquify's (a separate machine — different node id and hosting, checked
+ * Nov 19 2026). The vault check counts each distinct node id once, so two
+ * addresses for the same machine can never pass it.
  */
 export const PROTOCOLS: Record<Protocol, ProtocolDef> = {
   thorchain: {
@@ -27,7 +28,7 @@ export const PROTOCOLS: Record<Protocol, ProtocolDef> = {
       "https://api-thorchain.rorcual.xyz",
     ],
   },
-  maya: { prefix: "/mayachain", nodes: ["https://mayanode.mayachain.info"] },
+  maya: { prefix: "/mayachain", nodes: ["https://mayanode.mayachain.info", "https://api-maya.liquify.com"] },
 };
 
 const RETRYABLE =
@@ -243,23 +244,45 @@ function quotePath(from: SwapCoin, to: SwapCoin, amount: bigint, destination: st
   return `/quote/swap?${q.toString()}`;
 }
 
-/** Each node's list of ACTIVE vault addresses (and routers) for a chain; null when silent. */
+/** Which machine answers at `base` (its p2p node id), cached 10 minutes; null when it won't say. */
+const nodeIdCache = new Map<string, { at: number; id: string }>();
+async function nodeIdOf(base: string): Promise<string | null> {
+  const hit = nodeIdCache.get(base);
+  if (hit && Date.now() - hit.at < 10 * 60_000) return hit.id;
+  try {
+    const j = await nodeGetOne<{ default_node_info?: { default_node_id?: string } }>(base, "/cosmos/base/tendermint/v1beta1/node_info", 8_000);
+    const id = j.default_node_info?.default_node_id;
+    if (!id || !/^[0-9a-f]{40}$/i.test(id)) return null;
+    nodeIdCache.set(base, { at: Date.now(), id });
+    return id;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * ACTIVE vault addresses (and routers) for a chain, one answer per distinct node.
+ * Silent servers and servers that can't be identified are left out.
+ */
 async function vaultAnswers(p: Protocol, chain: string) {
   const def = PROTOCOLS[p];
   const ask = async (base: string) => {
     try {
-      const list = await nodeGetOne<AsgardVault[]>(base, `${def.prefix}/vaults/asgard`, 12_000);
+      const [list, nodeId] = await Promise.all([nodeGetOne<AsgardVault[]>(base, `${def.prefix}/vaults/asgard`, 12_000), nodeIdOf(base)]);
       if (!Array.isArray(list)) return null;
       const active = list.filter((v) => v.status === "ActiveVault");
       return {
-        vaults: active.flatMap((v) => (v.addresses ?? []).filter((a) => a.chain === chain).map((a) => a.address)),
-        routers: active.flatMap((v) => (v.routers ?? []).filter((r) => r.chain === chain).map((r) => r.router)),
+        nodeId,
+        value: {
+          vaults: active.flatMap((v) => (v.addresses ?? []).filter((a) => a.chain === chain).map((a) => a.address)),
+          routers: active.flatMap((v) => (v.routers ?? []).filter((r) => r.chain === chain).map((r) => r.router)),
+        },
       };
     } catch {
       return null;
     }
   };
-  return Promise.all(def.nodes.map(ask));
+  return independentAnswers(await Promise.all(def.nodes.map(ask)));
 }
 
 /** Server-only details needed to sign; never returned to the browser. */
@@ -331,7 +354,7 @@ async function quoteOne(
       minOut = Number.isFinite(limitRaw) ? limitRaw / 1e8 : null;
 
       const answers = await vaultAnswers(p, from.chain);
-      const vm = vaultMembership(q.inbound_address ?? "", answers.map((a) => a?.vaults));
+      const vm = vaultMembership(q.inbound_address ?? "", answers.map((a) => a.vaults));
       checks.push({
         label: "Vault confirmed by 2 independent servers",
         pass: !vm.error,
@@ -339,7 +362,7 @@ async function quoteOne(
       });
       if (from.evm) {
         const want = (q.router ?? "").toLowerCase();
-        const routerConfirms = answers.filter((a) => a?.routers.some((r) => r.toLowerCase() === want)).length;
+        const routerConfirms = answers.filter((a) => a.routers.some((r) => r.toLowerCase() === want)).length;
         checks.push({
           label: "Router contract confirmed",
           pass: !!want && routerConfirms >= 2,
@@ -436,10 +459,12 @@ export async function protocolTxStatus(p: Protocol, txid: string): Promise<unkno
   }
 }
 
-/** THORChain-only quote (no vault returned): used to price TSD routes. */
-export async function thorQuote(from: SwapCoin, to: SwapCoin, amount: bigint, destination: string | null) {
+/** One protocol's quote (no vault returned): used to price TSD routes. */
+export async function protocolQuote(p: Protocol, from: SwapCoin, to: SwapCoin, amount: bigint, destination: string | null) {
   const prices = await livePrices();
-  const route = await quoteOne("thorchain", from, to, amount, destination, prices);
+  const route = await quoteOne(p, from, to, amount, destination, prices);
   const inPx = prices.get(from.asset) ?? null;
   return { route, inputUsd: inPx ? (Number(amount) / 1e8) * inPx : null };
 }
+
+export const thorQuote = (from: SwapCoin, to: SwapCoin, amount: bigint, destination: string | null) => protocolQuote("thorchain", from, to, amount, destination);

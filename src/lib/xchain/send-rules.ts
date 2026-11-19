@@ -1,8 +1,9 @@
 /**
- * Rules for sending a THORChain swap from a member's trading pocket (pure, tested).
+ * Rules for sending a THORChain or Maya swap from a member's trading pocket (pure, tested).
  *
- * Sending is THORChain-only: Maya has one public server, so its vaults can't be
- * confirmed by two independent servers and its routes never become send-ready.
+ * THORChain: every coin Seeds can sign. Maya: only Bitcoin, Ether and Ethereum
+ * tokens (USDC/USDT) — the coins Seeds signs that Maya also trades. Either way a
+ * route is send-ready only after two independent servers confirm the vault.
  * During the pilot only admins can send, with per-swap and daily dollar caps
  * enforced again inside the database (reserve_swap_send).
  */
@@ -10,7 +11,17 @@ import type { PocketCoin } from "@/lib/pockets/coins";
 import { hmeWalletCanHold } from "@/lib/pockets/hme-support";
 import type { Protocol, SwapCoin } from "./assets";
 
+/** Default protocol (and the one TSD-route coins must be on). */
 export const SEND_PROTOCOL: Protocol = "thorchain";
+export const SEND_PROTOCOLS: Protocol[] = ["thorchain", "maya"];
+/**
+ * Coins Seeds may send into Maya during the pilot: Bitcoin (plain OP_RETURN send),
+ * Ether and Ethereum USDC/USDT (Maya's router takes the same depositWithExpiry call,
+ * checked against its live contract code Nov 19 2026).
+ */
+export const MAYA_SEND_ASSETS = new Set<string>([
+  "BTC.BTC", "ETH.ETH", "ETH.USDC-0XA0B86991C6218B36C1D19D4A2E9EB0CE3606EB48", "ETH.USDT-0XDAC17F958D2EE523A2206206994597C13D831EC7",
+]);
 /** Pilot switch: until each coin has had a small real-money test, only admins can send. */
 export const SEND_PILOT_ADMIN_ONLY = true;
 export const SWAP_LIMITS = { perSwapUsd: 250, dailyUsd: 1000 } as const;
@@ -32,13 +43,13 @@ const NATIVE: Record<string, { pocket: PocketCoin; kind: SendKind }> = {
   "SOL.SOL": { pocket: "SOL", kind: "sol" },
 };
 
-/** Which pocket key pays for this coin, and how — or null when Seeds can't send it yet. */
-export function sendSource(c: SwapCoin): { pocket: PocketCoin; kind: SendKind } | null {
-  if (!c.protocols.includes(SEND_PROTOCOL)) return null;
-  const n = NATIVE[c.asset];
-  if (n) return n;
-  if (c.chain === "ETH" && c.token && /-0X[0-9A-F]{40}$/i.test(c.asset)) return { pocket: "EVM", kind: "erc20" };
-  return null;
+/** Which pocket key pays for this coin into `protocol`, and how — or null when Seeds can't send it there yet. */
+export function sendSource(c: SwapCoin, protocol: Protocol = SEND_PROTOCOL): { pocket: PocketCoin; kind: SendKind } | null {
+  if (!c.protocols.includes(protocol)) return null;
+  const n = NATIVE[c.asset] ?? (c.chain === "ETH" && c.token && /-0X[0-9A-F]{40}$/i.test(c.asset) ? { pocket: "EVM" as PocketCoin, kind: "erc20" as SendKind } : null);
+  if (!n) return null;
+  if (protocol === "maya" && !MAYA_SEND_ASSETS.has(c.asset)) return null;
+  return n;
 }
 
 const RECEIVE_BY_CHAIN: Record<string, PocketCoin> = {
@@ -68,9 +79,11 @@ export function sendBlocker(p: {
   link: LinkLike;
   isAdmin: boolean;
   amountUsd: number | null;
+  protocol?: Protocol;
 }): string | null {
-  const src = sendSource(p.from);
-  if (!src) return `Seeds can't send ${p.from.symbol} on ${p.from.network} yet.`;
+  const protocol = p.protocol ?? SEND_PROTOCOL;
+  const src = sendSource(p.from, protocol);
+  if (!src) return protocol === "maya" && sendSource(p.from) ? `Seeds sends ${p.from.symbol} through THORChain only for now.` : `Seeds can't send ${p.from.symbol} on ${p.from.network} yet.`;
   if (SEND_PILOT_ADMIN_ONLY && !p.isAdmin) return "Sending is in a small test with the Seeds team first. It opens to members after that.";
   if (!p.link) return "Link your HME Wallet trading pocket first (Profile).";
   if (p.link.mode !== "access" || !p.link.hasKey) return "Your pocket is linked in approve-every-trade mode. Swaps need instant access for now.";
@@ -81,20 +94,39 @@ export function sendBlocker(p: {
 }
 
 export type ThorTxStatus = {
-  out_txs?: Array<{ id?: string; memo?: string }>;
+  out_txs?: Array<{ id?: string; memo?: string; chain?: string }>;
   planned_out_txs?: Array<{ refund?: boolean }>;
   stages?: { outbound_signed?: { completed?: boolean }; inbound_observed?: { completed?: boolean } };
 };
 
-/** Map THORNode /tx/status to our row status. */
-export function swapProgress(s: ThorTxStatus | null): { status: "sent" | "done" | "refunded"; outTxid: string | null } {
+/**
+ * Map THORNode / MAYANode /tx/status to our row status. With `destChain`, only a
+ * payout on that chain counts as delivery: Maya also lists CACAO payouts on its own
+ * chain, and a partial fill can show a payout plus a refund of the rest.
+ */
+export function swapProgress(s: ThorTxStatus | null, destChain?: string): { status: "sent" | "done" | "refunded"; outTxid: string | null } {
   const outs = s?.out_txs ?? [];
+  const signed = Boolean(s?.stages?.outbound_signed?.completed);
   const refund = outs.find((o) => /^REFUND/i.test(o.memo ?? ""));
-  if (refund && s?.stages?.outbound_signed?.completed) return { status: "refunded", outTxid: refund.id ?? null };
+  if (destChain) {
+    const out = outs.find((o) => /^OUT/i.test(o.memo ?? "") && (o.chain ?? "").toUpperCase() === destChain.toUpperCase());
+    if (out && signed) return { status: "done", outTxid: out.id ?? null };
+    if (refund && signed) return { status: "refunded", outTxid: refund.id ?? null };
+    return { status: "sent", outTxid: null };
+  }
+  if (refund && signed) return { status: "refunded", outTxid: refund.id ?? null };
   const out = outs.find((o) => /^OUT/i.test(o.memo ?? ""));
-  if (out && s?.stages?.outbound_signed?.completed) return { status: "done", outTxid: out.id ?? null };
+  if (out && signed) return { status: "done", outTxid: out.id ?? null };
   return { status: "sent", outTxid: null };
 }
+
+/** Public explorer page for a swap's inbound transaction. */
+export function trackerUrl(protocol: string, txid: string): string {
+  const id = thorTxId(txid);
+  return protocol === "maya" ? `https://www.mayascan.org/tx/${id}` : `https://runescan.io/tx/${id}`;
+}
+
+export const TRACKER_NAME: Record<Protocol, string> = { thorchain: "RuneScan", maya: "MayaScan" };
 
 /** THORNode wants EVM hashes without 0x, upper-case. */
 export function thorTxId(txid: string): string {

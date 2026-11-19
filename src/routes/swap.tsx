@@ -6,7 +6,7 @@ import { ArrowDownUp, Check, Clock, ExternalLink, ShieldCheck, Wallet, X } from 
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PROTOCOL_LABEL, SWAP_COINS, swapCoin, swapCoinGroup, type Protocol, type SwapCoin, type SwapCoinId } from "@/lib/xchain/assets";
 import { getSwapQuotes, getSwapSendContext, getSwapStatus, sendSwap } from "@/lib/xchain/swap.functions";
-import { landsOutsideHmeWallet, receivePocket, sendBlocker, sendSource, SWAP_LIMITS } from "@/lib/xchain/send-rules";
+import { landsOutsideHmeWallet, receivePocket, sendBlocker, sendSource, SWAP_LIMITS, TRACKER_NAME, trackerUrl } from "@/lib/xchain/send-rules";
 import { useSession } from "@/hooks/use-session";
 import { TSD_BUY_COINS, TSD_SELL_COINS, TsdRouteResult } from "@/components/swap/TsdRoute";
 import { getTsdRouteQuote } from "@/lib/xchain/tsd-route.functions";
@@ -408,8 +408,9 @@ function SwapPage() {
                         <p className="font-mono text-[11px] text-muted-foreground">
                           {r.sendReady ? "All send checks passed." : `Not send-ready: ${r.blockedReason}`}
                         </p>
-                        {r.sendReady && r.protocol === "thorchain" ? (
+                        {r.sendReady ? (
                           <SendPanel
+                            protocol={r.protocol}
                             signedIn={Boolean(user)}
                             ctx={sendCtx ?? null}
                             from={fromCoin}
@@ -505,7 +506,7 @@ function SwapPage() {
           },
           {
             t: "3 · Send from your pocket",
-            d: "Seeds re-checks everything, then sends from your instant-access trading pocket with per-swap and daily limits. THORChain swaps through its pools and delivers native coins to your address — or refunds you if the price slips.",
+            d: "Seeds re-checks everything, then sends from your instant-access trading pocket with per-swap and daily limits. THORChain or Maya swaps through its pools and delivers native coins to your address — or refunds you if the price slips.",
           },
         ].map((s) => (
           <div key={s.t} className="rounded-sm border border-border bg-surface p-5">
@@ -518,8 +519,8 @@ function SwapPage() {
       <p className="max-w-3xl text-xs text-muted-foreground">
         THORChain and Maya Protocol are independent networks; Seeds does not run them. Quotes expire within minutes and
         large trades move the price. Tokens such as WBTC or USDC on BNB Chain are issued by third parties on those
-        networks, not by THORChain or Maya. Maya publishes one public server, so Maya routes show prices but cannot pass
-        the two-server check yet. TSD swaps convert through TSD Bridge, the single issuer of Texas Stable Dollar — see{" "}
+        networks, not by THORChain or Maya. Maya routes are checked against two separate Maya servers (Maya's own and
+        Liquify's); Seeds can send Bitcoin, Ether, USDC and USDT into Maya. TSD swaps convert through TSD Bridge, the single issuer of Texas Stable Dollar — see{" "}
         <Link to="/tsd" className="text-primary underline-offset-2 hover:underline">TSD</Link>.
       </p>
     </div>
@@ -528,9 +529,8 @@ function SwapPage() {
 
 type SendCtx = Awaited<ReturnType<typeof getSwapSendContext>>;
 
-const TRACKER = (txid: string) => `https://runescan.io/tx/${txid.replace(/^0x/i, "").toUpperCase()}`;
-
 function SendPanel(props: {
+  protocol: Protocol;
   signedIn: boolean;
   ctx: SendCtx | null;
   from: SwapCoin;
@@ -547,20 +547,20 @@ function SendPanel(props: {
   const [agree, setAgree] = useState(false);
   const mutation = useMutation({
     mutationFn: () =>
-      send({ data: { from: props.from.id, to: props.to.id, amount: props.amount, destination: props.destination, shownOut: props.expectedOut } }),
+      send({ data: { from: props.from.id, to: props.to.id, amount: props.amount, destination: props.destination, shownOut: props.expectedOut, protocol: props.protocol } }),
     onSettled: () => qc.invalidateQueries({ queryKey: ["swap-send-ctx"] }),
   });
 
   if (mutation.data) {
     return (
       <div className="space-y-2 rounded-sm border border-primary bg-primary/10 p-3 text-xs">
-        <p className="font-semibold">Sent. THORChain is swapping it now.</p>
+        <p className="font-semibold">Sent. {PROTOCOL_LABEL[props.protocol]} is swapping it now.</p>
         <p className="text-muted-foreground">
           You'll get about {coins(mutation.data.expectedOut)} {props.to.symbol}
           {mutation.data.minOut != null ? `, or a refund if it would be under ${coins(mutation.data.minOut)}` : ""}. Progress shows under “My swaps”.
         </p>
-        <a href={TRACKER(mutation.data.txid)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-mono text-primary underline">
-          Track on RuneScan <ExternalLink className="h-3 w-3" />
+        <a href={trackerUrl(props.protocol, mutation.data.txid)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-mono text-primary underline">
+          Track on {TRACKER_NAME[props.protocol]} <ExternalLink className="h-3 w-3" />
         </a>
       </div>
     );
@@ -575,9 +575,9 @@ function SendPanel(props: {
   }
   if (!props.ctx) return null;
   const link = props.ctx.link ? { mode: props.ctx.link.mode, hasKey: props.ctx.link.hasKey, pockets: props.ctx.link.pockets as string[] } : null;
-  const blocker = sendBlocker({ from: props.from, link, isAdmin: props.ctx.isAdmin, amountUsd: props.inputUsd });
+  const blocker = sendBlocker({ from: props.from, link, isAdmin: props.ctx.isAdmin, amountUsd: props.inputUsd, protocol: props.protocol });
   if (blocker) return <p className="border-t border-border pt-3 text-xs text-muted-foreground">{blocker}</p>;
-  const src = sendSource(props.from)!;
+  const src = sendSource(props.from, props.protocol)!;
   const fromAddr = (props.ctx.link?.addresses as Record<string, string> | undefined)?.[src.pocket];
 
   return (

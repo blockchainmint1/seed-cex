@@ -496,10 +496,10 @@ function RiskPage() {
 
             <Section id="swaps" n={14} title="Cross-chain swaps">
               <Callout>
-                <B>Status: quotes only.</B> The <Link to="/swap" className="text-primary underline-offset-4 hover:underline">Swap</Link>{" "}
-                page compares prices from THORChain and Maya but does not send anything yet.
+                <B>Status: small test.</B> The <Link to="/swap" className="text-primary underline-offset-4 hover:underline">Swap</Link>{" "}
+                page compares prices from THORChain and Maya. Only the Seeds team can send swaps for now, with small per-swap and daily limits.
               </Callout>
-              <p>When sending is switched on, cross-chain swaps will carry extra risks:</p>
+              <p>Cross-chain swaps carry extra risks:</p>
               <List
                 items={[
                   "THORChain and Maya are independent networks that Seeds does not control. They have been hacked and halted in the past, and could be again.",

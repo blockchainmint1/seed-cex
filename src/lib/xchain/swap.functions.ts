@@ -60,9 +60,10 @@ const sendInput = z.object({
   amount: z.string().trim().min(1).max(32),
   destination: z.string().trim().min(10).max(128),
   shownOut: z.number().positive(),
+  protocol: z.enum(["thorchain", "maya"]).optional().default("thorchain"),
 });
 
-/** Signed-in: send a THORChain swap from the member's instant-access trading pocket. */
+/** Signed-in: send a THORChain or Maya swap from the member's instant-access trading pocket. */
 export const sendSwap = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => sendInput.parse(input))

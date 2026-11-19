@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { swapCoin } from "./assets";
 import {
   afterBridgeFee, BRIDGE_USDC_CONTRACT, bridgeProgress, formatEth, gasNeedWei, gasPreflight, gasTopUpWei,
-  GAS_LIMITS, GAS_SWAP_LEG, GAS_USDC_TRANSFER, legPriceOk, mintOrderProblem,
+  GAS_LIMITS, GAS_SWAP_LEG, GAS_USDC_TRANSFER, legPriceOk, legProtocols, mintOrderProblem, pickLeg,
   redeemOrderProblem, routeBlocker, routeCoinProblem, routeGasUnits, routePockets, routeSteps, stepIndex, TSD_ROUTE,
 } from "./tsd-route";
 import { SWAP_LIMITS } from "./send-rules";
@@ -158,5 +158,29 @@ describe("progress tracker", () => {
     expect(stepIndex("sell", "swapping", false)).toBe(0);
     expect(stepIndex("sell", "swap_sent", false)).toBe(1);
     expect(stepIndex("sell", "bridging", false)).toBe(2);
+  });
+});
+
+describe("TSD swaps through THORChain or Maya", () => {
+  test("TSD to Bitcoin or Ether can go through either network", () => {
+    expect(legProtocols("buy", c("BTC"), c("USDC"))).toEqual(["thorchain", "maya"]);
+    expect(legProtocols("sell", c("ETH"), c("USDC"))).toEqual(["thorchain", "maya"]);
+  });
+  test("coins Seeds can't send into Maya stay THORChain-only", () => {
+    expect(legProtocols("buy", c("DOGE"), c("USDC"))).toEqual(["thorchain"]);
+    expect(legProtocols("sell", c("LTC"), c("USDC"))).toEqual(["thorchain"]);
+  });
+  test("the network paying more is chosen", () => {
+    const best = pickLeg([{ protocol: "thorchain" as const, ok: true, expectedOut: 0.000787 }, { protocol: "maya" as const, ok: true, expectedOut: 0.000788 }]);
+    expect(best?.protocol).toBe("maya");
+  });
+  test("a network with no route is never chosen, however good its number", () => {
+    const best = pickLeg([{ protocol: "thorchain" as const, ok: true, expectedOut: 1 }, { protocol: "maya" as const, ok: false, expectedOut: 2 }]);
+    expect(best?.protocol).toBe("thorchain");
+    expect(pickLeg([{ protocol: "maya" as const, ok: false, expectedOut: 2 }])).toBeNull();
+  });
+  test("the progress steps name the network doing the swap", () => {
+    expect(routeSteps("buy", "BTC", "Maya")).toEqual(["TSD sent", "TSD Bridge pays USDC", "Maya swaps", "BTC in your pocket"]);
+    expect(routeSteps("buy", "BTC")[2]).toBe("THORChain swaps");
   });
 });

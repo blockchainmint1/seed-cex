@@ -143,6 +143,25 @@ export function vaultMembership(
   };
 }
 
+export type ServerAnswer<T> = { nodeId: string | null; value: T } | null;
+
+/**
+ * Keep one answer per distinct node: two addresses that reach the same machine are
+ * one server, not two. Answers whose node can't be identified are dropped (fail closed).
+ */
+export function independentAnswers<T>(answers: Array<ServerAnswer<T>>): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const a of answers) {
+    if (!a || !a.nodeId) continue;
+    const id = a.nodeId.toLowerCase();
+    if (seen.has(id)) continue;
+    seen.add(id);
+    out.push(a.value);
+  }
+  return out;
+}
+
 export type RouteLike = { protocol: string; ok: boolean; expectedOut: number };
 
 /** Highest payout among routes that passed every check. */
