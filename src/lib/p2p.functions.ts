@@ -109,8 +109,7 @@ export const listOffers = createServerFn({ method: "GET" })
         methods: o.payment_methods,
         terms: o.terms,
         windowMinutes: o.window_minutes,
-        verified,
-        availableUsd,
+        fundsOk: verified > 0,
         newBuyerMax: Number(o.new_buyer_max_fiat),
         minTrades: o.min_counterparty_trades,
         seller: {
@@ -123,7 +122,8 @@ export const listOffers = createServerFn({ method: "GET" })
         rank: rankOf(s, availableUsd) + (pr.online ? 8 : 0),
       };
     });
-    list = list.filter((o) => o.availableUsd >= o.minFiat);
+    // A seller out of funds can't cover their own minimum: the shown max (clamped by funds) falls below it.
+    list = list.filter((o) => o.maxFiat >= o.minFiat);
     if (data.onlineOnly) list = list.filter((o) => o.seller.online);
     if (data.amount) list = list.filter((o) => data.amount! >= o.minFiat && data.amount! <= o.maxFiat);
     list.sort((a, b) => b.rank - a.rank);
@@ -202,7 +202,7 @@ export const getSellerProfile = createServerFn({ method: "GET" })
       since: p.created_at,
       stats: stats[p.user_id],
       offers: await Promise.all(
-        (offers ?? []).map(async (o) => ({ ...o, price: await effectivePrice(o), verified_balance: Number(o.verified_balance) })),
+        (offers ?? []).map(async ({ verified_balance, ...o }) => ({ ...o, price: await effectivePrice(o), fundsOk: Number(verified_balance) > 0 })),
       ),
       feedback: (fb ?? []).map((f) => ({ by: names[f.from_id], positive: f.positive, comment: f.comment, at: f.created_at })),
       history: (history ?? []).map((h) => ({

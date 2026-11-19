@@ -142,8 +142,8 @@ function Market() {
               <div className="font-mono text-xs">
                 ${o.minFiat.toLocaleString()} – ${Math.floor(o.maxFiat).toLocaleString()}
                 {o.side === "sell" ? (
-                  <div className="flex items-center gap-1 text-[11px] text-primary">
-                    <BadgeCheck className="h-3 w-3" /> {o.verified.toLocaleString(undefined, { maximumFractionDigits: 6 })} {o.asset} verified
+                  <div className={o.fundsOk ? "flex items-center gap-1 text-[11px] text-primary" : "flex items-center gap-1 text-[11px] text-destructive"}>
+                    <BadgeCheck className="h-3 w-3" /> {o.fundsOk ? "funds verified" : "no verified funds"}
                   </div>
                 ) : null}
               </div>

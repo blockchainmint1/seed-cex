@@ -124,7 +124,7 @@ export function TsdRouteResult({ direction, coin, amount, q, signedIn, link, isA
                 (Account → Balances → Deposit), then start the swap — nothing has been sent yet.
               </p>
             ) : gas.data?.haveEth != null && gas.data.needEth != null ? (
-              <p className="text-[11px] text-muted-foreground">Your EVM pocket holds {gas.data.haveEth.toFixed(5)} ETH for the Ethereum fee — enough.</p>
+              <p className="text-[11px] text-muted-foreground">Funds verified — your pocket can pay the Ethereum network fee.</p>
             ) : gas.isError ? (
               <p className="text-[11px] text-muted-foreground">
                 We couldn't check your pocket's Ethereum fee just now. The swap checks it again before anything is sent, so nothing can leave without the fee.
