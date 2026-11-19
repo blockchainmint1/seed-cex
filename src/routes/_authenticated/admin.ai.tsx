@@ -35,10 +35,11 @@ function AdminAiPage() {
   const checksM = useMutation({ mutationFn: () => runChecks(), onSuccess: reload });
   const [limit, setLimit] = useState("");
   const [maxCommit, setMaxCommit] = useState("");
+  const [memberMax, setMemberMax] = useState("");
   useEffect(() => {
-    if (q.data) { setLimit(String(q.data.settings.oneTapLimitUsd)); setMaxCommit(String(q.data.settings.maxCommitTsd)); }
+    if (q.data) { setLimit(String(q.data.settings.oneTapLimitUsd)); setMaxCommit(String(q.data.settings.maxCommitTsd)); setMemberMax(String(q.data.settings.oneTapMemberMaxUsd)); }
   }, [q.data]);
-  const settingsM = useMutation({ mutationFn: () => saveSettings({ data: { oneTapLimitUsd: Number(limit), maxCommitTsd: Number(maxCommit) } }), onSuccess: reload });
+  const settingsM = useMutation({ mutationFn: () => saveSettings({ data: { oneTapLimitUsd: Number(limit), oneTapMemberMaxUsd: Number(memberMax), maxCommitTsd: Number(maxCommit) } }), onSuccess: reload });
   const testerM = useMutation({
     mutationFn: (on: boolean) => saveSettings({ data: { oneTapLimitUsd: q.data!.settings.oneTapLimitUsd, maxCommitTsd: q.data!.settings.maxCommitTsd, testerExecution: on } }),
     onSuccess: reload,
@@ -101,9 +102,11 @@ function AdminAiPage() {
           </Panel>
 
           <Panel title="Limits">
-            <form className="grid gap-3 sm:grid-cols-[12rem_12rem_12rem] sm:items-end" onSubmit={(e) => { e.preventDefault(); settingsM.mutate(); }}>
-              <label className="text-sm"><span className="font-semibold">One-tap Telegram limit ($)</span>
-                <input className={`${inputCls} mt-1`} type="number" min={0} max={1000} value={limit} onChange={(e) => setLimit(e.target.value)} /></label>
+            <form className="grid gap-3 sm:grid-cols-[12rem_12rem_12rem_auto] sm:items-end" onSubmit={(e) => { e.preventDefault(); settingsM.mutate(); }}>
+              <label className="text-sm"><span className="font-semibold">Default one-tap limit ($)</span>
+                <input className={`${inputCls} mt-1`} type="number" min={0} value={limit} onChange={(e) => setLimit(e.target.value)} /></label>
+              <label className="text-sm"><span className="font-semibold">Highest a member can set ($)</span>
+                <input className={`${inputCls} mt-1`} type="number" min={0} value={memberMax} onChange={(e) => setMemberMax(e.target.value)} /></label>
               <label className="text-sm"><span className="font-semibold">Max per plan (TSD)</span>
                 <input className={`${inputCls} mt-1`} type="number" min={10} value={maxCommit} onChange={(e) => setMaxCommit(e.target.value)} /></label>
               <button className="seed-btn sm:w-auto" disabled={settingsM.isPending}>{settingsM.isPending ? "Saving…" : "Save limits"}</button>
@@ -121,8 +124,8 @@ function AdminAiPage() {
             </div>
             <p className="mt-3 text-xs text-muted-foreground">
               Buying for other members: <span className="font-semibold text-foreground">{q.data.settings.executionEnabled ? "on" : "off"}</span> (their plans stay on paper).
-              Beta testers have no plan-size, plan-count or swap-size limit; the max per plan above applies to other members. The one-tap limit applies to everyone:
-              days with trades up to it confirm with one tap in Telegram, bigger ones are confirmed on Seeds. Switching off stops trades that haven't started.
+              Beta testers have no plan-size, plan-count or swap-size limit; the max per plan above applies to other members. One-tap limit: trade days up to it confirm with one tap in Telegram, bigger ones are confirmed on Seeds.
+              Every member starts on the default; in Account → Alerts they can lower theirs any time, or raise it up to the highest above with a two-factor code. Switching off stops trades that haven't started.
             </p>
           </Panel>
 

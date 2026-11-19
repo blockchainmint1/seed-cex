@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { aiButtonData, aiButtonOk, aiTapDecision, ledgerFrom, moveAmountNow, oneTapAllowed, parseAiButton, planRealMoves, realBuyingBlocker } from "./execute-rules";
+import { aiButtonData, aiButtonOk, aiTapDecision, effectiveOneTapLimit, ledgerFrom, oneTapChangeProblem, moveAmountNow, oneTapAllowed, parseAiButton, planRealMoves, realBuyingBlocker } from "./execute-rules";
 
 describe("plan ledger", () => {
   test("starts as the committed TSD and follows finished swaps", () => {
@@ -92,5 +92,35 @@ describe("amount sent now", () => {
   test("a buy never spends more than the plan's TSD", () => {
     expect(moveAmountNow({ side: "buy", coin: "bitcoin", amount: 240 }, { tsd: 100, units: {} }, null)).toBe(100);
     expect(moveAmountNow({ side: "buy", coin: "bitcoin", amount: 240 }, { tsd: 5, units: {} }, null)).toBeNull();
+  });
+});
+
+
+describe("one-tap Telegram limit: admin default, member override with two-factor", () => {
+  const admin = { adminDefault: 50, adminMax: 1000 };
+  test("no own limit: the admin default applies", () => {
+    expect(effectiveOneTapLimit({ ...admin, member: null })).toBe(50);
+  });
+  test("a member's own limit wins, but never above the admin's highest", () => {
+    expect(effectiveOneTapLimit({ ...admin, member: 500 })).toBe(500);
+    expect(effectiveOneTapLimit({ ...admin, member: 10 })).toBe(10);
+    expect(effectiveOneTapLimit({ ...admin, member: 5000 })).toBe(1000);
+  });
+  test("raising needs two-factor on and a fresh code", () => {
+    const base = { ...admin, current: 50, next: 500 };
+    expect(oneTapChangeProblem({ ...base, twoFactorOn: false, fresh: false })).toContain("two-factor");
+    expect(oneTapChangeProblem({ ...base, twoFactorOn: true, fresh: false })).toContain("6-digit code");
+    expect(oneTapChangeProblem({ ...base, twoFactorOn: true, fresh: true })).toBeNull();
+  });
+  test("lowering, or switching one-tap off, never needs a code", () => {
+    expect(oneTapChangeProblem({ ...admin, current: 500, next: 20, twoFactorOn: false, fresh: false })).toBeNull();
+    expect(oneTapChangeProblem({ ...admin, current: 50, next: 0, twoFactorOn: false, fresh: false })).toBeNull();
+  });
+  test("going back to the default counts as raising when the default is higher", () => {
+    expect(oneTapChangeProblem({ ...admin, current: 10, next: null, twoFactorOn: true, fresh: false })).toContain("6-digit code");
+    expect(oneTapChangeProblem({ ...admin, current: 500, next: null, twoFactorOn: false, fresh: false })).toBeNull();
+  });
+  test("above the admin's highest is refused even with a code", () => {
+    expect(oneTapChangeProblem({ ...admin, current: 50, next: 1500, twoFactorOn: true, fresh: true })).toContain("$1,000");
   });
 });

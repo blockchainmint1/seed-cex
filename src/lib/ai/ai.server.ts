@@ -28,9 +28,11 @@ export async function loadSeries(db: Admin, coinId: string, fromDay = "2010-01-0
 
 export async function aiSettings(db?: Admin) {
   const d = db ?? (await admin());
-  const { data } = await d.from("ai_settings").select("one_tap_limit_usd, max_commit_tsd, execution_enabled, admin_execution_enabled").eq("id", 1).maybeSingle();
+  const { data } = await d.from("ai_settings").select("one_tap_limit_usd, one_tap_member_max_usd, max_commit_tsd, execution_enabled, admin_execution_enabled").eq("id", 1).maybeSingle();
   return {
     oneTapLimitUsd: Number(data?.one_tap_limit_usd ?? 50),
+    /** Highest one-tap limit a member may set for themselves. */
+    oneTapMemberMaxUsd: Number(data?.one_tap_member_max_usd ?? 1000),
     maxCommitTsd: Number(data?.max_commit_tsd ?? 1000),
     executionEnabled: data?.execution_enabled === true,
     /** Beta testers' (admins included) real buying. */

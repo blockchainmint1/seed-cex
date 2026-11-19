@@ -330,6 +330,13 @@
       "when": 1795131187624,
       "tag": "0046_ai_plan_next_check",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1795131631619,
+      "tag": "0047_member_one_tap_limit",
+      "breakpoints": true
     }
   ]
 }

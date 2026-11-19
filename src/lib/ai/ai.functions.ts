@@ -69,7 +69,8 @@ export const getMyAiPlans = createServerFn({ method: "GET" })
     const ledgers = new Map(await Promise.all((plans ?? []).filter((p) => ranReal.has(p.id)).map(async (p) => [p.id, await planLedger({ id: p.id, commit_tsd: Number(p.commit_tsd) })] as const)));
     const { aiSettings } = await import("./ai.server");
     const { swapSendContext } = await import("@/lib/xchain/send.server");
-    const [settings, ctx] = await Promise.all([aiSettings(), swapSendContext(userId)]);
+    const { oneTapLimitFor } = await import("./execute.server");
+    const [settings, ctx, oneTap] = await Promise.all([aiSettings(), swapSendContext(userId), oneTapLimitFor(userId)]);
     const history = new Map<string, { day: string; message: string; sentAt: string | null }[]>();
     const latestTargets = new Map<string, Record<string, number>>();
     for (const c of checks ?? []) {
@@ -89,7 +90,7 @@ export const getMyAiPlans = createServerFn({ method: "GET" })
         overrideDays: (p.override_days as string[] | null) ?? [],
         nextCheckAt: p.next_check_at ?? null,
       })),
-      limits: { maxCommitTsd: tester ? null : settings.maxCommitTsd, oneTapLimitUsd: settings.oneTapLimitUsd },
+      limits: { maxCommitTsd: tester ? null : settings.maxCommitTsd, oneTapLimitUsd: oneTap.limit },
       executionEnabled: settings.executionEnabled,
       /** Beta tester (admins included): may switch real buying on, no plan-size/count limits. */
       tester,
@@ -381,7 +382,7 @@ export const adminAiRefresh = createServerFn({ method: "POST" })
     return { queued: Number(n ?? 0) };
   });
 
-const settingsInput = z.object({ oneTapLimitUsd: z.number().min(0).max(1000), maxCommitTsd: z.number().min(10).max(100000), testerExecution: z.boolean().optional() });
+const settingsInput = z.object({ oneTapLimitUsd: z.number().min(0).max(100000), oneTapMemberMaxUsd: z.number().min(0).max(100000).optional(), maxCommitTsd: z.number().min(10).max(100000), testerExecution: z.boolean().optional() });
 
 /** Admin: one-tap Telegram limit, the per-plan TSD cap (members), and the beta testers' real-buying switch. Members' execution switch stays off. */
 export const adminAiSaveSettings = createServerFn({ method: "POST" })
@@ -389,9 +390,11 @@ export const adminAiSaveSettings = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => settingsInput.parse(input))
   .handler(async ({ data, context }) => {
     await requireAdmin(context as never);
+    if (data.oneTapMemberMaxUsd != null && data.oneTapLimitUsd > data.oneTapMemberMaxUsd) throw new Error("The default one-tap limit can't be above the highest a member can set.");
     const admin = await db();
     const { error } = await admin.from("ai_settings").update({
       one_tap_limit_usd: data.oneTapLimitUsd, max_commit_tsd: data.maxCommitTsd, updated_at: new Date().toISOString(),
+      ...(data.oneTapMemberMaxUsd == null ? {} : { one_tap_member_max_usd: data.oneTapMemberMaxUsd }),
       ...(data.testerExecution === undefined ? {} : { admin_execution_enabled: data.testerExecution }),
     }).eq("id", 1);
     if (error) throw new Error(error.message);

@@ -349,6 +349,7 @@ export type Database = {
           id: number
           max_commit_tsd: number
           one_tap_limit_usd: number
+          one_tap_member_max_usd: number
           updated_at: string
         }
         Insert: {
@@ -357,6 +358,7 @@ export type Database = {
           id?: number
           max_commit_tsd?: number
           one_tap_limit_usd?: number
+          one_tap_member_max_usd?: number
           updated_at?: string
         }
         Update: {
@@ -365,6 +367,7 @@ export type Database = {
           id?: number
           max_commit_tsd?: number
           one_tap_limit_usd?: number
+          one_tap_member_max_usd?: number
           updated_at?: string
         }
         Relationships: []
@@ -1478,6 +1481,33 @@ export type Database = {
         }
         Relationships: []
       }
+      one_tap_limit_events: {
+        Row: {
+          created_at: string
+          id: string
+          new_limit_usd: number | null
+          old_limit_usd: number | null
+          user_id: string
+          with_code: boolean
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          new_limit_usd?: number | null
+          old_limit_usd?: number | null
+          user_id: string
+          with_code?: boolean
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          new_limit_usd?: number | null
+          old_limit_usd?: number | null
+          user_id?: string
+          with_code?: boolean
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           amount: number
@@ -2018,6 +2048,8 @@ export type Database = {
           notify_weekly_digest: boolean
           onboarding_at: string | null
           onboarding_status: string | null
+          one_tap_limit_set_at: string | null
+          one_tap_limit_usd: number | null
           reputation: number
           telegram_chat_id: string | null
           telegram_code: string | null
@@ -2050,6 +2082,8 @@ export type Database = {
           notify_weekly_digest?: boolean
           onboarding_at?: string | null
           onboarding_status?: string | null
+          one_tap_limit_set_at?: string | null
+          one_tap_limit_usd?: number | null
           reputation?: number
           telegram_chat_id?: string | null
           telegram_code?: string | null
@@ -2082,6 +2116,8 @@ export type Database = {
           notify_weekly_digest?: boolean
           onboarding_at?: string | null
           onboarding_status?: string | null
+          one_tap_limit_set_at?: string | null
+          one_tap_limit_usd?: number | null
           reputation?: number
           telegram_chat_id?: string | null
           telegram_code?: string | null

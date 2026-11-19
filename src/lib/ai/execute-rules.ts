@@ -208,3 +208,27 @@ export function aiTapDecision(i: {
   if (i.choice === "keep") return "override";
   return i.oneTap ? "approve" : "needs_site";
 }
+
+/**
+ * One-tap Telegram limit for a member (Bobby, Nov 19 2026): admins set the default and the
+ * highest a member may choose; a member's own limit wins, capped at that highest value.
+ */
+export function effectiveOneTapLimit(i: { adminDefault: number; adminMax: number; member: number | null }): number {
+  if (i.member == null || !Number.isFinite(i.member)) return i.adminDefault;
+  return Math.max(0, Math.min(i.member, i.adminMax));
+}
+
+/**
+ * Why a member's one-tap change can't go ahead, or null. Lowering (or switching one-tap off
+ * with 0) is always allowed; raising needs two-factor on and a code from the last 10 minutes.
+ * `next` null = back to the Seeds default.
+ */
+export function oneTapChangeProblem(i: { next: number | null; current: number; adminDefault: number; adminMax: number; twoFactorOn: boolean; fresh: boolean }): string | null {
+  if (i.next != null && (!Number.isFinite(i.next) || i.next < 0)) return "Enter an amount of $0 or more.";
+  if (i.next != null && i.next > i.adminMax) return `The highest one-tap limit is $${i.adminMax.toLocaleString("en-US")}.`;
+  const after = i.next ?? i.adminDefault;
+  if (after <= i.current) return null;
+  if (!i.twoFactorOn) return "Raising your one-tap limit needs two-factor sign-in. Turn it on in Account → Security first.";
+  if (!i.fresh) return "Enter the 6-digit code from your authenticator app to raise your one-tap limit.";
+  return null;
+}

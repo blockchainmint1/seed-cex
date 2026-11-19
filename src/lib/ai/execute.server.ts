@@ -15,7 +15,7 @@ import { swapCoin } from "@/lib/xchain/assets";
 import { swapLimitsFor } from "@/lib/xchain/send-rules";
 import { routeCoinProblem, routePockets } from "@/lib/xchain/tsd-route";
 import {
-  aiButtonData, aiButtonOk, aiTapDecision, EXEC_TTL_MS, ledgerFrom, ledgerValue, moveAmountNow, oneTapAllowed,
+  aiButtonData, aiButtonOk, aiTapDecision, effectiveOneTapLimit, EXEC_TTL_MS, ledgerFrom, ledgerValue, moveAmountNow, oneTapAllowed,
   parseAiButton, planRealMoves, realBuyingBlocker, type DoneMove, type Ledger, type MoveSide,
 } from "./execute-rules";
 import { decisionKind, decisionMessage, type DecisionButton, type DecisionKind, type DecisionRow } from "./decision-message";
@@ -37,12 +37,20 @@ export async function isTesterUser(userId: string): Promise<boolean> {
 }
 
 async function execSettings() {
-  const { data } = await db.from("ai_settings").select("execution_enabled, admin_execution_enabled, one_tap_limit_usd").eq("id", 1).maybeSingle();
+  const { data } = await db.from("ai_settings").select("execution_enabled, admin_execution_enabled, one_tap_limit_usd, one_tap_member_max_usd").eq("id", 1).maybeSingle();
   return {
     members: data?.execution_enabled === true,
     admins: data?.admin_execution_enabled !== false,
     oneTapLimitUsd: Number(data?.one_tap_limit_usd ?? 50),
+    oneTapMemberMaxUsd: Number(data?.one_tap_member_max_usd ?? 1000),
   };
+}
+
+/** A member's one-tap Telegram limit: their own (capped at the admin's highest) or the admin default. */
+export async function oneTapLimitFor(userId: string): Promise<{ limit: number; own: number | null; adminDefault: number; adminMax: number }> {
+  const [s, { data: prof }] = await Promise.all([execSettings(), db.from("profiles").select("one_tap_limit_usd").eq("id", userId).maybeSingle()]);
+  const own = prof?.one_tap_limit_usd == null ? null : Number(prof.one_tap_limit_usd);
+  return { limit: effectiveOneTapLimit({ adminDefault: s.oneTapLimitUsd, adminMax: s.oneTapMemberMaxUsd, member: own }), own, adminDefault: s.oneTapLimitUsd, adminMax: s.oneTapMemberMaxUsd };
 }
 
 /** Plan coin id (CoinGecko id) → swap coin id, for every coin in the plan. */
@@ -135,7 +143,7 @@ export async function prepareRealMoves(checkId: string, opts: { ask?: boolean; a
     planTradedToday: (sug.moves?.length ?? 0) > 0 || !doneCount,
   });
   await cancelOpenPlanMoves(plan.id, "Replaced by a newer daily check.", check.id);
-  const s = await execSettings();
+  const { limit: oneTapLimit } = await oneTapLimitFor(plan.user_id);
   const syms = await symbols();
   const ask = opts.ask !== false;
   const kind = decisionKind({ rows: planned, targets, waitingInTsd: planWaitingInTsd(settings, targets), canBuyNow: canBuyNow(settings, targets) });
@@ -149,7 +157,7 @@ export async function prepareRealMoves(checkId: string, opts: { ask?: boolean; a
       const reasons = (await waitReasons(settings, coinsWaiting(settings, targets), check.day)).map(waitReasonText);
       const asked = await askOwner({
         checkId: check.id, userId: plan.user_id, kind, planName: plan.name, day: check.day, holding, reasons, rows: [], total: 0,
-        oneTap: false, limit: s.oneTapLimitUsd, buyNowTsd: buyNowTsd(settings, ledgerValue(ledger, prices), targets),
+        oneTap: false, limit: oneTapLimit, buyNowTsd: buyNowTsd(settings, ledgerValue(ledger, prices), targets),
       });
       return { ...none("nothing to trade"), asked };
     }
@@ -167,7 +175,7 @@ export async function prepareRealMoves(checkId: string, opts: { ask?: boolean; a
     throw new Error(error.message);
   }
   const total = rows.reduce((a, r) => a + r.usd, 0);
-  const oneTap = oneTapAllowed(total, s.oneTapLimitUsd);
+  const oneTap = oneTapAllowed(total, oneTapLimit);
   const expires = new Date(Date.now() + EXEC_TTL_MS).toISOString();
   const { data: claimed } = await db.from("ai_plan_checks").update({ exec_status: "waiting", exec_total_usd: Math.round(total * 100) / 100, exec_expires_at: expires })
     .eq("id", check.id).eq("exec_status", "none").select("id");
@@ -180,7 +188,7 @@ export async function prepareRealMoves(checkId: string, opts: { ask?: boolean; a
   }
   const asked = ask ? await askOwner({
     checkId: check.id, userId: plan.user_id, kind: kind ?? "trade", planName: plan.name, day: check.day, holding, reasons,
-    rows: rows.map((r) => ({ side: r.side, symbol: syms.get(r.coin_id) ?? r.coin_id, amount: r.amount, usd: r.usd })), total, oneTap, limit: s.oneTapLimitUsd,
+    rows: rows.map((r) => ({ side: r.side, symbol: syms.get(r.coin_id) ?? r.coin_id, amount: r.amount, usd: r.usd })), total, oneTap, limit: oneTapLimit,
   }) : false;
   return { moves: rows.length, total, oneTap, asked };
 }
@@ -282,7 +290,7 @@ export async function handleAiTap(cq: CallbackQuery): Promise<string | null> {
     cq.id ? telegramCall("answerCallbackQuery", { callback_query_id: cq.id, text, show_alert: alert }).catch(() => {}) : Promise.resolve();
   const { data: check } = await db.from("ai_plan_checks").select("id, user_id, exec_status, exec_total_usd, exec_expires_at").eq("id", parsed.checkId).maybeSingle();
   const { data: owner } = check ? await db.from("profiles").select("telegram_chat_id, telegram_verified").eq("id", check.user_id).maybeSingle() : { data: null };
-  const s = await execSettings();
+  const oneTapLimit = check ? (await oneTapLimitFor(check.user_id)).limit : 0;
   const decision = aiTapDecision({
     choice: parsed.choice,
     signatureOk: check ? await aiButtonOk(await telegramActionKey(), parsed, check.user_id) : false,
@@ -291,7 +299,7 @@ export async function handleAiTap(cq: CallbackQuery): Promise<string | null> {
     ownerChatId: owner?.telegram_chat_id ? String(owner.telegram_chat_id) : null,
     ownerChatVerified: owner?.telegram_verified === true,
     status: check?.exec_status ?? "missing",
-    oneTap: oneTapAllowed(Number(check?.exec_total_usd ?? 0), s.oneTapLimitUsd),
+    oneTap: oneTapAllowed(Number(check?.exec_total_usd ?? 0), oneTapLimit),
     expiresAtMs: check?.exec_expires_at ? Date.parse(check.exec_expires_at) : 0,
     nowMs: Date.now(),
   });

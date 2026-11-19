@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getMyProfile, updateMyProfile, type Profile } from "@/lib/profile.functions";
 import { TelegramCard } from "@/components/account/TelegramCard";
+import { OneTapCard } from "@/components/account/OneTapCard";
 import { useSession } from "@/hooks/use-session";
 import { Button } from "@/components/ui/button";
 import { Card, Note, Saved, TabTitle, Toggle } from "@/components/account/ui";
@@ -67,6 +68,8 @@ function AlertsTab() {
       <TabTitle title="Alerts" desc="Choose how Seeds reaches you. Telegram is instant; email is for receipts and summaries." />
 
       <TelegramCard />
+
+      <OneTapCard />
 
       <Card title="What to alert me about" desc={p?.telegram_verified ? "Sent to your Telegram." : "These switch on once Telegram is connected."}>
         <form onSubmit={(e) => { e.preventDefault(); m.mutate({ section: "tg", data: Object.fromEntries(TG_KEYS.map((k) => [k, Boolean(form[k])])) }); }}>
