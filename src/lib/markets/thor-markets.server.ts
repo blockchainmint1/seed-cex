@@ -9,6 +9,8 @@ import {
   dayStats, INTERVAL_SECONDS, mergeCandles, withLivePrice, parseCandles, THOR_MARKETS, TIMEFRAMES,
   type Candle, type DayStats, type ThorMarket, type Timeframe,
 } from "./thor-markets";
+import type { RawPool } from "./snapshot-rules";
+import type { StoredMarketView } from "./snapshot-read-rules";
 
 /**
  * Public Midgard servers, tried in order. Liquify is the only one reliably
@@ -88,31 +90,65 @@ export function marketsNeedFetch(slug?: string, tf?: Timeframe): boolean {
   return isStale("pools", TTL.pools) || THOR_MARKETS.some((m) => isStale(`hourly:${m.pool}`, TTL.hourly));
 }
 
-type NodePool = { asset: string; status: string; balance_asset: string; asset_tor_price?: string };
+/**
+ * Live pool state straight from THORNode, as THORChain reports it (cached
+ * briefly). Every field is a string or bool; snapshot-rules.ts converts the
+ * amounts into whole coins. Shared by the price fallback and the history job.
+ */
+export async function rawNodePools(): Promise<RawPool[]> {
+  return cached("rawPools", TTL.pools, async () => {
+    let last: unknown = null;
+    for (const base of THORNODE) {
+      try {
+        const r = await fetch(base + "/thorchain/pools", { headers: { accept: "application/json" }, signal: AbortSignal.timeout(10_000) });
+        if (!r.ok) { last = new Error(`HTTP ${r.status}`); continue; }
+        const list = (await r.json()) as RawPool[];
+        if (!Array.isArray(list)) { last = new Error("not a list"); continue; }
+        return list;
+      } catch (e) {
+        last = e;
+      }
+    }
+    console.error("[thor-markets] every THORNode server failed /thorchain/pools", String(last));
+    throw new Error("THORChain market data is unavailable right now. Try again in a minute.");
+  });
+}
 
 /** Live pool prices straight from THORNode, shaped like Midgard's (no 24h volume there). */
 async function nodePools(): Promise<Pool[]> {
-  let last: unknown = null;
-  for (const base of THORNODE) {
-    try {
-      const r = await fetch(base + "/thorchain/pools", { headers: { accept: "application/json" }, signal: AbortSignal.timeout(10_000) });
-      if (!r.ok) { last = new Error(`HTTP ${r.status}`); continue; }
-      const list = (await r.json()) as NodePool[];
-      if (!Array.isArray(list)) { last = new Error("not a list"); continue; }
-      return list.map((p) => ({
-        asset: p.asset,
-        status: String(p.status).toLowerCase(),
-        assetPrice: "0",
-        assetPriceUSD: p.asset_tor_price ? String(Number(p.asset_tor_price) / 1e8) : "0",
-        assetDepth: p.balance_asset,
-        volume24h: "0",
-      }));
-    } catch (e) {
-      last = e;
+  const list = await rawNodePools();
+  return list.map((p) => ({
+    asset: String(p.asset),
+    status: String(p.status).toLowerCase(),
+    assetPrice: "0",
+    assetPriceUSD: p.asset_tor_price ? String(Number(p.asset_tor_price) / 1e8) : "0",
+    assetDepth: String(p.balance_asset ?? "0"),
+    volume24h: "0",
+  }));
+}
+
+/**
+ * Any other THORNode read (inbound addresses, the planned-out queue, constants,
+ * nodes), tried across the same servers. Read-only; throws when every server
+ * fails so a caller can decide whether to store nothing or fall back.
+ */
+export async function thornode<T>(path: string, ttlMs = TTL.pools): Promise<T> {
+  return cached(`node:${path}`, ttlMs, async () => {
+    let last: unknown = null;
+    for (const base of THORNODE) {
+      try {
+        const r = await fetch(base + path, { headers: { accept: "application/json" }, signal: AbortSignal.timeout(10_000) });
+        if (!r.ok) { last = new Error(`HTTP ${r.status}`); continue; }
+        const t = await r.text();
+        if (!t.trimStart().startsWith("{") && !t.trimStart().startsWith("[")) { last = new Error("not JSON"); continue; }
+        return JSON.parse(t) as T;
+      } catch (e) {
+        last = e;
+      }
     }
-  }
-  console.error("[thor-markets] every THORNode server failed /thorchain/pools", String(last));
-  throw new Error("THORChain market data is unavailable right now. Try again in a minute.");
+    console.error("[thor-markets] every THORNode server failed", path, String(last));
+    throw new Error("THORChain network data is unavailable right now. Try again in a minute.");
+  });
 }
 
 function pools() {
@@ -145,15 +181,52 @@ function rowFor(m: ThorMarket, p: Pool | undefined, h: Candle[] | null): MarketR
   };
 }
 
+/** BTC and ETH lead; everything else sorts by 24-hour volume. */
+function orderRows(rows: MarketRow[]): MarketRow[] {
+  const rank = (slug: string) => (slug === "btc-tsd" ? 0 : slug === "eth-tsd" ? 1 : 2);
+  return [...rows].sort((a, b) => rank(a.slug) - rank(b.slug) || b.day.volume - a.day.volume);
+}
+
+/** A stored history row, joined back to the market catalog (swap id, order book). */
+function fromStored(v: StoredMarketView): MarketRow | null {
+  const m = THOR_MARKETS.find((x) => x.slug === v.slug);
+  if (!m) return null;
+  return { ...m, price: v.price, liquidity: v.liquidity, live: v.live, day: v.day, spark: v.spark };
+}
+
+/**
+ * Today's markets from Seeds' own 5-minute history, or null when it can't be
+ * trusted (too old, incomplete, or the read failed). When this returns rows, no
+ * THORChain server is contacted at all.
+ */
+async function storedRows(): Promise<MarketRow[] | null> {
+  const slugs = THOR_MARKETS.map((m) => m.slug);
+  const { readStoredMarkets } = await import("./snapshot-read.server");
+  const views = await readStoredMarkets(slugs);
+  if (!views) return null;
+  const rows = views.map(fromStored).filter((r): r is MarketRow => r !== null);
+  return rows.length === slugs.length ? orderRows(rows) : null;
+}
+
 /** Every primary market, with live price and 24-hour figures. */
 export async function fetchThorMarkets(): Promise<MarketRow[]> {
+  const stored = await storedRows().catch(() => null);
+  if (stored) return stored;
+
   const all = await pools();
   const byAsset = new Map(all.map((p) => [p.asset, p]));
   const hist = await Promise.all(THOR_MARKETS.map((m) => hourly(m.pool).catch(() => null)));
-  const rows = THOR_MARKETS.map((m, i) => rowFor(m, byAsset.get(m.pool), hist[i]));
-  // BTC and ETH first, then by 24-hour volume.
-  const [btc, eth, ...rest] = rows;
-  return [btc, eth, ...rest.sort((a, b) => b.day.volume - a.day.volume)];
+  return orderRows(THOR_MARKETS.map((m, i) => rowFor(m, byAsset.get(m.pool), hist[i])));
+}
+
+/**
+ * Whether the markets list would actually need a THORChain read. Used for rate
+ * limiting only: a page served from Seeds' own history costs nothing and must
+ * not use up a visitor's allowance.
+ */
+export async function marketsWouldHitNetwork(): Promise<boolean> {
+  if (await storedRows().catch(() => null)) return false;
+  return marketsNeedFetch();
 }
 
 /** One market's live row plus candles for the chosen candle size. */

@@ -179,3 +179,14 @@
 - [x] Help pages send stuck members to help.honest.money (Bobby, Nov 19)
 - [ ] Fix older pages that disagree with Help: /how-it-works and the homepage intro/step cards still describe the retired in-browser seed vault and email sign-up; /about/kyc says Seeds pays the Ethereum fee on TSD routes, but the shared gas wallet isn't set up (blocked: Bobby's go-ahead)
 - [ ] Switch support@honest.money in emails and the Ignite payment page to help.honest.money? (blocked: Bobby's call)
+
+## Seeds' own market history (Nov 19) — Bobby: "much more comprehensive local data than daily or hourly, every 5 minutes, use our own copy as often as possible, get MORE data than less"
+- [x] 5-minute history: every THORChain market (price, liquidity, 24h volume/change, halt + mint-pause flags, pool balances, pending inbound, synth supply, Savers depth/units/fill, pool/LP units, RUNE price) + per-chain state (halt flags, gas rate, outbound fee, dust, vault router/address) + network state (planned-out queue, fee constants, hourly node counts) (Nov 19)
+- [x] Hourly rollup (open/high/low/close, avg+min liquidity, avg volume) and automatic pruning: 5-minute detail 90 days, rollups 2 years (Nov 19)
+- [x] Pages read Seeds' own copy first: the Markets list and homepage price table are served from the newest 5-minute slice when it is under 15 minutes old and covers every market; otherwise they fall back to THORChain. A slice that is stale, incomplete or unreadable is never shown as live (Nov 19)
+- [x] History tables and the read function are server-only: no browser, visitor or member can reach them (row-level security with no public policy; function granted to the server role only) (Nov 19)
+- [x] Scheduled every 5 minutes (market-snapshot-5min) (Nov 19)
+- [ ] History starts filling once the app is published — the schedule calls the live site, so the route must be deployed first (blocked: Bobby publishes)
+- [ ] After publishing: confirm rows are landing and the Markets page is being served from Seeds' own copy (blocked: publish)
+- [ ] Charts still read candle history from THORChain; once Seeds has its own weeks of 5-minute data, build candles from it so charts survive a THORChain outage too (not built)
+- [ ] Maya and DEX pools are still spot-checks only — no history recorded for them yet (not built)

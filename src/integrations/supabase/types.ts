@@ -348,6 +348,60 @@ export type Database = {
         }
         Relationships: []
       }
+      chain_snapshots: {
+        Row: {
+          address: string | null
+          bucket: string
+          captured_at: string
+          chain: string
+          chain_lp_actions_paused: boolean | null
+          chain_trading_paused: boolean | null
+          dust_threshold: number | null
+          gas_rate: number | null
+          gas_rate_units: string | null
+          global_trading_paused: boolean | null
+          halted: boolean | null
+          observed_fee_rate: number | null
+          outbound_fee: number | null
+          outbound_tx_size: number | null
+          router: string | null
+        }
+        Insert: {
+          address?: string | null
+          bucket: string
+          captured_at?: string
+          chain: string
+          chain_lp_actions_paused?: boolean | null
+          chain_trading_paused?: boolean | null
+          dust_threshold?: number | null
+          gas_rate?: number | null
+          gas_rate_units?: string | null
+          global_trading_paused?: boolean | null
+          halted?: boolean | null
+          observed_fee_rate?: number | null
+          outbound_fee?: number | null
+          outbound_tx_size?: number | null
+          router?: string | null
+        }
+        Update: {
+          address?: string | null
+          bucket?: string
+          captured_at?: string
+          chain?: string
+          chain_lp_actions_paused?: boolean | null
+          chain_trading_paused?: boolean | null
+          dust_threshold?: number | null
+          gas_rate?: number | null
+          gas_rate_units?: string | null
+          global_trading_paused?: boolean | null
+          halted?: boolean | null
+          observed_fee_rate?: number | null
+          outbound_fee?: number | null
+          outbound_tx_size?: number | null
+          router?: string | null
+        }
+        Relationships: []
+      }
       custody_attestations: {
         Row: {
           id: string
@@ -1049,6 +1103,192 @@ export type Database = {
           },
         ]
       }
+      market_snapshots: {
+        Row: {
+          base: string
+          captured_at: string
+          change_pct: number | null
+          day: string
+          liquidity: number | null
+          live: boolean
+          name: string
+          pool: string
+          price: number
+          slug: string
+          volume_24h: number
+        }
+        Insert: {
+          base: string
+          captured_at?: string
+          change_pct?: number | null
+          day: string
+          liquidity?: number | null
+          live?: boolean
+          name: string
+          pool: string
+          price: number
+          slug: string
+          volume_24h?: number
+        }
+        Update: {
+          base?: string
+          captured_at?: string
+          change_pct?: number | null
+          day?: string
+          liquidity?: number | null
+          live?: boolean
+          name?: string
+          pool?: string
+          price?: number
+          slug?: string
+          volume_24h?: number
+        }
+        Relationships: []
+      }
+      market_snapshots_5min: {
+        Row: {
+          asset_tor_price: number | null
+          balance_asset: number | null
+          balance_rune: number | null
+          base: string
+          bucket: string
+          captured_at: string
+          change_pct: number | null
+          derived_depth_bps: number | null
+          liquidity: number | null
+          live: boolean
+          lp_units: number | null
+          name: string
+          pending_inbound_asset: number | null
+          pending_inbound_rune: number | null
+          pool: string
+          pool_units: number | null
+          price: number
+          savers_capacity_remaining: number | null
+          savers_depth: number | null
+          savers_fill_bps: number | null
+          savers_units: number | null
+          short_code: string | null
+          slug: string
+          status: string | null
+          synth_mint_paused: boolean | null
+          synth_supply: number | null
+          synth_supply_remaining: number | null
+          synth_units: number | null
+          trading_halted: boolean | null
+          volume_24h: number
+          volume_asset: number | null
+          volume_rune: number | null
+        }
+        Insert: {
+          asset_tor_price?: number | null
+          balance_asset?: number | null
+          balance_rune?: number | null
+          base: string
+          bucket: string
+          captured_at?: string
+          change_pct?: number | null
+          derived_depth_bps?: number | null
+          liquidity?: number | null
+          live?: boolean
+          lp_units?: number | null
+          name: string
+          pending_inbound_asset?: number | null
+          pending_inbound_rune?: number | null
+          pool: string
+          pool_units?: number | null
+          price: number
+          savers_capacity_remaining?: number | null
+          savers_depth?: number | null
+          savers_fill_bps?: number | null
+          savers_units?: number | null
+          short_code?: string | null
+          slug: string
+          status?: string | null
+          synth_mint_paused?: boolean | null
+          synth_supply?: number | null
+          synth_supply_remaining?: number | null
+          synth_units?: number | null
+          trading_halted?: boolean | null
+          volume_24h?: number
+          volume_asset?: number | null
+          volume_rune?: number | null
+        }
+        Update: {
+          asset_tor_price?: number | null
+          balance_asset?: number | null
+          balance_rune?: number | null
+          base?: string
+          bucket?: string
+          captured_at?: string
+          change_pct?: number | null
+          derived_depth_bps?: number | null
+          liquidity?: number | null
+          live?: boolean
+          lp_units?: number | null
+          name?: string
+          pending_inbound_asset?: number | null
+          pending_inbound_rune?: number | null
+          pool?: string
+          pool_units?: number | null
+          price?: number
+          savers_capacity_remaining?: number | null
+          savers_depth?: number | null
+          savers_fill_bps?: number | null
+          savers_units?: number | null
+          short_code?: string | null
+          slug?: string
+          status?: string | null
+          synth_mint_paused?: boolean | null
+          synth_supply?: number | null
+          synth_supply_remaining?: number | null
+          synth_units?: number | null
+          trading_halted?: boolean | null
+          volume_24h?: number
+          volume_asset?: number | null
+          volume_rune?: number | null
+        }
+        Relationships: []
+      }
+      market_snapshots_hourly: {
+        Row: {
+          hour: string
+          liquidity_avg: number | null
+          liquidity_min: number | null
+          price_close: number | null
+          price_high: number | null
+          price_low: number | null
+          price_open: number | null
+          samples: number
+          slug: string
+          volume_24h_avg: number | null
+        }
+        Insert: {
+          hour: string
+          liquidity_avg?: number | null
+          liquidity_min?: number | null
+          price_close?: number | null
+          price_high?: number | null
+          price_low?: number | null
+          price_open?: number | null
+          samples?: number
+          slug: string
+          volume_24h_avg?: number | null
+        }
+        Update: {
+          hour?: string
+          liquidity_avg?: number | null
+          liquidity_min?: number | null
+          price_close?: number | null
+          price_high?: number | null
+          price_low?: number | null
+          price_open?: number | null
+          samples?: number
+          slug?: string
+          volume_24h_avg?: number | null
+        }
+        Relationships: []
+      }
       nectarpay_events: {
         Row: {
           event_id: string
@@ -1070,6 +1310,51 @@ export type Database = {
           payload?: Json
           received_at?: string
           type?: string
+        }
+        Relationships: []
+      }
+      network_snapshots: {
+        Row: {
+          asgard_size: number | null
+          bucket: string
+          captured_at: string
+          desired_validator_set: number | null
+          native_tx_fee: number | null
+          nodes_active: number | null
+          nodes_jailed: number | null
+          nodes_maintenance: number | null
+          nodes_missing_blocks: number | null
+          nodes_total: number | null
+          outbound_tx_fee: number | null
+          scheduled_queue: number | null
+        }
+        Insert: {
+          asgard_size?: number | null
+          bucket: string
+          captured_at?: string
+          desired_validator_set?: number | null
+          native_tx_fee?: number | null
+          nodes_active?: number | null
+          nodes_jailed?: number | null
+          nodes_maintenance?: number | null
+          nodes_missing_blocks?: number | null
+          nodes_total?: number | null
+          outbound_tx_fee?: number | null
+          scheduled_queue?: number | null
+        }
+        Update: {
+          asgard_size?: number | null
+          bucket?: string
+          captured_at?: string
+          desired_validator_set?: number | null
+          native_tx_fee?: number | null
+          nodes_active?: number | null
+          nodes_jailed?: number | null
+          nodes_maintenance?: number | null
+          nodes_missing_blocks?: number | null
+          nodes_total?: number | null
+          outbound_tx_fee?: number | null
+          scheduled_queue?: number | null
         }
         Relationships: []
       }
@@ -2547,6 +2832,52 @@ export type Database = {
         Returns: boolean
       }
       legacy_user_for_email: { Args: { _email: string }; Returns: string }
+      market_snapshot_latest: {
+        Args: { _max_age_minutes?: number }
+        Returns: {
+          asset_tor_price: number
+          balance_asset: number
+          balance_rune: number
+          base: string
+          bucket: string
+          change_pct: number
+          derived_depth_bps: number
+          high_24h: number
+          liquidity: number
+          live: boolean
+          low_24h: number
+          lp_units: number
+          name: string
+          pending_inbound_asset: number
+          pending_inbound_rune: number
+          pool: string
+          pool_units: number
+          price: number
+          savers_capacity_remaining: number
+          savers_depth: number
+          savers_fill_bps: number
+          savers_units: number
+          slug: string
+          spark: number[]
+          status: string
+          synth_mint_paused: boolean
+          synth_supply: number
+          synth_supply_remaining: number
+          synth_units: number
+          trading_halted: boolean
+          volume_24h: number
+          volume_asset: number
+          volume_rune: number
+        }[]
+      }
+      market_snapshots_prune: {
+        Args: never
+        Returns: {
+          hourly_removed: number
+          raw_removed: number
+        }[]
+      }
+      market_snapshots_rollup: { Args: never; Returns: number }
       purge_expired_delegations: { Args: never; Returns: number }
       purge_expired_wallet_challenges: { Args: never; Returns: number }
       redeem_legacy_claim: { Args: { _token_hash: string }; Returns: string }

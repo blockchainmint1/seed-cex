@@ -253,6 +253,34 @@
       "when": 1795093460776,
       "tag": "0035_audit2_hardening",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1795121310248,
+      "tag": "0036_market_snapshots",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1795121384590,
+      "tag": "0037_market_snapshots_five_minute",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1795121498326,
+      "tag": "0038_market_snapshots_add_tor_price",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1795121541476,
+      "tag": "0039_market_snapshot_latest_read",
+      "breakpoints": true
     }
   ]
 }

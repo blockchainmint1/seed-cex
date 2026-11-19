@@ -5,7 +5,9 @@ import { THOR_MARKET_SLUGS, TIMEFRAME_IDS } from "./thor-markets";
 /** Public: every primary market (THORChain majors priced in TSD). */
 export const getThorMarkets = createServerFn({ method: "GET" }).handler(async () => {
   const s = await import("./thor-markets.server");
-  if (s.marketsNeedFetch()) {
+  // A page served from Seeds' own 5-minute history costs no THORChain request,
+  // so it must not use up the visitor's allowance.
+  if (await s.marketsWouldHitNetwork()) {
     const { requireIpAllowance } = await import("@/lib/ip-rate.server");
     const { IP_LIMITS } = await import("@/lib/ip-rate");
     await requireIpAllowance("chart", IP_LIMITS.chart);
