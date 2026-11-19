@@ -4,12 +4,14 @@
  * then keep it tidy (hourly rollup, old rows pruned).
  *
  * Called only by the scheduled job (cron-authenticated). Market figures come
- * from the same fetchThorMarkets() the live pages use, so the history can never
- * disagree with what a visitor was shown; the rest comes straight from THORNode.
- * Row shapes and unit conversion are decided by snapshot-rules.ts (tested).
+ * from fetchThorMarketsLive() — a fresh THORChain reading, deliberately not the
+ * stored-preferring fetchThorMarkets() the pages use, or this job would store
+ * its own last slice again every 5 minutes and the history would never move.
+ * The rest comes straight from THORNode. Row shapes and unit conversion are
+ * decided by snapshot-rules.ts (tested).
  */
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { fetchThorMarkets, rawNodePools, thornode } from "./thor-markets.server";
+import { fetchThorMarketsLive, rawNodePools, thornode } from "./thor-markets.server";
 import {
   chainRows,
   marketRows,
@@ -54,7 +56,7 @@ export async function recordMarketSnapshot(): Promise<SnapshotResult> {
   /* ------------------------------ markets ------------------------------- */
   try {
     const [live, pools] = await Promise.all([
-      fetchThorMarkets(),
+      fetchThorMarketsLive(),
       rawNodePools().catch((e) => {
         notes.push(`pool detail unread: ${String(e instanceof Error ? e.message : e).slice(0, 120)}`);
         return [];

@@ -208,15 +208,23 @@ async function storedRows(): Promise<MarketRow[] | null> {
   return rows.length === slugs.length ? orderRows(rows) : null;
 }
 
-/** Every primary market, with live price and 24-hour figures. */
-export async function fetchThorMarkets(): Promise<MarketRow[]> {
-  const stored = await storedRows().catch(() => null);
-  if (stored) return stored;
-
+/**
+ * A fresh reading straight from THORChain. Never looks at Seeds' own history:
+ * the scheduled writer uses this so it can't end up storing its own previous
+ * slice over and over and freezing the history in place.
+ */
+export async function fetchThorMarketsLive(): Promise<MarketRow[]> {
   const all = await pools();
   const byAsset = new Map(all.map((p) => [p.asset, p]));
   const hist = await Promise.all(THOR_MARKETS.map((m) => hourly(m.pool).catch(() => null)));
   return orderRows(THOR_MARKETS.map((m, i) => rowFor(m, byAsset.get(m.pool), hist[i])));
+}
+
+/** Every primary market, with live price and 24-hour figures. */
+export async function fetchThorMarkets(): Promise<MarketRow[]> {
+  const stored = await storedRows().catch(() => null);
+  if (stored) return stored;
+  return fetchThorMarketsLive();
 }
 
 /**
