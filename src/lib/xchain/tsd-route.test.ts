@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { swapCoin } from "./assets";
 import {
-  afterBridgeFee, BRIDGE_USDC_CONTRACT, bridgeProgress, formatEth, gasNeedWei, gasPreflight, gasTopUpWei,
+  afterBridgeFee, BRIDGE_USDC_CONTRACT, bridgeProgress, firstSendDone, formatEth, gasNeedWei, gasPreflight, gasTopUpWei,
   GAS_LIMITS, GAS_SWAP_LEG, GAS_USDC_TRANSFER, legPriceOk, legProtocols, mintOrderProblem, pickLeg,
   redeemOrderProblem, routeBlocker, routeCoinProblem, routeGasUnits, routePockets, routeSteps, stepIndex, TSD_ROUTE,
 } from "./tsd-route";
@@ -182,5 +182,27 @@ describe("TSD swaps through THORChain or Maya", () => {
   test("the progress steps name the network doing the swap", () => {
     expect(routeSteps("buy", "BTC", "Maya")).toEqual(["TSD sent", "TSD Bridge pays USDC", "Maya swaps", "BTC in your pocket"]);
     expect(routeSteps("buy", "BTC")[2]).toBe("THORChain swaps");
+  });
+});
+
+describe("the Swap button answers once the member's coins are sent", () => {
+  test("buying with TSD: waits while the TSD hasn't left, answers once TSD Bridge has it", () => {
+    expect(firstSendDone("buy", "reserved")).toBe(false);
+    expect(firstSendDone("buy", "sending_tsd")).toBe(false);
+    expect(firstSendDone("buy", "bridging")).toBe(true);
+  });
+  test("selling for TSD: waits until the coin is sent to the swap network", () => {
+    expect(firstSendDone("sell", "reserved")).toBe(false);
+    expect(firstSendDone("sell", "swapping")).toBe(false);
+    expect(firstSendDone("sell", "swap_sent")).toBe(true);
+    expect(firstSendDone("sell", "minting")).toBe(false); // selling USDC: its send to TSD Bridge happens here
+    expect(firstSendDone("sell", "bridging")).toBe(true);
+  });
+  test("a stopped or paused swap answers right away instead of spinning", () => {
+    for (const d of ["buy", "sell"] as const) {
+      expect(firstSendDone(d, "failed")).toBe(true);
+      expect(firstSendDone(d, "needs_ok")).toBe(true);
+      expect(firstSendDone(d, "gas_pending")).toBe(true);
+    }
   });
 });

@@ -47,6 +47,17 @@ export type RouteStage =
 export const TERMINAL_STAGES: RouteStage[] = ["done", "refunded", "kept_usdc", "failed"];
 export const isTerminal = (s: string) => (TERMINAL_STAGES as string[]).includes(s);
 
+/**
+ * Stages where the member's first coins have not left their pocket yet. The Swap button waits
+ * through these, then hands the rest (bridge payout, swap network, delivery) to the every-minute job.
+ */
+const BEFORE_FIRST_SEND: Record<RouteDirection, RouteStage[]> = {
+  buy: ["reserved", "sending_tsd"],
+  sell: ["reserved", "swapping", "minting"], // minting: USDC → TSD Bridge (the whole sell when the coin is USDC)
+};
+export const firstSendDone = (direction: RouteDirection, stage: string) =>
+  !(BEFORE_FIRST_SEND[direction] as string[]).includes(stage);
+
 /** Steps the member sees, in order, for the progress tracker. `swapper` names the swap network (THORChain or Maya). */
 export function routeSteps(direction: RouteDirection, coinSymbol: string, swapper = "THORChain"): string[] {
   if (coinSymbol === "USDC") return direction === "buy" ? ["TSD sent", "TSD Bridge pays USDC", "USDC in your pocket"] : ["USDC sent", "TSD Bridge issues TSD", "TSD in your pocket"];

@@ -19,7 +19,7 @@ import { gasWalletConfigured } from "./gas.server";
 import { toBaseUnits } from "./safety";
 import { landsOutsideHmeWallet, receivePocket, requoteOk, sendSource, SWAP_LIMITS } from "./send-rules";
 import {
-  afterBridgeFee, BRIDGE_USDC_CONTRACT, BRIDGE_USDC_ID, bridgeProgress, gasNeedWei, gasPreflight, isTerminal, legPriceOk, mintOrderProblem,
+  afterBridgeFee, BRIDGE_USDC_CONTRACT, BRIDGE_USDC_ID, bridgeProgress, firstSendDone, gasNeedWei, gasPreflight, isTerminal, legPriceOk, mintOrderProblem,
   GAS_SWAP_LEG, GAS_USDC_TRANSFER, legProtocols, pickLeg, redeemOrderProblem, routeBlocker, routeGasUnits, TSD_ROUTE, type RouteDirection, type RouteStage,
 } from "./tsd-route";
 
@@ -203,7 +203,9 @@ export async function startTsdRoute(userId: string, isAdmin: boolean, input: Sta
     _per_swap_max_usd: SWAP_LIMITS.perSwapUsd, _daily_max_usd: SWAP_LIMITS.dailyUsd, _protocol: q.protocol ?? "thorchain",
   });
   if (error || !id) throw new Error(clean(error?.message ?? "Could not start this swap."));
-  await advanceRoute(id as string);
+  // Answer the member as soon as their first coins have left (or the swap stopped); the
+  // every-minute job carries it the rest of the way, so the button never waits on TSD Bridge or THORChain.
+  await advanceRoute(id as string, (stage) => firstSendDone(input.direction, stage));
   const { data: row } = await supabaseAdmin.from("tsd_routes").select("id, stage, error").eq("id", id as string).single();
   return row;
 }
@@ -615,7 +617,7 @@ async function legOutputUsdc(protocol: Protocol, txid: string): Promise<number |
 }
 
 /** Claim and advance one route, up to 4 steps in a row. Safe to call from anywhere, any time. */
-export async function advanceRoute(id: string): Promise<void> {
+export async function advanceRoute(id: string, stopWhen?: (stage: string) => boolean): Promise<void> {
   for (let i = 0; i < 4; i++) {
     const r = await claim(id);
     if (!r) return;
@@ -630,6 +632,10 @@ export async function advanceRoute(id: string): Promise<void> {
       await supabaseAdmin.from("tsd_routes").update({ working_until: null }).eq("id", id);
     }
     if (!changed) return;
+    if (stopWhen) {
+      const { data } = await supabaseAdmin.from("tsd_routes").select("stage").eq("id", id).single();
+      if (!data || stopWhen(data.stage)) return;
+    }
   }
 }
 

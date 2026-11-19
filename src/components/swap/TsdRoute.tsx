@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
+import { CircleCheck } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { PROTOCOL_LABEL, SWAP_COINS, type SwapCoin } from "@/lib/xchain/assets";
@@ -112,10 +113,30 @@ export function TsdRouteResult({ direction, coin, amount, q, signedIn, link, isA
           </p>
         ) : blocker ? (
           <p className="text-xs text-muted-foreground">{blocker}</p>
+        ) : started.data?.stage === "failed" ? (
+          <div className="space-y-2">
+            <p role="alert" className="rounded-sm border border-destructive/60 bg-destructive/10 p-3 text-xs">
+              <span className="font-semibold">This swap didn't start.</span> {started.data.error ?? "Nothing was sent."}
+            </p>
+            <button
+              type="button"
+              onClick={() => { started.reset(); setAgree(false); }}
+              className="h-11 w-full rounded-md border border-border text-sm font-semibold transition-colors hover:bg-muted"
+            >
+              Try again
+            </button>
+          </div>
         ) : started.data ? (
-          <p className="rounded-sm border border-primary bg-primary/10 p-3 text-xs">
-            <span className="font-semibold">Started.</span> Follow it below under “My swaps” — we'll also message you on Telegram when it lands.
-          </p>
+          <div className="space-y-2">
+            <div role="status" className="flex h-11 w-full items-center justify-center gap-2 rounded-md border border-primary bg-primary/10 text-sm font-semibold text-primary">
+              <CircleCheck className="h-4 w-4" aria-hidden />
+              Swap underway
+            </div>
+            {started.data.error ? <p className="text-xs text-muted-foreground">{started.data.error}</p> : null}
+            <p className="text-xs text-muted-foreground">
+              Follow each step below under “My swaps” — we'll also message you on Telegram when the {outSymbol} lands in your pocket.
+            </p>
+          </div>
         ) : (
           <>
             {gas.data?.shortEth != null ? (
@@ -144,7 +165,7 @@ export function TsdRouteResult({ direction, coin, amount, q, signedIn, link, isA
               onClick={() => started.mutate()}
               className="h-11 w-full rounded-md bg-action text-sm font-semibold text-action-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
             >
-              {started.isPending ? "Checking everything and starting…" : direction === "buy" ? `Swap ${amount} TSD for ${coin.symbol}` : `Swap ${amount} ${coin.symbol} for TSD`}
+              {started.isPending ? `Checking everything and sending your ${direction === "buy" ? "TSD" : coin.symbol}…` : direction === "buy" ? `Swap ${amount} TSD for ${coin.symbol}` : `Swap ${amount} ${coin.symbol} for TSD`}
             </button>
           </>
         )}
