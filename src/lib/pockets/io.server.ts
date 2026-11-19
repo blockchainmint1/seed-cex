@@ -2,12 +2,12 @@
  * Read-only network access for the newer pocket coins (no sending here yet).
  * DOGE/BCH/ZEC/DASH: NowNodes Blockbook (same key as Litecoin). XRP, TRON, Solana,
  * Cosmos: paid providers first (nodes.server.ts), public servers as backup. Cardano:
- * NowNodes Rosetta, then Koios. THORChain (RUNE): public nodes (no paid provider serves it). Monero
+ * NowNodes Rosetta, then Koios. THORChain (RUNE): Liquify paid first, public nodes as backup (thornodeEndpoints). Monero
  * isn't here: reading it needs a private view-key scan Seeds doesn't run. Every function returns
  * null instead of throwing so a down network never breaks the Profile page.
  */
 import type { PocketCoin } from "./coins";
-import { cardanoRosetta, nodeEndpoints, type NodeEndpoint } from "@/lib/nodes.server";
+import { cardanoRosetta, nodeEndpoints, thornodeEndpoints, type NodeEndpoint } from "@/lib/nodes.server";
 
 export type ExtraCoin = Extract<PocketCoin, "DOGE" | "BCH" | "ZEC" | "XRP" | "TRX" | "SOL" | "DASH" | "ATOM" | "RUNE" | "ADA">;
 export const EXTRA_COINS: ExtraCoin[] = ["DOGE", "BCH", "ZEC", "XRP", "TRX", "SOL", "DASH", "ATOM", "RUNE", "ADA"];
@@ -18,7 +18,6 @@ const BOOK: Record<"DOGE" | "BCH" | "ZEC" | "DASH", string> = {
   ZEC: "https://zecbook.nownodes.io/api/v2",
   DASH: "https://dashbook.nownodes.io/api/v2",
 };
-const THORNODE = ["https://gateway.liquify.com/chain/thorchain_api", "https://thorchain.ibs.team/api", "https://api-thorchain.rorcual.xyz"]; // same public nodes the swap router reads
 const KOIOS = ["https://api.koios.rest/api/v1"];
 const asPublic = (urls: string[]): NodeEndpoint[] => urls.map((url) => ({ url, headers: {}, provider: "public" }));
 const DECIMALS: Record<ExtraCoin, number> = { DOGE: 8, BCH: 8, ZEC: 8, XRP: 6, TRX: 6, SOL: 9, DASH: 8, ATOM: 6, RUNE: 8, ADA: 6 };
@@ -53,7 +52,7 @@ function toUnits(raw: bigint, coin: ExtraCoin): number {
 /** Confirmed balance in whole coins, or null when the network can't be read. */
 export async function fetchExtraBalance(coin: ExtraCoin, address: string): Promise<number | null> {
   if (coin === "ATOM" || coin === "RUNE") {
-    const [eps, denom] = coin === "ATOM" ? [nodeEndpoints("cosmos"), "uatom"] : [asPublic(THORNODE), "rune"];
+    const [eps, denom] = coin === "ATOM" ? [nodeEndpoints("cosmos"), "uatom"] : [thornodeEndpoints(), "rune"];
     const r = await firstOk(eps, (u, h) => getJson<{ balance?: { amount?: string } }>(
       `${u}/cosmos/bank/v1beta1/balances/${encodeURIComponent(address)}/by_denom?denom=${denom}`, { headers: { ...UA, ...h } }));
     return r?.balance ? toUnits(BigInt(r.balance.amount ?? "0"), coin) : null;

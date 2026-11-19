@@ -10,6 +10,7 @@ import {
   type Candle, type DayStats, type ThorMarket, type Timeframe,
 } from "./thor-markets";
 import type { RawPool } from "./snapshot-rules";
+import { thornodeEndpoints } from "../nodes.server";
 import type { StoredMarketView } from "./snapshot-read-rules";
 
 /**
@@ -22,8 +23,8 @@ const MIDGARD = [
   "https://gateway.liquify.com/chain/thorchain_midgard",
   "https://midgard.thorswap.net",
 ];
-/** THORNode servers (live pool state, no history): the backup for prices when Midgard is down. */
-const THORNODE = ["https://thorchain.ibs.team/api", "https://api-thorchain.rorcual.xyz", "https://gateway.liquify.com/chain/thorchain_api"];
+/* THORNode servers (live pool state, no history; the backup for prices when Midgard is
+ * down) come from thornodeEndpoints(): Liquify's paid plan first when its key is set. */
 
 // Only finished answers are kept between requests. Unfinished work (a promise) must never be
 // shared: Cloudflare Workers refuses to settle a promise in any request but the one that
@@ -98,9 +99,9 @@ export function marketsNeedFetch(slug?: string, tf?: Timeframe): boolean {
 export async function rawNodePools(): Promise<RawPool[]> {
   return cached("rawPools", TTL.pools, async () => {
     let last: unknown = null;
-    for (const base of THORNODE) {
+    for (const node of thornodeEndpoints()) {
       try {
-        const r = await fetch(base + "/thorchain/pools", { headers: { accept: "application/json" }, signal: AbortSignal.timeout(10_000) });
+        const r = await fetch(node.url + "/thorchain/pools", { headers: node.headers, signal: AbortSignal.timeout(10_000) });
         if (!r.ok) { last = new Error(`HTTP ${r.status}`); continue; }
         const list = (await r.json()) as RawPool[];
         if (!Array.isArray(list)) { last = new Error("not a list"); continue; }
@@ -135,9 +136,9 @@ async function nodePools(): Promise<Pool[]> {
 export async function thornode<T>(path: string, ttlMs = TTL.pools): Promise<T> {
   return cached(`node:${path}`, ttlMs, async () => {
     let last: unknown = null;
-    for (const base of THORNODE) {
+    for (const node of thornodeEndpoints()) {
       try {
-        const r = await fetch(base + path, { headers: { accept: "application/json" }, signal: AbortSignal.timeout(10_000) });
+        const r = await fetch(node.url + path, { headers: node.headers, signal: AbortSignal.timeout(10_000) });
         if (!r.ok) { last = new Error(`HTTP ${r.status}`); continue; }
         const t = await r.text();
         if (!t.trimStart().startsWith("{") && !t.trimStart().startsWith("[")) { last = new Error("not JSON"); continue; }

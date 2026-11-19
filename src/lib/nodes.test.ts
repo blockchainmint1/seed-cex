@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { nodeEndpoints, shouldFailOver } from "./nodes.server";
+import { nodeEndpoints, shouldFailOver, thornodeEndpoints } from "./nodes.server";
 
-const saved = { a: process.env.ALCHEMY_KEY, n: process.env.NOWNODES_API_KEY };
-afterEach(() => { process.env.ALCHEMY_KEY = saved.a; process.env.NOWNODES_API_KEY = saved.n; });
+const saved = { a: process.env.ALCHEMY_KEY, n: process.env.NOWNODES_API_KEY, l: process.env.LIQUIFY_API_KEY };
+const restore = (k: string, v: string | undefined) => { if (v === undefined) delete process.env[k]; else process.env[k] = v; };
+afterEach(() => { restore("ALCHEMY_KEY", saved.a); restore("NOWNODES_API_KEY", saved.n); restore("LIQUIFY_API_KEY", saved.l); });
 const set = (a?: string, n?: string) => {
   if (a) process.env.ALCHEMY_KEY = a; else delete process.env.ALCHEMY_KEY;
   if (n) process.env.NOWNODES_API_KEY = n; else delete process.env.NOWNODES_API_KEY;
@@ -43,5 +44,29 @@ describe("when to try the next server", () => {
   });
   test("a real answer is final", () => {
     for (const s of [200, 400]) expect(shouldFailOver(s)).toBe(false);
+  });
+});
+
+describe("THORChain node servers", () => {
+  test("with the Liquify key, the paid plan is asked first and the key travels in a header", () => {
+    process.env.LIQUIFY_API_KEY = "secret-l";
+    const list = thornodeEndpoints();
+    expect(list[0]!.provider).toBe("liquify");
+    expect(list[0]!.headers["x-api-key"]).toBe("secret-l");
+    for (const e of list) expect(e.url).not.toContain("secret-l");
+  });
+  test("Liquify's free tier stays only as a read backup, so one machine never confirms a vault twice", () => {
+    process.env.LIQUIFY_API_KEY = "secret-l";
+    const list = thornodeEndpoints();
+    const confirming = list.filter((e) => !e.backupOnly);
+    expect(confirming.length).toBe(3);
+    expect(confirming.filter((e) => e.url.includes("liquify")).length).toBe(1);
+    expect(list.at(-1)!.backupOnly).toBe(true);
+  });
+  test("without the key, the three free servers are used as before and none is a backup copy", () => {
+    delete process.env.LIQUIFY_API_KEY;
+    const list = thornodeEndpoints();
+    expect(list.length).toBe(3);
+    expect(list.every((e) => e.provider === "public" && !e.backupOnly && !e.headers["x-api-key"])).toBe(true);
   });
 });

@@ -9,11 +9,18 @@
  * Checked live against both keys on 2026-11-19: Alchemy answers Ethereum, Base,
  * BNB Chain, TRON and Solana (Solana switched on in the Alchemy dashboard); NowNodes
  * answers Ethereum, Base, BNB Chain, PulseChain, Solana, TRON, XRP, Cosmos and
- * Cardano (Rosetta). Neither serves THORChain or Maya nodes, so those stay public.
+ * Cardano (Rosetta). Neither serves THORChain or Maya nodes.
+ *
+ * THORChain's node API (THORNode) goes through Liquify's paid plan (LIQUIFY_API_KEY,
+ * sent as the x-api-key header at the gateway root — checked live 2026-11-19: 5M
+ * calls/day vs 50k free). That key covers THORNode only, not Midgard history or Maya.
  */
 
 export type NodeNetwork = "ethereum" | "base" | "bsc" | "pulsechain" | "solana" | "tron" | "xrp" | "cosmos";
-export type NodeEndpoint = { url: string; headers: Record<string, string>; provider: "alchemy" | "nownodes" | "public" };
+export type NodeEndpoint = { url: string; headers: Record<string, string>; provider: "alchemy" | "nownodes" | "liquify" | "public";
+  /** Same machine as an earlier entry: a read fallback only, never a second confirmation. */
+  backupOnly?: boolean;
+};
 
 const JSON_HEADERS = { "content-type": "application/json", accept: "application/json", "User-Agent": "seeds-exchange/1.0" };
 
@@ -63,6 +70,28 @@ export function nodeEndpoints(net: NodeNetwork): NodeEndpoint[] {
   out.push(...(NOWNODES_FIRST.has(net) ? [...nownodes, ...alchemy] : [...alchemy, ...nownodes]));
   out.push(...PUBLIC_URLS[net].map((url) => ({ url, headers: { ...JSON_HEADERS }, provider: "public" as const })));
   return out;
+}
+
+const THORNODE_PUBLIC = ["https://thorchain.ibs.team/api", "https://api-thorchain.rorcual.xyz"];
+const LIQUIFY_FREE = "https://gateway.liquify.com/chain/thorchain_api";
+const LIQUIFY_PAID = "https://gateway.liquify.com";
+
+/**
+ * THORNode servers, best first. With LIQUIFY_API_KEY: Liquify paid (key in a header,
+ * never the address), then the two other public operators, then Liquify's free tier
+ * as a last read fallback (same machine as the paid entry, so marked backupOnly).
+ * Without the key: Liquify free first, as before.
+ */
+export function thornodeEndpoints(): NodeEndpoint[] {
+  const key = process.env.LIQUIFY_API_KEY?.trim();
+  const accept = { accept: "application/json" };
+  const pub = (url: string, backupOnly = false): NodeEndpoint => ({ url, headers: { ...accept }, provider: "public", ...(backupOnly ? { backupOnly } : {}) });
+  if (!key) return [pub(LIQUIFY_FREE), ...THORNODE_PUBLIC.map((u) => pub(u))];
+  return [
+    { url: LIQUIFY_PAID, headers: { ...accept, "x-api-key": key }, provider: "liquify" },
+    ...THORNODE_PUBLIC.map((u) => pub(u)),
+    pub(LIQUIFY_FREE, true),
+  ];
 }
 
 /** Cardano through NowNodes' Rosetta API (Koios stays as the free backup). */

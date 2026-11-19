@@ -9,12 +9,17 @@ import { PROTOCOL_LABEL, SEEDS_AFFILIATE, SWAP_COINS, type Protocol, type SwapCo
 import {
   fromBaseUnits, independentAnswers, limitOk, memoSafe, MIN_QUOTE_LIFE_SECONDS, toleranceBps, vaultMembership,
 } from "./safety";
+import { thornodeEndpoints, type NodeEndpoint } from "@/lib/nodes.server";
 
-type ProtocolDef = { prefix: string; nodes: string[] };
+type ProtocolDef = { prefix: string; servers: () => NodeEndpoint[] };
+
+const publicNodes = (urls: string[]) => (): NodeEndpoint[] => urls.map((url) => ({ url, headers: {}, provider: "public" as const }));
 
 /**
- * Public nodes, tried in order. THORChain: Liquify gateway plus Rujira's
- * developer endpoints (same list TSD Bridge verified). Maya: the Maya team's own
+ * Nodes, tried in order. THORChain: thornodeEndpoints() — Liquify's paid plan
+ * (LIQUIFY_API_KEY) first, then the public operators TSD Bridge verified, with
+ * Liquify's free tier as a last read fallback (same machine, so it never counts
+ * twice in the vault check). Maya: the Maya team's own
  * node plus Liquify's (a separate machine — different node id and hosting, checked
  * Nov 19 2026). The vault check counts each distinct node id once, so two
  * addresses for the same machine can never pass it.
@@ -22,13 +27,9 @@ type ProtocolDef = { prefix: string; nodes: string[] };
 export const PROTOCOLS: Record<Protocol, ProtocolDef> = {
   thorchain: {
     prefix: "/thorchain",
-    nodes: [
-      "https://gateway.liquify.com/chain/thorchain_api",
-      "https://thorchain.ibs.team/api",
-      "https://api-thorchain.rorcual.xyz",
-    ],
+    servers: thornodeEndpoints,
   },
-  maya: { prefix: "/mayachain", nodes: ["https://mayanode.mayachain.info", "https://api-maya.liquify.com"] },
+  maya: { prefix: "/mayachain", servers: publicNodes(["https://mayanode.mayachain.info", "https://api-maya.liquify.com"]) },
 };
 
 const RETRYABLE =
@@ -36,11 +37,13 @@ const RETRYABLE =
 
 class NodeRefusal extends Error {}
 
-async function nodeGetOne<T>(base: string, path: string, timeoutMs = 10_000): Promise<T> {
-  const res = await fetch(`${base}${path}`, {
-    headers: { accept: "application/json", "x-client-id": "seeds-honest-money" },
+async function nodeGetOne<T>(node: NodeEndpoint, path: string, timeoutMs = 10_000): Promise<T> {
+  const res = await fetch(`${node.url}${path}`, {
+    headers: { accept: "application/json", "x-client-id": "seeds-honest-money", ...node.headers },
     signal: AbortSignal.timeout(timeoutMs),
   });
+  // A refused key, a used-up allowance or a server fault: try the next server.
+  if (res.status === 401 || res.status === 403 || res.status === 429 || res.status >= 500) throw new Error(`node error ${res.status}`);
   const text = await res.text();
   let json: unknown;
   try {
@@ -62,16 +65,17 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function nodeGet<T>(p: Protocol, path: string): Promise<T> {
   const def = PROTOCOLS[p];
+  const nodes = def.servers();
   let last: unknown = null;
-  // Single-operator protocols (Maya) rate-limit bursts: give them one paced retry.
-  const attempts = def.nodes.length === 1 ? [def.nodes[0]!, def.nodes[0]!] : def.nodes;
+  // Single-operator protocols rate-limit bursts: give them one paced retry.
+  const attempts = nodes.length === 1 ? [nodes[0]!, nodes[0]!] : nodes;
   for (let i = 0; i < attempts.length; i++) {
     try {
       return await nodeGetOne<T>(attempts[i]!, `${def.prefix}${path}`);
     } catch (e) {
       if (e instanceof NodeRefusal) throw e;
       last = e;
-      if (def.nodes.length === 1 && i === 0) await sleep(1500);
+      if (nodes.length === 1 && i === 0) await sleep(1500);
     }
   }
   throw new Error(`${PROTOCOL_LABEL[p]} unreachable: ${last instanceof Error ? last.message : "no node answered"}`);
@@ -85,6 +89,11 @@ type PoolRow = { asset: string; status: string; balance_asset: string; asset_tor
 type AsgardVault = { status?: string; addresses?: Array<{ chain: string; address: string }>; routers?: Array<{ chain: string; router: string }> };
 
 const paused = (x: InboundRow | undefined) => !x || x.halted || !!x.global_trading_paused || !!x.chain_trading_paused;
+
+/** Servers asked for the vault check: backup copies of an earlier machine are left out. */
+function confirmingServers(p: Protocol): NodeEndpoint[] {
+  return PROTOCOLS[p].servers().filter((s) => !s.backupOnly);
+}
 
 // ---------- status (cached briefly per worker; status is not money-moving) ----------
 
@@ -186,8 +195,8 @@ export async function swapStatus(): Promise<SwapStatus> {
   const value: SwapStatus = {
     generatedAt: new Date().toISOString(),
     protocols: {
-      thorchain: { reachable: !thor.error, error: thor.error, nodes: PROTOCOLS.thorchain.nodes.length },
-      maya: { reachable: !maya.error, error: maya.error, nodes: PROTOCOLS.maya.nodes.length },
+      thorchain: { reachable: !thor.error, error: thor.error, nodes: confirmingServers("thorchain").length },
+      maya: { reachable: !maya.error, error: maya.error, nodes: confirmingServers("maya").length },
     },
     coins,
   };
@@ -244,16 +253,16 @@ function quotePath(from: SwapCoin, to: SwapCoin, amount: bigint, destination: st
   return `/quote/swap?${q.toString()}`;
 }
 
-/** Which machine answers at `base` (its p2p node id), cached 10 minutes; null when it won't say. */
+/** Which machine answers at `node` (its p2p node id), cached 10 minutes; null when it won't say. */
 const nodeIdCache = new Map<string, { at: number; id: string }>();
-async function nodeIdOf(base: string): Promise<string | null> {
-  const hit = nodeIdCache.get(base);
+async function nodeIdOf(node: NodeEndpoint): Promise<string | null> {
+  const hit = nodeIdCache.get(node.url);
   if (hit && Date.now() - hit.at < 10 * 60_000) return hit.id;
   try {
-    const j = await nodeGetOne<{ default_node_info?: { default_node_id?: string } }>(base, "/cosmos/base/tendermint/v1beta1/node_info", 8_000);
+    const j = await nodeGetOne<{ default_node_info?: { default_node_id?: string } }>(node, "/cosmos/base/tendermint/v1beta1/node_info", 8_000);
     const id = j.default_node_info?.default_node_id;
     if (!id || !/^[0-9a-f]{40}$/i.test(id)) return null;
-    nodeIdCache.set(base, { at: Date.now(), id });
+    nodeIdCache.set(node.url, { at: Date.now(), id });
     return id;
   } catch {
     return null;
@@ -266,9 +275,9 @@ async function nodeIdOf(base: string): Promise<string | null> {
  */
 async function vaultAnswers(p: Protocol, chain: string) {
   const def = PROTOCOLS[p];
-  const ask = async (base: string) => {
+  const ask = async (node: NodeEndpoint) => {
     try {
-      const [list, nodeId] = await Promise.all([nodeGetOne<AsgardVault[]>(base, `${def.prefix}/vaults/asgard`, 12_000), nodeIdOf(base)]);
+      const [list, nodeId] = await Promise.all([nodeGetOne<AsgardVault[]>(node, `${def.prefix}/vaults/asgard`, 12_000), nodeIdOf(node)]);
       if (!Array.isArray(list)) return null;
       const active = list.filter((v) => v.status === "ActiveVault");
       return {
@@ -282,7 +291,7 @@ async function vaultAnswers(p: Protocol, chain: string) {
       return null;
     }
   };
-  return independentAnswers(await Promise.all(def.nodes.map(ask)));
+  return independentAnswers(await Promise.all(confirmingServers(p).map(ask)));
 }
 
 /** Server-only details needed to sign; never returned to the browser. */
@@ -358,7 +367,7 @@ async function quoteOne(
       checks.push({
         label: "Vault confirmed by 2 independent servers",
         pass: !vm.error,
-        detail: vm.error ?? `Listed active by ${vm.confirms} of ${PROTOCOLS[p].nodes.length} servers`,
+        detail: vm.error ?? `Listed active by ${vm.confirms} of ${confirmingServers(p).length} servers`,
       });
       if (from.evm) {
         const want = (q.router ?? "").toLowerCase();
