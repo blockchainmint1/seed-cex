@@ -42,8 +42,24 @@ function Table({ title, head, rows }: { title?: string; head: string[]; rows: st
   return (
     <div>
       {title ? <h4 className={`${fieldLabel} mb-2`}>{title}</h4> : null}
-      <div className="overflow-x-auto rounded-md border border-border">
-        <table className="w-full min-w-[520px] text-sm">
+      {/* Phones: one stacked card per row so no column hides off-screen. */}
+      <ul className="divide-y divide-border rounded-md border border-border sm:hidden">
+        {rows.map((r) => (
+          <li key={r.join("|")} className="px-4 py-3">
+            <p className="font-display text-sm font-bold">{r[0]}</p>
+            <dl className="mt-1.5 space-y-1">
+              {r.slice(1).map((c, i) => (
+                <div key={i} className="grid grid-cols-[7.5rem_1fr] gap-2 text-sm">
+                  <dt className="font-mono text-[10px] leading-5 tracking-[0.12em] text-muted-foreground uppercase">{head[i + 1]}</dt>
+                  <dd className="text-muted-foreground">{c}</dd>
+                </div>
+              ))}
+            </dl>
+          </li>
+        ))}
+      </ul>
+      <div className="hidden overflow-x-auto rounded-md border border-border sm:block">
+        <table className="w-full text-sm">
           <thead><tr className="border-b border-border bg-muted/40 text-left">{head.map((h) => <th key={h} className="px-3 py-2 font-mono text-[10px] font-medium tracking-[0.14em] text-muted-foreground uppercase">{h}</th>)}</tr></thead>
           <tbody className="divide-y divide-border">
             {rows.map((r) => <tr key={r.join("|")}>{r.map((c, i) => <td key={i} className={`px-3 py-2 ${i === 0 ? "font-semibold" : "text-muted-foreground"}`}>{c}</td>)}</tr>)}
