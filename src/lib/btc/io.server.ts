@@ -2,10 +2,26 @@
  * Bitcoin mainnet I/O.
  *
  * Seeds runs no Bitcoin node, so reads and broadcasts go through NowNodes'
- * Blockbook indexer — the same path the wrap issuer uses. Server-only: the
- * API key is read inside each call, never at module scope.
+ * Blockbook indexer — the same path the wrap issuer uses. Alchemy's Bitcoin node
+ * (no address index) backs up fee estimates and broadcasts when Blockbook can't be
+ * reached. Server-only: API keys are read inside each call, never at module scope.
  */
 import type { BtcUtxo } from "./tx.server";
+import { bitcoinRpc } from "@/lib/nodes.server";
+
+/** One Bitcoin Core call through Alchemy; null when unavailable or it didn't answer. */
+async function alchemyBtc<T>(method: string, params: unknown[]): Promise<{ result: T | null; error: string | null } | null> {
+  const ep = bitcoinRpc();
+  if (!ep) return null;
+  try {
+    const res = await fetch(ep.url, { method: "POST", headers: ep.headers, signal: AbortSignal.timeout(15_000), body: JSON.stringify({ jsonrpc: "1.0", id: 1, method, params }) });
+    const j = (await res.json().catch(() => null)) as { result?: T; error?: { message?: string } | null } | null;
+    if (!j) return null;
+    return { result: j.result ?? null, error: j.error ? (j.error.message ?? "rejected") : null };
+  } catch {
+    return null;
+  }
+}
 
 const BOOK = "https://btcbook.nownodes.io/api/v2";
 const FALLBACK_FEE_RATE = 8;
@@ -70,7 +86,11 @@ export async function fetchBtcUtxos(address: string): Promise<BtcUtxo[]> {
 /** Recommended sat/vB for confirmation within a few blocks. */
 export async function fetchBtcFeeRate(): Promise<number> {
   const res = await book<{ result?: string }>("/estimatefee/3");
-  const btcPerKb = Number(res?.result ?? 0);
+  let btcPerKb = Number(res?.result ?? 0);
+  if (!Number.isFinite(btcPerKb) || btcPerKb <= 0) {
+    const alt = await alchemyBtc<{ feerate?: number }>("estimatesmartfee", [3]);
+    btcPerKb = Number(alt?.result?.feerate ?? 0);
+  }
   if (!Number.isFinite(btcPerKb) || btcPerKb <= 0) return FALLBACK_FEE_RATE;
   const satPerVb = Math.round((btcPerKb * 1e8) / 1000);
   return Math.min(200, Math.max(2, satPerVb));
@@ -78,11 +98,24 @@ export async function fetchBtcFeeRate(): Promise<number> {
 
 /** Push a signed transaction. Returns the network's txid. */
 export async function broadcastBtcTx(hex: string): Promise<string> {
-  const res = await fetch(`${BOOK}/sendtx/`, {
-    method: "POST",
-    headers: { ...headers(), "content-type": "text/plain" },
-    body: hex,
-  });
+  let res: Response | null = null;
+  try {
+    res = await fetch(`${BOOK}/sendtx/`, {
+      method: "POST",
+      headers: { ...headers(), "content-type": "text/plain" },
+      body: hex,
+      signal: AbortSignal.timeout(20_000),
+    });
+  } catch {
+    res = null;
+  }
+  // Blockbook didn't answer: hand the same signed transaction to Alchemy's node instead.
+  if (!res || res.status === 429 || res.status >= 500 || res.status === 401 || res.status === 403) {
+    const alt = await alchemyBtc<string>("sendrawtransaction", [hex]);
+    if (alt?.result) return alt.result;
+    if (alt?.error) throw new Error(`Bitcoin broadcast rejected: ${alt.error}`);
+    throw new Error(`Bitcoin broadcast failed (${res ? res.status : "no answer"})`);
+  }
   const text = await res.text();
   let parsed: { result?: string; error?: string } | null = null;
   try {

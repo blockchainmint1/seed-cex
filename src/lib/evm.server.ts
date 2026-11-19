@@ -1,23 +1,20 @@
 /**
- * EVM chain reads (Ethereum, Base, BNB Chain, PulseChain).
+ * EVM chain reads and broadcasts (Ethereum, Base, BNB Chain, PulseChain, ZeroChill).
  *
- * Public JSON-RPC only, server-side, read-only. No keys are ever used here —
- * this file answers "what is in this address?", nothing more.
+ * Server-side JSON-RPC. Paid providers first (Alchemy, NowNodes — see nodes.server.ts),
+ * free public servers as backup. No wallet keys are ever used here; provider keys are
+ * read inside each call and endpoint URLs are never logged (Alchemy's key is in the path).
  */
+import { keccak_256 } from "@noble/hashes/sha3.js";
+import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
 import { getChain, type ChainId } from "@/lib/chains";
+import { nodeEndpoints, shouldFailOver, type NodeNetwork } from "@/lib/nodes.server";
 
-const PUBLIC_RPC: Record<string, string[]> = {
-  ethereum: ["https://ethereum-rpc.publicnode.com", "https://1rpc.io/eth"],
-  base: ["https://base-rpc.publicnode.com", "https://mainnet.base.org", "https://1rpc.io/base"],
-  bsc: ["https://bsc-rpc.publicnode.com"],
-  pulsechain: ["https://rpc.pulsechain.com", "https://pulsechain-rpc.publicnode.com"],
-};
-
-/** Alchemy subdomains, used first when a key is configured. */
-const ALCHEMY_HOST: Record<string, string> = {
-  ethereum: "eth-mainnet",
-  base: "base-mainnet",
-  bsc: "bnb-mainnet",
+const NODE_NETWORK: Partial<Record<ChainId, NodeNetwork>> = {
+  ethereum: "ethereum",
+  base: "base",
+  bsc: "bsc",
+  pulsechain: "pulsechain",
 };
 
 type Endpoint = { url: string; headers: Record<string, string> };
@@ -38,16 +35,8 @@ function endpoints(chain: ChainId): Endpoint[] {
     }
     return [{ url, headers }];
   }
-  const urls: string[] = [];
-  const key = process.env["ALCHEMY_KEY"];
-  const host = ALCHEMY_HOST[chain];
-  if (key && host) urls.push(`https://${host}.g.alchemy.com/v2/${key}`);
-  urls.push(...(PUBLIC_RPC[chain] ?? []));
-  return urls.map((url) => ({ url, headers }));
-}
-
-function endpoint(chain: ChainId): Endpoint | null {
-  return endpoints(chain)[0] ?? null;
+  const net = NODE_NETWORK[chain];
+  return net ? nodeEndpoints(net).map(({ url, headers: h }) => ({ url, headers: h })) : [];
 }
 
 /** True when we have a usable endpoint for the chain. */
@@ -198,23 +187,31 @@ export async function estimateGas(
 }
 
 export async function sendRawTransaction(chain: ChainId, raw: string): Promise<string> {
-  const ep = endpoint(chain);
-  if (!ep) throw new Error(`No RPC endpoint for ${chain}`);
-  const res = await fetch(ep.url, {
-    method: "POST",
-    headers: ep.headers,
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      id: 1,
-      method: "eth_sendRawTransaction",
-      params: [raw],
-    }),
-  });
-
-  const json = (await res.json()) as { result?: string; error?: { message: string } };
-  if (json.error) throw new Error(`Broadcast rejected: ${json.error.message}`);
-  if (!json.result) throw new Error("Broadcast returned no transaction hash");
-  return json.result;
+  const list = endpoints(chain);
+  if (!list.length) throw new Error(`No RPC endpoint for ${chain}`);
+  // Next server only when this one didn't answer; a real refusal is final.
+  for (const ep of list) {
+    let res: Response;
+    try {
+      res = await fetch(ep.url, {
+        method: "POST",
+        headers: ep.headers,
+        signal: AbortSignal.timeout(15_000),
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_sendRawTransaction", params: [raw] }),
+      });
+    } catch {
+      continue;
+    }
+    if (shouldFailOver(res.status)) continue;
+    const json = (await res.json().catch(() => null)) as { result?: string; error?: { message: string } } | null;
+    if (!json) continue;
+    // An earlier server took it before timing out: same signed transaction, same hash.
+    if (json.error && /already known|known transaction/i.test(json.error.message)) return `0x${bytesToHex(keccak_256(hexToBytes(raw.replace(/^0x/, ""))))}`;
+    if (json.error) throw new Error(`Broadcast rejected: ${json.error.message}`);
+    if (!json.result) throw new Error("Broadcast returned no transaction hash");
+    return json.result;
+  }
+  throw new Error(`No ${chain} server answered the broadcast`);
 }
 
 export type EvmTxStatus = { confirmations: number | null; success: boolean | null };
