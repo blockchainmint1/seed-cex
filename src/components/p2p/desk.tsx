@@ -116,7 +116,25 @@ export function BlockedList({ data: d }: { data: Data }) {
 
 export function TradeList({ trades }: { trades: Data["trades"] }) {
   return (
-    <div className="overflow-x-auto">
+    <>
+    {/* Phones: one tappable row per trade, so "Open" never hides off the edge. */}
+    <ul className="divide-y divide-border sm:hidden">
+      {trades.map((t) => (
+        <li key={t.id}>
+          <Link to="/p2p/trade/$id" params={{ id: t.id }} className="flex items-center justify-between gap-3 py-2.5 font-mono text-xs">
+            <span className="min-w-0">
+              <span className={t.role === "seller" ? "text-destructive" : "text-primary"}>{t.role === "seller" ? "Selling" : "Buying"}</span> {t.crypto} {t.asset} · ${t.fiat.toFixed(2)}
+              <span className="block truncate text-muted-foreground">{t.counterparty} · {t.method} · {fmtAgo(t.at)}</span>
+            </span>
+            <span className="shrink-0 text-right">
+              {STATUS_LABEL[t.status] ?? t.status}{t.flagged ? <span className="text-destructive"> ⚠</span> : null}
+              <span className="block text-primary">Open →</span>
+            </span>
+          </Link>
+        </li>
+      ))}
+    </ul>
+    <div className="hidden overflow-x-auto sm:block">
     <table className="w-full min-w-[36rem] font-mono text-xs">
       <tbody>
         {trades.map((t) => (
@@ -133,6 +151,7 @@ export function TradeList({ trades }: { trades: Data["trades"] }) {
       </tbody>
     </table>
     </div>
+    </>
   );
 }
 
