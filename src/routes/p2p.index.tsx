@@ -193,12 +193,12 @@ function BuyDialog({ offer, onClose }: { offer: Offer; onClose: () => void }) {
           <div className="space-y-4 text-sm">
             <label className="block">
               <span className="font-mono text-[11px] text-muted-foreground uppercase">{sellAd ? "Buyer pays you (USD)" : "You pay (USD)"}</span>
-              <Input value={fiat} onChange={(e) => setFiat(e.target.value)} inputMode="decimal" />
+              <Input value={fiat} onChange={(e) => { setFiat(e.target.value); m.reset(); }} inputMode="decimal" />
               <span className="font-mono text-[11px] text-muted-foreground">${offer.minFiat} – ${Math.floor(offer.maxFiat)}</span>
             </label>
             <label className="block">
               <span className="font-mono text-[11px] text-muted-foreground uppercase">{sellAd ? "Get paid with" : "Pay with"}</span>
-              <select value={method} onChange={(e) => setMethod(e.target.value)} className="mt-1 h-9 w-full rounded-sm border border-border bg-background px-2">
+              <select value={method} onChange={(e) => { setMethod(e.target.value); m.reset(); }} className="mt-1 h-9 w-full rounded-sm border border-border bg-background px-2">
                 {offer.methods.map((x) => <option key={x}>{x}</option>)}
               </select>
             </label>
