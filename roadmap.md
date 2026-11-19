@@ -177,5 +177,5 @@
 
 - [x] Help section at /help in the top menu: 38 guides in 9 topics, 33-question FAQ, instant search, footer links, sitemap (Nov 19)
 - [x] Help pages send stuck members to help.honest.money (Bobby, Nov 19)
-- [ ] Fix older pages that disagree with Help: /how-it-works still describes the retired in-browser vault; /about/kyc says Seeds pays the Ethereum fee on TSD routes, but the shared gas wallet isn't set up (blocked: Bobby's go-ahead)
+- [ ] Fix older pages that disagree with Help: /how-it-works and the homepage intro/step cards still describe the retired in-browser seed vault and email sign-up; /about/kyc says Seeds pays the Ethereum fee on TSD routes, but the shared gas wallet isn't set up (blocked: Bobby's go-ahead)
 - [ ] Switch support@honest.money in emails and the Ignite payment page to help.honest.money? (blocked: Bobby's call)
