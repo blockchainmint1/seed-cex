@@ -65,8 +65,8 @@ export function OneTapCard() {
             </Button>
           ) : null}
         </form>
-        {blocked ? (
-          <Note tone="warn">Raising your limit needs two-factor sign-in. <Link to="/account/security" className="font-semibold text-primary underline">Turn it on in Security</Link>, then come back.</Note>
+        {blocked || (d.own != null && raising(null) && !d.twoFactorOn) ? (
+          <Note tone="warn">Raising your limit{d.own != null && raising(null) ? ` (going back to the ${usd(d.adminDefault)} default counts too)` : ""} needs two-factor sign-in. <Link to="/account/security" className="font-semibold text-primary underline">Turn it on in Security</Link>, then come back.</Note>
         ) : null}
         <p className="text-xs text-muted-foreground">
           Lowering it (or setting $0 to always confirm on Seeds) works any time. Raising it needs the code from your authenticator app, and Seeds tells your Telegram whenever it changes.
