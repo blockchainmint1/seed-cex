@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { nodeEndpoints, shouldFailOver, thornodeEndpoints } from "./nodes.server";
+import { midgardEndpoints, nodeEndpoints, shouldFailOver, thornodeEndpoints } from "./nodes.server";
 
-const saved = { a: process.env.ALCHEMY_KEY, n: process.env.NOWNODES_API_KEY, l: process.env.LIQUIFY_API_KEY };
+const saved = { a: process.env.ALCHEMY_KEY, n: process.env.NOWNODES_API_KEY, l: process.env.LIQUIFY_API_KEY, m: process.env.LIQUIFY_MIDGARD };
 const restore = (k: string, v: string | undefined) => { if (v === undefined) delete process.env[k]; else process.env[k] = v; };
-afterEach(() => { restore("ALCHEMY_KEY", saved.a); restore("NOWNODES_API_KEY", saved.n); restore("LIQUIFY_API_KEY", saved.l); });
+afterEach(() => { restore("ALCHEMY_KEY", saved.a); restore("NOWNODES_API_KEY", saved.n); restore("LIQUIFY_API_KEY", saved.l); restore("LIQUIFY_MIDGARD", saved.m); });
 const set = (a?: string, n?: string) => {
   if (a) process.env.ALCHEMY_KEY = a; else delete process.env.ALCHEMY_KEY;
   if (n) process.env.NOWNODES_API_KEY = n; else delete process.env.NOWNODES_API_KEY;
@@ -68,5 +68,20 @@ describe("THORChain node servers", () => {
     const list = thornodeEndpoints();
     expect(list.length).toBe(3);
     expect(list.every((e) => e.provider === "public" && !e.backupOnly && !e.headers["x-api-key"])).toBe(true);
+  });
+});
+
+describe("THORChain history (Midgard) servers", () => {
+  test("with the Midgard key, Liquify paid is asked first, key in a header, free servers kept as backup", () => {
+    process.env.LIQUIFY_MIDGARD = "secret-m";
+    const list = midgardEndpoints();
+    expect(list[0]!.provider).toBe("liquify");
+    expect(list[0]!.headers["x-api-key"]).toBe("secret-m");
+    expect(list.slice(1).every((e) => e.provider === "public")).toBe(true);
+    for (const e of list) expect(e.url).not.toContain("secret-m");
+  });
+  test("without the key, only the free servers are used", () => {
+    delete process.env.LIQUIFY_MIDGARD;
+    expect(midgardEndpoints().every((e) => e.provider === "public")).toBe(true);
   });
 });

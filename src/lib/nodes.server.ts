@@ -13,7 +13,9 @@
  *
  * THORChain's node API (THORNode) goes through Liquify's paid plan (LIQUIFY_API_KEY,
  * sent as the x-api-key header at the gateway root — checked live 2026-11-19: 5M
- * calls/day vs 50k free). That key covers THORNode only, not Midgard history or Maya.
+ * calls/day vs 50k free). That key covers THORNode only. Midgard (THORChain's history
+ * service) has its own Liquify key, LIQUIFY_MIDGARD, sent the same way (5M/day). Maya
+ * is not covered by either.
  */
 
 export type NodeNetwork = "ethereum" | "base" | "bsc" | "pulsechain" | "solana" | "tron" | "xrp" | "cosmos";
@@ -92,6 +94,19 @@ export function thornodeEndpoints(): NodeEndpoint[] {
     ...THORNODE_PUBLIC.map((u) => pub(u)),
     pub(LIQUIFY_FREE, true),
   ];
+}
+
+const MIDGARD_FREE = ["https://gateway.liquify.com/chain/thorchain_midgard", "https://midgard.thorswap.net"];
+
+/**
+ * Midgard servers (prices, candles, volume history), best first: Liquify paid
+ * (LIQUIFY_MIDGARD in a header) when set, then Liquify's free tier, then THORSwap's.
+ */
+export function midgardEndpoints(): NodeEndpoint[] {
+  const key = process.env.LIQUIFY_MIDGARD?.trim();
+  const accept = { accept: "application/json" };
+  const free = MIDGARD_FREE.map((url): NodeEndpoint => ({ url, headers: { ...accept }, provider: "public" }));
+  return key ? [{ url: LIQUIFY_PAID, headers: { ...accept, "x-api-key": key }, provider: "liquify" }, ...free] : free;
 }
 
 /** Cardano through NowNodes' Rosetta API (Koios stays as the free backup). */

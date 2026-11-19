@@ -10,19 +10,14 @@ import {
   type Candle, type DayStats, type ThorMarket, type Timeframe,
 } from "./thor-markets";
 import type { RawPool } from "./snapshot-rules";
-import { thornodeEndpoints } from "../nodes.server";
+import { midgardEndpoints, thornodeEndpoints } from "../nodes.server";
 import type { StoredMarketView } from "./snapshot-read-rules";
 
-/**
- * Public Midgard servers, tried in order. Liquify is the only one reliably
- * answering (Nine Realms' Midgard no longer resolves, Nov 2026; THORSwap's
- * often answers with a bot check), so it's tried twice: slow answers are common.
+/*
+ * Midgard servers come from midgardEndpoints(): Liquify's paid plan first when
+ * LIQUIFY_MIDGARD is set, then Liquify's free tier, then THORSwap's (which often
+ * answers with a bot check). Nine Realms' Midgard no longer resolves (Nov 2026).
  */
-const MIDGARD = [
-  "https://gateway.liquify.com/chain/thorchain_midgard",
-  "https://gateway.liquify.com/chain/thorchain_midgard",
-  "https://midgard.thorswap.net",
-];
 /* THORNode servers (live pool state, no history; the backup for prices when Midgard is
  * down) come from thornodeEndpoints(): Liquify's paid plan first when its key is set. */
 
@@ -52,9 +47,9 @@ async function cached<T>(key: string, ttlMs: number, load: () => Promise<T>): Pr
 
 async function midgard<T>(path: string): Promise<T> {
   let last: unknown = null;
-  for (const base of MIDGARD) {
+  for (const node of midgardEndpoints()) {
     try {
-      const r = await fetch(base + path, { headers: { accept: "application/json" }, signal: AbortSignal.timeout(10_000) });
+      const r = await fetch(node.url + path, { headers: node.headers, signal: AbortSignal.timeout(10_000) });
       if (!r.ok) { last = new Error(`HTTP ${r.status}`); continue; }
       const text = await r.text();
       if (!text.trimStart().startsWith("{") && !text.trimStart().startsWith("[")) { last = new Error("not JSON"); continue; }
