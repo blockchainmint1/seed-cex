@@ -1,0 +1,3 @@
+# src/lib/mcp
+
+- AI-assistant connections (MCP): tools live here (one per file, all read-only; rules in mcp-rules.test.ts); sign-in is OAuth through the managed sign-in service, approval screen src/routes/[.]lovable.oauth.consent.tsx (signs in via /auth?redirect=), members disconnect in Account → Security (ConnectedAppsCard). Member tools go through memberDb (caller's own token + live-session check) and filter by owner explicitly, because orders/trades/p2p_offers are public-read; never a service-role client in src/lib/mcp/; src/routes/mcp.ts and [.well-known]/ are plugin-generated. Why: an assistant acts only as the member who approved it, Disconnect bites on the next call, and nothing it does can trade or move coins.
