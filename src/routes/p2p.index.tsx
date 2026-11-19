@@ -60,7 +60,7 @@ function Market() {
             and we check them on-chain before you pay. Nobody here holds your money, us included.
           </p>
           <div className="mt-5 flex gap-3">
-            <Link to="/p2p/dashboard"><Button>Sell crypto</Button></Link>
+            <Link to="/account/p2p/listings"><Button>Sell crypto</Button></Link>
             <Link to="/p2p/jury"><Button variant="outline">Community jury</Button></Link>
           </div>
         </div>
@@ -120,7 +120,7 @@ function Market() {
           <p className="p-6 text-sm text-muted-foreground">Checking seller pockets on-chain…</p>
         ) : !offers.data?.length ? (
           <p className="p-6 text-sm text-muted-foreground">
-            {side === "sell" ? "No verified sellers match yet." : "No buy ads match yet."} <Link to="/p2p/dashboard" className="text-primary">Be the first to post an ad.</Link>
+            {side === "sell" ? "No verified sellers match yet." : "No buy ads match yet."} <Link to="/account/p2p/listings" className="text-primary">Be the first to post an ad.</Link>
           </p>
         ) : (
           offers.data.map((o) => (

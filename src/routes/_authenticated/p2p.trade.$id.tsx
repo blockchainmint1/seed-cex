@@ -86,7 +86,7 @@ function TradeRoom() {
   return (
     <div className="mx-auto grid max-w-7xl gap-6 px-5 py-10 lg:grid-cols-[1.2fr_1fr]">
       <div className="space-y-5">
-        <Link to="/p2p/dashboard" className="font-mono text-xs text-muted-foreground hover:text-primary">← My P2P desk</Link>
+        <Link to="/account/p2p/trades" className="font-mono text-xs text-muted-foreground hover:text-primary">← My P2P trades</Link>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="font-display text-3xl font-extrabold">
             {buyer ? "Buying" : seller ? "Selling" : "Reviewing"} {t.crypto} {t.asset}

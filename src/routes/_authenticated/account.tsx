@@ -1,8 +1,9 @@
-import { createFileRoute, Link, Outlet, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, redirect, useRouterState } from "@tanstack/react-router";
+import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
-  ArrowDownToLine, ArrowUpFromLine, Bell, ExternalLink, Gift, KeyRound, LayoutDashboard, ShieldCheck, Sparkles, User, Wallet,
+  ArrowDownToLine, ArrowUpFromLine, Bell, ExternalLink, Gift, Handshake, KeyRound, LayoutDashboard, ShieldCheck, Sparkles, User, Wallet,
 } from "lucide-react";
 import { getMyProfile } from "@/lib/profile.functions";
 import { amIAdmin } from "@/lib/admin.functions";
@@ -18,7 +19,7 @@ export const Route = createFileRoute("/_authenticated/account")({
   head: () => ({
     meta: [
       { title: "Your Seeds account — balances, security, alerts & API keys" },
-      { name: "description", content: "Your Seeds account: trading-pocket balances, deposits and withdrawals, profile, security, alerts, API keys and AI strategies." },
+      { name: "description", content: "Your Seeds account: trading-pocket balances, deposits and withdrawals, profile, security, alerts, P2P trading, API keys and AI strategies." },
       { property: "og:title", content: "Your Seeds account" },
       { property: "og:description", content: "Balances, deposits, withdrawals, security, alerts, API keys and AI strategies in one place." },
       { property: "og:type", content: "website" },
@@ -45,13 +46,14 @@ const NAV = [
   { to: "/account/security", label: "Security", icon: ShieldCheck },
   { to: "/account/alerts", label: "Alerts", icon: Bell },
   { to: "/account/api-keys", label: "API keys", icon: KeyRound },
+  { to: "/account/p2p", label: "P2P trading", icon: Handshake },
   { to: "/account/ai", label: "AI strategies", icon: Sparkles },
   { to: "/account/referrals", label: "Referrals", icon: Gift },
 ] as const;
 
 const ELSEWHERE = [
   { to: "/trades", label: "Orders & trades" },
-  { to: "/p2p/dashboard", label: "P2P desk" },
+  { to: "/p2p", label: "P2P marketplace" },
   { to: "/swap", label: "Swaps" },
 ] as const;
 
@@ -71,6 +73,16 @@ function AccountLayout() {
   const p = profile.data;
   const l = link.data;
   const active = p?.hm_status === "active" || p?.hm_status === "oceanfront";
+  // Phones: the section menu scrolls sideways, so bring the open section into view.
+  const navRef = useRef<HTMLUListElement>(null);
+  const path = useRouterState({ select: (s) => s.location.pathname });
+  useEffect(() => {
+    const ul = navRef.current;
+    const el = ul?.querySelector<HTMLElement>('[data-status="active"]');
+    if (!ul || !el || ul.scrollWidth <= ul.clientWidth) return;
+    const r = el.getBoundingClientRect(), u = ul.getBoundingClientRect();
+    ul.scrollTo({ left: ul.scrollLeft + (r.left - u.left) - (u.width - r.width) / 2 });
+  }, [path]);
 
   return (
     <div className="mx-auto max-w-7xl px-5 py-10">
@@ -101,7 +113,7 @@ function AccountLayout() {
 
       <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[13rem_minmax(0,1fr)]">
         <nav aria-label="Account sections" className="min-w-0 lg:sticky lg:top-24 lg:self-start">
-          <ul className="-mx-5 flex gap-1 overflow-x-auto border-b border-border px-5 pb-2 lg:mx-0 lg:flex-col lg:border-b-0 lg:px-0 lg:pb-0">
+          <ul ref={navRef} className="-mx-5 flex gap-1 overflow-x-auto border-b border-border px-5 pb-2 lg:mx-0 lg:flex-col lg:border-b-0 lg:px-0 lg:pb-0">
             {NAV.map((n) => (
               <li key={n.to} className="shrink-0">
                 <Link
