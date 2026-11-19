@@ -79,9 +79,10 @@ export function SiteHeader() {
         </Link>
 
         <nav className="hidden items-center gap-5 text-[13px] font-semibold tracking-[0.04em] uppercase lg:flex">
+          {/* Like an exchange's top bar: Markets stays lit on every market and trade page. */}
           <Link
             to="/markets"
-            className="text-muted-foreground transition-colors hover:text-foreground"
+            className={`transition-colors hover:text-foreground ${pathname.startsWith("/trade/") ? "text-primary" : "text-muted-foreground"}`}
             activeProps={{ className: "text-primary" }}
           >
             Markets
