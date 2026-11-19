@@ -1,6 +1,6 @@
 import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
-import { callerId, dbFail, iso, supabaseForUser } from "../supabase";
+import { dbFail, iso, memberDb } from "../supabase";
 
 export default defineTool({
   name: "list_my_trades",
@@ -11,8 +11,8 @@ export default defineTool({
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ limit }, ctx) => {
-    const id = callerId(ctx); // a verified UUID, safe inside the filter
-    const { data, error } = await supabaseForUser(ctx)
+    const { id, db } = await memberDb(ctx); // id is a verified UUID, safe inside the filter
+    const { data, error } = await db
       .from("trades")
       .select("id, pair, side, price, amount, status, is_demo, maker_id, created_at")
       .or(`maker_id.eq.${id},taker_id.eq.${id}`)

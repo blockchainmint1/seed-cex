@@ -1,6 +1,6 @@
 import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
-import { callerId, dbFail, iso, supabaseForUser } from "../supabase";
+import { dbFail, iso, memberDb } from "../supabase";
 
 export default defineTool({
   name: "list_my_swaps",
@@ -11,8 +11,8 @@ export default defineTool({
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ limit }, ctx) => {
-    const id = callerId(ctx);
-    const { data, error } = await supabaseForUser(ctx)
+    const { id, db } = await memberDb(ctx);
+    const { data, error } = await db
       .from("swap_sends")
       .select("id, protocol, from_asset, to_asset, amount_in, amount_usd, expected_out, status, txid, out_txid, created_at")
       .eq("user_id", id)

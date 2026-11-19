@@ -11,6 +11,7 @@ import { HmeWalletLinkCard } from "@/components/wallet/HmeWalletLinkCard";
 import { usePocketLink } from "@/components/account/use-pocket";
 import { TwoFactorCard, useMyTwoFactor } from "@/components/account/TwoFactorCard";
 import { LinkHistoryCard } from "@/components/account/LinkHistoryCard";
+import { ConnectedAppsCard } from "@/components/account/ConnectedAppsCard";
 
 export const Route = createFileRoute("/_authenticated/account/security")({
   staticData: { sitemap: false },
@@ -73,6 +74,8 @@ function SecurityTab() {
       </div>
 
       <LinkHistoryCard />
+
+      <ConnectedAppsCard />
 
       <Card title="Security emails" desc="Always on.">
         <p className="text-sm text-muted-foreground">

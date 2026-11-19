@@ -1,5 +1,5 @@
 import { defineTool, ToolError } from "@lovable.dev/mcp-js";
-import { callerId, dbFail, iso, supabaseForUser } from "../supabase";
+import { dbFail, iso, memberDb } from "../supabase";
 
 export default defineTool({
   name: "get_my_account",
@@ -9,8 +9,7 @@ export default defineTool({
   inputSchema: {},
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async (_args, ctx) => {
-    const id = callerId(ctx);
-    const db = supabaseForUser(ctx);
+    const { id, db } = await memberDb(ctx);
     const { data, error } = await db
       .from("profiles")
       .select("display_name, reputation, trades_completed, created_at, timezone, default_pair, hm_status, two_factor_on, telegram_verified, onboarding_status")

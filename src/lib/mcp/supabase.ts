@@ -73,6 +73,22 @@ export function supabaseForUser(ctx: ToolContext) {
   });
 }
 
+/**
+ * The caller's member id and a database client acting as them. Also asks the
+ * sign-in service whether the connection's session is still alive, so a
+ * "Disconnect" in Account → Security takes effect on the very next call
+ * instead of when the access token would have expired.
+ */
+export async function memberDb(ctx: ToolContext) {
+  const id = callerId(ctx);
+  const db = supabaseForUser(ctx);
+  const { data, error } = await db.auth.getUser(ctx.getToken() ?? undefined);
+  if (error || data.user?.id !== id) {
+    throw new ToolError("This connection has ended. Reconnect Seeds from your app and approve it again.");
+  }
+  return { id, db };
+}
+
 /** Turn a database error into a short caller-visible message (details stay in the logs). */
 export function dbFail(what: string, error: { message: string }): never {
   console.error(`[mcp] ${what} failed`, error.message);

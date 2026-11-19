@@ -1,7 +1,7 @@
 import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import { PAIRS } from "../../chains";
-import { callerId, dbFail, iso, supabaseForUser } from "../supabase";
+import { dbFail, iso, memberDb } from "../supabase";
 
 const PAIR_IDS = PAIRS.map((p) => p.id) as [string, ...string[]];
 
@@ -16,9 +16,9 @@ export default defineTool({
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ status, pair, limit }, ctx) => {
-    const id = callerId(ctx);
+    const { id, db } = await memberDb(ctx);
     // The order book is public, so filter to the caller explicitly.
-    let q = supabaseForUser(ctx)
+    let q = db
       .from("orders")
       .select("id, pair, side, order_type, price, amount, filled, status, is_demo, created_at")
       .eq("user_id", id)

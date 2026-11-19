@@ -1,5 +1,5 @@
 import { defineTool } from "@lovable.dev/mcp-js";
-import { callerId, dbFail, iso, supabaseForUser } from "../supabase";
+import { dbFail, iso, memberDb } from "../supabase";
 
 export default defineTool({
   name: "list_my_p2p_listings",
@@ -8,8 +8,8 @@ export default defineTool({
   inputSchema: {},
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async (_args, ctx) => {
-    const id = callerId(ctx);
-    const { data, error } = await supabaseForUser(ctx)
+    const { id, db } = await memberDb(ctx);
+    const { data, error } = await db
       .from("p2p_offers")
       .select("id, side, asset, price, price_mode, margin_pct, fee_pct, min_fiat, max_fiat, payment_methods, window_minutes, active, created_at")
       .eq("seller_id", id)

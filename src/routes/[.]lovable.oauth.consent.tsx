@@ -123,8 +123,8 @@ function Consent() {
         {scopes.map((s) => <li key={s}>{SCOPE_LABELS[s] ?? `Additional permission requested: ${s}`}</li>)}
       </ul>
       <p className="mt-3 text-xs text-muted-foreground">
-        Seeds' own permissions still apply: it only ever sees your records, never anyone else's. You can stop it any
-        time from the app you're connecting.
+        Seeds' own permissions still apply: it only ever sees your records, never anyone else's. You can disconnect
+        it any time in Account → Security.
       </p>
 
       {error ? (

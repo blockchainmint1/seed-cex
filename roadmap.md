@@ -169,3 +169,8 @@
 - [x] L1 approval match includes sending address; L2 full address on P2P approvals; L3 rate-limit public quote lookups; L5 onboarding save = update; L6 privacy wording on country
 - [x] Carry-overs: daily swap cap counts open TSD routes; gas top-up per-member cap; re-link keeps in-flight TSD routes; public quotes without Seeds' TSD Bridge key; no key on redirects; approve-mode re-link keeps extra-coin keys
 - [ ] Auditor response file
+
+- [x] AI-assistant connections (MCP) at seeds.honest.money/mcp: 7 read-only tools (markets, candles, my account/orders/trades/swaps/P2P listings), Honest.Money sign-in + approval screen, Connected apps + Disconnect in Account → Security (Nov 19)
+- [ ] Publish so assistants can reach /mcp and the approval screen on the live site (blocked: Bobby publishes)
+- [ ] Decide whether visitors should still be able to read P2P listings' verified balance and order/trade owner ids straight from the database (pre-existing; blocked: Bobby's call)
+- [ ] Assistant write tools (place/cancel orders, etc.) — not built; would need Telegram approval like every pocket send (blocked: Bobby asks for them)
