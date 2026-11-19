@@ -4,7 +4,7 @@ import { getMarketStats } from "@/lib/market.functions";
 import { getCmcSummary } from "@/lib/cmc.functions";
 import { fmtAmount, fmtPrice } from "@/lib/format";
 import { fmtTsdCompact, THOR_MARKETS, thorMarketForBookBase } from "@/lib/markets/thor-markets";
-import { Change, Price, thorMarketsQuery } from "@/components/markets/ThorMarketBits";
+import { Change, Price, thorMarketsQuery, marketsErrorText } from "@/components/markets/ThorMarketBits";
 import { PAIRS } from "@/lib/chains";
 import seedsCoin from "@/assets/seeds-cold-storage-coin.jpg.asset.json";
 import { IgnitePromo } from "@/components/ignite/IgnitePromo";
@@ -208,7 +208,7 @@ function Index() {
                 {markets.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="px-4 py-8 text-center text-sm text-muted-foreground">
-                      {thor.error ? (thor.error as Error).message : "Markets loading…"}
+                      {thor.error ? marketsErrorText(thor.error) : "Markets loading…"}
                     </td>
                   </tr>
                 ) : (

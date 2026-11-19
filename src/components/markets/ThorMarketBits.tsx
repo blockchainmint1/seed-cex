@@ -42,3 +42,13 @@ export function Spark({ points, up }: { points: number[]; up: boolean }) {
 export function Price({ v, className = "" }: { v: number | null; className?: string }) {
   return <span className={`num tabular-nums ${className}`}>{fmtTsd(v)}</span>;
 }
+
+/**
+ * What to show when prices fail. Seeds' own messages (THORChain down, too many requests) are
+ * written for visitors; anything else is a technical error and gets a plain sentence instead.
+ */
+export function marketsErrorText(err: unknown): string {
+  const msg = err instanceof Error ? err.message : "";
+  if (/^THORChain market data|^Too many/i.test(msg)) return msg;
+  return "Prices couldn't load just now. Seeds will try again in a minute.";
+}

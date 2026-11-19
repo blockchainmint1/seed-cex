@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CandleChart } from "@/components/markets/CandleChart";
-import { thorChartQuery } from "@/components/markets/ThorMarketBits";
+import { thorChartQuery, marketsErrorText } from "@/components/markets/ThorMarketBits";
 import { TIMEFRAMES, TIMEFRAME_IDS, type Timeframe } from "@/lib/markets/thor-markets";
 
 /** Candle-size tabs + candlestick chart for one THORChain market. */
@@ -34,7 +34,7 @@ export function ThorChartPanel({ slug, base, initial = "1h", height = 380 }: { s
           <CandleChart candles={q.data.candles} height={height} intraday={tf !== "1d" && tf !== "1w"} />
         ) : (
           <div className="grid h-full place-items-center font-mono text-xs text-muted-foreground">
-            {q.error ? (q.error as Error).message : q.isPending ? "Loading THORChain prices…" : "No price history for this candle size yet."}
+            {q.error ? marketsErrorText(q.error) : q.isPending ? "Loading THORChain prices…" : "No price history for this candle size yet."}
           </div>
         )}
         {q.isFetching && q.data ? <span className="absolute top-2 left-3 font-mono text-[10px] text-muted-foreground">updating…</span> : null}

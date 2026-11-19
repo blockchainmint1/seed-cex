@@ -199,28 +199,34 @@ export type ScannedUtxo = {
 };
 
 // The node runs one scantxoutset at a time and refuses a second ("Scan already in progress"),
-// which would read as an unreadable pocket. Callers asking for the same addresses at the
-// same moment share one scan. No answer is reused after it finishes, so coin selection
-// before a send always sees the current UTXO set.
-const scanInflight = new Map<string, Promise<{ utxos: ScannedUtxo[]; total: number } | null>>();
+// which would read as an unreadable pocket. A refused scan waits briefly and tries again.
+// Scans are never shared between requests (Cloudflare Workers drops a promise awaited by
+// a request other than the one that created it) and no answer is reused after it
+// finishes, so coin selection before a send always sees the current UTXO set.
+const SCAN_BUSY_RETRIES = 4;
+const SCAN_BUSY_WAIT_MS = 1_500;
 
 export async function scanAddressUtxos(
   chain: RpcChain,
   addresses: string[],
 ): Promise<{ utxos: ScannedUtxo[]; total: number } | null> {
   if (addresses.length === 0) return { utxos: [], total: 0 };
-  const key = `${chain}:${[...addresses].sort().join(",")}`;
-  const running = scanInflight.get(key);
-  if (running) return running;
-  const job = (async () => {
-    const res = await tryRpc<{
-      success: boolean;
-      total_amount: number;
-      unspents: ScannedUtxo[];
-    }>(chain, "scantxoutset", ["start", addresses.map((a) => `addr(${a})`)]);
-    if (!res?.success) return null;
-    return { utxos: res.unspents ?? [], total: res.total_amount ?? 0 };
-  })().finally(() => scanInflight.delete(key));
-  scanInflight.set(key, job);
-  return job;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const res = await rpc<{ success: boolean; total_amount: number; unspents: ScannedUtxo[] }>(
+        chain,
+        "scantxoutset",
+        ["start", addresses.map((a) => `addr(${a})`)],
+      );
+      if (!res?.success) return null;
+      return { utxos: res.unspents ?? [], total: res.total_amount ?? 0 };
+    } catch (err) {
+      const busy = /in progress/i.test((err as Error).message);
+      if (!busy || attempt >= SCAN_BUSY_RETRIES) {
+        console.error(`[rpc:${chain}]`, (err as Error).message);
+        return null;
+      }
+      await new Promise((r) => setTimeout(r, SCAN_BUSY_WAIT_MS));
+    }
+  }
 }

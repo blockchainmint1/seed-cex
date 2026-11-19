@@ -2,8 +2,8 @@
  * THORChain market data (prices, candles, volume) from Midgard, THORChain's
  * public history service. Read-only: nothing here can move coins.
  *
- * Answers are cached briefly per server instance and identical requests share
- * one fetch, so visitors never multiply calls to the public servers.
+ * Finished answers are cached briefly per server instance so visitors don't
+ * multiply calls to the public servers.
  */
 import {
   dayStats, INTERVAL_SECONDS, mergeCandles, withLivePrice, parseCandles, THOR_MARKETS, TIMEFRAMES,
@@ -23,8 +23,10 @@ const MIDGARD = [
 /** THORNode servers (live pool state, no history): the backup for prices when Midgard is down. */
 const THORNODE = ["https://thorchain.ibs.team/api", "https://api-thorchain.rorcual.xyz", "https://gateway.liquify.com/chain/thorchain_api"];
 
+// Only finished answers are kept between requests. Unfinished work (a promise) must never be
+// shared: Cloudflare Workers refuses to settle a promise in any request but the one that
+// created it, and the waiting page would show that error instead of prices.
 const cache = new Map<string, { at: number; value: unknown }>();
-const inflight = new Map<string, Promise<unknown>>();
 
 /** True when `key` would need a fresh network read. */
 function isStale(key: string, ttlMs: number) {
@@ -35,14 +37,14 @@ function isStale(key: string, ttlMs: number) {
 async function cached<T>(key: string, ttlMs: number, load: () => Promise<T>): Promise<T> {
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at <= ttlMs) return hit.value as T;
-  const running = inflight.get(key);
-  if (running) return running as Promise<T>;
-  const p = load()
-    .then((value) => { cache.set(key, { at: Date.now(), value }); return value; })
-    .catch((e) => { if (hit) return hit.value as T; throw e; }) // serve the last good answer through an outage
-    .finally(() => inflight.delete(key));
-  inflight.set(key, p);
-  return p;
+  try {
+    const value = await load();
+    cache.set(key, { at: Date.now(), value });
+    return value;
+  } catch (e) {
+    if (hit) return hit.value as T; // serve the last good answer through an outage
+    throw e;
+  }
 }
 
 async function midgard<T>(path: string): Promise<T> {

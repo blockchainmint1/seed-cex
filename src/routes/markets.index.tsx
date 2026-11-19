@@ -5,7 +5,7 @@ import { runWebMCPTool } from "@/lib/webmcp-telemetry";
 import { ArrowRight } from "lucide-react";
 import { PAIRS } from "@/lib/chains";
 import { fmtTsdCompact } from "@/lib/markets/thor-markets";
-import { Change, Price, Spark, thorMarketsQuery } from "@/components/markets/ThorMarketBits";
+import { Change, Price, Spark, thorMarketsQuery, marketsErrorText } from "@/components/markets/ThorMarketBits";
 
 const title = "Crypto Markets in TSD — BTC, ETH, SOL, XRP & more | Seeds";
 const description =
@@ -79,7 +79,7 @@ function MarketsPage() {
             {!rows.length ? (
               <tr>
                 <td colSpan={8} className="px-4 py-10 text-center text-sm text-muted-foreground">
-                  {q.error ? (q.error as Error).message : "Loading THORChain prices…"}
+                  {q.error ? marketsErrorText(q.error) : "Loading THORChain prices…"}
                 </td>
               </tr>
             ) : (
