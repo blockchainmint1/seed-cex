@@ -173,7 +173,19 @@ function ListOnSeeds() {
       {/* Compare */}
       <section className="mt-20" aria-labelledby="compare">
         <h2 id="compare" className="font-display text-3xl tracking-tight text-foreground sm:text-4xl">How that compares</h2>
-        <div className="mt-6 overflow-x-auto rounded-2xl border border-border">
+        {/* Phones: one card per row so the Seeds answer is never hidden off to the side. */}
+        <ul className="mt-6 space-y-3 sm:hidden">
+          {COMPARE.map(([row, them, us]) => (
+            <li key={row} className="rounded-2xl border border-border p-4">
+              <p className="font-semibold text-foreground">{row}</p>
+              <p className="mt-2 font-mono text-[10px] tracking-[0.14em] text-muted-foreground uppercase">Typical exchange</p>
+              <p className="text-sm text-muted-foreground">{them}</p>
+              <p className="mt-2 font-mono text-[10px] tracking-[0.14em] text-primary uppercase">Seeds</p>
+              <p className="text-sm font-semibold text-foreground">{us}</p>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-6 hidden overflow-x-auto rounded-2xl border border-border sm:block">
           <table className="w-full min-w-[40rem] text-left text-sm">
             <thead className="bg-muted/50 font-mono text-[11px] tracking-[0.14em] text-muted-foreground uppercase">
               <tr><th className="px-4 py-3 font-normal"> </th><th className="px-4 py-3 font-normal">Typical exchange</th><th className="px-4 py-3 font-normal text-primary">Seeds</th></tr>
