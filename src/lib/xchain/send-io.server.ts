@@ -161,7 +161,7 @@ async function sol<T>(method: string, params: unknown[], final = false): Promise
       method: "POST", headers: { ...UA, ...e.headers, "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
     });
     if (j.error) {
-      // Alchemy answers "not enabled for this app" until Solana is switched on there: treat as no answer.
+      // Alchemy answers "not enabled for this app" if Solana is ever switched off there: treat as no answer and move on.
       if (/not enabled/i.test(j.error.message)) throw new Unreachable(j.error.message);
       throw new Error(j.error.message);
     }

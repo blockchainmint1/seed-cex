@@ -9,15 +9,11 @@ const set = (a?: string, n?: string) => {
 };
 
 describe("paid node providers come first", () => {
-  test("Ethereum, Base, BNB Chain and TRON ask Alchemy, then NowNodes, then free servers", () => {
+  test("Ethereum, Base, BNB Chain, TRON and Solana ask Alchemy, then NowNodes, then free servers", () => {
     set("a", "n");
-    for (const net of ["ethereum", "base", "bsc", "tron"] as const) {
+    for (const net of ["ethereum", "base", "bsc", "tron", "solana"] as const) {
       expect(nodeEndpoints(net).map((e) => e.provider).slice(0, 3)).toEqual(["alchemy", "nownodes", "public"]);
     }
-  });
-  test("Solana asks NowNodes before Alchemy (Alchemy's Solana must be switched on first)", () => {
-    set("a", "n");
-    expect(nodeEndpoints("solana").map((e) => e.provider).slice(0, 3)).toEqual(["nownodes", "alchemy", "public"]);
   });
   test("PulseChain, XRP and Cosmos ask NowNodes first (Alchemy doesn't serve them)", () => {
     set("a", "n");

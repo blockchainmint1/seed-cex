@@ -7,7 +7,7 @@
  * log a full endpoint URL: log `new URL(url).host` at most.
  *
  * Checked live against both keys on 2026-11-19: Alchemy answers Ethereum, Base,
- * BNB Chain and TRON (Solana needs enabling in the Alchemy dashboard); NowNodes
+ * BNB Chain, TRON and Solana (Solana switched on in the Alchemy dashboard); NowNodes
  * answers Ethereum, Base, BNB Chain, PulseChain, Solana, TRON, XRP, Cosmos and
  * Cardano (Rosetta). Neither serves THORChain or Maya nodes, so those stay public.
  */
@@ -47,11 +47,8 @@ const PUBLIC_URLS: Record<NodeNetwork, string[]> = {
   cosmos: ["https://cosmos-rest.publicnode.com", "https://rest.cosmos.directory/cosmoshub"],
 };
 
-/**
- * Order between the two paid providers. Solana: NowNodes first, because Alchemy's
- * Solana answers "not enabled" until it is switched on for this Alchemy app.
- */
-const NOWNODES_FIRST = new Set<NodeNetwork>(["solana", "pulsechain", "xrp", "cosmos"]);
+/** Networks where NowNodes is the only paid provider, so it goes first. */
+const NOWNODES_FIRST = new Set<NodeNetwork>(["pulsechain", "xrp", "cosmos"]);
 
 export function nodeEndpoints(net: NodeNetwork): NodeEndpoint[] {
   const out: NodeEndpoint[] = [];

@@ -92,6 +92,10 @@ export async function fetchExtraBalance(coin: ExtraCoin, address: string): Promi
     if (!r || r.Error) return null;
     return toUnits(BigInt(r.balance ?? 0), coin); // {} = never-activated account
   }
-  const r = await firstOk(nodeEndpoints("solana"), (u, h) => getJson<{ result?: { value: number } }>(u, rpc("getBalance", [address, { commitment: "finalized" }], h)));
+  // A server that answers with an error (e.g. Alchemy "not enabled", rate limit) counts as no answer: ask the next one.
+  const r = await firstOk(nodeEndpoints("solana"), async (u, h) => {
+    const j = await getJson<{ result?: { value: number } }>(u, rpc("getBalance", [address, { commitment: "finalized" }], h));
+    return j?.result ? j : null;
+  });
   return r?.result ? toUnits(BigInt(r.result.value), coin) : null;
 }
