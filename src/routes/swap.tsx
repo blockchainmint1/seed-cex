@@ -176,6 +176,15 @@ function SwapPage() {
   const tsdCoin = tsdDirection ? swapCoin(tsdCoinId)! : null;
   const ownPocket = toCoin ? receivePocket(toCoin) : null;
   const ownAddress = ownPocket ? (sendCtx?.link?.addresses as Record<string, string> | undefined)?.[ownPocket] ?? null : null;
+  // Swaps land in the member's own trading pocket unless they choose "Send somewhere else".
+  const [elsewhere, setElsewhere] = useState(false);
+  const toPocket = Boolean(ownAddress) && !elsewhere;
+  useEffect(() => {
+    if (toPocket && ownAddress && destination !== ownAddress) {
+      setDestination(ownAddress);
+      quote.reset();
+    }
+  }, [toPocket, ownAddress, destination]); // eslint-disable-line react-hooks/exhaustive-deps
   const fromPrice = from === "TSD" ? 1 : status.coins.find((c) => c.id === from)?.priceUsd ?? null;
   const amountNum = Number(amount);
   const routes = quote.data?.routes ?? [];
@@ -287,36 +296,64 @@ function SwapPage() {
               </div>
             ) : (
               <div className="space-y-2">
-                <label htmlFor="swap-dest" className="font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
-                  Your {toCoin!.network} receiving address <span className="normal-case tracking-normal">(optional)</span>
-                </label>
-                <input
-                  id="swap-dest"
-                  value={destination}
-                  placeholder={toCoin!.addressHint}
-                  onChange={(e) => {
-                    setDestination(e.target.value.trim());
-                    resetQuotes();
-                  }}
-                  className="h-11 w-full rounded-sm border border-input bg-background px-3 font-mono text-sm outline-none focus:border-primary"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Add it to run the full send checks: the swap instruction is verified to pay exactly this address.
-                </p>
-                {ownAddress && destination !== ownAddress ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDestination(ownAddress);
-                      resetQuotes();
-                    }}
-                    className="inline-flex items-center gap-1.5 rounded-sm border border-border px-2.5 py-1 font-mono text-[11px] text-foreground transition-colors hover:border-primary hover:text-primary"
-                  >
-                    <Wallet className="h-3.5 w-3.5" />
-                    Send it to my trading pocket
-                  </button>
-                ) : null}
-                {ownAddress && destination === ownAddress && landsOutsideHmeWallet(toCoin!) ? (
+                {toPocket ? (
+                  <>
+                    <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                      <Wallet className="h-3.5 w-3.5" /> Lands in your own trading pocket
+                      <span className="font-mono text-[11px] text-foreground">{ownAddress!.slice(0, 8)}…{ownAddress!.slice(-6)}</span>
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setElsewhere(true);
+                        setDestination("");
+                        resetQuotes();
+                      }}
+                      className="font-mono text-[11px] text-muted-foreground underline underline-offset-2 hover:text-primary"
+                    >
+                      Send it somewhere else
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <label htmlFor="swap-dest" className="font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
+                      {ownAddress ? "Outside" : "Your"} {toCoin!.network} receiving address {ownAddress ? null : <span className="normal-case tracking-normal">(optional)</span>}
+                    </label>
+                    <input
+                      id="swap-dest"
+                      value={destination}
+                      placeholder={toCoin!.addressHint}
+                      onChange={(e) => {
+                        setDestination(e.target.value.trim());
+                        resetQuotes();
+                      }}
+                      className="h-11 w-full rounded-sm border border-input bg-background px-3 font-mono text-sm outline-none focus:border-primary"
+                    />
+                    {ownAddress ? (
+                      <p className="border-l-2 border-warn pl-3 text-xs text-foreground">
+                        Paying anywhere but your own pocket counts as a withdrawal: you’ll need two-factor on, a code from the last 10 minutes, and an Approve tap in Telegram.
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Add it to run the full send checks: the swap instruction is verified to pay exactly this address.
+                      </p>
+                    )}
+                    {ownAddress ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setElsewhere(false);
+                          resetQuotes();
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-sm border border-border px-2.5 py-1 font-mono text-[11px] text-foreground transition-colors hover:border-primary hover:text-primary"
+                      >
+                        <Wallet className="h-3.5 w-3.5" />
+                        Send it to my trading pocket instead
+                      </button>
+                    ) : null}
+                  </>
+                )}
+                {toPocket && landsOutsideHmeWallet(toCoin!) ? (
                   <p className="border-l-2 border-warn pl-3 text-xs text-foreground">
                     HME Wallet can’t hold {toCoin!.symbol}. It stays in your Seeds trading pocket — swap it back to TSD before you revoke Seeds’ access.
                   </p>
