@@ -1,0 +1,2 @@
+ALTER TABLE public.ai_plans ADD COLUMN IF NOT EXISTS start_now_day date;
+COMMENT ON COLUMN public.ai_plans.start_now_day IS 'Price day the owner chose "Buy now anyway" while the plan said wait in TSD. From that day the plan holds those coins until each first closes above its trend-exit average. Server-written only.';

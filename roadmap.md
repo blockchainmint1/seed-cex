@@ -195,13 +195,15 @@
 - [ ] Seeds AI real buying: first real confirmed day with real coins (blocked: Bobby turns it on for his plan and confirms)
 - [x] Beta tester group (Nov 19): all admins count as beta testers; admins switch other members on/off in Admin → Admin access
 - [x] No limits for beta testers + admins: swap/TSD-swap caps, AI plan size/count caps, PulseChain withdrawal levels + 24h hold (Bobby chose "withdrawals too")
+- [x] AI "Buy now anyway": warn when turning on real buying while the plan says wait in TSD; buy-in resets the clock (rules look forward from the buy day)
 - [x] Push Seeds AI live: real buying for beta testers; going to cash leaves TSD unquarantined — a buy-back without enough TSD sends a "deposit more TSD" alert
 
 ## Scaling (Nov 19)
 - [x] One shared copy of homepage/trade-page market data, TXC node status and reference prices (refreshed every 3–60 s)
 - [x] Pocket balances: shared copy (1 min), last good value shown when a chain lookup fails, Refresh asks the chains again
 - [x] ISK balances read mempool.iskandercoin.com's address index first (Seeds node as backup); sends still use our node
-- [ ] Paid THORChain/Maya access for launch-day swap quotes (blocked: Bobby picks a provider and budget)
+- [x] Paid THORChain access: Liquify THORNode (LIQUIFY_API_KEY) + Midgard (LIQUIFY_MIDGARD) wired in first
+- [ ] Maya partner key (blocked: Bobby emails the Maya team)
 - [ ] Launch-day queue for Telegram/email blasts; batch the visit counter
 - [ ] Load test at 5k/20k/50k on a test copy (blocked: needs publish + a test copy)
 

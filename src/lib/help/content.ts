@@ -797,6 +797,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     blocks: [
       { p: "Happy with a test? Lock it in. A locked plan **runs on paper** at first: Seeds follows it against fresh prices and can send a daily Telegram note (\"Based on your plan, we should…\")." },
       { p: "**Beta testers** can press **Turn on real buying** on a plan. Each day Seeds works out the trades the plan wants and asks first: one tap in Telegram for days up to the one-tap limit, a **Confirm** button in Account → AI strategies for bigger ones. Each trade is an ordinary TSD swap from your own trading pocket, one at a time. When a plan goes to cash, the TSD stays in your pocket and isn't set aside; if it's not there when the plan buys back in, Seeds tells you to deposit more TSD." },
+      { p: "If your plan is waiting in TSD for its signal (for example Bitcoin is below its 50-day average), Seeds warns you when you turn real buying on. **Buy now anyway** lines up the buy for you to confirm and starts the clock that day: from then on your rules look forward, so a coin goes back to TSD only if it climbs above its average and then falls under it again, and a stop-loss counts from the highest price after you bought. **Wait for the plan** buys on the first daily check after the signal." },
       { list: [
         "From 10 TSD up to 1,000 TSD per plan, with up to 10 coins (beta testers: no upper limit).",
         "Up to 3 active plans (beta testers: no limit).",

@@ -277,6 +277,7 @@ export type Database = {
           locked_at: string
           name: string
           settings: Json
+          start_now_day: string | null
           status: string
           telegram_daily: boolean
           updated_at: string
@@ -291,6 +292,7 @@ export type Database = {
           locked_at?: string
           name: string
           settings: Json
+          start_now_day?: string | null
           status?: string
           telegram_daily?: boolean
           updated_at?: string
@@ -305,6 +307,7 @@ export type Database = {
           locked_at?: string
           name?: string
           settings?: Json
+          start_now_day?: string | null
           status?: string
           telegram_daily?: boolean
           updated_at?: string

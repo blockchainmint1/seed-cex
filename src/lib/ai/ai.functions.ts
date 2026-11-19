@@ -5,6 +5,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { AI_CATALOG, aiPocketFor, catalogByGecko } from "./catalog";
 import { cleanSettings, lockBlocker } from "./lock-rules";
 import type { PlanSettings } from "./plan";
+import { buyNowTsd, canBuyNow, coinsWaiting, planWaitingInTsd } from "./start-now";
 
 const db = async () => (await import("@/integrations/supabase/client.server")).supabaseAdmin;
 
@@ -24,6 +25,12 @@ export type MyAiPlan = {
   ledger: { tsd: number; units: Record<string, number> } | null;
   /** The newest day with real trades: waiting for an OK, running, or finished. */
   realDay: AiRealDay | null;
+  /** The latest check keeps some or all of the plan in TSD, waiting for a signal. */
+  waitingInTsd: boolean;
+  /** "Buy now anyway" can be offered (basket plans waiting in TSD). */
+  canBuyNow: boolean;
+  /** The day the owner last chose "Buy now anyway", if ever. */
+  startNowDay: string | null;
 };
 
 export type AiRealDay = {
@@ -37,8 +44,8 @@ export const getMyAiPlans = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
     const [{ data: plans }, { data: checks }, telegram, { data: moves }] = await Promise.all([
-      supabase.from("ai_plans").select("id, name, status, commit_tsd, locked_at, telegram_daily, settings, execute").order("locked_at", { ascending: false }),
-      supabase.from("ai_plan_checks").select("id, plan_id, day, message, sent_at, exec_status, exec_total_usd, exec_expires_at, exec_decided_via").order("day", { ascending: false }).limit(300),
+      supabase.from("ai_plans").select("id, name, status, commit_tsd, locked_at, telegram_daily, settings, execute, start_now_day").order("locked_at", { ascending: false }),
+      supabase.from("ai_plan_checks").select("id, plan_id, day, message, sent_at, exec_status, exec_total_usd, exec_expires_at, exec_decided_via, suggestion").order("day", { ascending: false }).limit(300),
       supabase.from("profiles").select("telegram_verified").eq("id", userId).maybeSingle(),
       supabase.from("ai_plan_moves").select("id, check_id, plan_id, seq, side, coin_id, usd, amount, status, amount_in, amount_out, error").order("created_at", { ascending: false }).limit(500),
     ]);
@@ -62,7 +69,9 @@ export const getMyAiPlans = createServerFn({ method: "GET" })
     const { swapSendContext } = await import("@/lib/xchain/send.server");
     const [settings, ctx] = await Promise.all([aiSettings(), swapSendContext(userId)]);
     const history = new Map<string, { day: string; message: string; sentAt: string | null }[]>();
+    const latestTargets = new Map<string, Record<string, number>>();
     for (const c of checks ?? []) {
+      if (!latestTargets.has(c.plan_id)) latestTargets.set(c.plan_id, ((c.suggestion ?? {}) as { current?: Record<string, number> }).current ?? {});
       const list = history.get(c.plan_id) ?? [];
       if (list.length < 14) list.push({ day: c.day, message: c.message, sentAt: c.sent_at });
       history.set(c.plan_id, list);
@@ -73,6 +82,9 @@ export const getMyAiPlans = createServerFn({ method: "GET" })
         telegramDaily: p.telegram_daily, settings: p.settings as unknown as PlanSettings,
         lastCheck: history.get(p.id)?.[0] ?? null, history: history.get(p.id) ?? [],
         execute: p.execute === true, ledger: ledgers.get(p.id) ?? null, realDay: realDays.get(p.id) ?? null,
+        waitingInTsd: latestTargets.has(p.id) && planWaitingInTsd(p.settings as unknown as PlanSettings, latestTargets.get(p.id)),
+        canBuyNow: latestTargets.has(p.id) && canBuyNow(p.settings as unknown as PlanSettings, latestTargets.get(p.id)),
+        startNowDay: p.start_now_day ?? null,
       })),
       limits: { maxCommitTsd: tester ? null : settings.maxCommitTsd, oneTapLimitUsd: settings.oneTapLimitUsd },
       executionEnabled: settings.executionEnabled,
@@ -194,12 +206,59 @@ export const updateMyAiPlan = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-const realInput = z.object({ id: z.string().uuid(), on: z.boolean() });
+const realInput = z.object({ id: z.string().uuid(), on: z.boolean(), startNow: z.boolean().optional() });
+
+export type RealStartPreview = {
+  day: string | null;
+  mode: PlanSettings["mode"];
+  /** The plan is keeping money in TSD right now. */
+  waiting: boolean;
+  canBuyNow: boolean;
+  /** TSD a "Buy now anyway" day would spend. */
+  buyNowTsd: number;
+  /** Why each waiting coin is in TSD: below its trend-exit average (price vs average), or held after a stop-loss. */
+  coins: { symbol: string; price: number | null; average: number | null; days: number; reason: "below-average" | "stop-loss" }[];
+};
+
+/** Signed-in: before switching real buying on (or buying now), what the plan's latest check says to hold. */
+export const getRealStartPreview = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }): Promise<RealStartPreview> => {
+    const admin = await db();
+    const { data: plan } = await admin.from("ai_plans").select("id, commit_tsd, settings").eq("id", data.id).eq("user_id", context.userId).neq("status", "ended").maybeSingle();
+    if (!plan) throw new Error("Plan not found, or it has already ended.");
+    const settings = plan.settings as unknown as PlanSettings;
+    const { data: last } = await admin.from("ai_plan_checks").select("day, suggestion").eq("plan_id", plan.id).order("day", { ascending: false }).limit(1).maybeSingle();
+    const current = ((last?.suggestion ?? {}) as { current?: Record<string, number> }).current ?? {};
+    const waitingIds = coinsWaiting(settings, current);
+    const { data: coinRows } = await admin.from("ai_coins").select("id, symbol").in("id", waitingIds.length ? waitingIds : ["-"]);
+    const sym = new Map((coinRows ?? []).map((c) => [c.id, c.symbol.toUpperCase()]));
+    const n = settings.exitMA > 0 ? settings.exitMA : 0;
+    const coins = await Promise.all(waitingIds.map(async (id) => {
+      if (!n) return { symbol: sym.get(id) ?? id, price: null, average: null, days: 0, reason: "stop-loss" as const };
+      const { data: rows } = await admin.from("ai_daily_prices").select("close").eq("coin_id", id).lte("day", last?.day ?? "9999-12-31").order("day", { ascending: false }).limit(n);
+      const closes = (rows ?? []).map((r) => Number(r.close));
+      const price = closes[0] ?? null;
+      const average = closes.length === n ? closes.reduce((a, b) => a + b, 0) / n : null;
+      const below = price != null && average != null && price < average;
+      return { symbol: sym.get(id) ?? id, price, average, days: n, reason: below ? ("below-average" as const) : ("stop-loss" as const) };
+    }));
+    return {
+      day: last?.day ?? null, mode: settings.mode,
+      waiting: last ? planWaitingInTsd(settings, current) : false,
+      canBuyNow: last ? canBuyNow(settings, current) : false,
+      buyNowTsd: buyNowTsd(settings, Number(plan.commit_tsd), current),
+      coins,
+    };
+  });
 
 /**
  * Signed-in (beta testers): switch real buying on or off for one of my plans. Turning it on
  * prepares the plan's first real trades from its latest check and asks me to confirm them;
- * nothing is sent until I do. Turning it off stops anything not yet started.
+ * nothing is sent until I do. Turning it off stops anything not yet started. With startNow
+ * ("Buy now anyway", basket plans waiting in TSD) the latest check is redone as a buy-in day
+ * and the plan's rules look forward from it.
  */
 export const setAiPlanRealBuying = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -218,6 +277,15 @@ export const setAiPlanRealBuying = createServerFn({ method: "POST" })
     const blocker = await ex.planRealBlocker({ ...plan, commit_tsd: Number(plan.commit_tsd) });
     if (blocker) throw new Error(blocker);
     await admin.from("ai_plans").update({ execute: true, execute_since: plan.execute ? undefined : new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", plan.id);
+    if (data.startNow) {
+      const { data: last } = await admin.from("ai_plan_checks").select("suggestion").eq("plan_id", plan.id).order("day", { ascending: false }).limit(1).maybeSingle();
+      const current = ((last?.suggestion ?? {}) as { current?: Record<string, number> }).current ?? {};
+      if (!canBuyNow(plan.settings as unknown as PlanSettings, current)) throw new Error("This plan isn't waiting in TSD, so there's nothing to buy now.");
+      const { startPlanNow } = await import("./ai.server");
+      const checkId = await startPlanNow(plan.id);
+      const r = await ex.prepareRealMoves(checkId);
+      return { ok: true, moves: r.moves, note: r.moves ? null : r.reason === "nothing to trade" ? "Real buying is on. Nothing to trade right now." : "Real buying is on." };
+    }
     // The newest check becomes the first real day (if it hasn't been used for one already).
     const { data: last } = await admin.from("ai_plan_checks").select("id, exec_status").eq("plan_id", plan.id).order("day", { ascending: false }).limit(1).maybeSingle();
     if (!last) return { ok: true, moves: 0, note: "Real buying is on. Your first trades come with the next daily check." };

@@ -23,6 +23,13 @@ export type PlanSettings = {
   cap: number; reserve: number; feeBps: number; stopLoss: number; // % ; 0 = off
   holdout: number; // % of period held back for out-of-sample check
   amount: number; weeklyAdd: number; // starting money and regular weekly top-up
+  /**
+   * basket mode, live plans only (never stored in settings): the day the owner chose
+   * "Buy now anyway" while the plan said wait in TSD. That day the basket is bought in
+   * full; each coin bought below its average is then held until it first closes above
+   * it (stop-loss still applies), after which the normal rules take over.
+   */
+  enterOn?: string;
 };
 export const defaultPlan: PlanSettings = {
   mode: "basket", weights: {}, drift: 5,
@@ -98,6 +105,8 @@ export function runPlan(series: Record<string, Series>, s: PlanSettings, opts: {
   let weights: Record<string, number> = {}; let value = amount; let idx = 1; let totalIn = amount; let trades = 0; let fees = 0; let cashDays = 0;
   const entryPeak: Record<string, number> = {};
   const stoppedOut = new Set<string>(); let prevOut = new Set<string>();
+  /** Coins bought on enterOn while below their average: held until they first close above it. */
+  const grace = new Set<string>();
   const fills: Fill[] = []; const changes: Change[] = []; const planVals: number[] = []; const planIdx: number[] = []; const log: PlanRun["log"] = [];
   const stable = s.coins.find(isStable); const ranked = s.coins.filter((id) => !isStable(id));
   const holdCoins = ranked.filter((id) => priceAt(id, days[0]!));
@@ -136,7 +145,7 @@ export function runPlan(series: Record<string, Series>, s: PlanSettings, opts: {
           const soldUsd = weights[id] * (value + cost);
           fills.push({ day: d, coin: id, side: "sell", usd: soldUsd, price: b, units: soldUsd / b, fee: cost, reason: `Stop-loss: fell ${s.stopLoss}% from its high` });
           log.push({ day: d, picks: `sold ${id}`, reason: `Fell ${s.stopLoss}% from its high since buying` });
-          const before = { ...weights }; delete weights[id]; delete entryPeak[id]; stoppedOut.add(id);
+          const before = { ...weights }; delete weights[id]; delete entryPeak[id]; stoppedOut.add(id); grace.delete(id);
           changes.push({ day: d, before, after: { ...weights }, value });
         }
       }
@@ -151,13 +160,18 @@ export function runPlan(series: Record<string, Series>, s: PlanSettings, opts: {
       const p = priceAt(id, d);
       if (p && p > avg(id, d, n)) stoppedOut.delete(id);
     }
-    if (s.mode === "basket" && isRebalance(d, days[i - 1], s.rebalance)) {
+    const forceEntry = s.mode === "basket" && !!s.enterOn && d === s.enterOn;
+    if (s.mode === "basket" && (isRebalance(d, days[i - 1], s.rebalance) || forceEntry)) {
       const invest = 1 - s.reserve / 100;
       const targets = basketTargets(s);
       const live = Object.fromEntries(Object.entries(targets).filter(([id]) => priceAt(id, d)));
       const liveSum = Object.values(live).reduce((a, b) => a + b, 0);
       // trend exit: a coin below its average keeps its share in TSD (not handed to the other coins)
-      const below = (id: string) => { if (!(s.exitMA > 0)) return false; const m = avg(id, d, s.exitMA); return Number.isFinite(m) && priceAt(id, d)! < m; };
+      const rawBelow = (id: string) => { if (!(s.exitMA > 0)) return false; const m = avg(id, d, s.exitMA); return Number.isFinite(m) && priceAt(id, d)! < m; };
+      // "Buy now anyway": held coins rejoin the normal rules once they close above their average
+      for (const id of [...grace]) if (!rawBelow(id)) grace.delete(id);
+      if (forceEntry) for (const id of Object.keys(live)) { stoppedOut.delete(id); if (rawBelow(id)) grace.add(id); }
+      const below = (id: string) => !grace.has(id) && rawBelow(id);
       const out = new Set(Object.keys(live).filter((id) => stoppedOut.has(id) || below(id)));
       const next: Record<string, number> = Object.fromEntries(Object.entries(live).filter(([id]) => !out.has(id)).map(([id, w]) => [id, liveSum > 0 ? (w / liveSum) * invest : 0]));
       const outChanged = out.size !== prevOut.size || [...out].some((id) => !prevOut.has(id));
@@ -170,7 +184,8 @@ export function runPlan(series: Record<string, Series>, s: PlanSettings, opts: {
           const ch = Math.abs((next[id] ?? 0) - (weights[id] ?? 0)); turnover += ch; if (ch > 1e-6) trades++;
         }
         const why = (id: string) =>
-          out.has(id) && !was.has(id) ? (stoppedOut.has(id) ? "Waiting after stop-loss → TSD" : `Closed below its ${s.exitMA}-day average → TSD`)
+          forceEntry && !out.has(id) && (was.has(id) || !weights[id]) ? "Bought now at your request (the plan said wait in TSD)"
+          : out.has(id) && !was.has(id) ? (stoppedOut.has(id) ? "Waiting after stop-loss → TSD" : `Closed below its ${s.exitMA}-day average → TSD`)
           : was.has(id) && !out.has(id) ? (s.exitMA > 0 ? `Back above its ${s.exitMA}-day average` : `Back above its ${STOP_REENTRY_MA}-day average after stop-loss`)
           : i === 0 || !Object.keys(weights).length ? "Bought the basket" : "Rebalanced back to target";
         recordFills(d, weights, next, value, why);
@@ -178,6 +193,7 @@ export function runPlan(series: Record<string, Series>, s: PlanSettings, opts: {
         for (const id of Object.keys(next)) if (!weights[id]) entryPeak[id] = priceAt(id, d)!;
         if (turnover > 1e-6) log.push({ day: d, picks: Object.entries(next).map(([id, w]) => `${id} ${(w * 100).toFixed(0)}%`).join(", ") || "all cash",
           reason: [...out].some((id) => !was.has(id)) ? `Moved ${[...out].filter((id) => !was.has(id)).join(", ")} to TSD (below ${s.exitMA}-day average${stoppedOut.size ? " or stopped out" : ""})`
+            : forceEntry ? "Bought now at your request (the plan said wait in TSD)"
             : [...was].some((id) => !out.has(id)) ? `Bought back ${[...was].filter((id) => !out.has(id)).join(", ")}`
             : i === 0 ? "Bought the basket" : `Rebalanced — a coin was ${(offBy * 100).toFixed(0)} points off target` });
         if (turnover > 1e-6) changes.push({ day: d, before: { ...weights }, after: { ...next }, value });
