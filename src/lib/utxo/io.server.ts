@@ -1,7 +1,8 @@
 /**
  * UTXO chain I/O for the settlement engine.
  *
- * TXC and ISK go through our own Bitcoin-Core-style nodes (`rpc.server`).
+ * TXC and ISK go through our own Bitcoin-Core-style nodes (`rpc.server`), with
+ * their public explorers as fallback; ISK balance displays read the explorer first.
  * Litecoin has no private node, so it goes through NowNodes' Blockbook
  * indexer. Server-only: every credential is read from the environment inside
  * the call, never at module scope.
@@ -10,6 +11,7 @@ import { bytesToHex } from "@noble/hashes/utils.js";
 import { getChain, type UtxoChainId } from "@/lib/chains";
 import { broadcastRawTx, fetchTxConfirmations, rpcConfigured, scanAddressUtxos } from "@/lib/rpc.server";
 import { addressToScriptFor, type Utxo } from "@/lib/txc/tx.server";
+import { EXPLORER_BASE, parseExplorerUtxos, type ExplorerChain } from "@/lib/utxo/explorer-rules";
 
 const LTC_BOOK = "https://ltcbook.nownodes.io/api/v2";
 const DEFAULT_FEE_RATE: Record<UtxoChainId, number> = { txc: 10, ltc: 8, isk: 10 };
@@ -88,30 +90,35 @@ export async function loadUtxosFor(chain: UtxoChainId, address: string): Promise
     }
   }
 
-  if (chain === "txc") {
-    // Public Esplora mirror is the TXC fallback when our node is down.
-    const script = bytesToHex(addressToScriptFor(address, p2pkhVersionOf("txc")));
-    const res = await fetch(
-      `https://mempool.texitcoin.org/api/address/${encodeURIComponent(address)}/utxo`,
-      { headers: { accept: "application/json" } },
-    );
-    if (!res.ok) throw new Error(`Could not read UTXOs for ${address}`);
-    const rows = (await res.json()) as Array<{
-      txid: string;
-      vout: number;
-      value: number;
-      status?: { block_height?: number };
-    }>;
-    return rows.map((r) => ({
-      txid: r.txid,
-      vout: r.vout,
-      scriptPubKey: script,
-      amount: r.value / 1e8,
-      height: r.status?.block_height ?? 0,
-    }));
-  }
+  // Public explorer is the TXC/ISK fallback when our node is down.
+  return loadExplorerUtxos(chain, address);
+}
 
-  throw new Error(`The ${getChain(chain).name} node is unreachable`);
+/** Confirmed coins from the chain's public explorer (address index). TXC and ISK only. */
+async function loadExplorerUtxos(chain: ExplorerChain, address: string): Promise<Utxo[]> {
+  const script = bytesToHex(addressToScriptFor(address, p2pkhVersionOf(chain)));
+  const res = await fetch(`${EXPLORER_BASE[chain]}/api/address/${encodeURIComponent(address)}/utxo`, {
+    headers: { accept: "application/json", "User-Agent": "seeds-exchange/1.0" },
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!res.ok) throw new Error(`Could not read ${getChain(chain).name} coins for ${address}`);
+  return parseExplorerUtxos(await res.json(), script);
+}
+
+/**
+ * Coins for showing a balance or watching for deposits — never for picking coins
+ * to send. ISK reads the explorer's address index first (fast, many at once) and
+ * falls back to our node's full scan; everything else is the same as loadUtxosFor.
+ */
+export async function loadDisplayUtxosFor(chain: UtxoChainId, address: string): Promise<Utxo[]> {
+  if (chain === "isk") {
+    try {
+      return await loadExplorerUtxos("isk", address);
+    } catch (err) {
+      console.error("[isk] explorer read failed, using node", (err as Error).message);
+    }
+  }
+  return loadUtxosFor(chain, address);
 }
 
 export async function broadcastFor(chain: UtxoChainId, hex: string): Promise<string> {

@@ -13,7 +13,7 @@ export const getUtxoBalances = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data }) => {
-    const { loadUtxosFor, utxoChainOnline } = await import("./utxo/io.server");
+    const { loadDisplayUtxosFor, utxoChainOnline } = await import("./utxo/io.server");
     const { shared } = await import("./cache/shared-cache.server");
     const { CACHE_TIMES, balanceKey } = await import("./cache/shared-cache-rules");
     const entries = [
@@ -26,13 +26,12 @@ export const getUtxoBalances = createServerFn({ method: "POST" })
         if (!e.address || !utxoChainOnline(e.chain)) {
           return { ...e, balance: 0, online: false };
         }
-        // Display only (sends pick coins from a live read). ISK keeps its copy five
-        // minutes: every ISK balance is a slow full scan on the one ISK node.
+        // Display only (sends pick coins from a live read). ISK reads the
+        // mempool.iskandercoin.com address index first, so it keeps a minute like the rest.
         const address = e.address;
-        const times = e.chain === "isk" ? CACHE_TIMES.iskBalance : CACHE_TIMES.balance;
-        return shared(balanceKey(e.chain, address), { ...times, force: data.fresh, good: (r) => r.online }, async () => {
+        return shared(balanceKey(e.chain, address), { ...CACHE_TIMES.balance, force: data.fresh, good: (r) => r.online }, async () => {
           try {
-            const utxos = await loadUtxosFor(e.chain, address);
+            const utxos = await loadDisplayUtxosFor(e.chain, address);
             return { ...e, balance: utxos.reduce((sum, u) => sum + u.amount, 0), online: true };
           } catch {
             return { ...e, balance: 0, online: false };

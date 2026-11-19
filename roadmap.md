@@ -199,8 +199,8 @@
 
 ## Scaling (Nov 19)
 - [x] One shared copy of homepage/trade-page market data, TXC node status and reference prices (refreshed every 3–60 s)
-- [x] Pocket balances: shared copy (1 min, ISK 5 min), last good value shown when a chain lookup fails, Refresh asks the chains again
-- [ ] ISK address index server so ISK balances stop needing full scans (blocked: needs the ISK node team / a server)
+- [x] Pocket balances: shared copy (1 min), last good value shown when a chain lookup fails, Refresh asks the chains again
+- [x] ISK balances read mempool.iskandercoin.com's address index first (Seeds node as backup); sends still use our node
 - [ ] Paid THORChain/Maya access for launch-day swap quotes (blocked: Bobby picks a provider and budget)
 - [ ] Launch-day queue for Telegram/email blasts; batch the visit counter
 - [ ] Load test at 5k/20k/50k on a test copy (blocked: needs publish + a test copy)

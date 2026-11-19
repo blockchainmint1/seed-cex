@@ -61,7 +61,6 @@ export const CACHE_TIMES = {
   nodeStatus: { freshMs: 30_000, maxStaleMs: 600_000 },
   referencePrices: { freshMs: 60_000, maxStaleMs: 900_000 },
   balance: { freshMs: 60_000, maxStaleMs: 24 * 3_600_000 },
-  iskBalance: { freshMs: 300_000, maxStaleMs: 24 * 3_600_000 },
 } as const satisfies Record<string, CacheTimes>;
 
 /** One cache key per coin + address. EVM addresses ignore letter case. */

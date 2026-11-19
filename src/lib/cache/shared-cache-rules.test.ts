@@ -31,9 +31,9 @@ describe("shared display cache", () => {
     expect(leaseMs(3_000)).toBe(5_000);
     expect(leaseMs(300_000)).toBe(30_000);
   });
-  test("balances keep a minute, ISK five minutes; order books three seconds", () => {
+  test("balances (ISK included) keep a minute; order books three seconds", () => {
     expect(CACHE_TIMES.balance.freshMs).toBe(60_000);
-    expect(CACHE_TIMES.iskBalance.freshMs).toBe(300_000);
+    expect("iskBalance" in CACHE_TIMES).toBe(false);
     expect(CACHE_TIMES.book.freshMs).toBe(3_000);
     expect(CACHE_TIMES.summary.freshMs).toBe(5_000);
     expect(CACHE_TIMES.nodeStatus.freshMs).toBe(30_000);

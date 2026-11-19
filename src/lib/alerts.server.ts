@@ -194,9 +194,9 @@ async function collectSightings(wallet: WalletRow): Promise<Sighting[]> {
     jobs.push(
       (async () => {
         try {
-          const { loadUtxosFor, utxoChainOnline } = await import("./utxo/io.server");
+          const { loadDisplayUtxosFor, utxoChainOnline } = await import("./utxo/io.server");
           if (!utxoChainOnline(chain)) return null;
-          const utxos = await loadUtxosFor(chain, address);
+          const utxos = await loadDisplayUtxosFor(chain, address);
           return {
             asset: chain.toUpperCase(),
             label: chain.toUpperCase(),
