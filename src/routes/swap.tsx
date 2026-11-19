@@ -213,7 +213,7 @@ function SwapPage() {
         </p>
         <p className="inline-flex items-center gap-2 rounded-sm border border-primary/40 bg-primary/10 px-3 py-1.5 font-mono text-[11px] text-foreground">
           <ShieldCheck className="h-3.5 w-3.5 text-primary" />
-          Anyone can compare prices. Sending from your trading pocket is in a small test with the Seeds team first.
+          Anyone can compare prices. Sending from your trading pocket is open to beta testers first.
         </p>
       </header>
 

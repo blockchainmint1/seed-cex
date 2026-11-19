@@ -106,7 +106,7 @@ describe("sending into Maya", () => {
     expect(sendBlocker({ from: c("LTC"), link, isAdmin: true, amountUsd: 10, protocol: "maya" })).toBe("Seeds sends LTC through THORChain only for now.");
   });
   test("Maya sends keep the same pilot rules (testers, no size limit)", () => {
-    expect(sendBlocker({ from: c("BTC"), link, isAdmin: false, amountUsd: 10, protocol: "maya" })).toMatch(/small test/);
+    expect(sendBlocker({ from: c("BTC"), link, isAdmin: false, amountUsd: 10, protocol: "maya" })).toMatch(/beta testers/);
     expect(sendBlocker({ from: c("BTC"), link, isAdmin: true, amountUsd: SWAP_LIMITS.perSwapUsd + 1, protocol: "maya" })).toBeNull();
     expect(sendBlocker({ from: c("BTC"), link, isAdmin: true, amountUsd: 10, protocol: "maya" })).toBeNull();
   });

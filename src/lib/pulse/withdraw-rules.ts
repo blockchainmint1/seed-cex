@@ -36,7 +36,7 @@ export type PulseLinkLike = { mode: string; hasKey: boolean; hasEvm: boolean } |
 
 /** First reason Seeds can't send PulseChain coins for this member at all, or null. */
 export function pulseSendBlocker(p: { link: PulseLinkLike; isAdmin: boolean }): string | null {
-  if (PULSE_WITHDRAW_PILOT_ADMIN_ONLY && !p.isAdmin) return "PulseChain withdrawals are in a small test with the Seeds team first. They open to members after that.";
+  if (PULSE_WITHDRAW_PILOT_ADMIN_ONLY && !p.isAdmin) return "PulseChain withdrawals are open to beta testers first. They open to members after that.";
   if (!p.link) return "Link your HME Wallet trading pocket first (Security tab).";
   if (p.link.mode !== "access" || !p.link.hasKey) return "Your pocket is linked in approve-every-trade mode. Seeds needs instant access to send PulseChain coins for you.";
   if (!p.link.hasEvm) return "Your linked pocket doesn't include an EVM address.";

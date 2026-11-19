@@ -90,7 +90,7 @@ export function sendBlocker(p: {
   const protocol = p.protocol ?? SEND_PROTOCOL;
   const src = sendSource(p.from, protocol);
   if (!src) return protocol === "maya" && sendSource(p.from) ? `Seeds sends ${p.from.symbol} through THORChain only for now.` : `Seeds can't send ${p.from.symbol} on ${p.from.network} yet.`;
-  if (SEND_PILOT_ADMIN_ONLY && !p.isAdmin) return "Sending is in a small test with the Seeds team first. It opens to members after that.";
+  if (SEND_PILOT_ADMIN_ONLY && !p.isAdmin) return "Sending is open to beta testers first. It opens to members after that.";
   if (!p.link) return "Link your HME Wallet trading pocket first (Profile).";
   if (p.link.mode !== "access" || !p.link.hasKey) return "Your pocket is linked in approve-every-trade mode. Swaps need instant access for now.";
   if (!p.link.pockets.includes(src.pocket)) return `Your linked pocket doesn't include ${p.from.network}.`;

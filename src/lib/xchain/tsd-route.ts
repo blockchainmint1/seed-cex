@@ -140,7 +140,7 @@ export function routeBlocker(p: {
 }): string | null {
   const coinProblem = routeCoinProblem(p.direction, p.coin);
   if (coinProblem) return coinProblem;
-  if (SEND_PILOT_ADMIN_ONLY && !p.isAdmin) return "TSD swaps are in a small test with the Seeds team first. They open to members after that.";
+  if (SEND_PILOT_ADMIN_ONLY && !p.isAdmin) return "TSD swaps are open to beta testers first. They open to members after that.";
   if (!p.link) return "Link your HME Wallet trading pocket first (Profile).";
   if (p.link.mode !== "access" || !p.link.hasKey) return "Your pocket is linked in approve-every-trade mode. TSD swaps need instant access for now.";
   const missing = routePockets(p.direction, p.coin).filter((x) => !p.link!.pockets.includes(x));
