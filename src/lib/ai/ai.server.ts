@@ -3,6 +3,7 @@
  * The plan engine itself is the same pure code the browser runs (plan.ts), so
  * the daily message always matches what the member saw when testing.
  */
+import { afterRun } from "./check-schedule";
 import type { Series } from "./series";
 import { planMoves, runPlan, type PlanSettings } from "./plan";
 import { dailyMessage } from "./daily-message";
@@ -80,28 +81,47 @@ async function checkContext(db: Admin) {
 }
 
 /** One check per live plan per price day. Safe to re-run: (plan, day) is unique and only a new row sends. */
-export async function runDailyChecks(opts: { planId?: string; deadlineMs?: number } = {}): Promise<DailyTally> {
+/**
+ * Plan checks. With `due`, only plans whose own time has come (next_check_at, every 24 h
+ * from when the plan was started), each claimed first so overlapping runs never check a
+ * plan twice. With `planId`, that one plan now. Otherwise every live plan (admin "run now").
+ * Afterwards each plan's next time is set by afterRun (check-schedule.ts).
+ */
+export async function runDailyChecks(opts: { planId?: string; deadlineMs?: number; due?: boolean } = {}): Promise<DailyTally> {
   const db = await admin();
   const started = Date.now();
   const tally: DailyTally = { plans: 0, checked: 0, sent: 0, skipped: 0, failed: 0 };
-  const ctx = await checkContext(db);
-  let q = db.from("ai_plans").select(PLAN_COLS).eq("status", "locked").order("locked_at");
+  const nowIso = new Date().toISOString();
+  let q = db.from("ai_plans").select(`${PLAN_COLS}, next_check_at`).eq("status", "locked").order("next_check_at", { nullsFirst: true });
   if (opts.planId) q = q.eq("id", opts.planId);
-  const { data: plans, error } = await q.limit(2000);
+  if (opts.due) q = q.or(`next_check_at.is.null,next_check_at.lte.${nowIso}`);
+  const { data: plans, error } = await q.limit(opts.due ? 200 : 2000);
   if (error) throw new Error(error.message);
   tally.plans = plans?.length ?? 0;
+  if (!plans?.length) return tally;
+  const ctx = await checkContext(db);
 
-  for (const p of (plans ?? []) as CheckPlan[]) {
+  for (const row of plans as (CheckPlan & { next_check_at: string | null })[]) {
     if (Date.now() - started > (opts.deadlineMs ?? 25_000)) break;
+    const p = row as CheckPlan;
+    if (opts.due) {
+      // Claim: push the time out briefly so a parallel run skips this plan.
+      let claim = db.from("ai_plans").update({ next_check_at: new Date(Date.now() + 10 * 60_000).toISOString() }).eq("id", p.id).eq("status", "locked");
+      claim = row.next_check_at ? claim.eq("next_check_at", row.next_check_at) : claim.is("next_check_at", null);
+      const { data: got } = await claim.select("id");
+      if (!got?.length) continue;
+    }
+    let newCheck = false;
     try {
       const built = await buildCheck(p, ctx);
-      if (!built) { tally.skipped++; continue; }
+      if (!built) { tally.skipped++; newCheck = true; continue; }
       const { data: inserted, error: insErr } = await db.from("ai_plan_checks")
         .upsert({ plan_id: p.id, user_id: p.user_id, day: built.day, message: built.message, suggestion: built.suggestion as never }, { onConflict: "plan_id,day", ignoreDuplicates: true })
         .select("id");
       if (insErr) throw new Error(insErr.message);
       tally.checked++;
       if (!inserted?.length) { tally.skipped++; continue; }
+      newCheck = true;
       // Real buying on: today's trades wait for the owner's OK. When the rule asks something
       // ("you're X, the rule says Y") that question is today's one Telegram message.
       let asked = false;
@@ -117,6 +137,9 @@ export async function runDailyChecks(opts: { planId?: string; deadlineMs?: numbe
     } catch (e) {
       tally.failed++;
       console.error("[ai-daily] plan check failed", p.id, e);
+    } finally {
+      const next = afterRun({ startedAt: p.locked_at, now: Date.now(), newCheck });
+      await db.from("ai_plans").update({ next_check_at: new Date(next).toISOString() }).eq("id", p.id);
     }
   }
   return tally;

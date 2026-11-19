@@ -323,6 +323,13 @@
       "when": 1795130557238,
       "tag": "0045_ai_plan_override_days",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1795131187624,
+      "tag": "0046_ai_plan_next_check",
+      "breakpoints": true
     }
   ]
 }

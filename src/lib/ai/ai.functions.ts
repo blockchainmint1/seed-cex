@@ -31,6 +31,8 @@ export type MyAiPlan = {
   canBuyNow: boolean;
   /** Days the owner overrode a rule that said be in TSD. */
   overrideDays: string[];
+  /** When this plan's next daily check is due (every 24 h at the time of day it was started). */
+  nextCheckAt: string | null;
 };
 
 export type AiRealDay = {
@@ -44,7 +46,7 @@ export const getMyAiPlans = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
     const [{ data: plans }, { data: checks }, telegram, { data: moves }] = await Promise.all([
-      supabase.from("ai_plans").select("id, name, status, commit_tsd, locked_at, telegram_daily, settings, execute, override_days").order("locked_at", { ascending: false }),
+      supabase.from("ai_plans").select("id, name, status, commit_tsd, locked_at, telegram_daily, settings, execute, override_days, next_check_at").order("locked_at", { ascending: false }),
       supabase.from("ai_plan_checks").select("id, plan_id, day, message, sent_at, exec_status, exec_total_usd, exec_expires_at, exec_decided_via, suggestion").order("day", { ascending: false }).limit(300),
       supabase.from("profiles").select("telegram_verified").eq("id", userId).maybeSingle(),
       supabase.from("ai_plan_moves").select("id, check_id, plan_id, seq, side, coin_id, usd, amount, status, amount_in, amount_out, error").order("created_at", { ascending: false }).limit(500),
@@ -85,6 +87,7 @@ export const getMyAiPlans = createServerFn({ method: "GET" })
         waitingInTsd: latestTargets.has(p.id) && planWaitingInTsd(p.settings as unknown as PlanSettings, latestTargets.get(p.id)),
         canBuyNow: latestTargets.has(p.id) && canBuyNow(p.settings as unknown as PlanSettings, latestTargets.get(p.id)),
         overrideDays: (p.override_days as string[] | null) ?? [],
+        nextCheckAt: p.next_check_at ?? null,
       })),
       limits: { maxCommitTsd: tester ? null : settings.maxCommitTsd, oneTapLimitUsd: settings.oneTapLimitUsd },
       executionEnabled: settings.executionEnabled,

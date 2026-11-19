@@ -276,6 +276,7 @@ export type Database = {
           id: string
           locked_at: string
           name: string
+          next_check_at: string | null
           override_days: string[]
           settings: Json
           start_now_day: string | null
@@ -292,6 +293,7 @@ export type Database = {
           id?: string
           locked_at?: string
           name: string
+          next_check_at?: string | null
           override_days?: string[]
           settings: Json
           start_now_day?: string | null
@@ -308,6 +310,7 @@ export type Database = {
           id?: string
           locked_at?: string
           name?: string
+          next_check_at?: string | null
           override_days?: string[]
           settings?: Json
           start_now_day?: string | null

@@ -71,8 +71,8 @@ function AiTab() {
       <TabTitle
         title="AI strategies"
         desc={canReal
-          ? "Your locked plans. Every day Seeds runs each plan on fresh prices. Plans with real buying on also trade from your own pocket, after you say yes."
-          : "Your locked plans. Every day Seeds runs each live plan on fresh prices and tells you what it would do."}
+          ? "Your locked plans. Each plan is checked once every 24 hours, at the time of day you started it. Plans with real buying on also trade from your own pocket, after you say yes."
+          : "Your locked plans. Each live plan is checked once every 24 hours, at the time of day you started it, and Seeds tells you what it would do."}
         right={<Button asChild size="sm"><Link to="/ai"><Sparkles /> Test a new plan</Link></Button>}
       />
 
@@ -189,7 +189,7 @@ function PlanCard({ p, paper, symbol, busy, canReal, onReal, onBuyNow, onAnswer,
   return (
     <Card
       title={<span className="flex flex-wrap items-center gap-2">{p.name}<span className={`rounded-sm px-2 py-0.5 font-mono text-[10px] uppercase ${st.cls}`}>{st.label}</span></span>}
-      desc={`${p.commitTsd.toLocaleString("en-US")} TSD · ${p.settings.mode === "momentum" ? "Follow the strongest" : "Basket"} · ${p.settings.coins.map(symbol).join(", ")} · locked ${p.lockedAt.slice(0, 10)}`}
+      desc={`${p.commitTsd.toLocaleString("en-US")} TSD · ${p.settings.mode === "momentum" ? "Follow the strongest" : "Basket"} · ${p.settings.coins.map(symbol).join(", ")} · locked ${p.lockedAt.slice(0, 10)}${p.status === "locked" ? ` · daily check ${checkTime(p)}` : ""}`}
     >
       <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
         {rulesOf(p, symbol).map(([k, v]) => (
@@ -355,9 +355,9 @@ function RealSection({ p, symbol, busy, onAnswer, onBuyNow }: { p: MyAiPlan; sym
   );
 }
 
-/** Local time of the daily plan check (13:00 UTC). */
-function checkTime() {
-  return new Date(Date.UTC(2026, 0, 1, 13, 0)).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+/** This plan's daily check time in the member's own time zone (every 24 h from when it was started). */
+function checkTime(p: Pick<MyAiPlan, "lockedAt">) {
+  return new Date(p.lockedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }
 
 const money = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: n >= 100 ? 0 : 2 });
@@ -416,7 +416,7 @@ function RealStartDialog({ open, onClose, onChoose }: {
                   ) : (
                     <p><b className="text-foreground">Override: buy now:</b> Seeds lines up about {p.buyNowTsd.toLocaleString("en-US")} TSD of {coinList} for you to confirm. The clock starts today, and your rules look forward from your buy:{forward}{stop}</p>
                   )}
-                  {mode === "turn-on" ? <p><b className="text-foreground">Follow the rule:</b> real buying turns on, and the first buy comes with the first daily check ({checkTime()} your time) after {first?.reason === "below-average" ? `${coinList} closes above its average` : "the plan's signal"}.</p> : null}
+                  {mode === "turn-on" ? <p><b className="text-foreground">Follow the rule:</b> real buying turns on, and the first buy comes with the first daily check ({plan ? checkTime(plan) : "its usual time"}, every day) after {first?.reason === "below-average" ? `${coinList} closes above its average` : "the plan's signal"}.</p> : null}
                   {mode === "keep" ? <p><b className="text-foreground">Follow the rule:</b> close this and press Confirm to sell to TSD.</p> : null}
                 </div>
               ) : null}

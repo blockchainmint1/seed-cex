@@ -196,6 +196,8 @@
 - [x] Beta tester group (Nov 19): all admins count as beta testers; admins switch other members on/off in Admin → Admin access
 - [x] No limits for beta testers + admins: swap/TSD-swap caps, AI plan size/count caps, PulseChain withdrawal levels + 24h hold (Bobby chose "withdrawals too")
 - [x] AI check message in Telegram = one message per check: "you're X, the rule says Y, what would you like to do" + option buttons that execute (within the one-tap limit)
+- [x] AI plans checked every 24 h at the time each was started (not all at 13:00 UTC)
+- [ ] Switch the AI plan-check timer from once a day (13:00 UTC) to every minute — right after the next publish (blocked: publish; the live site still runs the old all-plans check)
 - [x] AI daily override: when the rule says be in cash (sell to TSD, or stay in TSD), ask "override?" in Telegram and on Seeds; override = keep holding / buy now, clock resets
 - [x] AI "Buy now anyway": warn when turning on real buying while the plan says wait in TSD; buy-in resets the clock (rules look forward from the buy day)
 - [x] Push Seeds AI live: real buying for beta testers; going to cash leaves TSD unquarantined — a buy-back without enough TSD sends a "deposit more TSD" alert

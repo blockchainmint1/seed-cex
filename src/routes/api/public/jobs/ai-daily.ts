@@ -4,7 +4,8 @@ import { authenticateCronRequest } from "@/integrations/supabase/cron-auth";
 // Seeds AI daily job, three scheduled calls:
 //   {"step":"request"} 03:05 UTC — queue price downloads (inside Postgres)
 //   {"step":"ingest"}  03:20 UTC — save finished downloads
-//   {"step":"check"}   13:00 UTC — daily plan check + Telegram message per live plan
+//   {"step":"check"}   every minute — checks the plans whose own time has come (each plan
+//                      runs every 24 h at the time of day it was started) + their Telegram message
 export const Route = createFileRoute("/api/public/jobs/ai-daily")({
   staticData: { sitemap: false },
   server: {
@@ -19,9 +20,10 @@ export const Route = createFileRoute("/api/public/jobs/ai-daily")({
         } catch { /* no body = request step */ }
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         if (step === "check") {
-          await supabaseAdmin.rpc("ai_sync_ingest");
+          // Pick up finished price downloads twice an hour (they're queued once a day).
+          if (new Date().getUTCMinutes() % 30 === 0) await supabaseAdmin.rpc("ai_sync_ingest");
           const { runDailyChecks } = await import("@/lib/ai/ai.server");
-          return Response.json({ success: true, ...(await runDailyChecks()) });
+          return Response.json({ success: true, ...(await runDailyChecks({ due: true, deadlineMs: 20_000 })) });
         }
         if (step === "ingest") {
           const { data, error } = await supabaseAdmin.rpc("ai_sync_ingest");
