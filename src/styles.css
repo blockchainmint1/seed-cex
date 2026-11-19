@@ -240,6 +240,14 @@
     scrollbar-gutter: stable;
   }
 
+  /* Menus and pop-ups lock page scroll and normally add a right margin to make
+     up for the hidden scrollbar. The lane above is already reserved, so that
+     margin would push the whole page sideways. Cancel it. */
+  html body[data-scroll-locked] {
+    margin-right: 0 !important;
+    --removed-body-scroll-bar-size: 0px;
+  }
+
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
