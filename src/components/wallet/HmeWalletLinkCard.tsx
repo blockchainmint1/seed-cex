@@ -180,7 +180,6 @@ export function HmeWalletLinkCard({ showBalances = true, className = "border-y b
               <Link to="/swap" className="text-primary underline">Swap to TSD</Link>
             </p>
           ) : null}
-          <p className="border-l-2 border-warn pl-3 text-sm text-foreground">Wallet linking and balance sync work. Exchange and P2P settlement from linked pockets is not connected yet—do not fund this pocket for a Seeds trade yet.</p>
           {showBalances ? <HmePocketBalances addresses={l.addresses} linkId={l.id} /> : null}
         </div>
       ) : manifest ? (

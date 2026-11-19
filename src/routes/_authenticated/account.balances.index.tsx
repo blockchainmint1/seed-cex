@@ -71,8 +71,6 @@ function SpotBalances() {
         </div>
       </Card>
 
-      <Note tone="warn">Balance sync works. Exchange and P2P settlement from linked pockets is not connected yet — don't fund this pocket for a Seeds order-book trade yet.</Note>
-
       <div className="flex flex-wrap items-center gap-4">
         <label className="relative min-w-0 flex-1 sm:max-w-xs">
           <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
