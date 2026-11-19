@@ -121,7 +121,7 @@ function Welcome() {
           {step === "welcome" ? <StepWelcome onNext={forward} /> : null}
           {step === "name" ? <StepName onNext={forward} /> : null}
           {step === "wallet" ? <StepWallet /> : null}
-          {step === "fees" ? <StepFees /> : null}
+          {step === "fees" ? <StepFees onSkip={forward} /> : null}
           {step === "alerts" ? <StepAlerts /> : null}
           {step === "security" ? <StepSecurity /> : null}
           {step === "ignite" ? <StepIgnite /> : null}
@@ -286,7 +286,7 @@ const money = (n: number | null | undefined) =>
   n == null || !Number.isFinite(n) ? "—" : n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: n < 1 ? 2 : 0, minimumFractionDigits: n < 1 ? 2 : 0 });
 const ethAmt = (n: number) => (n === 0 ? "0" : Number(n.toPrecision(3)).toString());
 
-function StepFees() {
+function StepFees({ onSkip }: { onSkip: () => void }) {
   const q = useFeePrep();
   const d = q.data;
   const perSwap = d?.perSwapUsd != null ? (d.perSwapUsd < 0.01 ? "under a cent" : `about ${money(d.perSwapUsd)}`) : null;
@@ -351,7 +351,18 @@ function StepFees() {
           }
         />
       </div>
-      <p className="mt-3 text-xs text-muted-foreground">Same address on both networks, but pick the right network when you send. ETH stays in your own pocket until a fee is paid. You can skip this and add it later from Account → Balances → Deposit.</p>
+      <button
+        type="button"
+        onClick={onSkip}
+        className="mt-4 flex w-full items-center justify-between gap-3 rounded-lg border border-border bg-card p-5 text-left transition-colors hover:border-primary"
+      >
+        <span>
+          <span className="block font-semibold text-foreground">I'll convert some when it's time</span>
+          <span className="mt-1 block text-sm text-muted-foreground">Skip this for now. Before your first swap on Ethereum or Base, Seeds shows the fee and tells you if your pocket needs ETH.</span>
+        </span>
+        <ArrowRight className="h-4 w-4 shrink-0 text-primary" />
+      </button>
+      <p className="mt-3 text-xs text-muted-foreground">Same address on both networks, but pick the right network when you send. ETH stays in your own pocket until a fee is paid. You can add it later from Account → Balances → Deposit.</p>
     </>
   );
 }
