@@ -175,3 +175,46 @@ export const resetMemberTwoFactor = createServerFn({ method: "POST" })
     }
     return { ok: true };
   });
+
+export type GasTopUpRow = { to: string; eth: number; usd: number; status: string; txid: string | null; at: string };
+export type GasWalletStatus = {
+  configured: boolean;
+  address: string | null;
+  balanceEth: number | null;
+  balanceUsd: number | null;
+  perRouteUsd: number;
+  dailyUsd: number;
+  recent: GasTopUpRow[];
+};
+
+/**
+ * Seeds' Ethereum gas wallet: the address to fund, what is left in it, and what it has paid for.
+ * Admins only. When it is not set up, every member's own pocket pays its own Ethereum fee.
+ */
+export const getGasWalletStatus = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await requireAdmin(context as never);
+    const { gasWalletAddress, gasWalletConfigured, ethPriceUsd } = await import("./xchain/gas.server");
+    const { GAS_LIMITS } = await import("./xchain/tsd-route");
+    const configured = await gasWalletConfigured();
+    const address = configured ? await gasWalletAddress() : null;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const [balHex, priceUsd, { data: rows }] = await Promise.all([
+      address
+        ? import("@/lib/evm.server").then((m) => m.evmRpc<string>("ethereum", "eth_getBalance", [address, "latest"]))
+        : Promise.resolve(null),
+      ethPriceUsd(),
+      supabaseAdmin.from("gas_topups").select("to_address, wei, usd, status, txid, created_at").order("created_at", { ascending: false }).limit(10),
+    ]);
+    const balanceEth = balHex ? Number(BigInt(balHex)) / 1e18 : null;
+    return {
+      configured,
+      address,
+      balanceEth,
+      balanceUsd: balanceEth != null && priceUsd != null ? balanceEth * priceUsd : null,
+      perRouteUsd: GAS_LIMITS.perRouteUsd,
+      dailyUsd: GAS_LIMITS.dailyUsd,
+      recent: (rows ?? []).map((r) => ({ to: r.to_address, eth: Number(r.wei) / 1e18, usd: Number(r.usd), status: r.status, txid: r.txid, at: r.created_at })),
+    } satisfies GasWalletStatus;
+  });

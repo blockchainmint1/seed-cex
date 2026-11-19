@@ -49,8 +49,16 @@ export const startTsdSwap = createServerFn({ method: "POST" })
     return startTsdRoute(context.userId, isAdmin, data);
   });
 
-const answerInput = z.object({ id: z.string().uuid(), choice: z.enum(["continue", "stop"]) });
+/** Signed-in: what this swap's Ethereum network fee will cost, and whether the member's pocket can pay it. */
+export const getTsdGasCheck = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => quoteInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { gasCheck } = await import("./tsd-route.server");
+    return gasCheck(context.userId, data.direction, swapCoin(data.coin)!);
+  });
 
+const answerInput = z.object({ id: z.string().uuid(), choice: z.enum(["continue", "stop"]) });
 /** Signed-in: answer a route that paused because the price moved. */
 export const answerTsdSwap = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

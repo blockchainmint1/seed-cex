@@ -6,7 +6,7 @@
  * must hold the ETH itself.
  */
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { gasTopUpWei, GAS_LIMITS } from "./tsd-route";
+import { gasNeedWei, gasTopUpWei, GAS_LIMITS } from "./tsd-route";
 
 const ETH = "ethereum" as const;
 
@@ -15,7 +15,7 @@ export type GasResult =
   | { kind: "pending"; txid: string }
   | { kind: "short"; reason: string };
 
-async function ethPriceUsd(): Promise<number | null> {
+export async function ethPriceUsd(): Promise<number | null> {
   const { swapStatus } = await import("./router.server");
   const s = await swapStatus();
   return s.coins.find((c) => c.id === "ETH")?.priceUsd ?? null;
@@ -40,7 +40,7 @@ export async function ensureGas(p: { routeId: string; userId: string; pocket: st
   const [fees, balHex] = await Promise.all([suggestFees(ETH), evmRpc<string>(ETH, "eth_getBalance", [p.pocket, "latest"])]);
   if (!fees || !balHex) throw new Error("Ethereum node unreachable");
   // 25% headroom: fees can rise between this check and the pocket's own send.
-  const need = (p.gasUnits * fees.maxFeePerGas * 125n) / 100n;
+  const need = gasNeedWei(p.gasUnits, fees.maxFeePerGas);
   const top = gasTopUpWei(need, BigInt(balHex));
   if (top === 0n) return { kind: "ok" };
 

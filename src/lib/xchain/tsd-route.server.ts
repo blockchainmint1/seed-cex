@@ -14,25 +14,40 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Database } from "@/integrations/supabase/types";
 import { swapCoin, type SwapCoin } from "./assets";
+import { gasWalletConfigured } from "./gas.server";
 import { toBaseUnits } from "./safety";
 import { landsOutsideHmeWallet, receivePocket, requoteOk, sendSource, SWAP_LIMITS } from "./send-rules";
 import {
-  afterBridgeFee, BRIDGE_USDC_CONTRACT, BRIDGE_USDC_ID, bridgeProgress, isTerminal, legPriceOk, mintOrderProblem,
-  redeemOrderProblem, routeBlocker, TSD_ROUTE, type RouteDirection, type RouteStage,
+  afterBridgeFee, BRIDGE_USDC_CONTRACT, BRIDGE_USDC_ID, bridgeProgress, gasNeedWei, gasPreflight, isTerminal, legPriceOk, mintOrderProblem,
+  GAS_SWAP_LEG, GAS_USDC_TRANSFER, redeemOrderProblem, routeBlocker, routeGasUnits, TSD_ROUTE, type RouteDirection, type RouteStage,
 } from "./tsd-route";
 
 type Row = Database["public"]["Tables"]["tsd_routes"]["Row"];
 
 const ETH = "ethereum" as const;
-/** Gas for approve + router deposit (USDC → THORChain), and for a plain USDC transfer. */
-const GAS_SWAP_LEG = 280_000n;
-const GAS_USDC_TRANSFER = 80_000n;
 /** Rough TSD Bridge leg time: TEXITcoin confirmation + Ethereum release (estimate, not a promise). */
 const BRIDGE_SECONDS = 15 * 60;
 
 const usdc = () => swapCoin(BRIDGE_USDC_ID)!;
 const fmt = (n: number, d = 6) => Number(n.toFixed(d)).toString();
 const clean = (m: string) => m.replace(/^.*?ERROR:\s*/i, "").trim();
+
+/**
+ * What this route's Ethereum leg will cost, and what the pocket holds toward it.
+ * Pass no address for a public quote (price only, no balance).
+ */
+async function gasState(evmAddress: string | null, units: bigint): Promise<{ needWei: bigint; haveWei: bigint | null; priceUsd: number | null }> {
+  if (units === 0n) return { needWei: 0n, haveWei: null, priceUsd: null };
+  const { evmRpc, suggestFees } = await import("@/lib/evm.server");
+  const { ethPriceUsd } = await import("./gas.server");
+  const [fees, balHex, priceUsd] = await Promise.all([
+    suggestFees(ETH),
+    evmAddress ? evmRpc<string>(ETH, "eth_getBalance", [evmAddress, "latest"]) : Promise.resolve(null),
+    ethPriceUsd(),
+  ]);
+  if (!fees) return { needWei: 0n, haveWei: balHex ? BigInt(balHex) : null, priceUsd };
+  return { needWei: gasNeedWei(units, fees.maxFeePerGas), haveWei: balHex ? BigInt(balHex) : null, priceUsd };
+}
 
 /* ---------------------------------- quote ---------------------------------- */
 
@@ -54,20 +69,25 @@ export type TsdRouteQuote = {
   seconds: number | null;
   /** Seeds' gas wallet is set up, so members need no ETH for the Ethereum network fee. */
   gasCovered: boolean;
+  /** ETH the route's Ethereum leg will cost, and what it is worth, when the member pays it. */
+  gasEth: number | null;
+  gasUsd: number | null;
 };
 
 export async function quoteTsdRoute(direction: RouteDirection, coin: SwapCoin, amountStr: string): Promise<TsdRouteQuote> {
   const amount = Number(amountStr);
   const base: TsdRouteQuote = {
     direction, coin: coin.id, ok: false, error: null, amountIn: amount, usdc: 0, out: 0, outUsd: null, minOut: null,
-    amountUsd: null, bridgeFeeBps: 0, swapFeeUsd: null, seconds: null, gasCovered: false,
+    amountUsd: null, bridgeFeeBps: 0, swapFeeUsd: null, seconds: null, gasCovered: false, gasEth: null, gasUsd: null,
   };
   if (!(amount > 0) || toBaseUnits(amountStr) == null) return { ...base, error: "Enter an amount with at most 8 decimal places." };
   const { bridgeSettings, tsdBridgeConfigured } = await import("./tsd-bridge.server");
   if (!tsdBridgeConfigured()) return { ...base, error: "TSD Bridge isn't connected." };
-  const { gasWalletConfigured } = await import("./gas.server");
   const [s, gasCovered] = await Promise.all([bridgeSettings(), gasWalletConfigured()]);
   base.gasCovered = gasCovered;
+  const gas = await gasState(null, routeGasUnits(direction, coin));
+  base.gasEth = gas.needWei > 0n ? Number(gas.needWei) / 1e18 : null;
+  base.gasUsd = gas.needWei > 0n && gas.priceUsd != null ? (Number(gas.needWei) / 1e18) * gas.priceUsd : null;
   if (!s.live) return { ...base, error: "TSD Bridge is paused right now." };
   const { thorQuote } = await import("./router.server");
 
@@ -134,6 +154,15 @@ export async function startTsdRoute(userId: string, isAdmin: boolean, input: Sta
   const coinPocket = input.direction === "buy" ? receivePocket(coin) : sendSource(coin)?.pocket;
   const coinAddress = coin.id === BRIDGE_USDC_ID ? evm : link!.addresses[coinPocket!]!;
 
+  // The Ethereum fee is paid from the member's own pocket unless Seeds' gas wallet covers it:
+  // say so before any coin leaves, instead of after the TSD is already with TSD Bridge.
+  const gasUnits = routeGasUnits(input.direction, coin);
+  if (gasUnits > 0n) {
+    const g = await gasState(evm, gasUnits);
+    const reason = gasPreflight({ needWei: g.needWei, haveWei: g.haveWei, coveredBySeeds: await gasWalletConfigured() });
+    if (reason) throw new Error(reason);
+  }
+
   if (input.direction === "buy") {
     const [bal, locked] = await freeTsd(userId, txc);
     if (bal == null) throw new Error("Couldn't read your TSD balance. Try again in a minute.");
@@ -154,6 +183,28 @@ export async function startTsdRoute(userId: string, isAdmin: boolean, input: Sta
   await advanceRoute(id as string);
   const { data: row } = await supabaseAdmin.from("tsd_routes").select("id, stage, error").eq("id", id as string).single();
   return row;
+}
+
+/**
+ * What this swap's Ethereum fee will cost the member, and whether their pocket can pay it.
+ * Nulls mean nothing to report: no Ethereum leg, or Seeds' gas wallet covers the fee.
+ */
+export async function gasCheck(userId: string, direction: RouteDirection, coin: SwapCoin) {
+  const units = routeGasUnits(direction, coin);
+  const covered = await gasWalletConfigured();
+  const none = { covered, needEth: null as number | null, haveEth: null as number | null, shortEth: null as number | null, shortUsd: null as number | null };
+  if (units === 0n || covered) return none;
+  const { loadLink } = await import("./send.server");
+  const link = await loadLink(userId);
+  const g = await gasState(link?.addresses.EVM ?? null, units);
+  const short = g.haveWei != null && g.needWei > g.haveWei ? g.needWei - g.haveWei : null;
+  return {
+    covered,
+    needEth: g.needWei > 0n ? Number(g.needWei) / 1e18 : null,
+    haveEth: g.haveWei != null ? Number(g.haveWei) / 1e18 : null,
+    shortEth: short != null ? Number(short) / 1e18 : null,
+    shortUsd: short != null && g.priceUsd != null ? (Number(short) / 1e18) * g.priceUsd : null,
+  };
 }
 
 /** TSD in the member's TXC pocket and how much of it P2P trades have set aside. */
@@ -261,9 +312,20 @@ async function step(r: Row): Promise<boolean> {
     return { error: g.reason };
   };
 
+  /** Stop before anything moves when the pocket can't pay the Ethereum fee and Seeds isn't covering it. */
+  const preflight = async (): Promise<Partial<Row> | null> => {
+    const units = routeGasUnits(r.direction as RouteDirection, coin);
+    if (units === 0n) return null;
+    const g = await gasState(r.evm_address, units);
+    const reason = gasPreflight({ needWei: g.needWei, haveWei: g.haveWei, coveredBySeeds: await gasWalletConfigured() });
+    return reason ? move("failed", { error: reason }) : null;
+  };
+
   if (r.direction === "buy") {
     switch (stage) {
       case "reserved": {
+        const stop = await preflight();
+        if (stop) return go(stop);
         const { createRedeemOrder } = await import("./tsd-bridge.server");
         const o = await createRedeemOrder({ amount: Number(r.amount_in), payout: r.evm_address, refund: r.txc_address, reference: r.id.slice(0, 8) });
         const problem = redeemOrderProblem(o, { payout: r.evm_address, amount: Number(r.amount_in), maxFeeBps: Math.min(TSD_ROUTE.maxBridgeFeeBps, r.bridge_fee_bps) });
@@ -364,8 +426,11 @@ async function step(r: Row): Promise<boolean> {
 
   // ---------------------------------- sell ----------------------------------
   switch (stage) {
-    case "reserved":
+    case "reserved": {
+      const stop = await preflight();
+      if (stop) return go(stop);
       return go(move(direct ? "minting" : "swapping", direct ? { usdc_amount: r.amount_in } : {}));
+    }
     case "swapping": {
       if (sendSource(coin)?.kind === "erc20") {
         const wait = await gas(GAS_SWAP_LEG);

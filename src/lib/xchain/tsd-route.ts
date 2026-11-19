@@ -197,8 +197,44 @@ export function bridgeProgress(o: BridgeOrder, direction: RouteDirection): Bridg
 /** Seeds-paid Ethereum network fee for one route: caps are re-checked in the database. */
 export const GAS_LIMITS = { perRouteUsd: 5, dailyUsd: 100 } as const;
 
+/** Ethereum gas for approve + router deposit (USDC <-> THORChain). */
+export const GAS_SWAP_LEG = 280_000n;
+/** Ethereum gas for a plain USDC transfer to TSD Bridge. */
+export const GAS_USDC_TRANSFER = 80_000n;
+/** Fees can rise between the check and the send, so ask for 25% more. */
+const GAS_HEADROOM = 125n;
+
 /** How much ETH (wei) to send so the pocket can pay `needWei`, or 0n when it already can. */
 export function gasTopUpWei(needWei: bigint, haveWei: bigint): bigint {
   if (needWei <= haveWei) return 0n;
   return needWei - haveWei;
+}
+
+/** ETH (wei) a pocket must hold to pay `units` of gas at `maxFeePerGasWei`, with headroom. */
+export function gasNeedWei(units: bigint, maxFeePerGasWei: bigint): bigint {
+  return (units * maxFeePerGasWei * GAS_HEADROOM) / 100n;
+}
+
+/** Total Ethereum gas this route will spend, counted before anything starts. */
+export function routeGasUnits(direction: RouteDirection, coin: SwapCoin): bigint {
+  if (direction === "buy") return coin.id === BRIDGE_USDC_ID ? 0n : GAS_SWAP_LEG;
+  // Sell: USDC always has to be transferred to TSD Bridge; an ERC-20 source also pays for the THORChain leg.
+  const leg = coin.id === BRIDGE_USDC_ID || sendSource(coin)?.kind !== "erc20" ? 0n : GAS_SWAP_LEG;
+  return GAS_USDC_TRANSFER + leg;
+}
+
+/** ETH as plain digits, e.g. "0.0042". */
+export function formatEth(wei: bigint): string {
+  if (wei <= 0n) return "0";
+  return (Number(wei) / 1e18).toFixed(6).replace(/0+$/, "").replace(/\.$/, ".0");
+}
+
+/**
+ * Why the member can't pay the Ethereum network fee right now, or null when they can
+ * (or Seeds' gas wallet covers it). Checked before any coin leaves the pocket.
+ */
+export function gasPreflight(p: { needWei: bigint; haveWei: bigint | null; coveredBySeeds: boolean }): string | null {
+  if (p.needWei <= 0n || p.coveredBySeeds || p.haveWei == null) return null;
+  if (p.haveWei >= p.needWei) return null;
+  return `Your EVM pocket needs about ${formatEth(p.needWei - p.haveWei)} ETH more for the Ethereum network fee. Add it to your pocket and start again — nothing has been sent.`;
 }

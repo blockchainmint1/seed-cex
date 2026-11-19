@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Pause, Plus, Search, ShieldCheck, ShieldOff, Trash2, Undo2, X } from "lucide-react";
-import { getWithdrawalSettings, resetMemberTwoFactor, saveWithdrawalTiers, setWithdrawalOverride, type LimitMemberRow } from "@/lib/admin-settings.functions";
+import { getWithdrawalSettings, getGasWalletStatus, resetMemberTwoFactor, saveWithdrawalTiers, setWithdrawalOverride, type LimitMemberRow } from "@/lib/admin-settings.functions";
 import { CodeField } from "@/components/account/CodeField";
 import { proveTwoFactor } from "@/components/account/two-factor";
 import { DEFAULT_TIERS, MAX_TIERS, tiersProblem, type WithdrawTier } from "@/lib/withdraw-limits";
@@ -55,6 +55,7 @@ function AdminSettingsPage() {
           </Note>
           <TierEditor tiers={d.tiers} members={d.members} maxWaiting={d.maxWaiting} />
           <MemberLimits members={d.members} tiers={d.tiers} me={d.me} meTwoFactor={d.meTwoFactor} />
+          <GasWallet />
           <Card title="History" desc="Every change to levels or a member's limits, newest first.">
             {d.history.length === 0 ? <p className="text-sm text-muted-foreground">No changes yet.</p> : (
               <ul className="space-y-2 text-sm">
@@ -437,5 +438,54 @@ function EditDialog({ member, tiers, meTwoFactor, onClose }: { member: LimitMemb
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** Seeds' shared Ethereum gas wallet: where to fund it, what is left, and what it has paid for. */
+function GasWallet() {
+  const load = useServerFn(getGasWalletStatus);
+  const q = useQuery({ queryKey: ["admin-gas-wallet"], queryFn: () => load(), retry: false });
+  const [copied, setCopied] = useState(false);
+  const d = q.data;
+  return (
+    <Card title="Ethereum network fees" desc="TSD swaps pass through USDC on Ethereum, which costs a network fee. Either Seeds pays it from one shared wallet, or each member's own pocket does.">
+      {q.isPending ? <Loading /> : !d ? (
+        <p role="alert" className="text-sm text-destructive">Couldn't load the gas wallet. Refresh to retry.</p>
+      ) : d.configured && d.address ? (
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-mono text-xs break-all">{d.address}</span>
+            <Button
+              type="button" size="sm" variant="outline"
+              onClick={() => { void navigator.clipboard.writeText(d.address!); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
+            >
+              {copied ? "Copied" : "Copy address"}
+            </Button>
+          </div>
+          <p className="text-sm">
+            <b>{d.balanceEth != null ? `${d.balanceEth.toFixed(5)} ETH` : "—"}</b>
+            {d.balanceUsd != null ? <> (about {usd(d.balanceUsd)})</> : null} left in the wallet.
+            Seeds sends at most {usd(d.perRouteUsd)} toward one swap's fee and {usd(d.dailyUsd)} a day.
+          </p>
+          {d.recent.length === 0 ? <p className="text-xs text-muted-foreground">No top-ups sent yet.</p> : (
+            <ul className="space-y-1 text-xs">
+              {d.recent.map((r, i) => (
+                <li key={i} className="flex flex-wrap items-baseline justify-between gap-2">
+                  <span className="font-mono">{`${r.to.slice(0, 8)}…${r.to.slice(-6)}`}</span>
+                  <span className="text-muted-foreground">{r.eth.toFixed(5)} ETH · {usd(r.usd)} · {r.status} · {fmtAgo(r.at)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ) : (
+        <Note tone="warn">
+          <b>Seeds' shared gas wallet isn't set up yet, so every member's own pocket pays its own Ethereum fee.</b>{" "}
+          The Swap page now shows how much ETH a swap needs and won't start one the pocket can't pay for.
+          To have Seeds pay the fee instead, the team needs a separate AWS KMS key for it
+          (the <code className="font-mono text-xs">SEEDS_GAS_KMS_KEY_ETH</code> setting).
+        </Note>
+      )}
+    </Card>
   );
 }

@@ -25,6 +25,8 @@
 - [x] Cross-chain swaps: Seeds fee — Bobby chose no fee for now (no THORName needed)
 - [x] Cross-chain swaps: send step built for BTC, LTC, ETH + Ethereum tokens, DOGE, BCH, XRP, TRX, SOL (THORChain, instant-access pockets, admin-only pilot, $250/swap, $1,000/day)
 - [ ] Swap pilot: first small real swap per coin (blocked: Bobby funds his pocket and presses Send)
+- [x] Swap gas: Bobby keeps the current TSD route (TSD -> TSD Bridge -> USDC in own pocket -> THORChain) and funds ETH himself; no in-house Seeds USDC swap. /swap now shows the ETH the fee needs and won't start a swap the pocket can't pay for (Nov 19)
+- [ ] Seeds shared gas wallet: needs its own AWS KMS key (SEEDS_GAS_KMS_KEY_ETH) before Seeds can pay members' Ethereum fees; until then every pocket pays its own fee, and Admin -> Settings shows why (blocked: KMS key not created)
 - [ ] Swap pilot: open to members + confirm limits (blocked: Bobby's limits choice, attorney/auditor sign-off)
 - [ ] DOGE/BCH/XRP/TRX/SOL sending: no member has linked those keys yet (needs a seed-based pocket or HME Wallet support)
 

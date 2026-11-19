@@ -1,8 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { swapCoin } from "./assets";
 import {
-  afterBridgeFee, BRIDGE_USDC_CONTRACT, bridgeProgress, gasTopUpWei, GAS_LIMITS, legPriceOk, mintOrderProblem,
-  redeemOrderProblem, routeBlocker, routeCoinProblem, routePockets, routeSteps, stepIndex, TSD_ROUTE,
+  afterBridgeFee, BRIDGE_USDC_CONTRACT, bridgeProgress, formatEth, gasNeedWei, gasPreflight, gasTopUpWei,
+  GAS_LIMITS, GAS_SWAP_LEG, GAS_USDC_TRANSFER, legPriceOk, mintOrderProblem,
+  redeemOrderProblem, routeBlocker, routeCoinProblem, routeGasUnits, routePockets, routeSteps, stepIndex, TSD_ROUTE,
 } from "./tsd-route";
 import { SWAP_LIMITS } from "./send-rules";
 
@@ -111,6 +112,34 @@ describe("Seeds gas wallet", () => {
   test("sends only the shortfall, nothing when the pocket can already pay", () => {
     expect(gasTopUpWei(1000n, 400n)).toBe(600n);
     expect(gasTopUpWei(1000n, 1000n)).toBe(0n);
+  });
+  test("a pocket's ETH need is the gas times today's max fee, with 25% headroom", () => {
+    const gwei = 20_000_000_000n; // 20 gwei
+    expect(gasNeedWei(GAS_SWAP_LEG, gwei)).toBe(7_000_000_000_000_000n); // 0.007 ETH
+    expect(gasNeedWei(0n, gwei)).toBe(0n);
+  });
+  test("TSD -> USDC needs no Ethereum gas; TSD -> BTC pays for the THORChain leg", () => {
+    expect(routeGasUnits("buy", swapCoin("USDC")!)).toBe(0n);
+    expect(routeGasUnits("buy", swapCoin("BTC")!)).toBe(GAS_SWAP_LEG);
+  });
+  test("selling USDC pays only the transfer; selling an ERC-20 pays both legs; XRP only the transfer", () => {
+    expect(routeGasUnits("sell", swapCoin("USDC")!)).toBe(GAS_USDC_TRANSFER);
+    expect(routeGasUnits("sell", swapCoin("USDT")!)).toBe(GAS_USDC_TRANSFER + GAS_SWAP_LEG);
+    expect(routeGasUnits("sell", swapCoin("XRP")!)).toBe(GAS_USDC_TRANSFER);
+  });
+  test("a pocket that can't pay the fee is stopped before anything is sent", () => {
+    const need = gasNeedWei(GAS_SWAP_LEG, 20_000_000_000n);
+    expect(gasPreflight({ needWei: need, haveWei: need, coveredBySeeds: false })).toBeNull();
+    expect(gasPreflight({ needWei: need, haveWei: need + 1n, coveredBySeeds: false })).toBeNull();
+    expect(gasPreflight({ needWei: need, haveWei: 0n, coveredBySeeds: false })).toContain("0.007 ETH");
+    expect(gasPreflight({ needWei: need, haveWei: 0n, coveredBySeeds: true })).toBeNull();
+    expect(gasPreflight({ needWei: 0n, haveWei: 0n, coveredBySeeds: false })).toBeNull();
+    expect(gasPreflight({ needWei: need, haveWei: null, coveredBySeeds: false })).toBeNull();
+  });
+  test("ETH amounts read as plain digits", () => {
+    expect(formatEth(7_000_000_000_000_000n)).toBe("0.007");
+    expect(formatEth(0n)).toBe("0");
+    expect(formatEth(10n ** 18n)).toBe("1.0");
   });
 });
 

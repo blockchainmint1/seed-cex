@@ -5,7 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Check, Circle, Coins, Loader2 } from "lucide-react";
 import { SWAP_COINS, swapCoin, type SwapCoin } from "@/lib/xchain/assets";
 import { SWAP_LIMITS } from "@/lib/xchain/send-rules";
-import { answerTsdSwap, getTsdRouteQuote, getTsdRoutes, startTsdSwap } from "@/lib/xchain/tsd-route.functions";
+import { answerTsdSwap, getTsdGasCheck, getTsdRouteQuote, getTsdRoutes, startTsdSwap } from "@/lib/xchain/tsd-route.functions";
 import { isTerminal, routeBlocker, routeCoinProblem, routeSteps, stepIndex, type RouteDirection } from "@/lib/xchain/tsd-route";
 
 /** TSD sits in the same coin pickers as every other coin; these are the coins it can swap with. */
@@ -44,6 +44,14 @@ export function TsdRouteResult({ direction, coin, amount, q, signedIn, link, isA
     onSuccess: () => onStarted?.(),
     onSettled: () => qc.invalidateQueries({ queryKey: ["tsd-routes"] }),
   });
+  const checkGas = useServerFn(getTsdGasCheck);
+  const gas = useQuery({
+    queryKey: ["tsd-gas", direction, coin.id],
+    queryFn: () => checkGas({ data: { direction, coin: coin.id, amount } }),
+    enabled: signedIn && q.ok && !q.gasCovered && amount.trim().length > 0,
+    retry: false,
+    staleTime: 30_000,
+  });
 
   if (!q.ok)
     return (
@@ -77,7 +85,9 @@ export function TsdRouteResult({ direction, coin, amount, q, signedIn, link, isA
             </>
           ) : null}
           <dt className="text-muted-foreground">Ethereum network fee</dt>
-          <dd className="text-right">{q.gasCovered ? "Covered by Seeds" : "From your pocket's ETH"}</dd>
+          <dd className="text-right tabular-nums">
+            {q.gasCovered ? "Covered by Seeds" : q.gasEth == null ? "None" : `≈ ${q.gasEth.toFixed(5)} ETH${q.gasUsd != null ? ` (~${usd(q.gasUsd)})` : ""}`}
+          </dd>
           <dt className="text-muted-foreground">Seeds fee</dt>
           <dd className="text-right">None</dd>
           <dt className="text-muted-foreground">Arrives in</dt>
@@ -107,6 +117,15 @@ export function TsdRouteResult({ direction, coin, amount, q, signedIn, link, isA
           </p>
         ) : (
           <>
+            {gas.data?.shortEth != null ? (
+              <p role="alert" className="rounded-sm border border-warn/60 bg-warn/10 px-3 py-2 text-xs">
+                Your EVM pocket needs about {gas.data.shortEth.toFixed(5)} ETH more for the Ethereum network fee
+                {gas.data.shortUsd != null ? ` (about ${usd(gas.data.shortUsd)})` : ""}. Send it to your pocket's Ethereum address
+                (Account → Balances → Deposit), then start the swap — nothing has been sent yet.
+              </p>
+            ) : gas.data?.haveEth != null && gas.data.needEth != null ? (
+              <p className="text-[11px] text-muted-foreground">Your EVM pocket holds {gas.data.haveEth.toFixed(5)} ETH for the Ethereum fee — enough.</p>
+            ) : null}
             <label className="flex items-start gap-2 text-xs text-muted-foreground">
               <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-0.5 accent-primary" />
               <span>
