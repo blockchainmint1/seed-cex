@@ -87,7 +87,7 @@ function AiTab() {
           <Button asChild className="mt-3"><Link to="/ai"><Sparkles /> Open Seeds AI</Link></Button>
         </Card>
       ) : (
-        current.map((p) => <PlanCard key={p.id} p={p} symbol={symbol} busy={status.isPending}
+        current.map((p) => <PlanCard key={p.id} p={p} paper={!q.data?.executionEnabled} symbol={symbol} busy={status.isPending}
           onStatus={(s) => status.mutate({ id: p.id, status: s })}
           onTelegram={() => status.mutate({ id: p.id, telegramDaily: !p.telegramDaily })}
           onEdit={() => setEditing(p)} onEnd={() => setEnding(p)} />)
@@ -96,7 +96,7 @@ function AiTab() {
       {ended.length ? (
         <div>
           <Button variant="ghost" size="sm" onClick={() => setShowEnded((v) => !v)}>{showEnded ? "Hide" : "Show"} ended plans ({ended.length})</Button>
-          {showEnded ? <div className="mt-3 space-y-3">{ended.map((p) => <PlanCard key={p.id} p={p} symbol={symbol} busy />)}</div> : null}
+          {showEnded ? <div className="mt-3 space-y-3">{ended.map((p) => <PlanCard key={p.id} p={p} paper={!q.data?.executionEnabled} symbol={symbol} busy />)}</div> : null}
         </div>
       ) : null}
 
@@ -148,12 +148,12 @@ function rulesOf(p: MyAiPlan, symbol: (id: string) => string): [string, string][
   return out;
 }
 
-function PlanCard({ p, symbol, busy, onStatus, onTelegram, onEdit, onEnd }: {
-  p: MyAiPlan; symbol: (id: string) => string; busy: boolean;
+function PlanCard({ p, paper, symbol, busy, onStatus, onTelegram, onEdit, onEnd }: {
+  p: MyAiPlan; paper: boolean; symbol: (id: string) => string; busy: boolean;
   onStatus?: (s: "locked" | "paused") => void; onTelegram?: () => void; onEdit?: () => void; onEnd?: () => void;
 }) {
   const [history, setHistory] = useState(false);
-  const st = STATUS[p.status] ?? STATUS.ended!;
+  const st = p.status === "locked" && !paper ? STATUS.locked! : p.status === "locked" ? { label: "Paper", cls: "bg-primary/15 text-primary" } : STATUS[p.status] ?? STATUS.ended!;
   const open = p.status !== "ended";
   return (
     <Card
