@@ -94,6 +94,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { name: "author", content: "Seeds" },
       { name: "theme-color", content: "#002419" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-title", content: "Seeds" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black" },
       { name: "google-site-verification", content: "pFhdpWiEXX18KJ4dzCnKh-Voe4lDc2sxRXEXz88JjYE" },
       { property: "og:site_name", content: "Seeds" },
       { property: "og:title", content: "Seeds — Non-Custodial Crypto Exchange" },
@@ -114,6 +118,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { rel: "icon", type: "image/png", href: "/favicon.png" },
       { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+      // Installed phone app: opens full-screen like an app (no browser address bar).
+      { rel: "manifest", href: "/manifest.webmanifest" },
     ],
     scripts: [
       {
