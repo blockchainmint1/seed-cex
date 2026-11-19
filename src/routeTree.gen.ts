@@ -42,6 +42,9 @@ import { Route as AuthenticatedWelcomeRouteImport } from './routes/_authenticate
 import { Route as AboutKycRouteImport } from './routes/about.kyc'
 import { Route as AiIndexRouteImport } from './routes/ai.index'
 import { Route as ApiIndexRouteImport } from './routes/api/index'
+import { Route as HelpIndexRouteImport } from './routes/help.index'
+import { Route as HelpSlugRouteImport } from './routes/help.$slug'
+import { Route as HelpFaqRouteImport } from './routes/help.faq'
 import { Route as IgniteConfirmedRouteImport } from './routes/ignite_.confirmed'
 import { Route as InviteCodeRouteImport } from './routes/invite.$code'
 import { Route as MarketsIndexRouteImport } from './routes/markets.index'
@@ -293,6 +296,21 @@ const AiIndexRoute = AiIndexRouteImport.update({
 const ApiIndexRoute = ApiIndexRouteImport.update({
   id: '/api/',
   path: '/api/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HelpIndexRoute = HelpIndexRouteImport.update({
+  id: '/help/',
+  path: '/help/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HelpSlugRoute = HelpSlugRouteImport.update({
+  id: '/help/$slug',
+  path: '/help/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HelpFaqRoute = HelpFaqRouteImport.update({
+  id: '/help/faq',
+  path: '/help/faq',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IgniteConfirmedRoute = IgniteConfirmedRouteImport.update({
@@ -792,6 +810,8 @@ export interface FileRoutesByFullPath {
   '/wallet': typeof AuthenticatedWalletRoute
   '/welcome': typeof AuthenticatedWelcomeRoute
   '/about/kyc': typeof AboutKycRoute
+  '/help/$slug': typeof HelpSlugRoute
+  '/help/faq': typeof HelpFaqRoute
   '/ignite/confirmed': typeof IgniteConfirmedRoute
   '/invite/$code': typeof InviteCodeRoute
   '/markets/$slug': typeof MarketsSlugRoute
@@ -811,6 +831,7 @@ export interface FileRoutesByFullPath {
   '/trade/zcu-tsd': typeof TradeZcuTsdRoute
   '/ai/': typeof AiIndexRoute
   '/api/': typeof ApiIndexRoute
+  '/help/': typeof HelpIndexRoute
   '/markets/': typeof MarketsIndexRoute
   '/p2p/': typeof P2pIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -911,6 +932,8 @@ export interface FileRoutesByTo {
   '/wallet': typeof AuthenticatedWalletRoute
   '/welcome': typeof AuthenticatedWelcomeRoute
   '/about/kyc': typeof AboutKycRoute
+  '/help/$slug': typeof HelpSlugRoute
+  '/help/faq': typeof HelpFaqRoute
   '/ignite/confirmed': typeof IgniteConfirmedRoute
   '/invite/$code': typeof InviteCodeRoute
   '/markets/$slug': typeof MarketsSlugRoute
@@ -930,6 +953,7 @@ export interface FileRoutesByTo {
   '/trade/zcu-tsd': typeof TradeZcuTsdRoute
   '/ai': typeof AiIndexRoute
   '/api': typeof ApiIndexRoute
+  '/help': typeof HelpIndexRoute
   '/markets': typeof MarketsIndexRoute
   '/p2p': typeof P2pIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -1032,6 +1056,8 @@ export interface FileRoutesById {
   '/_authenticated/wallet': typeof AuthenticatedWalletRoute
   '/_authenticated/welcome': typeof AuthenticatedWelcomeRoute
   '/about/kyc': typeof AboutKycRoute
+  '/help/$slug': typeof HelpSlugRoute
+  '/help/faq': typeof HelpFaqRoute
   '/ignite_/confirmed': typeof IgniteConfirmedRoute
   '/invite/$code': typeof InviteCodeRoute
   '/markets/$slug': typeof MarketsSlugRoute
@@ -1051,6 +1077,7 @@ export interface FileRoutesById {
   '/trade/zcu-tsd': typeof TradeZcuTsdRoute
   '/ai/': typeof AiIndexRoute
   '/api/': typeof ApiIndexRoute
+  '/help/': typeof HelpIndexRoute
   '/markets/': typeof MarketsIndexRoute
   '/p2p/': typeof P2pIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -1155,6 +1182,8 @@ export interface FileRouteTypes {
     | '/wallet'
     | '/welcome'
     | '/about/kyc'
+    | '/help/$slug'
+    | '/help/faq'
     | '/ignite/confirmed'
     | '/invite/$code'
     | '/markets/$slug'
@@ -1174,6 +1203,7 @@ export interface FileRouteTypes {
     | '/trade/zcu-tsd'
     | '/ai/'
     | '/api/'
+    | '/help/'
     | '/markets/'
     | '/p2p/'
     | '/.lovable/oauth/consent'
@@ -1274,6 +1304,8 @@ export interface FileRouteTypes {
     | '/wallet'
     | '/welcome'
     | '/about/kyc'
+    | '/help/$slug'
+    | '/help/faq'
     | '/ignite/confirmed'
     | '/invite/$code'
     | '/markets/$slug'
@@ -1293,6 +1325,7 @@ export interface FileRouteTypes {
     | '/trade/zcu-tsd'
     | '/ai'
     | '/api'
+    | '/help'
     | '/markets'
     | '/p2p'
     | '/.lovable/oauth/consent'
@@ -1394,6 +1427,8 @@ export interface FileRouteTypes {
     | '/_authenticated/wallet'
     | '/_authenticated/welcome'
     | '/about/kyc'
+    | '/help/$slug'
+    | '/help/faq'
     | '/ignite_/confirmed'
     | '/invite/$code'
     | '/markets/$slug'
@@ -1413,6 +1448,7 @@ export interface FileRouteTypes {
     | '/trade/zcu-tsd'
     | '/ai/'
     | '/api/'
+    | '/help/'
     | '/markets/'
     | '/p2p/'
     | '/.lovable/oauth/consent'
@@ -1511,6 +1547,8 @@ export interface RootRouteChildren {
   TsdRoute: typeof TsdRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   AboutKycRoute: typeof AboutKycRoute
+  HelpSlugRoute: typeof HelpSlugRoute
+  HelpFaqRoute: typeof HelpFaqRoute
   IgniteConfirmedRoute: typeof IgniteConfirmedRoute
   InviteCodeRoute: typeof InviteCodeRoute
   MarketsSlugRoute: typeof MarketsSlugRoute
@@ -1530,6 +1568,7 @@ export interface RootRouteChildren {
   TradeZcuTsdRoute: typeof TradeZcuTsdRoute
   AiIndexRoute: typeof AiIndexRoute
   ApiIndexRoute: typeof ApiIndexRoute
+  HelpIndexRoute: typeof HelpIndexRoute
   MarketsIndexRoute: typeof MarketsIndexRoute
   P2pIndexRoute: typeof P2pIndexRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
@@ -1804,6 +1843,27 @@ declare module '@tanstack/react-router' {
       path: '/api'
       fullPath: '/api/'
       preLoaderRoute: typeof ApiIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/help/': {
+      id: '/help/'
+      path: '/help'
+      fullPath: '/help/'
+      preLoaderRoute: typeof HelpIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/help/$slug': {
+      id: '/help/$slug'
+      path: '/help/$slug'
+      fullPath: '/help/$slug'
+      preLoaderRoute: typeof HelpSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/help/faq': {
+      id: '/help/faq'
+      path: '/help/faq'
+      fullPath: '/help/faq'
+      preLoaderRoute: typeof HelpFaqRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ignite_/confirmed': {
@@ -2582,6 +2642,8 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   AboutKycRoute: AboutKycRoute,
+  HelpSlugRoute: HelpSlugRoute,
+  HelpFaqRoute: HelpFaqRoute,
   IgniteConfirmedRoute: IgniteConfirmedRoute,
   InviteCodeRoute: InviteCodeRoute,
   MarketsSlugRoute: MarketsSlugRoute,
@@ -2601,6 +2663,7 @@ const rootRouteChildren: RootRouteChildren = {
   TradeZcuTsdRoute: TradeZcuTsdRoute,
   AiIndexRoute: AiIndexRoute,
   ApiIndexRoute: ApiIndexRoute,
+  HelpIndexRoute: HelpIndexRoute,
   MarketsIndexRoute: MarketsIndexRoute,
   P2pIndexRoute: P2pIndexRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,

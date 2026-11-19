@@ -67,6 +67,7 @@ export function SiteHeader() {
     { label: "Swap", to: "/swap" },
     { label: "AI", to: "/ai" },
     ...(user ? [{ label: "Trades", to: "/trades" }, { label: "Profile", to: "/account" }] : []),
+    { label: "Help", to: "/help" },
     ...about,
     ...proof,
   ];
@@ -119,6 +120,12 @@ export function SiteHeader() {
           ) : null}
           <NavMenu label="ABOUT" items={about} />
           <NavMenu label="PROOF" items={proof} />
+          <Link
+            to="/help"
+            className={`transition-colors hover:text-foreground ${pathname.startsWith("/help") ? "text-primary" : "text-muted-foreground"}`}
+          >
+            Help
+          </Link>
         </nav>
 
         <div className="ml-auto flex items-center gap-3 text-[13px] font-semibold">

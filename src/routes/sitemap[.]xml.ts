@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { getRouterInstance } from "@tanstack/react-start";
 import { sitemapStaticPaths, sitemapXML, type SitemapEntry } from "@/lib/sitemap";
+import { HELP_ARTICLES } from "@/lib/help/content";
 
 const BASE_URL = "https://seeds.honest.money";
 
@@ -17,6 +18,8 @@ export const Route = createFileRoute("/sitemap.xml")({
         }
         const router = await getRouterInstance();
         const entries: SitemapEntry[] = sitemapStaticPaths(router).map((path) => ({ path }));
+        // Help guides live on one dynamic route; list each article.
+        for (const a of HELP_ARTICLES) entries.push({ path: `/help/${a.slug}` });
         if (entries.length === 0) {
           return new Response(
             'No pages are included in this sitemap. Check route decisions and ancestor exclusions. Setting "exclude-subtree" on the root excludes the entire site.',

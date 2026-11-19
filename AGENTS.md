@@ -41,3 +41,4 @@
 - /stats traffic = Seeds' own counter (site-traffic.ts; /api/public/track), read only via site_stats_* totals. Why: Lovable analytics isn't runtime-readable; never expose single visits.
 - /admin/plan business plan: src/lib/AGENTS.md.
 - AI-assistant connections (MCP): src/lib/mcp/AGENTS.md.
+- Help center (/help): src/lib/help/AGENTS.md.

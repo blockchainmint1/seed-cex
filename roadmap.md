@@ -174,3 +174,8 @@
 - [ ] Publish so assistants can reach /mcp and the approval screen on the live site (blocked: Bobby publishes)
 - [ ] Decide whether visitors should still be able to read P2P listings' verified balance and order/trade owner ids straight from the database (pre-existing; blocked: Bobby's call)
 - [ ] Assistant write tools (place/cancel orders, etc.) — not built; would need Telegram approval like every pocket send (blocked: Bobby asks for them)
+
+- [x] Help section at /help in the top menu: 38 guides in 9 topics, 33-question FAQ, instant search, footer links, sitemap (Nov 19)
+- [x] Help pages send stuck members to help.honest.money (Bobby, Nov 19)
+- [ ] Fix older pages that disagree with Help: /how-it-works still describes the retired in-browser vault; /about/kyc says Seeds pays the Ethereum fee on TSD routes, but the shared gas wallet isn't set up (blocked: Bobby's go-ahead)
+- [ ] Switch support@honest.money in emails and the Ignite payment page to help.honest.money? (blocked: Bobby's call)
