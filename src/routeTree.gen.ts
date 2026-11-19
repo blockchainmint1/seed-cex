@@ -82,6 +82,7 @@ import { Route as P2pSellerHandleRouteImport } from './routes/p2p.seller.$handle
 import { Route as AuthenticatedAccountBalancesIndexRouteImport } from './routes/_authenticated/account.balances.index'
 import { Route as AuthenticatedAccountBalancesDepositRouteImport } from './routes/_authenticated/account.balances.deposit'
 import { Route as AuthenticatedAccountBalancesWithdrawRouteImport } from './routes/_authenticated/account.balances.withdraw'
+import { Route as AuthenticatedAdminPlanLbtcRouteImport } from './routes/_authenticated/admin.plan_.lbtc'
 import { Route as AuthenticatedP2pTradeIdRouteImport } from './routes/_authenticated/p2p.trade.$id'
 import { Route as ApiPublicCmcIndexRouteImport } from './routes/api/public/cmc/index'
 import { Route as ApiPublicCmcAssetsRouteImport } from './routes/api/public/cmc/assets'
@@ -500,6 +501,12 @@ const AuthenticatedAccountBalancesWithdrawRoute =
     path: '/withdraw',
     getParentRoute: () => AuthenticatedAccountBalancesRoute,
   } as any)
+const AuthenticatedAdminPlanLbtcRoute =
+  AuthenticatedAdminPlanLbtcRouteImport.update({
+    id: '/plan_/lbtc',
+    path: '/plan/lbtc',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedP2pTradeIdRoute = AuthenticatedP2pTradeIdRouteImport.update({
   id: '/p2p/trade/$id',
   path: '/p2p/trade/$id',
@@ -768,6 +775,7 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/account/balances/deposit': typeof AuthenticatedAccountBalancesDepositRoute
   '/account/balances/withdraw': typeof AuthenticatedAccountBalancesWithdrawRoute
+  '/admin/plan/lbtc': typeof AuthenticatedAdminPlanLbtcRoute
   '/p2p/trade/$id': typeof AuthenticatedP2pTradeIdRoute
   '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
   '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
@@ -876,6 +884,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/account/balances/deposit': typeof AuthenticatedAccountBalancesDepositRoute
   '/account/balances/withdraw': typeof AuthenticatedAccountBalancesWithdrawRoute
+  '/admin/plan/lbtc': typeof AuthenticatedAdminPlanLbtcRoute
   '/p2p/trade/$id': typeof AuthenticatedP2pTradeIdRoute
   '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
   '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
@@ -989,6 +998,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/account/balances/deposit': typeof AuthenticatedAccountBalancesDepositRoute
   '/_authenticated/account/balances/withdraw': typeof AuthenticatedAccountBalancesWithdrawRoute
+  '/_authenticated/admin/plan_/lbtc': typeof AuthenticatedAdminPlanLbtcRoute
   '/_authenticated/p2p/trade/$id': typeof AuthenticatedP2pTradeIdRoute
   '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
   '/api/public/cmc/summary': typeof ApiPublicCmcSummaryRoute
@@ -1102,6 +1112,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/account/balances/deposit'
     | '/account/balances/withdraw'
+    | '/admin/plan/lbtc'
     | '/p2p/trade/$id'
     | '/api/public/cmc/assets'
     | '/api/public/cmc/summary'
@@ -1210,6 +1221,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/account/balances/deposit'
     | '/account/balances/withdraw'
+    | '/admin/plan/lbtc'
     | '/p2p/trade/$id'
     | '/api/public/cmc/assets'
     | '/api/public/cmc/summary'
@@ -1322,6 +1334,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/'
     | '/_authenticated/account/balances/deposit'
     | '/_authenticated/account/balances/withdraw'
+    | '/_authenticated/admin/plan_/lbtc'
     | '/_authenticated/p2p/trade/$id'
     | '/api/public/cmc/assets'
     | '/api/public/cmc/summary'
@@ -1958,6 +1971,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAccountBalancesWithdrawRouteImport
       parentRoute: typeof AuthenticatedAccountBalancesRoute
     }
+    '/_authenticated/admin/plan_/lbtc': {
+      id: '/_authenticated/admin/plan_/lbtc'
+      path: '/plan/lbtc'
+      fullPath: '/admin/plan/lbtc'
+      preLoaderRoute: typeof AuthenticatedAdminPlanLbtcRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/p2p/trade/$id': {
       id: '/_authenticated/p2p/trade/$id'
       path: '/p2p/trade/$id'
@@ -2277,6 +2297,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
+  AuthenticatedAdminPlanLbtcRoute: typeof AuthenticatedAdminPlanLbtcRoute
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
@@ -2289,6 +2310,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
+  AuthenticatedAdminPlanLbtcRoute: AuthenticatedAdminPlanLbtcRoute,
 }
 
 const AuthenticatedAdminRouteWithChildren =

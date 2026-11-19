@@ -1,4 +1,6 @@
 import { useState, type ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
+import { ArrowRight, BookOpen } from "lucide-react";
 import { coinGiveawayBudget, listingRevenue, LISTING_FINDER_RATE, type BusinessPlan, type PlanBlock, type PlanItem, type PlanLive, type PlanStatus } from "@/lib/business-plan";
 import { LISTING_PACKAGES, type PackageId } from "@/lib/listing";
 import { Card, Note, fieldLabel, inputCls } from "@/components/account/ui";
@@ -170,6 +172,16 @@ export function PlanView({ plan, live }: { plan: BusinessPlan; live: PlanLive })
               <a key={s.id} href={`#${s.id}`} className="rounded-full border border-border bg-surface px-3 py-1 text-xs font-semibold transition-colors hover:border-primary/50 hover:text-primary">{s.title}</a>
             ))}
           </nav>
+
+          <Link to="/admin/plan/lbtc" className="group flex items-center gap-4 rounded-md border border-border bg-surface p-4 transition-colors hover:border-primary/50">
+            <span aria-hidden className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary"><BookOpen className="h-5 w-5" /></span>
+            <span className="min-w-0 flex-1">
+              <span className={`${fieldLabel} block`}>Research</span>
+              <span className="block font-semibold">Why LocalBitcoins died</span>
+              <span className="block text-xs text-muted-foreground">The post-mortem behind our P2P desk: what killed it, who replaced it, and what Seeds should copy or refuse.</span>
+            </span>
+            <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" />
+          </Link>
 
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <span>Labels:</span>
