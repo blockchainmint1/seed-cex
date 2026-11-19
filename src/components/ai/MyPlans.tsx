@@ -46,7 +46,7 @@ export function MyPlans({ coins, highlight, onLoad }: { coins: AiCoin[]; highlig
                     </p>
                   </div>
                   <span className={`rounded-sm px-2 py-0.5 font-mono text-[11px] uppercase ${p.status === "locked" ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
-                    {p.status === "locked" ? (q.data.executionEnabled ? "live" : "paper") : p.status}
+                    {p.status === "locked" ? (q.data.executionEnabled || (p.execute && q.data.tester) ? "live" : "paper") : p.status}
                   </span>
                 </div>
                 {p.lastCheck ? (

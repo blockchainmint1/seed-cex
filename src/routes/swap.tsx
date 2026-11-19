@@ -6,7 +6,7 @@ import { ArrowDownUp, Check, Clock, ExternalLink, ShieldCheck, Wallet, X } from 
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PROTOCOL_LABEL, SWAP_COINS, swapCoin, swapCoinGroup, type Protocol, type SwapCoin, type SwapCoinId } from "@/lib/xchain/assets";
 import { getSwapApproval, getSwapQuotes, getSwapSendContext, getSwapStatus, sendSwap } from "@/lib/xchain/swap.functions";
-import { isOwnPocketDestination, landsOutsideHmeWallet, receivePocket, sendBlocker, sendSource, SWAP_LIMITS, TRACKER_NAME, trackerUrl } from "@/lib/xchain/send-rules";
+import { isOwnPocketDestination, landsOutsideHmeWallet, receivePocket, sendBlocker, sendSource, TRACKER_NAME, trackerUrl } from "@/lib/xchain/send-rules";
 import { CodeField } from "@/components/account/CodeField";
 import { proveTwoFactor } from "@/components/account/two-factor";
 import { useSession } from "@/hooks/use-session";
@@ -508,7 +508,7 @@ function SwapPage() {
           },
           {
             t: "3 · Send from your pocket",
-            d: "Seeds re-checks everything, then sends from your instant-access trading pocket with per-swap and daily limits. THORChain or Maya swaps through its pools and delivers native coins to your address — or refunds you if the price slips.",
+            d: "Seeds re-checks everything, then sends from your instant-access trading pocket (beta testers for now). THORChain or Maya swaps through its pools and delivers native coins to your address — or refunds you if the price slips.",
           },
         ].map((s) => (
           <div key={s.t} className="rounded-sm border border-border bg-surface p-5">
@@ -638,7 +638,7 @@ function SendPanel(props: {
       <label className="flex items-start gap-2 text-xs text-muted-foreground">
         <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-0.5 accent-primary" />
         <span>
-          I checked the receiving address. Blockchain sends can't be undone. Limits during the test: ${SWAP_LIMITS.perSwapUsd.toLocaleString("en-US")} per swap, ${SWAP_LIMITS.dailyUsd.toLocaleString("en-US")} a day.
+          I checked the receiving address. Blockchain sends can't be undone. Beta testers have no Seeds limit on swap size.
         </span>
       </label>
       <button

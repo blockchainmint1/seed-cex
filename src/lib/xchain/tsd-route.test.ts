@@ -52,9 +52,8 @@ describe("who can start a TSD swap", () => {
     expect(TSD_ROUTE.minTsd).toBe(10);
     expect(routeBlocker({ ...base, tsdAmount: 9.99 })).toMatch(/minimum is 10/);
   });
-  test(`same $${SWAP_LIMITS.perSwapUsd} per-swap cap as other swaps`, () => {
-    expect(routeBlocker({ ...base, amountUsd: 251 })).toMatch(/\$250/);
-    expect(routeBlocker({ ...base, amountUsd: 250 })).toBeNull();
+  test(`beta testers have no per-swap cap (others: $${SWAP_LIMITS.perSwapUsd})`, () => {
+    expect(routeBlocker({ ...base, amountUsd: 25_000 })).toBeNull();
   });
 });
 

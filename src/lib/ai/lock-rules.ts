@@ -46,15 +46,17 @@ export function lockBlocker(p: {
   maxCommitTsd: number;
   activePlans: number;
   missingPockets: string[];
+  /** Beta testers and admins: no plan-size or plan-count limit (Bobby, Nov 19 2026). */
+  noLimits?: boolean;
 }): string | null {
   const name = p.name.trim();
   if (!name) return "Give your plan a name.";
   if (name.length > LOCK_LIMITS.nameMax) return `Keep the name under ${LOCK_LIMITS.nameMax} characters.`;
   if (!Number.isFinite(p.commitTsd) || p.commitTsd < LOCK_LIMITS.minCommitTsd) return `Commit at least ${LOCK_LIMITS.minCommitTsd} TSD.`;
-  if (p.commitTsd > p.maxCommitTsd) return `Plans are limited to ${p.maxCommitTsd.toLocaleString("en-US")} TSD for now.`;
+  if (!p.noLimits && p.commitTsd > p.maxCommitTsd) return `Plans are limited to ${p.maxCommitTsd.toLocaleString("en-US")} TSD for now.`;
   if (!p.settings.coins.length) return "Pick at least one coin.";
   if (p.settings.coins.length > LOCK_LIMITS.maxCoins) return `Pick at most ${LOCK_LIMITS.maxCoins} coins.`;
-  if (p.activePlans >= LOCK_LIMITS.maxActivePlans) return `You can have ${LOCK_LIMITS.maxActivePlans} live plans at a time. End one first.`;
+  if (!p.noLimits && p.activePlans >= LOCK_LIMITS.maxActivePlans) return `You can have ${LOCK_LIMITS.maxActivePlans} live plans at a time. End one first.`;
   if (p.missingPockets.length) return `Your linked trading pocket doesn't hold ${p.missingPockets.join(", ")} yet. Link it in Profile, or take those coins out.`;
   return null;
 }

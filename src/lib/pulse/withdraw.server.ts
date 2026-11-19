@@ -45,8 +45,9 @@ async function usdPrice(coin: PulseCoin): Promise<number | null> {
 }
 
 async function isAdminUser(userId: string): Promise<boolean> {
-  const { data } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", userId).eq("role", "admin").maybeSingle();
-  return Boolean(data);
+  // Beta testers (admins included) may use the PulseChain withdrawal pilot.
+  const { data } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", userId).in("role", ["admin", "beta"]).limit(1);
+  return Boolean(data?.length);
 }
 
 function linkLike(link: Awaited<ReturnType<typeof loadLinkSafe>>) {
@@ -97,6 +98,7 @@ export async function pulseWithdrawContext(userId: string, isAdmin: boolean) {
     level: { name: lim.tier.name, number: lim.tier.level, setByAdmin: lim.source === "admin", next: nextLevelText(lim) },
     twoFactor: { on: lim.history.twoFactor },
     holdHours: lim.holdHours,
+    tester: lim.tester,
     withdrawals: data ?? [],
   };
 }
@@ -136,13 +138,14 @@ export async function requestPulseWithdrawal(userId: string, isAdmin: boolean, i
   });
   if (error || !id) throw new Error(cleanDbError(error?.message ?? "Could not set up this withdrawal."));
 
+  const when = lim.holdHours > 0 ? `in ${lim.holdHours} hours` : "within a few minutes (beta tester: no hold)";
   void tell(userId,
-    `⏳ <b>PulseChain withdrawal requested</b>\n${amount} ${coin} (about $${amountUsd}) to ${to}\nSeeds sends it in ${lim.holdHours} hours. Not you? <a href="${cancelUrl(coin)}">Cancel it now</a>.`,
+    `⏳ <b>PulseChain withdrawal requested</b>\n${amount} ${coin} (about $${amountUsd}) to ${to}\nSeeds sends it ${when}. Not you? <a href="${cancelUrl(coin)}">Cancel it now</a>.`,
     "PulseChain withdrawal request",
     [
       `Withdraw ${amount} ${coin} (about $${amountUsd}) from your trading pocket`,
       `To ${to} on PulseChain`,
-      `Seeds sends it in ${lim.holdHours} hours unless you cancel: ${cancelUrl(coin)}`,
+      `Seeds sends it ${when} unless you cancel: ${cancelUrl(coin)}`,
     ]);
   return { id: id as string, amount, amountUsd, holdHours: lim.holdHours };
 }

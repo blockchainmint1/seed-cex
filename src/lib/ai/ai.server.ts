@@ -27,11 +27,13 @@ export async function loadSeries(db: Admin, coinId: string, fromDay = "2010-01-0
 
 export async function aiSettings(db?: Admin) {
   const d = db ?? (await admin());
-  const { data } = await d.from("ai_settings").select("one_tap_limit_usd, max_commit_tsd, execution_enabled").eq("id", 1).maybeSingle();
+  const { data } = await d.from("ai_settings").select("one_tap_limit_usd, max_commit_tsd, execution_enabled, admin_execution_enabled").eq("id", 1).maybeSingle();
   return {
     oneTapLimitUsd: Number(data?.one_tap_limit_usd ?? 50),
     maxCommitTsd: Number(data?.max_commit_tsd ?? 1000),
     executionEnabled: data?.execution_enabled === true,
+    /** Beta testers' (admins included) real buying. */
+    adminExecutionEnabled: data?.admin_execution_enabled !== false,
   };
 }
 
@@ -43,7 +45,7 @@ export async function runDailyChecks(opts: { planId?: string; deadlineMs?: numbe
   const started = Date.now();
   const tally: DailyTally = { plans: 0, checked: 0, sent: 0, skipped: 0, failed: 0 };
   const settings = await aiSettings(db);
-  let q = db.from("ai_plans").select("id, user_id, name, settings, commit_tsd, locked_at, telegram_daily").eq("status", "locked").order("locked_at");
+  let q = db.from("ai_plans").select("id, user_id, name, settings, commit_tsd, locked_at, telegram_daily, execute").eq("status", "locked").order("locked_at");
   if (opts.planId) q = q.eq("id", opts.planId);
   const { data: plans, error } = await q.limit(2000);
   if (error) throw new Error(error.message);
@@ -76,18 +78,23 @@ export async function runDailyChecks(opts: { planId?: string; deadlineMs?: numbe
         .map(([id, w]) => ({ symbol: symbol.get(id) ?? id, pct: w * 100 }));
       const message = dailyMessage({
         planName: p.name, day, moves: named, hold, valueUsd: value, commitTsd: Number(p.commit_tsd),
-        reviewUrl: `${SITE}/account/ai`, executionLive: settings.executionEnabled,
+        reviewUrl: `${SITE}/account/ai`, executionLive: settings.executionEnabled || p.execute === true,
       });
       const { data: inserted, error: insErr } = await db.from("ai_plan_checks")
         .upsert({ plan_id: p.id, user_id: p.user_id, day, message, suggestion: { moves: named, hold, value, current: run.current ?? {} } as never }, { onConflict: "plan_id,day", ignoreDuplicates: true })
         .select("id");
       if (insErr) throw new Error(insErr.message);
       tally.checked++;
-      if (!inserted?.length || !p.telegram_daily) { tally.skipped++; continue; }
-      if (await sendToMember(db, p.user_id, message)) {
+      if (!inserted?.length) { tally.skipped++; continue; }
+      if (p.telegram_daily && (await sendToMember(db, p.user_id, message))) {
         await db.from("ai_plan_checks").update({ sent_at: new Date().toISOString() }).eq("id", inserted[0]!.id);
         tally.sent++;
       } else tally.skipped++;
+      // Real buying on: turn today's targets into trades waiting for the owner's OK (sent as its own message).
+      if (p.execute) {
+        const { prepareRealMoves } = await import("./execute.server");
+        await prepareRealMoves(inserted[0]!.id).catch((e) => console.error("[ai-exec] prepare failed", p.id, e));
+      }
     } catch (e) {
       tally.failed++;
       console.error("[ai-daily] plan check failed", p.id, e);

@@ -128,6 +128,13 @@ export type Database = {
         Row: {
           created_at: string
           day: string
+          exec_decided_at: string | null
+          exec_decided_via: string | null
+          exec_expires_at: string | null
+          exec_status: string
+          exec_telegram_chat_id: string | null
+          exec_telegram_message_id: number | null
+          exec_total_usd: number | null
           id: string
           message: string
           plan_id: string
@@ -138,6 +145,13 @@ export type Database = {
         Insert: {
           created_at?: string
           day: string
+          exec_decided_at?: string | null
+          exec_decided_via?: string | null
+          exec_expires_at?: string | null
+          exec_status?: string
+          exec_telegram_chat_id?: string | null
+          exec_telegram_message_id?: number | null
+          exec_total_usd?: number | null
           id?: string
           message: string
           plan_id: string
@@ -148,6 +162,13 @@ export type Database = {
         Update: {
           created_at?: string
           day?: string
+          exec_decided_at?: string | null
+          exec_decided_via?: string | null
+          exec_expires_at?: string | null
+          exec_status?: string
+          exec_telegram_chat_id?: string | null
+          exec_telegram_message_id?: number | null
+          exec_total_usd?: number | null
           id?: string
           message?: string
           plan_id?: string
@@ -165,10 +186,93 @@ export type Database = {
           },
         ]
       }
+      ai_plan_moves: {
+        Row: {
+          amount: number
+          amount_in: number | null
+          amount_out: number | null
+          check_id: string
+          coin_id: string
+          created_at: string
+          error: string | null
+          finished_at: string | null
+          id: string
+          plan_id: string
+          route_id: string | null
+          seq: number
+          side: string
+          started_at: string | null
+          status: string
+          swap_coin: string
+          updated_at: string
+          usd: number
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          amount_in?: number | null
+          amount_out?: number | null
+          check_id: string
+          coin_id: string
+          created_at?: string
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          plan_id: string
+          route_id?: string | null
+          seq: number
+          side: string
+          started_at?: string | null
+          status?: string
+          swap_coin: string
+          updated_at?: string
+          usd: number
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          amount_in?: number | null
+          amount_out?: number | null
+          check_id?: string
+          coin_id?: string
+          created_at?: string
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          plan_id?: string
+          route_id?: string | null
+          seq?: number
+          side?: string
+          started_at?: string | null
+          status?: string
+          swap_coin?: string
+          updated_at?: string
+          usd?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_plan_moves_check_id_fkey"
+            columns: ["check_id"]
+            isOneToOne: false
+            referencedRelation: "ai_plan_checks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_plan_moves_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "ai_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_plans: {
         Row: {
           commit_tsd: number
           created_at: string
+          execute: boolean
+          execute_since: string | null
           id: string
           locked_at: string
           name: string
@@ -181,6 +285,8 @@ export type Database = {
         Insert: {
           commit_tsd: number
           created_at?: string
+          execute?: boolean
+          execute_since?: string | null
           id?: string
           locked_at?: string
           name: string
@@ -193,6 +299,8 @@ export type Database = {
         Update: {
           commit_tsd?: number
           created_at?: string
+          execute?: boolean
+          execute_since?: string | null
           id?: string
           locked_at?: string
           name?: string
@@ -227,6 +335,7 @@ export type Database = {
       }
       ai_settings: {
         Row: {
+          admin_execution_enabled: boolean
           execution_enabled: boolean
           id: number
           max_commit_tsd: number
@@ -234,6 +343,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          admin_execution_enabled?: boolean
           execution_enabled?: boolean
           id?: number
           max_commit_tsd?: number
@@ -241,6 +351,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          admin_execution_enabled?: boolean
           execution_enabled?: boolean
           id?: number
           max_commit_tsd?: number
@@ -2980,6 +3091,10 @@ export type Database = {
         Args: { _actor: string; _grant: boolean; _target: string }
         Returns: string
       }
+      set_beta_role: {
+        Args: { _actor: string; _grant: boolean; _target: string }
+        Returns: string
+      }
       set_withdrawal_override: {
         Args: {
           _actor: string
@@ -3018,7 +3133,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "user" | "arbitrator" | "admin"
+      app_role: "user" | "arbitrator" | "admin" | "beta"
       escrow_leg:
         | "txc"
         | "usdc"
@@ -3189,7 +3304,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["user", "arbitrator", "admin"],
+      app_role: ["user", "arbitrator", "admin", "beta"],
       escrow_leg: [
         "txc",
         "usdc",

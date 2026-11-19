@@ -42,9 +42,9 @@ export const startTsdSwap = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => startInput.parse(input))
   .handler(async ({ data, context }) => {
-    const { pilotAdminAccess } = await import("@/lib/admin-guard");
+    const { pilotTesterAccess } = await import("@/lib/admin-guard");
     const { SEND_PILOT_ADMIN_ONLY } = await import("./send-rules");
-    const isAdmin = await pilotAdminAccess(context as never, SEND_PILOT_ADMIN_ONLY);
+    const isAdmin = await pilotTesterAccess(context as never);
     const { startTsdRoute } = await import("./tsd-route.server");
     return startTsdRoute(context.userId, isAdmin, data);
   });

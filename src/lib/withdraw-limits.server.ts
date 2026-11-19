@@ -45,11 +45,14 @@ export async function loadOverride(userId: string): Promise<WithdrawOverride> {
 }
 
 /** The member's limits right now. Throws (fails closed) when levels can't be read. */
-export async function limitsFor(userId: string): Promise<MemberLimits & { history: WithdrawHistory }> {
+export async function limitsFor(userId: string): Promise<MemberLimits & { history: WithdrawHistory; tester: boolean }> {
   const [tiers, history, override] = await Promise.all([loadTiers(), loadHistory(userId), loadOverride(userId)]);
   const l = memberLimits(tiers, history, override);
   if (!l) throw new Error("Withdrawal levels aren't set up, so withdrawals are closed. Contact support@honest.money.");
-  return { ...l, history };
+  const { data: roles } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", userId).in("role", ["admin", "beta"]).limit(1);
+  const tester = Boolean(roles?.length);
+  const { testerLimits } = await import("./withdraw-limits");
+  return { ...(tester ? testerLimits(l) : l), history, tester };
 }
 
 /** Everyone's history at once, for the admin table. */

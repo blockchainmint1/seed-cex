@@ -25,6 +25,12 @@ export const MAYA_SEND_ASSETS = new Set<string>([
 /** Pilot switch: until each coin has had a small real-money test, only admins can send. */
 export const SEND_PILOT_ADMIN_ONLY = true;
 export const SWAP_LIMITS = { perSwapUsd: 250, dailyUsd: 1000 } as const;
+/** Stand-in for "no limit" where the database wants a number. */
+export const NO_LIMIT_USD = 1e12;
+/** Bobby, Nov 19 2026: beta testers (and admins) have no Seeds swap limits; everyone else gets SWAP_LIMITS. */
+export function swapLimitsFor(tester: boolean): { perSwapUsd: number; dailyUsd: number } {
+  return tester ? { perSwapUsd: NO_LIMIT_USD, dailyUsd: NO_LIMIT_USD } : SWAP_LIMITS;
+}
 /** A quote must have at least this long left when we sign. */
 export const MIN_SEND_QUOTE_SECONDS = 120;
 /** The fresh quote we sign may be at most this much worse than the one the member saw. */
@@ -89,7 +95,7 @@ export function sendBlocker(p: {
   if (p.link.mode !== "access" || !p.link.hasKey) return "Your pocket is linked in approve-every-trade mode. Swaps need instant access for now.";
   if (!p.link.pockets.includes(src.pocket)) return `Your linked pocket doesn't include ${p.from.network}.`;
   if (p.amountUsd == null) return "No live price for this coin, so the limit can't be checked.";
-  if (p.amountUsd > SWAP_LIMITS.perSwapUsd) return `Swaps are limited to $${SWAP_LIMITS.perSwapUsd} each during the test.`;
+  if (p.amountUsd > swapLimitsFor(p.isAdmin).perSwapUsd) return `Swaps are limited to $${SWAP_LIMITS.perSwapUsd} each during the test.`;
   return null;
 }
 

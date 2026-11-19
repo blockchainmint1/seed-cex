@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { swapCoin } from "./assets";
 import { approveData, depositWithExpiryData, roundTo1e8Units, selector, tokenContract, toTokenUnits } from "./evm-router";
-import { landsOutsideHmeWallet, receivePocket, requoteOk, sendBlocker, sendSource, swapProgress, SWAP_LIMITS, thorTxId, trackerUrl } from "./send-rules";
+import { landsOutsideHmeWallet, receivePocket, requoteOk, sendBlocker, sendSource, swapProgress, SWAP_LIMITS, swapLimitsFor, thorTxId, trackerUrl } from "./send-rules";
 
 const c = (id: string) => swapCoin(id)!;
 const link = { mode: "access", hasKey: true, pockets: ["BTC", "LTC", "EVM"] };
@@ -33,11 +33,12 @@ describe("who can send", () => {
   test("pocket must include the coin's network", () => {
     expect(sendBlocker({ from: c("DOGE"), link, isAdmin: true, amountUsd: 50 })).toMatch(/doesn't include/);
   });
-  test("$250 per swap during the pilot", () => {
+  test("beta testers (isAdmin = tester) have no Seeds swap limit; others keep $250 / $1,000 a day", () => {
     expect(SWAP_LIMITS.perSwapUsd).toBe(250);
     expect(SWAP_LIMITS.dailyUsd).toBe(1000);
-    expect(sendBlocker({ from: c("BTC"), link, isAdmin: true, amountUsd: 250 })).toBeNull();
-    expect(sendBlocker({ from: c("BTC"), link, isAdmin: true, amountUsd: 250.01 })).toMatch(/\$250/);
+    expect(swapLimitsFor(false)).toEqual({ perSwapUsd: 250, dailyUsd: 1000 });
+    expect(swapLimitsFor(true).perSwapUsd).toBeGreaterThan(1e9);
+    expect(sendBlocker({ from: c("BTC"), link, isAdmin: true, amountUsd: 50_000 })).toBeNull();
   });
   test("no price, no send", () => {
     expect(sendBlocker({ from: c("BTC"), link, isAdmin: true, amountUsd: null })).toMatch(/price/);
@@ -104,9 +105,9 @@ describe("sending into Maya", () => {
   test("a coin THORChain can send but Maya can't says so", () => {
     expect(sendBlocker({ from: c("LTC"), link, isAdmin: true, amountUsd: 10, protocol: "maya" })).toBe("Seeds sends LTC through THORChain only for now.");
   });
-  test("Maya sends keep the same pilot rules and limits", () => {
+  test("Maya sends keep the same pilot rules (testers, no size limit)", () => {
     expect(sendBlocker({ from: c("BTC"), link, isAdmin: false, amountUsd: 10, protocol: "maya" })).toMatch(/small test/);
-    expect(sendBlocker({ from: c("BTC"), link, isAdmin: true, amountUsd: SWAP_LIMITS.perSwapUsd + 1, protocol: "maya" })).toMatch(/limited/);
+    expect(sendBlocker({ from: c("BTC"), link, isAdmin: true, amountUsd: SWAP_LIMITS.perSwapUsd + 1, protocol: "maya" })).toBeNull();
     expect(sendBlocker({ from: c("BTC"), link, isAdmin: true, amountUsd: 10, protocol: "maya" })).toBeNull();
   });
   test("a Maya CACAO payout is not delivery; only a payout on the coin's own chain is", () => {

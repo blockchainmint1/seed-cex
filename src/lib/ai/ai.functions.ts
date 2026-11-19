@@ -18,6 +18,17 @@ export type MyAiPlan = {
   lastCheck: { day: string; message: string; sentAt: string | null } | null;
   /** Up to 14 most recent daily checks, newest first. */
   history: { day: string; message: string; sentAt: string | null }[];
+  /** Real buying switched on for this plan (beta testers). */
+  execute: boolean;
+  /** What the plan owns from its finished real trades (TSD + coin units), when real buying has run. */
+  ledger: { tsd: number; units: Record<string, number> } | null;
+  /** The newest day with real trades: waiting for an OK, running, or finished. */
+  realDay: AiRealDay | null;
+};
+
+export type AiRealDay = {
+  checkId: string; day: string; status: string; totalUsd: number | null; expiresAt: string | null; decidedVia: string | null;
+  moves: { id: string; side: string; coin: string; usd: number; amount: number; status: string; amountIn: number | null; amountOut: number | null; error: string | null }[];
 };
 
 /** Signed-in: my locked plans, latest daily check, limits, and whether my pocket is linked. */
@@ -25,11 +36,28 @@ export const getMyAiPlans = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
-    const [{ data: plans }, { data: checks }, telegram] = await Promise.all([
-      supabase.from("ai_plans").select("id, name, status, commit_tsd, locked_at, telegram_daily, settings").order("locked_at", { ascending: false }),
-      supabase.from("ai_plan_checks").select("plan_id, day, message, sent_at").order("day", { ascending: false }).limit(300),
+    const [{ data: plans }, { data: checks }, telegram, { data: moves }] = await Promise.all([
+      supabase.from("ai_plans").select("id, name, status, commit_tsd, locked_at, telegram_daily, settings, execute").order("locked_at", { ascending: false }),
+      supabase.from("ai_plan_checks").select("id, plan_id, day, message, sent_at, exec_status, exec_total_usd, exec_expires_at, exec_decided_via").order("day", { ascending: false }).limit(300),
       supabase.from("profiles").select("telegram_verified").eq("id", userId).maybeSingle(),
+      supabase.from("ai_plan_moves").select("id, check_id, plan_id, seq, side, coin_id, usd, amount, status, amount_in, amount_out, error").order("created_at", { ascending: false }).limit(500),
     ]);
+    const { isTesterUser, planLedger } = await import("./execute.server");
+    const tester = await isTesterUser(userId);
+    const realDays = new Map<string, AiRealDay>();
+    for (const c of checks ?? []) {
+      if (c.exec_status === "none" || realDays.has(c.plan_id)) continue;
+      realDays.set(c.plan_id, {
+        checkId: c.id, day: c.day, status: c.exec_status, totalUsd: c.exec_total_usd == null ? null : Number(c.exec_total_usd),
+        expiresAt: c.exec_expires_at, decidedVia: c.exec_decided_via,
+        moves: (moves ?? []).filter((m) => m.check_id === c.id).sort((a, b) => a.seq - b.seq).map((m) => ({
+          id: m.id, side: m.side, coin: m.coin_id, usd: Number(m.usd), amount: Number(m.amount), status: m.status,
+          amountIn: m.amount_in == null ? null : Number(m.amount_in), amountOut: m.amount_out == null ? null : Number(m.amount_out), error: m.error,
+        })),
+      });
+    }
+    const ranReal = new Set((moves ?? []).filter((m) => m.status === "done").map((m) => m.plan_id));
+    const ledgers = new Map(await Promise.all((plans ?? []).filter((p) => ranReal.has(p.id)).map(async (p) => [p.id, await planLedger({ id: p.id, commit_tsd: Number(p.commit_tsd) })] as const)));
     const { aiSettings } = await import("./ai.server");
     const { swapSendContext } = await import("@/lib/xchain/send.server");
     const [settings, ctx] = await Promise.all([aiSettings(), swapSendContext(userId)]);
@@ -44,9 +72,13 @@ export const getMyAiPlans = createServerFn({ method: "GET" })
         id: p.id, name: p.name, status: p.status, commitTsd: Number(p.commit_tsd), lockedAt: p.locked_at,
         telegramDaily: p.telegram_daily, settings: p.settings as unknown as PlanSettings,
         lastCheck: history.get(p.id)?.[0] ?? null, history: history.get(p.id) ?? [],
+        execute: p.execute === true, ledger: ledgers.get(p.id) ?? null, realDay: realDays.get(p.id) ?? null,
       })),
-      limits: { maxCommitTsd: settings.maxCommitTsd, oneTapLimitUsd: settings.oneTapLimitUsd },
+      limits: { maxCommitTsd: tester ? null : settings.maxCommitTsd, oneTapLimitUsd: settings.oneTapLimitUsd },
       executionEnabled: settings.executionEnabled,
+      /** Beta tester (admins included): may switch real buying on, no plan-size/count limits. */
+      tester,
+      testerExecutionOn: settings.adminExecutionEnabled,
       telegramLinked: telegram.data?.telegram_verified === true,
       pocket: ctx.link ? { mode: ctx.link.mode as string, pockets: (ctx.link.pockets ?? []) as string[] } : null,
     };
@@ -80,7 +112,8 @@ export const lockAiPlan = createServerFn({ method: "POST" })
     const missing = ctx.link
       ? [...new Set(settings.coins.map((id) => aiPocketFor(swapOf.get(id))).filter((p): p is NonNullable<typeof p> => Boolean(p) && !pockets.includes(p!)))].map((p) => POCKET_NAMES[p] ?? p)
       : [];
-    const blocker = lockBlocker({ name: data.name, commitTsd: data.commitTsd, settings, maxCommitTsd: limits.maxCommitTsd, activePlans: count ?? 0, missingPockets: missing });
+    const { isTesterUser } = await import("./execute.server");
+    const blocker = lockBlocker({ name: data.name, commitTsd: data.commitTsd, settings, maxCommitTsd: limits.maxCommitTsd, activePlans: count ?? 0, missingPockets: missing, noLimits: await isTesterUser(context.userId) });
     if (blocker) throw new Error(blocker);
     const { data: row, error } = await admin.from("ai_plans")
       .insert({ user_id: context.userId, name: data.name.trim(), commit_tsd: data.commitTsd, settings: settings as never, telegram_daily: data.telegramDaily })
@@ -129,7 +162,8 @@ export const editMyAiPlan = createServerFn({ method: "POST" })
     const missing = ctx.link
       ? [...new Set(settings.coins.map((id) => aiPocketFor(swapOf.get(id))).filter((p): p is NonNullable<typeof p> => Boolean(p) && !pockets.includes(p!)))].map((p) => POCKET_NAMES[p] ?? p)
       : [];
-    const blocker = lockBlocker({ name, commitTsd, settings, maxCommitTsd: limits.maxCommitTsd, activePlans: count ?? 0, missingPockets: missing });
+    const { isTesterUser } = await import("./execute.server");
+    const blocker = lockBlocker({ name, commitTsd, settings, maxCommitTsd: limits.maxCommitTsd, activePlans: count ?? 0, missingPockets: missing, noLimits: await isTesterUser(context.userId) });
     if (blocker) throw new Error(blocker);
     const { error } = await admin.from("ai_plans")
       .update({ name: name.trim(), commit_tsd: commitTsd, settings: settings as never, updated_at: new Date().toISOString() })
@@ -153,7 +187,56 @@ export const updateMyAiPlan = createServerFn({ method: "POST" })
       .eq("id", data.id).eq("user_id", context.userId).neq("status", "ended").select("id");
     if (error) throw new Error(error.message);
     if (!rows?.length) throw new Error("Plan not found, or it has already ended.");
+    if (data.status && data.status !== "locked") {
+      const { cancelOpenPlanMoves } = await import("./execute.server");
+      await cancelOpenPlanMoves(data.id, data.status === "ended" ? "The plan ended." : "The plan was paused.");
+    }
     return { ok: true };
+  });
+
+const realInput = z.object({ id: z.string().uuid(), on: z.boolean() });
+
+/**
+ * Signed-in (beta testers): switch real buying on or off for one of my plans. Turning it on
+ * prepares the plan's first real trades from its latest check and asks me to confirm them;
+ * nothing is sent until I do. Turning it off stops anything not yet started.
+ */
+export const setAiPlanRealBuying = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => realInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const admin = await db();
+    const { data: plan } = await admin.from("ai_plans").select("id, user_id, name, status, commit_tsd, settings, execute")
+      .eq("id", data.id).eq("user_id", context.userId).neq("status", "ended").maybeSingle();
+    if (!plan) throw new Error("Plan not found, or it has already ended.");
+    const ex = await import("./execute.server");
+    if (!data.on) {
+      await admin.from("ai_plans").update({ execute: false, updated_at: new Date().toISOString() }).eq("id", plan.id);
+      await ex.cancelOpenPlanMoves(plan.id, "Real buying was switched off.");
+      return { ok: true, moves: 0, note: null as string | null };
+    }
+    const blocker = await ex.planRealBlocker({ ...plan, commit_tsd: Number(plan.commit_tsd) });
+    if (blocker) throw new Error(blocker);
+    await admin.from("ai_plans").update({ execute: true, execute_since: plan.execute ? undefined : new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", plan.id);
+    // The newest check becomes the first real day (if it hasn't been used for one already).
+    const { data: last } = await admin.from("ai_plan_checks").select("id, exec_status").eq("plan_id", plan.id).order("day", { ascending: false }).limit(1).maybeSingle();
+    if (!last) return { ok: true, moves: 0, note: "Real buying is on. Your first trades come with the next daily check." };
+    const r = last.exec_status === "none" ? await ex.prepareRealMoves(last.id) : { moves: 0, reason: "already prepared" };
+    return { ok: true, moves: r.moves, note: r.moves ? null : r.reason === "nothing to trade" ? "Real buying is on. Nothing to trade right now." : "Real buying is on." };
+  });
+
+const decideInput = z.object({ checkId: z.string().uuid(), choice: z.enum(["yes", "no"]) });
+
+/** Signed-in: confirm or skip today's real AI trades (any size). Starts the first one right away. */
+export const decideAiTrades = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => decideInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const ex = await import("./execute.server");
+    if (data.choice === "yes" && !(await ex.isTesterUser(context.userId))) throw new Error("Real buying is open to beta testers for now.");
+    const out = await ex.decideCheck(context.userId, data.checkId, data.choice, "site");
+    if (out === "approved") await ex.advanceAiMoves({ userId: context.userId }).catch((e) => console.error("[ai-exec] first start failed", e));
+    return { status: out };
   });
 
 // ---------------- admins ----------------
@@ -238,16 +321,19 @@ export const adminAiRefresh = createServerFn({ method: "POST" })
     return { queued: Number(n ?? 0) };
   });
 
-const settingsInput = z.object({ oneTapLimitUsd: z.number().min(0).max(1000), maxCommitTsd: z.number().min(10).max(100000) });
+const settingsInput = z.object({ oneTapLimitUsd: z.number().min(0).max(1000), maxCommitTsd: z.number().min(10).max(100000), testerExecution: z.boolean().optional() });
 
-/** Admin: one-tap Telegram limit and the per-plan TSD cap. The execution switch stays off until buying is built and audited. */
+/** Admin: one-tap Telegram limit, the per-plan TSD cap (members), and the beta testers' real-buying switch. Members' execution switch stays off. */
 export const adminAiSaveSettings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => settingsInput.parse(input))
   .handler(async ({ data, context }) => {
     await requireAdmin(context as never);
     const admin = await db();
-    const { error } = await admin.from("ai_settings").update({ one_tap_limit_usd: data.oneTapLimitUsd, max_commit_tsd: data.maxCommitTsd, updated_at: new Date().toISOString() }).eq("id", 1);
+    const { error } = await admin.from("ai_settings").update({
+      one_tap_limit_usd: data.oneTapLimitUsd, max_commit_tsd: data.maxCommitTsd, updated_at: new Date().toISOString(),
+      ...(data.testerExecution === undefined ? {} : { admin_execution_enabled: data.testerExecution }),
+    }).eq("id", 1);
     if (error) throw new Error(error.message);
     return { ok: true };
   });

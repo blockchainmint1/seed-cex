@@ -190,3 +190,9 @@
 - [ ] After publishing: confirm rows are landing and the Markets page is being served from Seeds' own copy (blocked: publish)
 - [ ] Charts still read candle history from THORChain; once Seeds has its own weeks of 5-minute data, build candles from it so charts survive a THORChain outage too (not built)
 - [ ] Maya and DEX pools are still spot-checks only — no history recorded for them yet (not built)
+
+- [x] Seeds AI real buying: beta testers' locked plans buy/sell through the TSD swap route after the owner's OK; members stay on paper (Nov 19)
+- [ ] Seeds AI real buying: first real confirmed day with real coins (blocked: Bobby turns it on for his plan and confirms)
+- [x] Beta tester group (Nov 19): all admins count as beta testers; admins switch other members on/off in Admin → Admin access
+- [x] No limits for beta testers + admins: swap/TSD-swap caps, AI plan size/count caps, PulseChain withdrawal levels + 24h hold (Bobby chose "withdrawals too")
+- [x] Push Seeds AI live: real buying for beta testers; going to cash leaves TSD unquarantined — a buy-back without enough TSD sends a "deposit more TSD" alert

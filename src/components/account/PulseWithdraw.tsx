@@ -38,7 +38,9 @@ export function PulseWithdraw({ coin, from, balance }: { coin: PulseCoin; from: 
       return request({ data: { coin, amount: amount.trim(), to: to.trim() } });
     },
     onSuccess: (r) => {
-      setDone(`Set up: ${r.amount} ${coin} (about $${r.amountUsd}). Seeds sends it in ${r.holdHours} hours — we emailed you a way to cancel.`);
+      setDone(r.holdHours > 0
+        ? `Set up: ${r.amount} ${coin} (about $${r.amountUsd}). Seeds sends it in ${r.holdHours} hours — we emailed you a way to cancel.`
+        : `Set up: ${r.amount} ${coin} (about $${r.amountUsd}). Beta tester, so no hold: Seeds sends it within a few minutes.`);
       setAmount(""); setTo(""); setChecked(false); setCode(""); refresh();
     },
     onSettled: () => setCode(""),
@@ -52,8 +54,8 @@ export function PulseWithdraw({ coin, from, balance }: { coin: PulseCoin; from: 
   return (
     <div className="space-y-4">
       <Note tone="warn">
-        HME Wallet can't send on PulseChain yet, so Seeds sends {coin} out for you: only to the address you type below, after a{" "}
-        {d?.holdHours ?? 24}-hour hold. You can cancel during the hold, and we email you the moment it's set up.
+        HME Wallet can't send on PulseChain yet, so Seeds sends {coin} out for you: only to the address you type below
+        {d?.tester ? ". As a beta tester you have no hold, so it goes out within a few minutes" : `, after a ${d?.holdHours ?? 24}-hour hold. You can cancel during the hold`}, and we email you the moment it's set up.
       </Note>
       {d?.blocker ? (
         <Note tone="info">{d.blocker}</Note>
@@ -83,9 +85,15 @@ export function PulseWithdraw({ coin, from, balance }: { coin: PulseCoin; from: 
           </label>
           <div className="rounded-sm border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
             <p>
-              <span className="font-semibold text-foreground">Your withdrawal level: {d.level.name}</span>
-              {" "}· up to ${d.limits.perWithdrawalUsd.toLocaleString("en-US")} each, ${d.limits.dailyUsd.toLocaleString("en-US")} a day,
-              {" "}{d.holdHours}-hour wait, {d.limits.maxWaiting} waiting at once.
+              {d.tester ? (
+                <span className="font-semibold text-foreground">Beta tester · no Seeds withdrawal limit, no wait ({d.limits.maxWaiting} waiting at once).</span>
+              ) : (
+                <>
+                  <span className="font-semibold text-foreground">Your withdrawal level: {d.level.name}</span>
+                  {" "}· up to ${d.limits.perWithdrawalUsd.toLocaleString("en-US")} each, ${d.limits.dailyUsd.toLocaleString("en-US")} a day,
+                  {" "}{d.holdHours}-hour wait, {d.limits.maxWaiting} waiting at once.
+                </>
+              )}
             </p>
             <p className="mt-0.5">
               {d.level.next ?? (d.level.setByAdmin ? "Set by the Seeds team." : "You're on the top level.")}

@@ -39,6 +39,10 @@ function AdminAiPage() {
     if (q.data) { setLimit(String(q.data.settings.oneTapLimitUsd)); setMaxCommit(String(q.data.settings.maxCommitTsd)); }
   }, [q.data]);
   const settingsM = useMutation({ mutationFn: () => saveSettings({ data: { oneTapLimitUsd: Number(limit), maxCommitTsd: Number(maxCommit) } }), onSuccess: reload });
+  const testerM = useMutation({
+    mutationFn: (on: boolean) => saveSettings({ data: { oneTapLimitUsd: q.data!.settings.oneTapLimitUsd, maxCommitTsd: q.data!.settings.maxCommitTsd, testerExecution: on } }),
+    onSuccess: reload,
+  });
 
   return (
     <div className="space-y-8">
@@ -105,10 +109,20 @@ function AdminAiPage() {
               <button className="seed-btn sm:w-auto" disabled={settingsM.isPending}>{settingsM.isPending ? "Saving…" : "Save limits"}</button>
             </form>
             {settingsM.error ? <p className="mt-2 text-sm text-destructive">{(settingsM.error as Error).message}</p> : null}
+            <div className="mt-3 flex flex-wrap items-center gap-3 rounded-sm border border-border p-3 text-sm">
+              <span>
+                Real buying for <b>beta testers</b> (admins included): <span className="font-semibold">{q.data.settings.adminExecutionEnabled ? "on" : "off"}</span>
+              </span>
+              <button className="seed-btn-ghost min-h-0 px-3 py-1 text-xs" disabled={testerM.isPending}
+                onClick={() => testerM.mutate(!q.data!.settings.adminExecutionEnabled)}>
+                {testerM.isPending ? "Saving…" : q.data.settings.adminExecutionEnabled ? "Switch off for everyone" : "Switch on"}
+              </button>
+              {testerM.error ? <span className="text-destructive">{(testerM.error as Error).message}</span> : null}
+            </div>
             <p className="mt-3 text-xs text-muted-foreground">
-              Buying for members (EXECUTE): <span className="font-semibold text-foreground">{q.data.settings.executionEnabled ? "on" : "off"}</span>.
-              It stays off until buying is built, tested with real money and reviewed by the auditor. The one-tap limit applies once it's on:
-              daily moves under it confirm with one tap in Telegram, bigger ones open Seeds.
+              Buying for other members: <span className="font-semibold text-foreground">{q.data.settings.executionEnabled ? "on" : "off"}</span> (their plans stay on paper).
+              Beta testers have no plan-size, plan-count or swap-size limit; the max per plan above applies to other members. The one-tap limit applies to everyone:
+              days with trades up to it confirm with one tap in Telegram, bigger ones are confirmed on Seeds. Switching off stops trades that haven't started.
             </p>
           </Panel>
 

@@ -2,8 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Pause, Pencil, Play, SlidersHorizontal, Sparkles, Trash2 } from "lucide-react";
-import { editMyAiPlan, getMyAiPlans, updateMyAiPlan, type MyAiPlan } from "@/lib/ai/ai.functions";
+import { Check, Pause, Pencil, Play, SlidersHorizontal, Sparkles, Trash2, X, Zap } from "lucide-react";
+import { decideAiTrades, editMyAiPlan, getMyAiPlans, setAiPlanRealBuying, updateMyAiPlan, type AiRealDay, type MyAiPlan } from "@/lib/ai/ai.functions";
 import { aiCoinsQuery } from "@/lib/ai/market";
 import { basketTargets } from "@/lib/ai/plan";
 import { LOCK_LIMITS } from "@/lib/ai/lock-rules";
@@ -49,6 +49,17 @@ function AiTab() {
   const [editing, setEditing] = useState<MyAiPlan | null>(null);
   const [ending, setEnding] = useState<MyAiPlan | null>(null);
   const [showEnded, setShowEnded] = useState(false);
+  const [realFor, setRealFor] = useState<MyAiPlan | null>(null);
+  const [realNote, setRealNote] = useState<string | null>(null);
+  const setReal = useServerFn(setAiPlanRealBuying);
+  const decide = useServerFn(decideAiTrades);
+  const real = useMutation({
+    mutationFn: (v: { id: string; on: boolean }) => setReal({ data: v }),
+    onSuccess: (r) => { setRealNote(r.note); refresh(); },
+  });
+  const answer = useMutation({ mutationFn: (v: { checkId: string; choice: "yes" | "no" }) => decide({ data: v }), onSuccess: refresh });
+  const tester = q.data?.tester === true;
+  const canReal = tester && q.data?.testerExecutionOn === true;
 
   const plans = q.data?.plans ?? [];
   const current = plans.filter((p) => p.status !== "ended");
@@ -59,19 +70,31 @@ function AiTab() {
     <div className="space-y-5">
       <TabTitle
         title="AI strategies"
-        desc="Your locked plans. Every day Seeds runs each live plan on fresh prices and tells you what it would do."
+        desc={canReal
+          ? "Your locked plans. Every day Seeds runs each plan on fresh prices. Plans with real buying on also trade from your own pocket, after you say yes."
+          : "Your locked plans. Every day Seeds runs each live plan on fresh prices and tells you what it would do."}
         right={<Button asChild size="sm"><Link to="/ai"><Sparkles /> Test a new plan</Link></Button>}
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <Mini label="Live plans" value={`${live.length} of ${LOCK_LIMITS.maxActivePlans}`} />
+        <Mini label="Live plans" value={tester ? String(live.length) : `${live.length} of ${LOCK_LIMITS.maxActivePlans}`} />
         <Mini label="TSD committed (live)" value={live.reduce((s, p) => s + p.commitTsd, 0).toLocaleString("en-US")} />
-        <Mini label="Buying" value={q.data?.executionEnabled ? "On" : "Paper only"} />
+        <Mini label="Buying" value={canReal ? `Real on ${live.filter((p) => p.execute).length} of ${live.length}` : q.data?.executionEnabled ? "On" : "Paper only"} />
       </div>
 
-      {q.data && !q.data.executionEnabled ? (
-        <Note tone="info"><b>Plans run on paper for now.</b> Seeds sends the daily check but doesn't buy or sell yet — that switches on after real-money tests and the auditor's review.</Note>
+      {q.data && canReal ? (
+        <Note tone="info">
+          <b>Beta tester: real buying is open to you.</b> Switch it on per plan. Each day Seeds works out the trades your plan wants and asks you
+          first — one tap in Telegram for days up to ${q.data.limits.oneTapLimitUsd}, a Confirm button here for bigger ones. Trades are ordinary TSD swaps from
+          your own trading pocket, one at a time, with no Seeds size limit. When a plan goes to cash, the TSD stays in your pocket and isn't set aside;
+          if it's gone when the plan buys back in, Seeds tells you to deposit more TSD.
+        </Note>
+      ) : q.data && !q.data.executionEnabled ? (
+        <Note tone="info"><b>Plans run on paper for now.</b> Seeds sends the daily check but doesn't buy or sell yet. Real buying is open to beta testers first.</Note>
       ) : null}
+      {real.error ? <Note tone="error">{(real.error as Error).message}</Note> : null}
+      {answer.error ? <Note tone="error">{(answer.error as Error).message}</Note> : null}
+      {realNote ? <Note tone="ok">{realNote}</Note> : null}
       {q.data && !q.data.telegramLinked ? (
         <Note tone="warn">Telegram isn't connected, so daily checks only show here. <Link to="/account/alerts" className="font-semibold text-primary underline">Connect Telegram</Link>.</Note>
       ) : null}
@@ -87,7 +110,10 @@ function AiTab() {
           <Button asChild className="mt-3"><Link to="/ai"><Sparkles /> Open Seeds AI</Link></Button>
         </Card>
       ) : (
-        current.map((p) => <PlanCard key={p.id} p={p} paper={!q.data?.executionEnabled} symbol={symbol} busy={status.isPending}
+        current.map((p) => <PlanCard key={p.id} p={p} paper={!(q.data?.executionEnabled || (canReal && p.execute))} symbol={symbol} busy={status.isPending || real.isPending || answer.isPending}
+          canReal={canReal}
+          onReal={() => { setRealNote(null); if (p.execute) real.mutate({ id: p.id, on: false }); else setRealFor(p); }}
+          onAnswer={(checkId, choice) => answer.mutate({ checkId, choice })}
           onStatus={(s) => status.mutate({ id: p.id, status: s })}
           onTelegram={() => status.mutate({ id: p.id, telegramDaily: !p.telegramDaily })}
           onEdit={() => setEditing(p)} onEnd={() => setEnding(p)} />)
@@ -96,11 +122,29 @@ function AiTab() {
       {ended.length ? (
         <div>
           <Button variant="ghost" size="sm" onClick={() => setShowEnded((v) => !v)}>{showEnded ? "Hide" : "Show"} ended plans ({ended.length})</Button>
-          {showEnded ? <div className="mt-3 space-y-3">{ended.map((p) => <PlanCard key={p.id} p={p} paper={!q.data?.executionEnabled} symbol={symbol} busy />)}</div> : null}
+          {showEnded ? <div className="mt-3 space-y-3">{ended.map((p) => <PlanCard key={p.id} p={p} paper={!(q.data?.executionEnabled || p.execute)} symbol={symbol} busy />)}</div> : null}
         </div>
       ) : null}
 
-      <EditDialog plan={editing} maxCommit={q.data?.limits.maxCommitTsd} onClose={() => setEditing(null)}
+      <AlertDialog open={Boolean(realFor)} onOpenChange={(o) => { if (!o) setRealFor(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Buy for real with “{realFor?.name}”?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>Seeds will use up to {realFor?.commitTsd.toLocaleString("en-US")} TSD from your trading pocket to follow this plan: buying and selling its coins through TSD Bridge and THORChain or Maya, into your own pocket.</p>
+                <p>Nothing moves until you confirm each day's trades. Prices move, swap fees apply, and blockchain sends can't be undone. You can switch real buying off at any time; a trade already started finishes.</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Not now</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { if (realFor) real.mutate({ id: realFor.id, on: true }); setRealFor(null); }}>Turn on real buying</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <EditDialog plan={editing} maxCommit={q.data?.limits.maxCommitTsd ?? undefined} onClose={() => setEditing(null)}
         onSave={async (v) => { await edit({ data: v }); await refresh(); setEditing(null); }} />
 
       <AlertDialog open={Boolean(ending)} onOpenChange={(o) => { if (!o) setEnding(null); }}>
@@ -148,8 +192,9 @@ function rulesOf(p: MyAiPlan, symbol: (id: string) => string): [string, string][
   return out;
 }
 
-function PlanCard({ p, paper, symbol, busy, onStatus, onTelegram, onEdit, onEnd }: {
+function PlanCard({ p, paper, symbol, busy, canReal, onReal, onAnswer, onStatus, onTelegram, onEdit, onEnd }: {
   p: MyAiPlan; paper: boolean; symbol: (id: string) => string; busy: boolean;
+  canReal?: boolean; onReal?: () => void; onAnswer?: (checkId: string, choice: "yes" | "no") => void;
   onStatus?: (s: "locked" | "paused") => void; onTelegram?: () => void; onEdit?: () => void; onEnd?: () => void;
 }) {
   const [history, setHistory] = useState(false);
@@ -165,6 +210,7 @@ function PlanCard({ p, paper, symbol, busy, onStatus, onTelegram, onEdit, onEnd 
           <div key={k} className="flex gap-2"><dt className="w-32 shrink-0 text-muted-foreground">{k}</dt><dd className="min-w-0">{v}</dd></div>
         ))}
       </dl>
+      {p.execute || p.ledger || p.realDay ? <RealSection p={p} symbol={symbol} busy={busy} onAnswer={onAnswer} /> : null}
       <div className="mt-4">
         <p className={fieldLabel}>Latest check{p.lastCheck ? ` · ${p.lastCheck.day}` : ""}</p>
         {p.lastCheck ? (
@@ -191,6 +237,11 @@ function PlanCard({ p, paper, symbol, busy, onStatus, onTelegram, onEdit, onEnd 
           <Button size="sm" variant="outline" disabled={busy} onClick={() => onStatus(p.status === "locked" ? "paused" : "locked")}>
             {p.status === "locked" ? <><Pause /> Pause</> : <><Play /> Resume</>}
           </Button>
+          {canReal && onReal && p.status === "locked" ? (
+            <Button size="sm" variant={p.execute ? "outline" : "default"} disabled={busy} onClick={onReal}>
+              <Zap /> {p.execute ? "Real buying: on (switch off)" : "Turn on real buying"}
+            </Button>
+          ) : null}
           <Button size="sm" variant="outline" onClick={onEdit}><Pencil /> Edit name & amount</Button>
           <Button asChild size="sm" variant="outline"><Link to="/ai" search={{ plan: p.id, edit: true }}><SlidersHorizontal /> Change rules</Link></Button>
           <Button size="sm" variant="ghost" disabled={busy} onClick={onTelegram}>Telegram daily: {p.telegramDaily ? "on" : "off"}</Button>
@@ -230,7 +281,9 @@ function EditDialog({ plan, maxCommit, onClose, onSave }: {
           <label className="block">
             <span className={fieldLabel}>Commit (TSD)</span>
             <input className={`${inputCls} mt-1`} type="number" min={LOCK_LIMITS.minCommitTsd} max={maxCommit} value={commit} onChange={(e) => setCommit(e.target.value)} />
-            <span className="mt-1 block text-xs text-muted-foreground">{LOCK_LIMITS.minCommitTsd}–{(maxCommit ?? 1000).toLocaleString("en-US")} TSD.</span>
+            <span className="mt-1 block text-xs text-muted-foreground">
+              {maxCommit != null ? `${LOCK_LIMITS.minCommitTsd}–${maxCommit.toLocaleString("en-US")} TSD.` : `At least ${LOCK_LIMITS.minCommitTsd} TSD. No upper limit for beta testers.`}
+            </span>
           </label>
           {err ? <Note tone="error">{err}</Note> : null}
           <DialogFooter>
@@ -240,5 +293,62 @@ function EditDialog({ plan, maxCommit, onClose, onSave }: {
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+const MOVE_STATUS: Record<string, string> = {
+  queued: "Waiting", starting: "Starting", running: "Swapping", done: "Done", failed: "Didn't go through", skipped: "Skipped", cancelled: "Stopped",
+};
+const DAY_STATUS: Record<string, string> = {
+  waiting: "Waiting for your OK", approved: "Approved — starting", running: "Trading now", done: "Done", partial: "Partly done",
+  declined: "You skipped this day", expired: "Not confirmed in time", cancelled: "Stopped — nothing traded",
+};
+const n8 = (n: number) => Number(n.toFixed(8)).toLocaleString("en-US", { maximumFractionDigits: 8 });
+const usd = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
+
+function moveText(m: AiRealDay["moves"][number], symbol: (id: string) => string) {
+  const sym = symbol(m.coin);
+  if (m.status === "done" && m.amountIn != null && m.amountOut != null) {
+    return m.side === "buy" ? `Bought ${n8(m.amountOut)} ${sym} for ${n8(m.amountIn)} TSD` : `Sold ${n8(m.amountIn)} ${sym} for ${n8(m.amountOut)} TSD`;
+  }
+  return m.side === "buy" ? `Buy ${sym} with ${n8(m.amount)} TSD` : `Sell ${n8(m.amount)} ${sym} (about ${usd(m.usd)})`;
+}
+
+/** Real buying: what the plan owns from finished trades, and the newest day's trades (confirm / skip while waiting). */
+function RealSection({ p, symbol, busy, onAnswer }: { p: MyAiPlan; symbol: (id: string) => string; busy: boolean; onAnswer?: (checkId: string, choice: "yes" | "no") => void }) {
+  const d = p.realDay;
+  const held = Object.entries(p.ledger?.units ?? {}).filter(([, u]) => u > 0);
+  const waiting = d?.status === "waiting" && (!d.expiresAt || Date.parse(d.expiresAt) > Date.now());
+  return (
+    <div className="mt-4 rounded-md border border-primary/40 bg-primary/5 p-3">
+      <p className={fieldLabel}>Real trades{d ? ` · ${d.day} · ${DAY_STATUS[d.status] ?? d.status}` : ""}</p>
+      {p.ledger ? (
+        <p className="mt-1 text-sm">
+          This plan owns <b className="num">{n8(p.ledger.tsd)} TSD</b>
+          {held.map(([c, u]) => <span key={c}> · <b className="num">{n8(u)} {symbol(c)}</b></span>)}
+          <span className="text-muted-foreground"> (from finished trades)</span>
+        </p>
+      ) : (
+        <p className="mt-1 text-sm text-muted-foreground">{p.execute ? "Nothing bought yet." : "Real buying is off for this plan."}</p>
+      )}
+      {d?.moves.length ? (
+        <ul className="mt-2 space-y-1 text-sm">
+          {d.moves.map((m) => (
+            <li key={m.id} className="flex flex-wrap items-baseline justify-between gap-x-3">
+              <span>{moveText(m, symbol)}</span>
+              <span className={`font-mono text-[11px] uppercase ${m.status === "failed" ? "text-destructive" : m.status === "done" ? "text-primary" : "text-muted-foreground"}`}>{MOVE_STATUS[m.status] ?? m.status}</span>
+              {m.error && m.status !== "done" ? <span className="basis-full text-xs text-muted-foreground">{m.error}</span> : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {waiting && onAnswer ? (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Button size="sm" disabled={busy} onClick={() => onAnswer(d!.checkId, "yes")}><Check /> Confirm {d!.totalUsd != null ? `about ${usd(d!.totalUsd)}` : "trades"}</Button>
+          <Button size="sm" variant="ghost" disabled={busy} onClick={() => onAnswer(d!.checkId, "no")}><X /> Skip today</Button>
+          {d!.expiresAt ? <span className="text-xs text-muted-foreground">Ends {new Date(d!.expiresAt).toLocaleString()}</span> : null}
+        </div>
+      ) : null}
+    </div>
   );
 }

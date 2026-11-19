@@ -130,7 +130,9 @@ export const setWithdrawalOverride = createServerFn({ method: "POST" })
       const l = await limitsFor(data.userId);
       const lines = l.frozen
         ? ["The Seeds team paused withdrawals on your account", "Anything already waiting won't be sent while paused"]
-        : [`Your withdrawal level is now ${l.tier.name}`, `Up to $${l.perWithdrawalUsd.toLocaleString("en-US")} per withdrawal and $${l.dailyUsd.toLocaleString("en-US")} a day`, `Seeds waits ${l.holdHours} hours before sending`];
+        : l.tester
+          ? [`Your withdrawal level is now ${l.tier.name}`, "As a beta tester you have no Seeds withdrawal limit and no wait"]
+          : [`Your withdrawal level is now ${l.tier.name}`, `Up to $${l.perWithdrawalUsd.toLocaleString("en-US")} per withdrawal and $${l.dailyUsd.toLocaleString("en-US")} a day`, `Seeds waits ${l.holdHours} hours before sending`];
       void emailAccountChange(data.userId, "Withdrawal limits", lines, "contact support@honest.money.");
     } catch (e) {
       console.error("withdrawal limit email failed", e);

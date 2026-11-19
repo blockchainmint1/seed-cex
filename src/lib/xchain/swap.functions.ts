@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { SEND_PILOT_ADMIN_ONLY, SWAP_LIMITS } from "./send-rules";
+import { SEND_PILOT_ADMIN_ONLY, swapLimitsFor } from "./send-rules";
 import { SWAP_COIN_IDS, swapCoin } from "./assets";
 import { destinationValid, toBaseUnits } from "./safety";
 
@@ -42,8 +42,8 @@ export const getSwapQuotes = createServerFn({ method: "POST" })
   });
 
 async function callerIsAdmin(supabase: { from: (t: "user_roles") => any }, userId: string): Promise<boolean> {
-  const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId).eq("role", "admin").maybeSingle();
-  return Boolean(data);
+  const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId).in("role", ["admin", "beta"]).limit(1);
+  return Boolean(data?.length);
 }
 
 /** Signed-in: the member's linked pocket (addresses only), limits and their recent swaps. */
@@ -54,7 +54,7 @@ export const getSwapSendContext = createServerFn({ method: "GET" })
     const { swapSendContext, refreshSwapSends, listSwapSends } = await import("./send.server");
     await refreshSwapSends(context.userId).catch((e) => console.error("swap refresh failed", e));
     const [ctx, sends] = await Promise.all([swapSendContext(context.userId), listSwapSends(context.userId)]);
-    return { isAdmin, pilotAdminOnly: SEND_PILOT_ADMIN_ONLY, limits: SWAP_LIMITS, link: ctx.link, sends };
+    return { isAdmin, pilotAdminOnly: SEND_PILOT_ADMIN_ONLY, limits: swapLimitsFor(isAdmin), link: ctx.link, sends };
   });
 
 const sendInput = z.object({
@@ -73,8 +73,8 @@ export const sendSwap = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => sendInput.parse(input))
   .handler(async ({ data, context }) => {
-    const { pilotAdminAccess } = await import("@/lib/admin-guard");
-    const isAdmin = await pilotAdminAccess(context as never, SEND_PILOT_ADMIN_ONLY);
+    const { pilotTesterAccess } = await import("@/lib/admin-guard");
+    const isAdmin = await pilotTesterAccess(context as never);
     const { sendSwapFromPocket } = await import("./send.server");
     return sendSwapFromPocket(context.userId, isAdmin, data, undefined, { claims: context.claims, approvalId: data.approvalId });
   });

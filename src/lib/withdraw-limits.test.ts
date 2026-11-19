@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { DEFAULT_TIERS, TWO_FACTOR_MISSING, earnedTier, memberLimits, missingFor, nextLevelText, tiersProblem, type WithdrawHistory } from "./withdraw-limits";
+import { DEFAULT_TIERS, TWO_FACTOR_MISSING, earnedTier, memberLimits, missingFor, nextLevelText, testerLimits, tiersProblem, type WithdrawHistory } from "./withdraw-limits";
 
 const fresh: WithdrawHistory = { accountDays: 0, withdrawals: 0, withdrawnUsd: 0, trades: 0, twoFactor: false };
 
@@ -93,4 +93,16 @@ describe("saving levels", () => {
     expect(tiersProblem([DEFAULT_TIERS[0], DEFAULT_TIERS[1], { ...DEFAULT_TIERS[2], requires2fa: false }])).toContain("two-factor"));
   test("at most 6 levels", () =>
     expect(tiersProblem(Array.from({ length: 7 }, (_, i) => ({ ...DEFAULT_TIERS[0], level: i + 1 })))).toContain("6"));
+});
+
+describe("beta testers (Bobby, Nov 19 2026)", () => {
+  test("no Seeds withdrawal amount limit and no hold; the level's two-factor rule stays", () => {
+    const l = memberLimits(DEFAULT_TIERS, fresh, null)!;
+    const t = testerLimits(l);
+    expect(t.holdHours).toBe(0);
+    expect(t.perWithdrawalUsd).toBeGreaterThan(1e9);
+    expect(t.dailyUsd).toBeGreaterThan(1e9);
+    expect(t.tier.requires2fa).toBe(l.tier.requires2fa);
+    expect(l.holdHours).toBeGreaterThan(0);
+  });
 });

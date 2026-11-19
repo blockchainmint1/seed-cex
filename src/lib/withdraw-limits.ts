@@ -161,3 +161,14 @@ export function nextLevelText(l: MemberLimits): string | null {
   const up = `$${tier.perWithdrawalUsd.toLocaleString("en-US")} each, $${tier.dailyUsd.toLocaleString("en-US")} a day`;
   return missing.length ? `Next level, ${tier.name} (${up}): ${missing.join(", ")}.` : `You qualify for ${tier.name} (${up}).`;
 }
+
+/** Stand-in for "no limit" where the database wants a number. */
+export const TESTER_NO_LIMIT_USD = 1e12;
+
+/**
+ * Bobby, Nov 19 2026: beta testers (and admins) withdraw with no Seeds amount limit and no hold.
+ * Two-factor rules and an admin pause still apply — those protect the account, not the amount.
+ */
+export function testerLimits<T extends MemberLimits>(l: T): T {
+  return { ...l, perWithdrawalUsd: TESTER_NO_LIMIT_USD, dailyUsd: TESTER_NO_LIMIT_USD, holdHours: 0 };
+}

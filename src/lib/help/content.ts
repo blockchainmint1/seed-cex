@@ -666,7 +666,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     category: "swaps",
     keywords: ["swap", "thorchain", "maya", "cross-chain", "convert", "exchange", "btc", "xrp"],
     blocks: [
-      { note: "Swap prices are open to everyone. Sending real swaps is a **staff-only test** for now ($250 per swap, $1,000 a day) and opens to members later.", tone: "warn" },
+      { note: "Swap prices are open to everyone. Sending real swaps is open to **beta testers** for now (no Seeds size limit) and opens to members later ($250 per swap, $1,000 a day to start).", tone: "warn" },
       { steps: [
         "Open **Swap** and choose what you're paying with and what you want.",
         "Seeds gets quotes from THORChain and Maya and highlights the one that gives you the most. You see the expected amount and every fee.",
@@ -791,14 +791,15 @@ export const HELP_ARTICLES: HelpArticle[] = [
   {
     slug: "save-plan",
     title: "Save a plan and get daily updates",
-    summary: "Lock a plan to follow it on paper against fresh prices, with an optional daily Telegram note. Buying for you comes later.",
+    summary: "Lock a plan to follow it against fresh prices with a daily Telegram note. Beta testers can switch on real buying from their own pocket.",
     category: "ai",
-    keywords: ["lock", "save plan", "paper", "daily", "telegram", "ai strategies", "execute"],
+    keywords: ["lock", "save plan", "paper", "daily", "telegram", "ai strategies", "execute", "real buying", "beta", "confirm"],
     blocks: [
-      { p: "Happy with a test? Lock it in. For now a locked plan **runs on paper**: Seeds follows it against fresh prices and can send a daily Telegram note (\"Based on your plan, we should…\"). Automatic buying is coming next." },
+      { p: "Happy with a test? Lock it in. A locked plan **runs on paper** at first: Seeds follows it against fresh prices and can send a daily Telegram note (\"Based on your plan, we should…\")." },
+      { p: "**Beta testers** can press **Turn on real buying** on a plan. Each day Seeds works out the trades the plan wants and asks first: one tap in Telegram for days up to the one-tap limit, a **Confirm** button in Account → AI strategies for bigger ones. Each trade is an ordinary TSD swap from your own trading pocket, one at a time. When a plan goes to cash, the TSD stays in your pocket and isn't set aside; if it's not there when the plan buys back in, Seeds tells you to deposit more TSD." },
       { list: [
-        "From 10 TSD up to 1,000 TSD per plan, with up to 10 coins.",
-        "Up to 3 active plans.",
+        "From 10 TSD up to 1,000 TSD per plan, with up to 10 coins (beta testers: no upper limit).",
+        "Up to 3 active plans (beta testers: no limit).",
         "Manage them in Account → **AI strategies**: **Edit name & amount**, **Change rules**, **Telegram daily: on/off**, **Pause** or **Resume**, and **End plan**.",
       ] },
     ],
@@ -900,7 +901,7 @@ export const HELP_FAQS: HelpFaq[] = [
   { category: "p2p", q: "I paid but the seller hasn't released.", a: "Make sure you tapped **I've paid** and added your receipt in the chat. If the seller doesn't respond, open a dispute. The coins stay reserved while it's reviewed.", article: "p2p-safety" },
   { category: "swaps", q: "Can I swap now?", a: "You can see live quotes. Sending real swaps is a small staff-only test until launch.", article: "swaps" },
   { category: "swaps", q: "What happens if the price moves during a swap?", a: "Seeds re-checks the price right before sending. If it slips past the limit, THORChain or Maya refunds you instead of delivering a worse price.", article: "swaps" },
-  { category: "ai", q: "Does Seeds AI trade with my money?", a: "Not yet. Seeds AI tests plans against real price history. A locked plan runs on paper with optional daily Telegram notes. Automatic buying is coming next.", article: "save-plan" },
+  { category: "ai", q: "Does Seeds AI trade with my money?", a: "Only if you're a beta tester and switch on real buying for a plan, and even then only after you confirm each day's trades. Everyone else's locked plans run on paper with optional daily Telegram notes.", article: "save-plan" },
   { category: "ai", q: "How far back do Seeds AI tests go?", a: "You choose, with **Going back** (or a start and end date). Results always show the period they cover.", article: "seeds-ai" },
   { category: "more", q: "When is the Ignite class?", a: "November 30 to December 4, 2026, 5:00 to 6:30 PM CST every day: five live 90-minute sessions, recorded. A $400 deposit reserves one of 100 seats.", article: "ignite" },
   { category: "more", q: "How can my project list a coin?", a: "Apply on the List page. Packages are $1,000, $2,500 and $5,000. Applying is free, and you only pay if accepted.", article: "list-coin" },

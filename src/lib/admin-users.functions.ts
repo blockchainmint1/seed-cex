@@ -12,11 +12,13 @@ export type AdminUserRow = {
   hmStatus: string;
   isAdmin: boolean;
   adminSince: string | null;
+  /** In the beta tester group (admins are always beta testers too). */
+  isBeta: boolean;
   createdAt: string;
   lastSignInAt: string | null;
 };
 
-export type AdminRoleEvent = { at: string; action: "grant" | "revoke"; targetName: string; actorName: string };
+export type AdminRoleEvent = { at: string; action: "grant" | "revoke"; role: "admin" | "beta"; targetName: string; actorName: string };
 
 /** Everyone who has signed in to Seeds, who's an admin, and the last 50 admin changes. Admins only. */
 export const listAdminUsers = createServerFn({ method: "GET" })
@@ -32,11 +34,13 @@ export const listAdminUsers = createServerFn({ method: "GET" })
       for (const u of data.users) authUsers.push({ id: u.id, email: u.email ?? null, lastSignInAt: u.last_sign_in_at ?? null });
       if (data.users.length < 1000) break;
     }
-    const [{ data: profiles }, { data: roles }, { data: events }] = await Promise.all([
+    const [{ data: profiles }, { data: roles }, { data: events }, { data: betas }] = await Promise.all([
       supabaseAdmin.from("profiles").select("id, display_name, hm_member_id, hm_status, created_at"),
       supabaseAdmin.from("user_roles").select("user_id, created_at").eq("role", "admin"),
-      supabaseAdmin.from("admin_role_events").select("target_id, actor_id, action, created_at").order("created_at", { ascending: false }).limit(50),
+      supabaseAdmin.from("admin_role_events").select("target_id, actor_id, action, role, created_at").order("created_at", { ascending: false }).limit(50),
+      supabaseAdmin.from("user_roles").select("user_id").eq("role", "beta"),
     ]);
+    const betaIds = new Set((betas ?? []).map((b) => b.user_id));
     const authById = new Map(authUsers.map((u) => [u.id, u]));
     const adminSince = new Map((roles ?? []).map((r) => [r.user_id, r.created_at]));
     const users: AdminUserRow[] = (profiles ?? []).map((p) => ({
@@ -47,14 +51,15 @@ export const listAdminUsers = createServerFn({ method: "GET" })
       hmStatus: p.hm_status,
       isAdmin: adminSince.has(p.id),
       adminSince: adminSince.get(p.id) ?? null,
+      isBeta: betaIds.has(p.id),
       createdAt: p.created_at,
       lastSignInAt: authById.get(p.id)?.lastSignInAt ?? null,
     })).sort((a, b) => Number(b.isAdmin) - Number(a.isAdmin) || a.name.localeCompare(b.name));
     const nameOf = (id: string) => users.find((u) => u.id === id)?.name ?? "Deleted account";
     const history: AdminRoleEvent[] = (events ?? []).map((e) => ({
-      at: e.created_at, action: e.action as "grant" | "revoke", targetName: nameOf(e.target_id), actorName: nameOf(e.actor_id),
+      at: e.created_at, action: e.action as "grant" | "revoke", role: (String(e.role ?? "admin") === "beta" ? "beta" : "admin") as "admin" | "beta", targetName: nameOf(e.target_id), actorName: nameOf(e.actor_id),
     }));
-    return { me: context.userId, adminCount: adminSince.size, users, history };
+    return { me: context.userId, adminCount: adminSince.size, betaCount: betaIds.size, users, history };
   });
 
 /**
@@ -108,4 +113,45 @@ export const setAdminAccess = createServerFn({ method: "POST" })
       }
     }
     return { ok: true, message: data.grant ? `${targetName} now has admin access.` : `${targetName} no longer has admin access.` };
+  });
+
+const BETA_MESSAGES: Record<string, string> = {
+  not_admin: "Only admins can change the beta tester group.",
+  no_hme: "This person needs an Honest.Money membership first.",
+  unchanged: "Nothing to change.",
+};
+
+/**
+ * Add or remove a member from the beta tester group (Bobby, Nov 19 2026). Beta testers get the
+ * pilot features (swaps, TSD swaps, Seeds AI real buying, PulseChain withdrawals) with no Seeds
+ * limits. Admins are always beta testers. Logged in admin_role_events; the member is emailed.
+ */
+export const setBetaAccess = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { userId: string; grant: boolean }) => {
+    if (!UUID_RE.test(String(d?.userId ?? ""))) throw new Error("Bad account id");
+    return { userId: d.userId, grant: d.grant === true };
+  })
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context as never);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: code, error } = await supabaseAdmin.rpc("set_beta_role", { _actor: context.userId, _target: data.userId, _grant: data.grant });
+    if (error) {
+      console.error("[admin-users] set_beta_role failed", error);
+      return { ok: false, message: "Couldn't change beta access. Try again." };
+    }
+    if (code !== "ok") return { ok: false, message: BETA_MESSAGES[String(code)] ?? "Couldn't change beta access." };
+    const { emailUser } = await import("./email/send.server");
+    const { data: names } = await supabaseAdmin.from("profiles").select("id, display_name").in("id", [context.userId, data.userId]);
+    const actorName = names?.find((n) => n.id === context.userId)?.display_name || "a Seeds admin";
+    const targetName = names?.find((n) => n.id === data.userId)?.display_name || "This member";
+    await emailUser(data.userId, "account-change", (r) => ({
+      name: r.name, thing: "Seeds beta testing", at: new Date().toISOString(), timezone: r.timezone,
+      headline: data.grant ? "You're now a Seeds beta tester." : "You're no longer a Seeds beta tester.",
+      changes: [data.grant
+        ? `Added by ${actorName}. You can now try swaps, TSD swaps, Seeds AI real buying and PulseChain withdrawals, with no Seeds limits. Real coins move — start small.`
+        : `Removed by ${actorName}. Test features are closed again for your account.`],
+      ifNotYou: "tell the Seeds team at support@honest.money.",
+    })).catch((e: unknown) => console.error("[admin-users] beta email failed", e));
+    return { ok: true, message: data.grant ? `${targetName} is now a beta tester.` : `${targetName} is no longer a beta tester.` };
   });

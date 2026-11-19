@@ -17,7 +17,7 @@ import type { Database } from "@/integrations/supabase/types";
 import { PROTOCOL_LABEL, swapCoin, type Protocol, type SwapCoin } from "./assets";
 import { gasWalletConfigured } from "./gas.server";
 import { toBaseUnits } from "./safety";
-import { landsOutsideHmeWallet, receivePocket, requoteOk, sendSource, SWAP_LIMITS } from "./send-rules";
+import { landsOutsideHmeWallet, receivePocket, requoteOk, sendSource, swapLimitsFor } from "./send-rules";
 import {
   afterBridgeFee, BRIDGE_USDC_CONTRACT, BRIDGE_USDC_ID, bridgeProgress, firstSendDone, gasNeedWei, gasPreflight, isTerminal, legPriceOk, mintOrderProblem,
   GAS_SWAP_LEG, GAS_USDC_TRANSFER, legProtocols, pickLeg, redeemOrderProblem, routeBlocker, routeGasUnits, TSD_ROUTE, type RouteDirection, type RouteStage,
@@ -152,7 +152,7 @@ export async function quoteTsdRoute(direction: RouteDirection, coin: SwapCoin, a
 
 export type StartRouteInput = { direction: RouteDirection; coin: string; amount: string; shownOut: number };
 
-export async function startTsdRoute(userId: string, isAdmin: boolean, input: StartRouteInput) {
+export async function startTsdRoute(userId: string, isAdmin: boolean, input: StartRouteInput, opts: { waitForFirstSend?: boolean } = {}) {
   const coin = swapCoin(input.coin);
   if (!coin) throw new Error("Pick a coin.");
   const { loadLink } = await import("./send.server");
@@ -200,12 +200,13 @@ export async function startTsdRoute(userId: string, isAdmin: boolean, input: Sta
     _user_id: userId, _link_id: link!.id, _direction: input.direction, _coin: coin.id, _coin_asset: coin.asset,
     _amount_in: q.amountIn, _amount_usd: Math.round((q.amountUsd ?? 0) * 100) / 100, _shown_usdc: q.usdc, _shown_out: q.out,
     _bridge_fee_bps: q.bridgeFeeBps, _txc_address: txc, _evm_address: evm, _coin_address: coinAddress,
-    _per_swap_max_usd: SWAP_LIMITS.perSwapUsd, _daily_max_usd: SWAP_LIMITS.dailyUsd, _protocol: q.protocol ?? "thorchain",
+    _per_swap_max_usd: swapLimitsFor(isAdmin).perSwapUsd, _daily_max_usd: swapLimitsFor(isAdmin).dailyUsd, _protocol: q.protocol ?? "thorchain",
   });
   if (error || !id) throw new Error(clean(error?.message ?? "Could not start this swap."));
   // Answer the member as soon as their first coins have left (or the swap stopped); the
   // every-minute job carries it the rest of the way, so the button never waits on TSD Bridge or THORChain.
-  await advanceRoute(id as string, (stage) => firstSendDone(input.direction, stage));
+  // Seeds AI plan trades start from the every-minute job and let that same job carry them (no long wait inside it).
+  if (opts.waitForFirstSend !== false) await advanceRoute(id as string, (stage) => firstSendDone(input.direction, stage));
   const { data: row } = await supabaseAdmin.from("tsd_routes").select("id, stage, error").eq("id", id as string).single();
   return row;
 }
@@ -230,6 +231,12 @@ export async function gasCheck(userId: string, direction: RouteDirection, coin: 
     shortEth: short != null ? Number(short) / 1e18 : null,
     shortUsd: short != null && g.priceUsd != null ? (Number(short) / 1e18) * g.priceUsd : null,
   };
+}
+
+/** TSD free to spend in the member's TXC pocket (balance minus P2P set-asides), or null when unreadable. */
+export async function freeTsdFor(userId: string, txcAddress: string): Promise<number | null> {
+  const [bal, locked] = await freeTsd(userId, txcAddress);
+  return bal == null ? null : Math.max(0, bal - locked);
 }
 
 /** TSD in the member's TXC pocket and how much of it P2P trades have set aside. */

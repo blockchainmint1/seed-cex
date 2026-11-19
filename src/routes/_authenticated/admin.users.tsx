@@ -2,8 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Search, ShieldCheck, ShieldOff } from "lucide-react";
-import { listAdminUsers, setAdminAccess, type AdminUserRow } from "@/lib/admin-users.functions";
+import { FlaskConical, Search, ShieldCheck, ShieldOff } from "lucide-react";
+import { listAdminUsers, setAdminAccess, setBetaAccess, type AdminUserRow } from "@/lib/admin-users.functions";
 import { adminChangeProblem, adminResultMessage, matchesUserSearch } from "@/lib/admin-users-rules";
 import { Card, Note, TabTitle, inputCls } from "@/components/account/ui";
 import { Loading, SortHeader } from "@/components/admin/ui";
@@ -36,6 +36,7 @@ function AdminUsersPage() {
   const qc = useQueryClient();
   const load = useServerFn(listAdminUsers);
   const change = useServerFn(setAdminAccess);
+  const changeBeta = useServerFn(setBetaAccess);
   const q = useQuery({ queryKey: ["admin-users"], queryFn: () => load(), retry: false });
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<(typeof FILTERS)[number]["v"]>("all");
@@ -75,11 +76,30 @@ function AdminUsersPage() {
     }
   }
 
+  async function toggleBeta(u: AdminUserRow) {
+    const grant = !u.isBeta;
+    const ok = window.confirm(grant
+      ? `Make ${u.name} a beta tester?\n\nThey can try swaps, TSD swaps, Seeds AI real buying and PulseChain withdrawals with real coins and no Seeds limits. They get an email.`
+      : `Remove ${u.name} from beta testing?\n\nTest features close for them right away. Anything already running finishes. They get an email.`);
+    if (!ok) return;
+    setBusy(`beta:${u.id}`);
+    setNotice(null);
+    try {
+      const r = await changeBeta({ data: { userId: u.id, grant } });
+      setNotice({ tone: r.ok ? "ok" : "error", text: r.message });
+      await qc.invalidateQueries({ queryKey: ["admin-users"] });
+    } catch (e) {
+      setNotice({ tone: "error", text: (e as Error).message || "Couldn't change beta access." });
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <div className="space-y-5">
       <TabTitle
-        title="Admin access"
-        desc="Everyone signs in with Honest.Money. Choose which members can also open this admin console."
+        title="Admin & beta access"
+        desc="Everyone signs in with Honest.Money. Choose which members can open this admin console, and who is a beta tester."
       />
       {q.isPending ? <Loading /> : q.error || !d ? <p role="alert" className="text-sm text-destructive">Couldn't load accounts. Refresh to retry.</p> : (
         <>
@@ -133,6 +153,7 @@ function AdminUsersPage() {
                     <th scope="col" className="px-3 py-2 text-left font-normal">Honest.Money</th>
                     <SortHeader label="Joined" k="createdAt" sort={sort} onSort={onSort} />
                     <SortHeader label="Last sign-in" k="lastSignInAt" sort={sort} onSort={onSort} />
+                    <th scope="col" className="px-3 py-2 text-left font-normal">Beta tester</th>
                     <SortHeader label="Access" k="access" sort={sort} onSort={onSort} align="right" />
                   </tr>
                 </thead>
@@ -150,6 +171,16 @@ function AdminUsersPage() {
                         </td>
                         <td className="px-3 py-2 text-muted-foreground">{new Date(u.createdAt).toLocaleDateString()}</td>
                         <td className="px-3 py-2 text-muted-foreground">{u.lastSignInAt ? fmtAgo(u.lastSignInAt) : "never"}</td>
+                        <td className="px-3 py-2">
+                          {u.isAdmin ? (
+                            <span className="font-mono text-[10px] text-primary uppercase">Yes · admin</span>
+                          ) : (
+                            <Button size="sm" variant={u.isBeta ? "outline" : "ghost"} disabled={busy === `beta:${u.id}` || (!u.isBeta && !u.hmMemberId)}
+                              title={!u.isBeta && !u.hmMemberId ? "Needs an Honest.Money membership first" : undefined} onClick={() => toggleBeta(u)}>
+                              <FlaskConical /> {busy === `beta:${u.id}` ? "Saving…" : u.isBeta ? "Beta · remove" : "Make beta tester"}
+                            </Button>
+                          )}
+                        </td>
                         <td className="px-3 py-2 text-right">
                           {u.isAdmin ? (
                             <Button size="sm" variant="outline" disabled={!!why || busy === u.id} title={why ? adminResultMessage(why) : undefined} onClick={() => toggle(u)}>
@@ -164,7 +195,7 @@ function AdminUsersPage() {
                       </tr>
                     );
                   })}
-                  {rows.length === 0 ? <tr><td colSpan={6} className="px-3 py-6 text-muted-foreground">No one matches.</td></tr> : null}
+                  {rows.length === 0 ? <tr><td colSpan={7} className="px-3 py-6 text-muted-foreground">No one matches.</td></tr> : null}
                 </tbody>
               </table>
             </div>
@@ -173,12 +204,16 @@ function AdminUsersPage() {
             </p>
           </section>
 
-          <Card title="History" desc="Every time admin access was given or removed.">
+          <p className="text-xs text-muted-foreground">
+            Beta testers ({d.betaCount} members plus every admin) can use swaps, TSD swaps, Seeds AI real buying and PulseChain withdrawals with real coins and no Seeds limits.
+          </p>
+
+          <Card title="History" desc="Every time admin or beta access was given or removed.">
             {d.history.length === 0 ? <p className="text-sm text-muted-foreground">No changes yet. Changes made here will show up in this list.</p> : (
               <ul className="space-y-2 text-sm">
                 {d.history.map((h, i) => (
                   <li key={i} className="flex flex-wrap items-baseline justify-between gap-2">
-                    <span><span className="font-semibold">{h.actorName}</span> {h.action === "grant" ? "gave admin access to" : "removed admin access from"} <span className="font-semibold">{h.targetName}</span></span>
+                    <span><span className="font-semibold">{h.actorName}</span> {h.role === "beta" ? (h.action === "grant" ? "made a beta tester:" : "removed from beta testing:") : h.action === "grant" ? "gave admin access to" : "removed admin access from"} <span className="font-semibold">{h.targetName}</span></span>
                     <span className="font-mono text-xs text-muted-foreground">{fmtAgo(h.at)}</span>
                   </li>
                 ))}

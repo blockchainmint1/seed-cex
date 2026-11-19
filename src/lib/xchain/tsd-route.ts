@@ -9,7 +9,7 @@
  */
 import type { PocketCoin } from "@/lib/pockets/coins";
 import type { Protocol, SwapCoin } from "./assets";
-import { receivePocket, sendSource, SEND_PILOT_ADMIN_ONLY, SWAP_LIMITS, type LinkLike } from "./send-rules";
+import { receivePocket, sendSource, SEND_PILOT_ADMIN_ONLY, SWAP_LIMITS, swapLimitsFor, type LinkLike } from "./send-rules";
 
 export type RouteDirection = "buy" | "sell";
 
@@ -147,7 +147,7 @@ export function routeBlocker(p: {
   if (missing.length) return `Your linked pocket is missing ${missing.join(", ")}. Use "Add new coins" on Account → Security to add them — no need to revoke.`;
   if (p.tsdAmount != null && p.tsdAmount < TSD_ROUTE.minTsd) return `TSD Bridge's minimum is ${TSD_ROUTE.minTsd} TSD.`;
   if (p.amountUsd == null) return "No live price for this coin, so the limit can't be checked.";
-  if (p.amountUsd > SWAP_LIMITS.perSwapUsd) return `Swaps are limited to $${SWAP_LIMITS.perSwapUsd} each during the test.`;
+  if (p.amountUsd > swapLimitsFor(p.isAdmin).perSwapUsd) return `Swaps are limited to $${SWAP_LIMITS.perSwapUsd} each during the test.`;
   return null;
 }
 

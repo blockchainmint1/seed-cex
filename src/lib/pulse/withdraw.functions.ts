@@ -3,8 +3,8 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 async function callerIsAdmin(supabase: { from: (t: string) => any }, userId: string): Promise<boolean> {
-  const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId).eq("role", "admin").maybeSingle();
-  return Boolean(data);
+  const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId).in("role", ["admin", "beta"]).limit(1);
+  return Boolean(data?.length);
 }
 
 /** Can Seeds send PulseChain coins for me, the rules, and my recent PulseChain withdrawals. */
@@ -27,9 +27,9 @@ export const requestPulseWithdrawalFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => requestInput.parse(input))
   .handler(async ({ data, context }) => {
-    const { pilotAdminAccess } = await import("@/lib/admin-guard");
+    const { pilotTesterAccess } = await import("@/lib/admin-guard");
     const { PULSE_WITHDRAW_PILOT_ADMIN_ONLY } = await import("./withdraw-rules");
-    const isAdmin = await pilotAdminAccess(context as never, PULSE_WITHDRAW_PILOT_ADMIN_ONLY);
+    const isAdmin = await pilotTesterAccess(context as never);
     const { requestPulseWithdrawal } = await import("./withdraw.server");
     return requestPulseWithdrawal(context.userId, isAdmin, data, context.claims as never);
   });

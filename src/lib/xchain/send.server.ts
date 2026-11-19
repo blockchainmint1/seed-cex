@@ -23,7 +23,7 @@ import { addressFor, solAddress } from "@/lib/pockets/encode";
 import { PROTOCOL_LABEL, swapCoin, type Protocol, type SwapCoin } from "./assets";
 import { destinationValid, toBaseUnits } from "./safety";
 import { allowanceData, approveData, DECIMALS_CALL, depositWithExpiryData, NATIVE_ASSET, roundTo1e8Units, tokenContract, toTokenUnits } from "./evm-router";
-import { isOwnPocketDestination, outsideSwapProblem, MIN_SEND_QUOTE_SECONDS, requoteOk, SEND_PROTOCOL, SEND_PROTOCOLS, sendBlocker, sendSource, SWAP_LIMITS, swapProgress, thorTxId, type SendKind, type ThorTxStatus } from "./send-rules";
+import { isOwnPocketDestination, outsideSwapProblem, MIN_SEND_QUOTE_SECONDS, requoteOk, SEND_PROTOCOL, SEND_PROTOCOLS, sendBlocker, sendSource, swapLimitsFor, swapProgress, thorTxId, type SendKind, type ThorTxStatus } from "./send-rules";
 import type { SendPlan } from "./router.server";
 
 export type SwapLink = { id: string; mode: string; account: number; hasKey: boolean; pockets: PocketCoin[]; addresses: Partial<Record<PocketCoin, string>> };
@@ -362,7 +362,8 @@ export async function sendSwapFromPocket(userId: string, isAdmin: boolean, input
     _user_id: userId, _link_id: link!.id, _protocol: protocol, _pocket: src.pocket, _from_asset: from.asset, _to_asset: to.asset,
     _amount_in: Number(amount) / 1e8, _amount_usd: Math.round(inputUsd! * 100) / 100, _expected_out: route.expectedOut, _min_out: route.minOut ?? 0,
     _from_address: fromAddress, _destination: input.destination, _vault: plan.vault, _router: plan.router ?? "", _memo: plan.memo,
-    _per_swap_max_usd: SWAP_LIMITS.perSwapUsd, _daily_max_usd: SWAP_LIMITS.dailyUsd, _route_id: leg?.routeId,
+    // A TSD route's leg was already held to its route's limits when the route started.
+    _per_swap_max_usd: swapLimitsFor(isAdmin || Boolean(leg)).perSwapUsd, _daily_max_usd: swapLimitsFor(isAdmin || Boolean(leg)).dailyUsd, _route_id: leg?.routeId,
   });
   if (error || !id) throw new Error(cleanDbError(error?.message ?? "Could not reserve this swap."));
   const rowId = id as string;

@@ -4,7 +4,6 @@ import { CircleCheck } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { PROTOCOL_LABEL, SWAP_COINS, type SwapCoin } from "@/lib/xchain/assets";
-import { SWAP_LIMITS } from "@/lib/xchain/send-rules";
 import { getTsdGasCheck, getTsdRouteQuote, startTsdSwap } from "@/lib/xchain/tsd-route.functions";
 import { routeBlocker, routeCoinProblem, routeSteps, SWAPPER_SHORT, type RouteDirection } from "@/lib/xchain/tsd-route";
 
@@ -156,7 +155,7 @@ export function TsdRouteResult({ direction, coin, amount, q, signedIn, link, isA
               <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-0.5 accent-primary" />
               <span>
                 I understand blockchain sends can't be undone, and the final amount can differ a little from this price (Seeds asks me
-                again if it moves more than 2%). Test limits: ${SWAP_LIMITS.perSwapUsd.toLocaleString("en-US")} per swap, ${SWAP_LIMITS.dailyUsd.toLocaleString("en-US")} a day.
+                again if it moves more than 2%). Beta testers have no Seeds limit on swap size; TSD Bridge's own minimum and maximum still apply.
               </span>
             </label>
             <button

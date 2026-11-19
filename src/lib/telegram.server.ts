@@ -116,6 +116,10 @@ async function handleCallback(cq: CallbackQuery): Promise<string> {
   const { handleApprovalTap } = await import("./pocket-send/approvals.server");
   const approval = await handleApprovalTap(cq);
   if (approval) return `send_${approval}`;
+  // "Do today's AI plan trades?" buttons (Seeds AI real buying).
+  const { handleAiTap } = await import("./ai/execute.server");
+  const ai = await handleAiTap(cq);
+  if (ai) return `ai_${ai}`;
 
   const chatId = cq.message?.chat?.id;
   const messageId = cq.message?.message_id;

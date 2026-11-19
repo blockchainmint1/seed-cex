@@ -72,3 +72,21 @@ export async function pilotAdminAccess(ctx: RoleCtx, pilotAdminOnly: boolean): P
   if (pilotAdminOnly) throw new Error(PILOT_ADMIN_LOCKED);
   return false;
 }
+
+/** Beta testers: members admins switched on, plus every admin. */
+export const TESTER_ROLES = ["admin", "beta"] as const;
+
+/** Is this account a beta tester? (Read as the caller, through their own session.) */
+export async function hasTesterRole(ctx: RoleCtx): Promise<boolean> {
+  const { data } = await ctx.supabase.from("user_roles").select("role").eq("user_id", ctx.userId).in("role", TESTER_ROLES as unknown as string[]).limit(1);
+  return Boolean(data?.length);
+}
+
+/**
+ * Bobby, Nov 19 2026: pilot money paths (swaps, TSD swaps, Seeds AI real buying, PulseChain
+ * withdrawals) open to beta testers — every admin plus members switched on in Admin → Accounts.
+ * Replaces the audit #2 M1 "fresh admin code" gate for these paths: being in the group is the gate.
+ */
+export async function pilotTesterAccess(ctx: RoleCtx): Promise<boolean> {
+  return hasTesterRole(ctx);
+}

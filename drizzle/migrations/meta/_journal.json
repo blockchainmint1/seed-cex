@@ -281,6 +281,27 @@
       "when": 1795121541476,
       "tag": "0039_market_snapshot_latest_read",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1795124000819,
+      "tag": "0040_ai_real_buying",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1795124228532,
+      "tag": "0041_beta_testers",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1795124377275,
+      "tag": "0042_withdrawal_hold_zero_for_testers",
+      "breakpoints": true
     }
   ]
 }
