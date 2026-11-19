@@ -143,3 +143,10 @@
 - [ ] Bobby to confirm package contents, one-time vs yearly, payment method, and "sponsored" label on paid spotlights
 - [ ] Build what packages promise that doesn't exist yet: "New" badge, homepage spotlight, how-to-buy guide pages, trading contests (after launch)
 
+
+## Business plan follow-ups (from /admin/plan, Nov 19)
+- [x] /admin/plan business plan page with live numbers and calculators
+- [ ] Bobby: confirm 20% listing finder's fee and USD vs TSD payout (blocked: Bobby's call)
+- [ ] Bobby: listings one-time or yearly; monthly marketing budget; March 31, 2027 targets (blocked: Bobby's call)
+- [ ] Bobby: conference coin count/size/first event; badge-only vs TSD claim reward (blocked: Bobby's call; lawyer review before any reward)
+- [ ] Build when approved: "Who sent you?" on /list + finder payouts; invite click/sign-up counts; coach badge + directory; conference claim codes (/c/{code}); Founding 1,000 badge

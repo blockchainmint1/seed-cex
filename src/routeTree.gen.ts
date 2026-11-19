@@ -71,6 +71,7 @@ import { Route as AuthenticatedAdminAiRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedAdminIgniteRouteImport } from './routes/_authenticated/admin.ignite'
 import { Route as AuthenticatedAdminListingsRouteImport } from './routes/_authenticated/admin.listings'
 import { Route as AuthenticatedAdminMarketsRouteImport } from './routes/_authenticated/admin.markets'
+import { Route as AuthenticatedAdminPlanRouteImport } from './routes/_authenticated/admin.plan'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
 import { Route as AuthenticatedP2pDashboardRouteImport } from './routes/_authenticated/p2p.dashboard'
@@ -439,6 +440,11 @@ const AuthenticatedAdminMarketsRoute =
     path: '/markets',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminPlanRoute = AuthenticatedAdminPlanRouteImport.update({
+  id: '/plan',
+  path: '/plan',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
 const AuthenticatedAdminSettingsRoute =
   AuthenticatedAdminSettingsRouteImport.update({
     id: '/settings',
@@ -750,6 +756,7 @@ export interface FileRoutesByFullPath {
   '/admin/ignite': typeof AuthenticatedAdminIgniteRoute
   '/admin/listings': typeof AuthenticatedAdminListingsRoute
   '/admin/markets': typeof AuthenticatedAdminMarketsRoute
+  '/admin/plan': typeof AuthenticatedAdminPlanRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/p2p/dashboard': typeof AuthenticatedP2pDashboardRoute
@@ -857,6 +864,7 @@ export interface FileRoutesByTo {
   '/admin/ignite': typeof AuthenticatedAdminIgniteRoute
   '/admin/listings': typeof AuthenticatedAdminListingsRoute
   '/admin/markets': typeof AuthenticatedAdminMarketsRoute
+  '/admin/plan': typeof AuthenticatedAdminPlanRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/p2p/dashboard': typeof AuthenticatedP2pDashboardRoute
@@ -969,6 +977,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/ignite': typeof AuthenticatedAdminIgniteRoute
   '/_authenticated/admin/listings': typeof AuthenticatedAdminListingsRoute
   '/_authenticated/admin/markets': typeof AuthenticatedAdminMarketsRoute
+  '/_authenticated/admin/plan': typeof AuthenticatedAdminPlanRoute
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
   '/_authenticated/p2p/dashboard': typeof AuthenticatedP2pDashboardRoute
@@ -1081,6 +1090,7 @@ export interface FileRouteTypes {
     | '/admin/ignite'
     | '/admin/listings'
     | '/admin/markets'
+    | '/admin/plan'
     | '/admin/settings'
     | '/admin/users'
     | '/p2p/dashboard'
@@ -1188,6 +1198,7 @@ export interface FileRouteTypes {
     | '/admin/ignite'
     | '/admin/listings'
     | '/admin/markets'
+    | '/admin/plan'
     | '/admin/settings'
     | '/admin/users'
     | '/p2p/dashboard'
@@ -1299,6 +1310,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/ignite'
     | '/_authenticated/admin/listings'
     | '/_authenticated/admin/markets'
+    | '/_authenticated/admin/plan'
     | '/_authenticated/admin/settings'
     | '/_authenticated/admin/users'
     | '/_authenticated/p2p/dashboard'
@@ -1869,6 +1881,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminMarketsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/plan': {
+      id: '/_authenticated/admin/plan'
+      path: '/plan'
+      fullPath: '/admin/plan'
+      preLoaderRoute: typeof AuthenticatedAdminPlanRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/settings': {
       id: '/_authenticated/admin/settings'
       path: '/settings'
@@ -2254,6 +2273,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminIgniteRoute: typeof AuthenticatedAdminIgniteRoute
   AuthenticatedAdminListingsRoute: typeof AuthenticatedAdminListingsRoute
   AuthenticatedAdminMarketsRoute: typeof AuthenticatedAdminMarketsRoute
+  AuthenticatedAdminPlanRoute: typeof AuthenticatedAdminPlanRoute
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
@@ -2265,6 +2285,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminIgniteRoute: AuthenticatedAdminIgniteRoute,
   AuthenticatedAdminListingsRoute: AuthenticatedAdminListingsRoute,
   AuthenticatedAdminMarketsRoute: AuthenticatedAdminMarketsRoute,
+  AuthenticatedAdminPlanRoute: AuthenticatedAdminPlanRoute,
   AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
