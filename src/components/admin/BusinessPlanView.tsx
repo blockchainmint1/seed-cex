@@ -32,7 +32,7 @@ function Items({ title, items }: { title?: string; items: PlanItem[] }) {
               <p className="font-display text-sm font-bold">{it.title}</p>
               {it.status ? <Badge s={it.status} /> : null}
             </div>
-            <p className="mt-1 text-sm text-muted-foreground">{it.body}</p>
+            <p className="mt-1 break-words text-sm text-muted-foreground">{it.body}</p>
           </li>
         ))}
       </ul>
@@ -53,7 +53,7 @@ function Table({ title, head, rows }: { title?: string; head: string[]; rows: st
               {r.slice(1).map((c, i) => (
                 <div key={i} className="grid grid-cols-[7.5rem_1fr] gap-2 text-sm">
                   <dt className="font-mono text-[10px] leading-5 tracking-[0.12em] text-muted-foreground uppercase">{head[i + 1]}</dt>
-                  <dd className="text-muted-foreground">{c}</dd>
+                  <dd className="min-w-0 break-words text-muted-foreground">{c}</dd>
                 </div>
               ))}
             </dl>
@@ -116,13 +116,13 @@ function ListingCalc() {
 }
 
 function CoinCalc() {
-  const [v, setV] = useState({ coins: 1000, unitCost: 3.54, setup: 150, rewardUsd: 0, claimRate: 10 });
+  const [v, setV] = useState({ coins: 5000, unitCost: 3.47, setup: 150, rewardUsd: 0, claimRate: 10 });
   const b = coinGiveawayBudget({ ...v, claimRate: v.claimRate / 100 });
   const set = (k: keyof typeof v) => (n: number) => setV({ ...v, [k]: n });
   return (
     <div className="rounded-md border border-primary/30 bg-primary/5 p-4">
       <h4 className="font-display text-sm font-bold">Giveaway coin budget</h4>
-      <p className="mt-0.5 text-xs text-muted-foreground">Starts at 1,000 two-inch coins. The claim rate is a guess; real numbers come from the first event.</p>
+      <p className="mt-0.5 text-xs text-muted-foreground">Starts at 5,000 two-inch coins (the 2,000-coin price; ask for a bulk quote). The claim rate is a guess; real numbers come from the first event.</p>
       <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <Num label="Coins" value={v.coins} onChange={set("coins")} step={100} />
         <Num label="Cost per coin" value={v.unitCost} onChange={set("unitCost")} step={0.01} prefix="$" />

@@ -12,7 +12,7 @@ export const Route = createFileRoute("/_authenticated/admin/plan")({
   head: () => ({
     meta: [
       { title: "Business plan — Seeds admin" },
-      { name: "description", content: "Seeds' business plan: marketing strategy, creators, coaches, listing affiliates and conference coins." },
+      { name: "description", content: "Seeds' business plan: P2P sellers, weekly competitions, creators, BitMart coin teams, affiliates, Seeds coins and endorsements." },
       { property: "og:title", content: "Business plan — Seeds admin" },
       { property: "og:description", content: "Seeds' growth and marketing plan for the operator team." },
       { property: "og:type", content: "website" },
