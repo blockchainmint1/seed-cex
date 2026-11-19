@@ -18,6 +18,9 @@ import {
   aiButtonData, aiButtonOk, aiTapDecision, EXEC_TTL_MS, ledgerFrom, ledgerValue, moveAmountNow, oneTapAllowed,
   parseAiButton, planRealMoves, realBuyingBlocker, type DoneMove, type Ledger, type MoveSide,
 } from "./execute-rules";
+import { decisionKind, decisionMessage, type DecisionButton, type DecisionKind, type DecisionRow } from "./decision-message";
+import { buyNowTsd, canBuyNow, coinsWaiting, planWaitingInTsd } from "./start-now";
+import type { PlanSettings } from "./plan";
 
 const SITE = "https://seeds.honest.money";
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -101,23 +104,30 @@ export async function cancelOpenPlanMoves(planId: string, why: string, exceptChe
   await c;
 }
 
+export type Prepared = { moves: number; total: number; oneTap: boolean; asked: boolean; reason?: string };
+
 /**
- * Turn one day's check into queued real swaps and ask the owner. Safe to repeat:
- * a check that already has an answer or moves is left alone.
+ * Turn one day's check into queued real swaps and ask the owner in one Telegram
+ * message ("you're X, the rule says Y, what would you like to do"). Safe to repeat:
+ * a check that already has an answer or moves is left alone. With ask:false nothing
+ * is sent (the caller answers for the owner, e.g. right after an override tap). A
+ * stay-in-TSD day with no trades asks only when askWaiting isn't false.
  */
-export async function prepareRealMoves(checkId: string): Promise<{ moves: number; reason?: string }> {
+export async function prepareRealMoves(checkId: string, opts: { ask?: boolean; askWaiting?: boolean } = {}): Promise<Prepared> {
+  const none = (reason: string): Prepared => ({ moves: 0, total: 0, oneTap: false, asked: false, reason });
   const { data: check } = await db.from("ai_plan_checks").select("id, plan_id, user_id, day, suggestion, exec_status").eq("id", checkId).maybeSingle();
-  if (!check || check.exec_status !== "none") return { moves: 0, reason: "already prepared" };
+  if (!check || check.exec_status !== "none") return none("already prepared");
   const { data: plan } = await db.from("ai_plans").select("id, user_id, name, status, commit_tsd, settings, execute").eq("id", check.plan_id).maybeSingle();
-  if (!plan?.execute) return { moves: 0, reason: "real buying off" };
+  if (!plan?.execute) return none("real buying off");
   const blocker = await planRealBlocker(plan as PlanRow);
-  if (blocker) return { moves: 0, reason: blocker };
+  if (blocker) return none(blocker);
 
   const sug = (check.suggestion ?? {}) as { moves?: unknown[]; current?: Record<string, number> };
   const targets = sug.current ?? {};
   const ledger = await planLedger(plan);
   const { count: doneCount } = await db.from("ai_plan_moves").select("id", { count: "exact", head: true }).eq("plan_id", plan.id).eq("status", "done");
-  const coins = [...new Set([...Object.keys(targets), ...Object.keys(ledger.units)])].filter((c) => c !== "tsd");
+  const settings = plan.settings as unknown as PlanSettings;
+  const coins = [...new Set([...Object.keys(targets), ...Object.keys(ledger.units), ...settings.coins])].filter((c) => c !== "tsd");
   const prices = await latestPrices(coins);
   const planned = planRealMoves({
     ledger, targets, prices, perSwapUsd: swapLimitsFor(await isTesterUser(plan.user_id)).perSwapUsd,
@@ -125,7 +135,26 @@ export async function prepareRealMoves(checkId: string): Promise<{ moves: number
     planTradedToday: (sug.moves?.length ?? 0) > 0 || !doneCount,
   });
   await cancelOpenPlanMoves(plan.id, "Replaced by a newer daily check.", check.id);
-  if (!planned.length) return { moves: 0, reason: "nothing to trade" };
+  const s = await execSettings();
+  const syms = await symbols();
+  const ask = opts.ask !== false;
+  const kind = decisionKind({ rows: planned, targets, waitingInTsd: planWaitingInTsd(settings, targets), canBuyNow: canBuyNow(settings, targets) });
+  const holding = {
+    tsd: ledger.tsd,
+    coins: Object.entries(ledger.units).filter(([, u]) => u > 0).map(([c, u]) => ({ symbol: syms.get(c) ?? c, units: u, usd: u * (prices[c] ?? 0) })),
+  };
+  if (!planned.length) {
+    if (ask && opts.askWaiting !== false && kind === "stay-in-tsd") {
+      const { waitReasons, waitReasonText } = await import("./ai.server");
+      const reasons = (await waitReasons(settings, coinsWaiting(settings, targets), check.day)).map(waitReasonText);
+      const asked = await askOwner({
+        checkId: check.id, userId: plan.user_id, kind, planName: plan.name, day: check.day, holding, reasons, rows: [], total: 0,
+        oneTap: false, limit: s.oneTapLimitUsd, buyNowTsd: buyNowTsd(settings, ledgerValue(ledger, prices), targets),
+      });
+      return { ...none("nothing to trade"), asked };
+    }
+    return none("nothing to trade");
+  }
 
   const ids = await swapIds(coins);
   const rows = planned.map((m, i) => ({
@@ -134,51 +163,60 @@ export async function prepareRealMoves(checkId: string): Promise<{ moves: number
   }));
   const { error } = await db.from("ai_plan_moves").insert(rows);
   if (error) {
-    if (/duplicate|unique/i.test(error.message)) return { moves: 0, reason: "already prepared" };
+    if (/duplicate|unique/i.test(error.message)) return none("already prepared");
     throw new Error(error.message);
   }
-  const s = await execSettings();
   const total = rows.reduce((a, r) => a + r.usd, 0);
+  const oneTap = oneTapAllowed(total, s.oneTapLimitUsd);
   const expires = new Date(Date.now() + EXEC_TTL_MS).toISOString();
   const { data: claimed } = await db.from("ai_plan_checks").update({ exec_status: "waiting", exec_total_usd: Math.round(total * 100) / 100, exec_expires_at: expires })
     .eq("id", check.id).eq("exec_status", "none").select("id");
-  if (!claimed?.length) return { moves: 0, reason: "already prepared" };
-  await askOwner({ checkId: check.id, userId: plan.user_id, planName: plan.name, day: check.day, rows, total, oneTap: oneTapAllowed(total, s.oneTapLimitUsd), limit: s.oneTapLimitUsd, value: ledgerValue(ledger, prices) });
-  return { moves: rows.length };
+  if (!claimed?.length) return none("already prepared");
+  let reasons: string[] = [];
+  if (kind === "sell-to-tsd") {
+    const { waitReasons, waitReasonText } = await import("./ai.server");
+    const cash = [...new Set(rows.filter((r) => r.side === "sell" && !((targets[r.coin_id] ?? 0) > 0.001)).map((r) => r.coin_id))];
+    reasons = (await waitReasons(settings, cash, check.day)).map((r) => r.reason === "stop-loss" ? `${r.symbol} hit its ${settings.stopLoss}% stop-loss` : waitReasonText(r));
+  }
+  const asked = ask ? await askOwner({
+    checkId: check.id, userId: plan.user_id, kind: kind ?? "trade", planName: plan.name, day: check.day, holding, reasons,
+    rows: rows.map((r) => ({ side: r.side, symbol: syms.get(r.coin_id) ?? r.coin_id, amount: r.amount, usd: r.usd })), total, oneTap, limit: s.oneTapLimitUsd,
+  }) : false;
+  return { moves: rows.length, total, oneTap, asked };
 }
 
+/** Telegram inline keyboard from the decision buttons (choice buttons are signed for this check and owner). */
+async function keyboard(buttons: DecisionButton[][], checkId: string, userId: string) {
+  const { telegramActionKey } = await import("@/lib/telegram.server");
+  const key = await telegramActionKey();
+  return {
+    inline_keyboard: await Promise.all(buttons.map((row) => Promise.all(row.map(async (b) =>
+      "url" in b ? { text: b.label, url: b.url } : { text: b.label, callback_data: await aiButtonData(key, b.choice, checkId, userId) })))),
+  };
+}
+
+/** Send the check's question to the owner's verified Telegram chat. True when it was sent. */
 async function askOwner(p: {
-  checkId: string; userId: string; planName: string; day: string; total: number; oneTap: boolean; limit: number; value: number;
-  rows: { side: string; coin_id: string; usd: number; amount: number }[];
-}) {
-  const { telegramConfigured, telegramCall, telegramActionKey } = await import("@/lib/telegram.server");
-  if (!telegramConfigured()) return;
+  checkId: string; userId: string; kind: DecisionKind; planName: string; day: string;
+  holding: { tsd: number; coins: { symbol: string; units: number; usd: number }[] };
+  reasons: string[]; rows: DecisionRow[]; total: number; oneTap: boolean; limit: number; buyNowTsd?: number;
+}): Promise<boolean> {
+  const { telegramConfigured, telegramCall } = await import("@/lib/telegram.server");
+  if (!telegramConfigured()) return false;
   const { data: prof } = await db.from("profiles").select("telegram_chat_id, telegram_verified").eq("id", p.userId).maybeSingle();
-  if (!prof?.telegram_verified || !prof.telegram_chat_id) return;
-  const syms = await symbols();
-  const lines = [`🌱 <b>Seeds AI · ${esc(p.planName)}</b> · real trades for ${p.day}`, ""];
-  for (const r of p.rows) {
-    const sym = esc(syms.get(r.coin_id) ?? r.coin_id);
-    lines.push(r.side === "buy" ? `• Buy ${sym} with ${units(r.amount)} TSD` : `• Sell ${units(r.amount)} ${sym} (about ${usd(r.usd)}) for TSD`);
-  }
-  lines.push("", `Total about ${usd(p.total)} · plan worth about ${usd(p.value)}`);
-  lines.push("Each trade is a normal TSD swap from your own trading pocket, one after another.");
-  if (p.oneTap) lines.push("", "Tap <b>Do it</b> to start, or Skip today. Nothing moves until you tap.");
-  else lines.push("", `This is over your ${usd(p.limit)} one-tap limit, so confirm it on Seeds: ${SITE}/account/ai`);
-  lines.push("This request ends in 20 hours.");
+  if (!prof?.telegram_verified || !prof.telegram_chat_id) return false;
+  const msg = decisionMessage({ ...p, oneTapLimit: p.limit, siteUrl: `${SITE}/account/ai` });
   const chatId = String(prof.telegram_chat_id);
-  const key = p.oneTap ? await telegramActionKey() : "";
-  const reply_markup = p.oneTap
-    ? { inline_keyboard: [[
-        { text: "✅ Do it", callback_data: await aiButtonData(key, "yes", p.checkId, p.userId) },
-        { text: "Skip today", callback_data: await aiButtonData(key, "no", p.checkId, p.userId) },
-      ]] }
-    : undefined;
   try {
-    const sent = (await telegramCall("sendMessage", { chat_id: chatId, text: lines.join("\n"), parse_mode: "HTML", disable_web_page_preview: true, ...(reply_markup ? { reply_markup } : {}) })) as { message_id?: number } | undefined;
-    await db.from("ai_plan_checks").update({ exec_telegram_chat_id: chatId, exec_telegram_message_id: sent?.message_id ?? null }).eq("id", p.checkId);
+    const sent = (await telegramCall("sendMessage", {
+      chat_id: chatId, text: msg.text, parse_mode: "HTML", disable_web_page_preview: true,
+      reply_markup: await keyboard(msg.buttons, p.checkId, p.userId),
+    })) as { message_id?: number } | undefined;
+    await db.from("ai_plan_checks").update({ exec_telegram_chat_id: chatId, exec_telegram_message_id: sent?.message_id ?? null, sent_at: new Date().toISOString() }).eq("id", p.checkId);
+    return true;
   } catch (e) {
     console.error("[ai-exec] telegram ask failed", e);
+    return false;
   }
 }
 
@@ -194,6 +232,43 @@ export async function decideCheck(userId: string, checkId: string, choice: "yes"
     return "declined";
   }
   return "approved";
+}
+
+/**
+ * Telegram override ("keep holding" on a sell-to-TSD day, "buy now" on a stay-in-TSD day):
+ * redo today's check as an override day, then start whatever it now needs within the
+ * one-tap limit (bigger: confirm on Seeds). Already verified as the owner's own tap.
+ */
+async function overrideFromTelegram(
+  check: { id: string; user_id: string }, choice: string,
+  answer: (t: string, alert?: boolean) => Promise<unknown>, edit: (t: string) => Promise<unknown>,
+): Promise<string> {
+  try {
+    const { data: row } = await db.from("ai_plan_checks").select("plan_id").eq("id", check.id).single();
+    const { data: plan } = await db.from("ai_plans").select("id, user_id, name, status, commit_tsd, settings, execute").eq("id", row!.plan_id).single();
+    if (!plan?.execute || plan.status !== "locked") throw new Error("Real buying is off for this plan.");
+    const blocker = await planRealBlocker(plan as PlanRow);
+    if (blocker) throw new Error(blocker);
+    const { overridePlanDay } = await import("./ai.server");
+    const checkId = await overridePlanDay(plan.id, check.user_id);
+    const r = await prepareRealMoves(checkId, { ask: false });
+    const what = choice === "keep" ? "✋ <b>Override: keeping your coins.</b>" : "⚡ <b>Override: buying now.</b>";
+    const clock = "Your rules look forward from today.";
+    if (!r.moves) { await edit(`${what} Nothing needs to trade. ${clock}`); await answer("Override saved."); return "override_saved"; }
+    if (r.oneTap) {
+      await decideCheck(check.user_id, checkId, "yes", "telegram");
+      await advanceAiMoves({ userId: check.user_id }).catch((e) => console.error("[ai-exec] override start failed", e));
+      await edit(`${what} Seeds is starting the trades now (about ${usd(r.total)}), one at a time. ${clock}`);
+      await answer("Override saved. Starting now.");
+      return "override_started";
+    }
+    await edit(`${what} The trades come to about ${usd(r.total)}, over your one-tap limit — confirm them on Seeds: ${SITE}/account/ai\n${clock}`);
+    await answer("Override saved. Confirm the trades on Seeds.", true);
+    return "override_needs_site";
+  } catch (e) {
+    await answer(e instanceof Error ? e.message : "Couldn't override.", true);
+    return "failed";
+  }
 }
 
 type CallbackQuery = { id?: string; data?: string; message?: { message_id?: number; chat?: { id?: number; type?: string } } };
@@ -227,8 +302,14 @@ export async function handleAiTap(cq: CallbackQuery): Promise<string | null> {
   if (decision === "already_decided") { await answer(`Already ${check.exec_status}.`); return "already_decided"; }
   if (decision === "expired") { await answer("This request already ended. Nothing was traded.", true); return "expired"; }
   if (decision === "needs_site") { await answer("This one is over your one-tap limit. Confirm it on Seeds → Account → AI strategies.", true); return "needs_site"; }
+  if (decision === "stay") {
+    await edit("✅ <b>Staying in TSD</b> — following your plan's rule. You'll get the next check as usual.");
+    await answer("Staying in TSD.");
+    return "stayed";
+  }
+  if (decision === "override") return overrideFromTelegram(check, parsed.choice, answer, edit);
   try {
-    const out = await decideCheck(check.user_id, check.id, parsed.choice, "telegram");
+    const out = await decideCheck(check.user_id, check.id, parsed.choice === "yes" ? "yes" : "no", "telegram");
     if (out === "declined") { await edit("🛑 <b>Skipped</b> — no AI trades today. Nothing was sent."); await answer("Skipped. Nothing was traded."); return "declined"; }
     await edit("✅ <b>Approved</b> — Seeds is starting today's AI trades from your pocket, one at a time. You'll get a message as each one finishes.");
     await answer("Approved. Starting now.");

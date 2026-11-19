@@ -29,8 +29,8 @@ export type MyAiPlan = {
   waitingInTsd: boolean;
   /** "Buy now anyway" can be offered (basket plans waiting in TSD). */
   canBuyNow: boolean;
-  /** The day the owner last chose "Buy now anyway", if ever. */
-  startNowDay: string | null;
+  /** Days the owner overrode a rule that said be in TSD. */
+  overrideDays: string[];
 };
 
 export type AiRealDay = {
@@ -44,7 +44,7 @@ export const getMyAiPlans = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
     const [{ data: plans }, { data: checks }, telegram, { data: moves }] = await Promise.all([
-      supabase.from("ai_plans").select("id, name, status, commit_tsd, locked_at, telegram_daily, settings, execute, start_now_day").order("locked_at", { ascending: false }),
+      supabase.from("ai_plans").select("id, name, status, commit_tsd, locked_at, telegram_daily, settings, execute, override_days").order("locked_at", { ascending: false }),
       supabase.from("ai_plan_checks").select("id, plan_id, day, message, sent_at, exec_status, exec_total_usd, exec_expires_at, exec_decided_via, suggestion").order("day", { ascending: false }).limit(300),
       supabase.from("profiles").select("telegram_verified").eq("id", userId).maybeSingle(),
       supabase.from("ai_plan_moves").select("id, check_id, plan_id, seq, side, coin_id, usd, amount, status, amount_in, amount_out, error").order("created_at", { ascending: false }).limit(500),
@@ -84,7 +84,7 @@ export const getMyAiPlans = createServerFn({ method: "GET" })
         execute: p.execute === true, ledger: ledgers.get(p.id) ?? null, realDay: realDays.get(p.id) ?? null,
         waitingInTsd: latestTargets.has(p.id) && planWaitingInTsd(p.settings as unknown as PlanSettings, latestTargets.get(p.id)),
         canBuyNow: latestTargets.has(p.id) && canBuyNow(p.settings as unknown as PlanSettings, latestTargets.get(p.id)),
-        startNowDay: p.start_now_day ?? null,
+        overrideDays: (p.override_days as string[] | null) ?? [],
       })),
       limits: { maxCommitTsd: tester ? null : settings.maxCommitTsd, oneTapLimitUsd: settings.oneTapLimitUsd },
       executionEnabled: settings.executionEnabled,
@@ -231,19 +231,8 @@ export const getRealStartPreview = createServerFn({ method: "POST" })
     const settings = plan.settings as unknown as PlanSettings;
     const { data: last } = await admin.from("ai_plan_checks").select("day, suggestion").eq("plan_id", plan.id).order("day", { ascending: false }).limit(1).maybeSingle();
     const current = ((last?.suggestion ?? {}) as { current?: Record<string, number> }).current ?? {};
-    const waitingIds = coinsWaiting(settings, current);
-    const { data: coinRows } = await admin.from("ai_coins").select("id, symbol").in("id", waitingIds.length ? waitingIds : ["-"]);
-    const sym = new Map((coinRows ?? []).map((c) => [c.id, c.symbol.toUpperCase()]));
-    const n = settings.exitMA > 0 ? settings.exitMA : 0;
-    const coins = await Promise.all(waitingIds.map(async (id) => {
-      if (!n) return { symbol: sym.get(id) ?? id, price: null, average: null, days: 0, reason: "stop-loss" as const };
-      const { data: rows } = await admin.from("ai_daily_prices").select("close").eq("coin_id", id).lte("day", last?.day ?? "9999-12-31").order("day", { ascending: false }).limit(n);
-      const closes = (rows ?? []).map((r) => Number(r.close));
-      const price = closes[0] ?? null;
-      const average = closes.length === n ? closes.reduce((a, b) => a + b, 0) / n : null;
-      const below = price != null && average != null && price < average;
-      return { symbol: sym.get(id) ?? id, price, average, days: n, reason: below ? ("below-average" as const) : ("stop-loss" as const) };
-    }));
+    const { waitReasons } = await import("./ai.server");
+    const coins = (await waitReasons(settings, coinsWaiting(settings, current), last?.day ?? null)).map(({ id: _id, ...c }) => c);
     return {
       day: last?.day ?? null, mode: settings.mode,
       waiting: last ? planWaitingInTsd(settings, current) : false,
@@ -281,15 +270,15 @@ export const setAiPlanRealBuying = createServerFn({ method: "POST" })
       const { data: last } = await admin.from("ai_plan_checks").select("suggestion").eq("plan_id", plan.id).order("day", { ascending: false }).limit(1).maybeSingle();
       const current = ((last?.suggestion ?? {}) as { current?: Record<string, number> }).current ?? {};
       if (!canBuyNow(plan.settings as unknown as PlanSettings, current)) throw new Error("This plan isn't waiting in TSD, so there's nothing to buy now.");
-      const { startPlanNow } = await import("./ai.server");
-      const checkId = await startPlanNow(plan.id);
-      const r = await ex.prepareRealMoves(checkId);
-      return { ok: true, moves: r.moves, note: r.moves ? null : r.reason === "nothing to trade" ? "Real buying is on. Nothing to trade right now." : "Real buying is on." };
+      const { overridePlanDay } = await import("./ai.server");
+      const checkId = await overridePlanDay(plan.id, context.userId);
+      const r = await ex.prepareRealMoves(checkId, { askWaiting: false });
+      return { ok: true, moves: r.moves, note: r.moves ? "Override saved. Confirm the trades below to start them. Your rules look forward from today." : "Override saved. Nothing needs to trade. Your rules look forward from today." };
     }
     // The newest check becomes the first real day (if it hasn't been used for one already).
     const { data: last } = await admin.from("ai_plan_checks").select("id, exec_status").eq("plan_id", plan.id).order("day", { ascending: false }).limit(1).maybeSingle();
     if (!last) return { ok: true, moves: 0, note: "Real buying is on. Your first trades come with the next daily check." };
-    const r = last.exec_status === "none" ? await ex.prepareRealMoves(last.id) : { moves: 0, reason: "already prepared" };
+    const r = last.exec_status === "none" ? await ex.prepareRealMoves(last.id, { askWaiting: false }) : { moves: 0, reason: "already prepared" };
     return { ok: true, moves: r.moves, note: r.moves ? null : r.reason === "nothing to trade" ? "Real buying is on. Nothing to trade right now." : "Real buying is on." };
   });
 

@@ -49,7 +49,7 @@ function AiTab() {
   const [editing, setEditing] = useState<MyAiPlan | null>(null);
   const [ending, setEnding] = useState<MyAiPlan | null>(null);
   const [showEnded, setShowEnded] = useState(false);
-  const [realFor, setRealFor] = useState<{ plan: MyAiPlan; buyNowOnly: boolean } | null>(null);
+  const [realFor, setRealFor] = useState<{ plan: MyAiPlan; mode: StartMode } | null>(null);
   const [realNote, setRealNote] = useState<string | null>(null);
   const setReal = useServerFn(setAiPlanRealBuying);
   const decide = useServerFn(decideAiTrades);
@@ -112,8 +112,8 @@ function AiTab() {
       ) : (
         current.map((p) => <PlanCard key={p.id} p={p} paper={!(q.data?.executionEnabled || (canReal && p.execute))} symbol={symbol} busy={status.isPending || real.isPending || answer.isPending}
           canReal={canReal}
-          onReal={() => { setRealNote(null); if (p.execute) real.mutate({ id: p.id, on: false }); else setRealFor({ plan: p, buyNowOnly: false }); }}
-          onBuyNow={() => { setRealNote(null); setRealFor({ plan: p, buyNowOnly: true }); }}
+          onReal={() => { setRealNote(null); if (p.execute) real.mutate({ id: p.id, on: false }); else setRealFor({ plan: p, mode: "turn-on" }); }}
+          onBuyNow={(mode) => { setRealNote(null); setRealFor({ plan: p, mode }); }}
           onAnswer={(checkId, choice) => answer.mutate({ checkId, choice })}
           onStatus={(s) => status.mutate({ id: p.id, status: s })}
           onTelegram={() => status.mutate({ id: p.id, telegramDaily: !p.telegramDaily })}
@@ -180,7 +180,7 @@ function rulesOf(p: MyAiPlan, symbol: (id: string) => string): [string, string][
 
 function PlanCard({ p, paper, symbol, busy, canReal, onReal, onBuyNow, onAnswer, onStatus, onTelegram, onEdit, onEnd }: {
   p: MyAiPlan; paper: boolean; symbol: (id: string) => string; busy: boolean;
-  canReal?: boolean; onReal?: () => void; onBuyNow?: () => void; onAnswer?: (checkId: string, choice: "yes" | "no") => void;
+  canReal?: boolean; onReal?: () => void; onBuyNow?: (mode: StartMode) => void; onAnswer?: (checkId: string, choice: "yes" | "no") => void;
   onStatus?: (s: "locked" | "paused") => void; onTelegram?: () => void; onEdit?: () => void; onEnd?: () => void;
 }) {
   const [history, setHistory] = useState(false);
@@ -301,12 +301,14 @@ function moveText(m: AiRealDay["moves"][number], symbol: (id: string) => string)
 }
 
 /** Real buying: what the plan owns from finished trades, and the newest day's trades (confirm / skip while waiting). */
-function RealSection({ p, symbol, busy, onAnswer, onBuyNow }: { p: MyAiPlan; symbol: (id: string) => string; busy: boolean; onAnswer?: (checkId: string, choice: "yes" | "no") => void; onBuyNow?: () => void }) {
+function RealSection({ p, symbol, busy, onAnswer, onBuyNow }: { p: MyAiPlan; symbol: (id: string) => string; busy: boolean; onAnswer?: (checkId: string, choice: "yes" | "no") => void; onBuyNow?: (mode: StartMode) => void }) {
   const d = p.realDay;
   const held = Object.entries(p.ledger?.units ?? {}).filter(([, u]) => u > 0);
   const waiting = d?.status === "waiting" && (!d.expiresAt || Date.parse(d.expiresAt) > Date.now());
   const dayOpen = d && ["waiting", "approved", "running"].includes(d.status) && !(d.status === "waiting" && !waiting);
   const offerBuyNow = Boolean(onBuyNow && p.execute && p.canBuyNow && !dayOpen);
+  // A waiting day that sells coins the plan now wants 0% of: the rule is moving them to TSD.
+  const sellToTsd = Boolean(waiting && p.canBuyNow && d?.moves.some((m) => m.side === "sell" && m.status === "queued"));
   return (
     <div className="mt-4 rounded-md border border-primary/40 bg-primary/5 p-3">
       <p className={fieldLabel}>Real trades{d ? ` · ${d.day} · ${DAY_STATUS[d.status] ?? d.status}` : ""}</p>
@@ -332,13 +334,19 @@ function RealSection({ p, symbol, busy, onAnswer, onBuyNow }: { p: MyAiPlan; sym
       ) : null}
       {p.execute && p.waitingInTsd && !dayOpen ? (
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-sm border border-warn/50 bg-warn/10 p-2.5 text-sm">
-          <span className="flex items-center gap-1.5"><AlertTriangle className="size-4 shrink-0" /> Your plan is waiting in TSD for its signal.</span>
-          {offerBuyNow ? <Button size="sm" variant="outline" disabled={busy} onClick={onBuyNow}>Buy now anyway</Button> : null}
+          <span className="flex items-center gap-1.5"><AlertTriangle className="size-4 shrink-0" /> You're in TSD, and the rule says stay in TSD for now.</span>
+          {offerBuyNow ? <Button size="sm" variant="outline" disabled={busy} onClick={() => onBuyNow?.("buy-now")}>Override: buy now</Button> : null}
+        </div>
+      ) : null}
+      {sellToTsd ? (
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-sm border border-warn/50 bg-warn/10 p-2.5 text-sm">
+          <span className="flex items-center gap-1.5"><AlertTriangle className="size-4 shrink-0" /> The rule says move to TSD today. Follow it, or override and keep holding?</span>
+          {onBuyNow ? <Button size="sm" variant="outline" disabled={busy} onClick={() => onBuyNow("keep")}>Override: keep holding</Button> : null}
         </div>
       ) : null}
       {waiting && onAnswer ? (
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Button size="sm" disabled={busy} onClick={() => onAnswer(d!.checkId, "yes")}><Check /> Confirm {d!.totalUsd != null ? `about ${usd(d!.totalUsd)}` : "trades"}</Button>
+          <Button size="sm" disabled={busy} onClick={() => onAnswer(d!.checkId, "yes")}><Check /> {sellToTsd ? "Follow the rule: " : ""}Confirm {d!.totalUsd != null ? `about ${usd(d!.totalUsd)}` : "trades"}</Button>
           <Button size="sm" variant="ghost" disabled={busy} onClick={() => onAnswer(d!.checkId, "no")}><X /> Skip today</Button>
           {d!.expiresAt ? <span className="text-xs text-muted-foreground">Ends {new Date(d!.expiresAt).toLocaleString()}</span> : null}
         </div>
@@ -362,43 +370,54 @@ function waitLines(pv: RealStartPreview): string[] {
     : `${c.symbol} is being held in TSD after a stop-loss, until it closes back above its average.`);
 }
 
+type StartMode = "turn-on" | "buy-now" | "keep";
+
 /**
- * Turning real buying on, or "Buy now anyway": shows what the plan says today first.
- * When the plan is waiting in TSD the owner picks: buy now (the clock starts today)
- * or wait for the plan's own signal.
+ * Turning real buying on, or overriding the rule ("buy now" on a stay-in-TSD day, "keep
+ * holding" on a sell-to-TSD day): shows what the rule says today first. When the rule
+ * says TSD the owner picks: override (the clock restarts today) or follow the rule.
  */
 function RealStartDialog({ open, onClose, onChoose }: {
-  open: { plan: MyAiPlan; buyNowOnly: boolean } | null; onClose: () => void; onChoose: (startNow: boolean) => void;
+  open: { plan: MyAiPlan; mode: StartMode } | null; onClose: () => void; onChoose: (startNow: boolean) => void;
 }) {
   const preview = useServerFn(getRealStartPreview);
   const plan = open?.plan ?? null;
+  const mode = open?.mode ?? "turn-on";
   const pv = useQuery({ queryKey: ["ai-real-preview", plan?.id], queryFn: () => preview({ data: { id: plan!.id } }), enabled: Boolean(plan), staleTime: 0 });
   const p = pv.data;
   const coinList = p?.coins.map((c) => c.symbol).join(" and ") || "the coins";
   const first = p?.coins[0];
+  const forward = first?.reason === "below-average"
+    ? ` ${first.symbol} goes back to TSD only if it climbs above its ${first.days}-day average and then falls under it again.`
+    : " each coin goes back to TSD only on a fresh signal after today.";
+  const stop = plan?.settings.stopLoss ? ` The ${plan.settings.stopLoss}% stop-loss counts from the highest price after today.` : "";
+  const title = mode === "keep" ? `Keep holding with “${plan?.name}”?` : mode === "buy-now" ? `Buy now with “${plan?.name}”?` : `Buy for real with “${plan?.name}”?`;
   return (
     <AlertDialog open={Boolean(open)} onOpenChange={(o) => { if (!o) onClose(); }}>
       <AlertDialogContent className="max-h-[90vh] overflow-y-auto">
         <AlertDialogHeader>
-          <AlertDialogTitle>{open?.buyNowOnly ? `Buy now with “${plan?.name}”?` : `Buy for real with “${plan?.name}”?`}</AlertDialogTitle>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription asChild>
             <div className="space-y-3">
               {pv.isPending ? <p>Checking what your plan says today…</p> : pv.error ? <Note tone="error">{(pv.error as Error).message}</Note> : p?.waiting ? (
                 <div className="space-y-2 rounded-md border border-warn/50 bg-warn/10 p-3 text-foreground">
-                  <p className="flex items-center gap-1.5 font-semibold"><AlertTriangle className="size-4 shrink-0" /> Your plan says wait in TSD right now</p>
+                  <p className="flex items-center gap-1.5 font-semibold"><AlertTriangle className="size-4 shrink-0" /> {mode === "keep" ? "The rule says move to TSD today" : "The rule says don't buy now"}</p>
                   {waitLines(p).map((l) => <p key={l}>{l}</p>)}
-                  <p>Do you want to start now anyway?</p>
+                  <p>Override?</p>
                 </div>
               ) : null}
-              {!open?.buyNowOnly ? (
+              {mode === "turn-on" ? (
                 <p>Seeds will use up to {plan?.commitTsd.toLocaleString("en-US")} TSD from your trading pocket to follow this plan: buying and selling its coins through TSD Bridge and THORChain or Maya, into your own pocket.</p>
               ) : null}
               {p?.waiting && p.canBuyNow ? (
                 <div className="space-y-1.5 text-sm">
-                  <p><b className="text-foreground">Buy now anyway:</b> Seeds lines up about {p.buyNowTsd.toLocaleString("en-US")} TSD of {coinList} for you to confirm. The clock starts today, and your rules look forward from your buy:
-                    {first?.reason === "below-average" ? ` ${first.symbol} goes back to TSD only if it climbs above its ${first.days}-day average and then falls under it again.` : " each coin goes back to TSD only on a fresh signal after you bought."}
-                    {plan?.settings.stopLoss ? ` The ${plan.settings.stopLoss}% stop-loss counts from the highest price after you bought.` : ""}</p>
-                  {!open?.buyNowOnly ? <p><b className="text-foreground">Wait for the plan:</b> real buying turns on, and the first buy comes with the first daily check ({checkTime()} your time) after {first?.reason === "below-average" ? `${coinList} closes above its average` : "the plan's signal"}.</p> : null}
+                  {mode === "keep" ? (
+                    <p><b className="text-foreground">Override: keep holding:</b> today's sell is withdrawn and your {coinList} stays. The clock restarts today, and your rules look forward from here:{forward}{stop}</p>
+                  ) : (
+                    <p><b className="text-foreground">Override: buy now:</b> Seeds lines up about {p.buyNowTsd.toLocaleString("en-US")} TSD of {coinList} for you to confirm. The clock starts today, and your rules look forward from your buy:{forward}{stop}</p>
+                  )}
+                  {mode === "turn-on" ? <p><b className="text-foreground">Follow the rule:</b> real buying turns on, and the first buy comes with the first daily check ({checkTime()} your time) after {first?.reason === "below-average" ? `${coinList} closes above its average` : "the plan's signal"}.</p> : null}
+                  {mode === "keep" ? <p><b className="text-foreground">Follow the rule:</b> close this and press Confirm to sell to TSD.</p> : null}
                 </div>
               ) : null}
               <p>Nothing moves until you confirm each day's trades. Prices move, swap fees apply, and blockchain sends can't be undone. You can switch real buying off at any time; a trade already started finishes.</p>
@@ -406,13 +425,13 @@ function RealStartDialog({ open, onClose, onChoose }: {
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter className="gap-2 sm:flex-wrap">
-          <AlertDialogCancel>{open?.buyNowOnly ? "Keep waiting" : "Not now"}</AlertDialogCancel>
-          {open?.buyNowOnly ? (
-            <AlertDialogAction disabled={!p?.canBuyNow} onClick={() => onChoose(true)}>Buy now anyway</AlertDialogAction>
+          <AlertDialogCancel>{mode === "turn-on" ? "Not now" : "Back"}</AlertDialogCancel>
+          {mode !== "turn-on" ? (
+            <AlertDialogAction disabled={!p?.canBuyNow} onClick={() => onChoose(true)}>{mode === "keep" ? "Override: keep holding" : "Override: buy now"}</AlertDialogAction>
           ) : p?.waiting ? (
             <>
-              <AlertDialogAction className="bg-secondary text-secondary-foreground hover:bg-secondary/80" disabled={pv.isPending} onClick={() => onChoose(false)}>Wait for the plan</AlertDialogAction>
-              {p.canBuyNow ? <AlertDialogAction onClick={() => onChoose(true)}>Buy now anyway</AlertDialogAction> : null}
+              <AlertDialogAction className="bg-secondary text-secondary-foreground hover:bg-secondary/80" disabled={pv.isPending} onClick={() => onChoose(false)}>Follow the rule</AlertDialogAction>
+              {p.canBuyNow ? <AlertDialogAction onClick={() => onChoose(true)}>Override: buy now</AlertDialogAction> : null}
             </>
           ) : (
             <AlertDialogAction disabled={pv.isPending} onClick={() => onChoose(false)}>Turn on real buying</AlertDialogAction>

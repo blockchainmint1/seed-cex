@@ -1,0 +1,4 @@
+ALTER TABLE public.ai_plans ADD COLUMN IF NOT EXISTS override_days date[] NOT NULL DEFAULT '{}';
+UPDATE public.ai_plans SET override_days = ARRAY[start_now_day] WHERE start_now_day IS NOT NULL AND override_days = '{}';
+COMMENT ON COLUMN public.ai_plans.start_now_day IS 'DEPRECATED: replaced by override_days';
+COMMENT ON COLUMN public.ai_plans.override_days IS 'Price days the owner overrode the rule that said be in TSD ("Buy now anyway" or "Override: keep holding"). On each, the plan is fully invested and the clock restarts: coins below their trend-exit average are held until they first close above it. Server-written only.';

@@ -176,20 +176,20 @@ describe("go to cash (TSD) rules in a basket", () => {
   });
 });
 
-describe("Buy now anyway (enterOn): the clock starts on the buy day", () => {
+describe("Override days (enterOn): the clock starts on the override day", () => {
   const plan = { ...defaultPlan, mode: "basket" as const, coins: ["bitcoin"], weights: {}, start: days[0]!, end: "", amount: 500, feeBps: 0, holdout: 0, reserve: 0, stopLoss: 0, drift: 5, rebalance: "daily" as const, exitMA: 10 };
   it("without it, a coin below its 10-day average stays in TSD", () => {
     expect(runPlan({ bitcoin: down }, plan).current).toEqual({});
   });
   it("buys the basket on the chosen day and keeps holding while the coin never recovers", () => {
-    const run = runPlan({ bitcoin: down }, { ...plan, enterOn: days[60]! });
+    const run = runPlan({ bitcoin: down }, { ...plan, enterOn: [days[60]!] });
     expect(run.current?.["bitcoin"]).toBeCloseTo(1, 6);
     expect(run.fills.find((f) => f.day === days[60])?.side).toBe("buy");
   });
   it("after the coin closes above its average once, a later fall below it sells to TSD", () => {
     // falls to day 60 (buy now), climbs to day 85, then falls again
     const vshape = { days, closes: days.map((_, i) => (i <= 60 ? 100 * 0.99 ** i : i <= 85 ? 100 * 0.99 ** 60 * 1.02 ** (i - 60) : 100 * 0.99 ** 60 * 1.02 ** 25 * 0.97 ** (i - 85))) };
-    const run = runPlan({ bitcoin: vshape }, { ...plan, enterOn: days[60]! });
+    const run = runPlan({ bitcoin: vshape }, { ...plan, enterOn: [days[60]!] });
     // (the first days have no 10-day average yet, so the plan buys and then exits before day 60)
     const sells = run.fills.filter((f) => f.side === "sell" && f.day > days[60]!);
     expect(sells.length).toBeGreaterThan(0);
@@ -198,7 +198,25 @@ describe("Buy now anyway (enterOn): the clock starts on the buy day", () => {
   });
   it("the stop-loss still applies, counted from the high after buying", () => {
     const crash = { days, closes: days.map((_, i) => (i <= 60 ? 100 * 0.99 ** i : i === 61 ? 100 * 0.99 ** 60 * 0.7 : 100 * 0.99 ** 60 * 0.7)) };
-    const run = runPlan({ bitcoin: crash }, { ...plan, stopLoss: 20, enterOn: days[60]! });
+    const run = runPlan({ bitcoin: crash }, { ...plan, stopLoss: 20, enterOn: [days[60]!] });
     expect(run.fills.find((f) => f.side === "sell" && f.day > days[60]!)?.day).toBe(days[61]);
+  });
+});
+
+describe("Override: keep holding on a day the rule says sell", () => {
+  const plan = { ...defaultPlan, mode: "basket" as const, coins: ["bitcoin"], weights: {}, start: days[0]!, end: "", amount: 500, feeBps: 0, holdout: 0, reserve: 0, stopLoss: 0, drift: 5, rebalance: "daily" as const, exitMA: 10 };
+  // rises to day 70, then falls for good
+  const peak = { days, closes: days.map((_, i) => (i <= 70 ? 100 * 1.01 ** i : 100 * 1.01 ** 70 * 0.98 ** (i - 70))) };
+  it("without an override the plan sells to TSD soon after the fall starts", () => {
+    const run = runPlan({ bitcoin: peak }, plan);
+    const sell = run.fills.find((f) => f.side === "sell" && f.day > days[70]!);
+    expect(sell).toBeTruthy();
+    expect(run.current).toEqual({});
+  });
+  it("overriding that sell day keeps the coin, and it's held while it stays below its average", () => {
+    const sellDay = runPlan({ bitcoin: peak }, plan).fills.find((f) => f.side === "sell" && f.day > days[70]!)!.day;
+    const run = runPlan({ bitcoin: peak }, { ...plan, enterOn: [sellDay] });
+    expect(run.fills.some((f) => f.side === "sell" && f.day >= sellDay)).toBe(false);
+    expect(run.current?.["bitcoin"]).toBeCloseTo(1, 6);
   });
 });

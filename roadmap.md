@@ -195,6 +195,8 @@
 - [ ] Seeds AI real buying: first real confirmed day with real coins (blocked: Bobby turns it on for his plan and confirms)
 - [x] Beta tester group (Nov 19): all admins count as beta testers; admins switch other members on/off in Admin → Admin access
 - [x] No limits for beta testers + admins: swap/TSD-swap caps, AI plan size/count caps, PulseChain withdrawal levels + 24h hold (Bobby chose "withdrawals too")
+- [x] AI check message in Telegram = one message per check: "you're X, the rule says Y, what would you like to do" + option buttons that execute (within the one-tap limit)
+- [x] AI daily override: when the rule says be in cash (sell to TSD, or stay in TSD), ask "override?" in Telegram and on Seeds; override = keep holding / buy now, clock resets
 - [x] AI "Buy now anyway": warn when turning on real buying while the plan says wait in TSD; buy-in resets the clock (rules look forward from the buy day)
 - [x] Push Seeds AI live: real buying for beta testers; going to cash leaves TSD unquarantined — a buy-back without enough TSD sends a "deposit more TSD" alert
 

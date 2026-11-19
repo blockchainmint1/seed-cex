@@ -39,7 +39,7 @@ export async function aiSettings(db?: Admin) {
 
 export type DailyTally = { plans: number; checked: number; sent: number; skipped: number; failed: number };
 
-type CheckPlan = { id: string; user_id: string; name: string; settings: unknown; commit_tsd: number; locked_at: string; telegram_daily: boolean; execute: boolean | null; start_now_day: string | null };
+type CheckPlan = { id: string; user_id: string; name: string; settings: unknown; commit_tsd: number; locked_at: string; telegram_daily: boolean; execute: boolean | null; override_days: string[] | null };
 type Built = { day: string; message: string; suggestion: { moves: unknown[]; hold: unknown[]; value: number; current: Record<string, number> } };
 
 /** Today's check for one plan: the same engine run the browser tester does, from the lock day on. */
@@ -49,7 +49,7 @@ async function buildCheck(p: CheckPlan, ctx: { symbol: Map<string, string>; seri
   const all: Record<string, Series> = {};
   for (const id of ids) all[id] = await ctx.series(id);
   const lockDay = new Date(new Date(p.locked_at).getTime() - 86_400_000).toISOString().slice(0, 10);
-  const run = runPlan(all, { ...s, start: lockDay, end: "", amount: Number(p.commit_tsd), weeklyAdd: 0, holdout: 0, enterOn: p.start_now_day ?? undefined }, { minDays: 1 });
+  const run = runPlan(all, { ...s, start: lockDay, end: "", amount: Number(p.commit_tsd), weeklyAdd: 0, holdout: 0, enterOn: p.override_days ?? [] }, { minDays: 1 });
   const day = run.points.at(-1)?.day;
   if (run.error || !day) return null;
   const value = run.points.at(-1)!.plan;
@@ -65,7 +65,7 @@ async function buildCheck(p: CheckPlan, ctx: { symbol: Map<string, string>; seri
   return { day, message, suggestion: { moves: named, hold, value, current: run.current ?? {} } };
 }
 
-const PLAN_COLS = "id, user_id, name, settings, commit_tsd, locked_at, telegram_daily, execute, start_now_day";
+const PLAN_COLS = "id, user_id, name, settings, commit_tsd, locked_at, telegram_daily, execute, override_days";
 
 async function checkContext(db: Admin) {
   const settings = await aiSettings(db);
@@ -102,15 +102,18 @@ export async function runDailyChecks(opts: { planId?: string; deadlineMs?: numbe
       if (insErr) throw new Error(insErr.message);
       tally.checked++;
       if (!inserted?.length) { tally.skipped++; continue; }
-      if (p.telegram_daily && (await sendToMember(db, p.user_id, built.message))) {
+      // Real buying on: today's trades wait for the owner's OK. When the rule asks something
+      // ("you're X, the rule says Y") that question is today's one Telegram message.
+      let asked = false;
+      if (p.execute) {
+        const { prepareRealMoves } = await import("./execute.server");
+        asked = (await prepareRealMoves(inserted[0]!.id).catch((e) => { console.error("[ai-exec] prepare failed", p.id, e); return null; }))?.asked === true;
+      }
+      if (asked) tally.sent++;
+      else if (p.telegram_daily && (await sendToMember(db, p.user_id, built.message))) {
         await db.from("ai_plan_checks").update({ sent_at: new Date().toISOString() }).eq("id", inserted[0]!.id);
         tally.sent++;
       } else tally.skipped++;
-      // Real buying on: turn today's targets into trades waiting for the owner's OK (sent as its own message).
-      if (p.execute) {
-        const { prepareRealMoves } = await import("./execute.server");
-        await prepareRealMoves(inserted[0]!.id).catch((e) => console.error("[ai-exec] prepare failed", p.id, e));
-      }
     } catch (e) {
       tally.failed++;
       console.error("[ai-daily] plan check failed", p.id, e);
@@ -120,17 +123,29 @@ export async function runDailyChecks(opts: { planId?: string; deadlineMs?: numbe
 }
 
 /**
- * "Buy now anyway": mark the newest price day as the plan's buy-now day and redo that
- * day's check with it, so the daily message, the stored targets and the real trades
- * all say the same thing. Only a check that hasn't been turned into trades is redone.
- * Returns the check id to prepare trades from.
+ * Override the rule on the newest price day ("Buy now anyway" on a stay-in-TSD day, or
+ * "Override: keep holding" on a sell-to-TSD day still waiting for an answer): add the day
+ * to the plan's override days and redo that day's check with it, so the daily message,
+ * the stored targets and the real trades all agree. A waiting day's queued trades (never
+ * started) are withdrawn first. Returns the check id to prepare trades from.
  */
-export async function startPlanNow(planId: string): Promise<string> {
+export async function overridePlanDay(planId: string, userId: string): Promise<string> {
   const db = await admin();
-  const { data: last } = await db.from("ai_plan_checks").select("id, day, exec_status").eq("plan_id", planId).order("day", { ascending: false }).limit(1).maybeSingle();
+  const { data: last } = await db.from("ai_plan_checks").select("id, day, exec_status").eq("plan_id", planId).eq("user_id", userId).order("day", { ascending: false }).limit(1).maybeSingle();
   if (!last) throw new Error("This plan has no daily check yet. Try again after the next one.");
-  if (last.exec_status !== "none") throw new Error("Today's trades for this plan were already decided. You can buy now after the next daily check.");
-  const { data: plan } = await db.from("ai_plans").update({ start_now_day: last.day, updated_at: new Date().toISOString() }).eq("id", planId).select(PLAN_COLS).single();
+  if (last.exec_status === "waiting") {
+    const { data: moves } = await db.from("ai_plan_moves").select("status").eq("check_id", last.id);
+    if ((moves ?? []).some((m) => m.status !== "queued")) throw new Error("Today's trades already started, so they can't be overridden.");
+    const { data: reopened } = await db.from("ai_plan_checks").update({ exec_status: "none", exec_total_usd: null, exec_expires_at: null })
+      .eq("id", last.id).eq("exec_status", "waiting").select("id");
+    if (!reopened?.length) throw new Error("Today's trades were just decided, so they can't be overridden.");
+    await db.from("ai_plan_moves").delete().eq("check_id", last.id).eq("status", "queued");
+  } else if (last.exec_status !== "none") {
+    throw new Error("Today's trades for this plan were already decided. You can override after the next daily check.");
+  }
+  const { data: cur } = await db.from("ai_plans").select("override_days").eq("id", planId).eq("user_id", userId).single();
+  const days = [...new Set([...((cur?.override_days as string[] | null) ?? []), last.day])].sort();
+  const { data: plan } = await db.from("ai_plans").update({ override_days: days, updated_at: new Date().toISOString() }).eq("id", planId).eq("user_id", userId).select(PLAN_COLS).single();
   if (!plan) throw new Error("Plan not found.");
   const built = await buildCheck(plan as CheckPlan, await checkContext(db));
   if (!built || built.day !== last.day) throw new Error("Couldn't redo today's plan check. Try again in a minute.");
@@ -138,6 +153,33 @@ export async function startPlanNow(planId: string): Promise<string> {
     .eq("id", last.id).eq("exec_status", "none").select("id");
   if (!upd?.length) throw new Error("Today's trades for this plan were already decided.");
   return last.id;
+}
+
+export type WaitReason = { id: string; symbol: string; price: number | null; average: number | null; days: number; reason: "below-average" | "stop-loss" };
+
+/** Why each of these coins is in TSD on `day`: below its trend-exit average (price vs average), or held after a stop-loss. */
+export async function waitReasons(settings: PlanSettings, coinIds: string[], day: string | null): Promise<WaitReason[]> {
+  const db = await admin();
+  const { data: coinRows } = await db.from("ai_coins").select("id, symbol").in("id", coinIds.length ? coinIds : ["-"]);
+  const sym = new Map((coinRows ?? []).map((c) => [c.id, c.symbol.toUpperCase()]));
+  const n = settings.exitMA > 0 ? settings.exitMA : 0;
+  return Promise.all(coinIds.map(async (id) => {
+    if (!n) return { id, symbol: sym.get(id) ?? id, price: null, average: null, days: 0, reason: "stop-loss" as const };
+    const { data: rows } = await db.from("ai_daily_prices").select("close").eq("coin_id", id).lte("day", day ?? "9999-12-31").order("day", { ascending: false }).limit(n);
+    const closes = (rows ?? []).map((r) => Number(r.close));
+    const price = closes[0] ?? null;
+    const average = closes.length === n ? closes.reduce((a, b) => a + b, 0) / n : null;
+    const below = price != null && average != null && price < average;
+    return { id, symbol: sym.get(id) ?? id, price, average, days: n, reason: below ? ("below-average" as const) : ("stop-loss" as const) };
+  }));
+}
+
+/** One line for Telegram / the site: why the rule says TSD. */
+export function waitReasonText(r: WaitReason): string {
+  const m = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: n >= 100 ? 0 : 2 });
+  return r.reason === "below-average" && r.price != null && r.average != null
+    ? `${r.symbol} is below its ${r.days}-day average (${m(r.price)} vs ${m(r.average)})`
+    : `${r.symbol} is waiting after a stop-loss`;
 }
 
 async function sendToMember(db: Admin, userId: string, text: string): Promise<boolean> {

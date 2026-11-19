@@ -24,12 +24,13 @@ export type PlanSettings = {
   holdout: number; // % of period held back for out-of-sample check
   amount: number; weeklyAdd: number; // starting money and regular weekly top-up
   /**
-   * basket mode, live plans only (never stored in settings): the day the owner chose
-   * "Buy now anyway" while the plan said wait in TSD. That day the basket is bought in
-   * full; each coin bought below its average is then held until it first closes above
-   * it (stop-loss still applies), after which the normal rules take over.
+   * basket mode, live plans only (never stored in settings): days the owner overrode a
+   * rule that said be in TSD ("Buy now anyway" / "Override: keep holding"). On each, the
+   * plan is fully invested and the clock restarts: each coin below its average is held
+   * until it first closes above it (stop-loss still applies, from the high after that
+   * day), after which the normal rules take over.
    */
-  enterOn?: string;
+  enterOn?: string[];
 };
 export const defaultPlan: PlanSettings = {
   mode: "basket", weights: {}, drift: 5,
@@ -105,7 +106,7 @@ export function runPlan(series: Record<string, Series>, s: PlanSettings, opts: {
   let weights: Record<string, number> = {}; let value = amount; let idx = 1; let totalIn = amount; let trades = 0; let fees = 0; let cashDays = 0;
   const entryPeak: Record<string, number> = {};
   const stoppedOut = new Set<string>(); let prevOut = new Set<string>();
-  /** Coins bought on enterOn while below their average: held until they first close above it. */
+  /** Coins held on an override day while below their average: held until they first close above it. */
   const grace = new Set<string>();
   const fills: Fill[] = []; const changes: Change[] = []; const planVals: number[] = []; const planIdx: number[] = []; const log: PlanRun["log"] = [];
   const stable = s.coins.find(isStable); const ranked = s.coins.filter((id) => !isStable(id));
@@ -160,7 +161,7 @@ export function runPlan(series: Record<string, Series>, s: PlanSettings, opts: {
       const p = priceAt(id, d);
       if (p && p > avg(id, d, n)) stoppedOut.delete(id);
     }
-    const forceEntry = s.mode === "basket" && !!s.enterOn && d === s.enterOn;
+    const forceEntry = s.mode === "basket" && !!s.enterOn?.includes(d);
     if (s.mode === "basket" && (isRebalance(d, days[i - 1], s.rebalance) || forceEntry)) {
       const invest = 1 - s.reserve / 100;
       const targets = basketTargets(s);
@@ -184,7 +185,7 @@ export function runPlan(series: Record<string, Series>, s: PlanSettings, opts: {
           const ch = Math.abs((next[id] ?? 0) - (weights[id] ?? 0)); turnover += ch; if (ch > 1e-6) trades++;
         }
         const why = (id: string) =>
-          forceEntry && !out.has(id) && (was.has(id) || !weights[id]) ? "Bought now at your request (the plan said wait in TSD)"
+          forceEntry && !out.has(id) && (was.has(id) || !weights[id]) ? "Override: invested at your request (the rule said TSD)"
           : out.has(id) && !was.has(id) ? (stoppedOut.has(id) ? "Waiting after stop-loss → TSD" : `Closed below its ${s.exitMA}-day average → TSD`)
           : was.has(id) && !out.has(id) ? (s.exitMA > 0 ? `Back above its ${s.exitMA}-day average` : `Back above its ${STOP_REENTRY_MA}-day average after stop-loss`)
           : i === 0 || !Object.keys(weights).length ? "Bought the basket" : "Rebalanced back to target";
@@ -193,7 +194,7 @@ export function runPlan(series: Record<string, Series>, s: PlanSettings, opts: {
         for (const id of Object.keys(next)) if (!weights[id]) entryPeak[id] = priceAt(id, d)!;
         if (turnover > 1e-6) log.push({ day: d, picks: Object.entries(next).map(([id, w]) => `${id} ${(w * 100).toFixed(0)}%`).join(", ") || "all cash",
           reason: [...out].some((id) => !was.has(id)) ? `Moved ${[...out].filter((id) => !was.has(id)).join(", ")} to TSD (below ${s.exitMA}-day average${stoppedOut.size ? " or stopped out" : ""})`
-            : forceEntry ? "Bought now at your request (the plan said wait in TSD)"
+            : forceEntry ? "Override: invested at your request (the rule said TSD)"
             : [...was].some((id) => !out.has(id)) ? `Bought back ${[...was].filter((id) => !out.has(id)).join(", ")}`
             : i === 0 ? "Bought the basket" : `Rebalanced — a coin was ${(offBy * 100).toFixed(0)} points off target` });
         if (turnover > 1e-6) changes.push({ day: d, before: { ...weights }, after: { ...next }, value });

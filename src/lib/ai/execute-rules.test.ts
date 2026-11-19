@@ -52,6 +52,22 @@ describe("approval", () => {
     expect(aiTapDecision({ ...base, oneTap: true, tapChatId: "2" })).toBe("refuse");
     expect(aiTapDecision({ ...base, oneTap: true, nowMs: 3 })).toBe("expired");
   });
+  test("override taps: keep holding works on a waiting day of any size, buy now only on a day with no trades yet", () => {
+    const base = { signatureOk: true, privateChat: true, tapChatId: "1", ownerChatId: "1", ownerChatVerified: true, expiresAtMs: 2, nowMs: 1, oneTap: false };
+    expect(aiTapDecision({ ...base, status: "waiting", choice: "keep" })).toBe("override");
+    expect(aiTapDecision({ ...base, status: "waiting", choice: "keep", nowMs: 3 })).toBe("expired");
+    expect(aiTapDecision({ ...base, status: "approved", choice: "keep" })).toBe("already_decided");
+    expect(aiTapDecision({ ...base, status: "none", choice: "now" })).toBe("override");
+    expect(aiTapDecision({ ...base, status: "waiting", choice: "now" })).toBe("already_decided");
+    expect(aiTapDecision({ ...base, status: "none", choice: "now", tapChatId: "2" })).toBe("refuse");
+    expect(aiTapDecision({ ...base, status: "none", choice: "no" })).toBe("stay");
+  });
+  test("an override button signed for one choice can't be replayed as another", async () => {
+    const id = "7e56d426-a4aa-4ea5-8b33-579ab74d238f";
+    const d = parseAiButton(await aiButtonData("k", "keep", id, "u1"))!;
+    expect(d.choice).toBe("keep");
+    expect(await aiButtonOk("k", { ...d, choice: "yes" }, "u1")).toBe(false);
+  });
   test("buttons are bound to the owner", async () => {
     const id = "7e56d426-a4aa-4ea5-8b33-579ab74d238f";
     const d = parseAiButton(await aiButtonData("k", "yes", id, "u1"))!;

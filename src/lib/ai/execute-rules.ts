@@ -154,9 +154,10 @@ export function realBuyingBlocker(i: {
 
 /* ------------------------------ Telegram buttons ------------------------------ */
 
-export type AiChoice = "yes" | "no";
-const PREFIX: Record<AiChoice, string> = { yes: "ai1", no: "ai0" };
-const CHOICE: Record<string, AiChoice> = { ai1: "yes", ai0: "no" };
+/** yes/no: approve or skip a day's trades. keep: override a sell-to-TSD day. now: override a stay-in-TSD day (buy now). */
+export type AiChoice = "yes" | "no" | "keep" | "now";
+const PREFIX: Record<AiChoice, string> = { yes: "ai1", no: "ai0", keep: "ai2", now: "ai3" };
+const CHOICE: Record<string, AiChoice> = { ai1: "yes", ai0: "no", ai2: "keep", ai3: "now" };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const SIG_LEN = 16;
 const b64url = (b: Uint8Array) => btoa(String.fromCharCode(...b)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -189,14 +190,21 @@ export async function aiButtonOk(key: string, d: { choice: AiChoice; checkId: st
   return diff === 0;
 }
 
-/** A tap counts only from the owner's verified private chat, on a one-tap-sized day still waiting. */
+/**
+ * A tap counts only from the owner's verified private chat. Approve: a one-tap-sized day
+ * still waiting. Override "keep holding": a day still waiting (any size: it sends nothing by
+ * itself). Override "buy now": a stay-in-TSD day that has no trades yet.
+ */
 export function aiTapDecision(i: {
   signatureOk: boolean; privateChat: boolean; tapChatId: string; ownerChatId: string | null; ownerChatVerified: boolean;
   status: string; oneTap: boolean; expiresAtMs: number; nowMs: number; choice: AiChoice;
-}): "refuse" | "already_decided" | "expired" | "needs_site" | "approve" | "decline" {
+}): "refuse" | "already_decided" | "expired" | "needs_site" | "approve" | "decline" | "override" | "stay" {
   if (!i.signatureOk || !i.privateChat || !i.ownerChatVerified || !i.ownerChatId || i.ownerChatId !== i.tapChatId) return "refuse";
+  if (i.choice === "now") return i.status === "none" ? "override" : "already_decided";
+  if (i.choice === "no" && i.status === "none") return "stay";
   if (i.status !== "waiting") return "already_decided";
   if (!(i.expiresAtMs > i.nowMs)) return "expired";
   if (i.choice === "no") return "decline";
+  if (i.choice === "keep") return "override";
   return i.oneTap ? "approve" : "needs_site";
 }
