@@ -11,7 +11,7 @@ import { safeReturnPath } from "./return-path";
 /** Query key for the member's guide status (shared by the account layout and the guide). */
 export const ONBOARDING_QUERY = ["my-onboarding"] as const;
 
-export const ONBOARDING_STEPS = ["welcome", "name", "security", "wallet", "alerts", "ignite", "done"] as const;
+export const ONBOARDING_STEPS = ["welcome", "name", "security", "wallet", "fees", "alerts", "ignite", "done"] as const;
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
 export type OnboardingStatus = "done" | "skipped" | null;
 
@@ -19,6 +19,7 @@ export const STEP_LABELS: Record<OnboardingStep, string> = {
   welcome: "Welcome",
   name: "Your name",
   wallet: "Link HME Wallet",
+  fees: "Network fees",
   alerts: "Alerts",
   security: "Two-factor",
   ignite: "Ignite class",

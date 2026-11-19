@@ -2,9 +2,11 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, ArrowRight, CalendarDays, CheckCircle2, Circle, Flame, HandCoins, ShieldCheck, Sprout } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarDays, CheckCircle2, Circle, Flame, Fuel, HandCoins, ShieldCheck, Sprout } from "lucide-react";
 import { getMyProfile, updateMyProfile } from "@/lib/profile.functions";
 import { setMyOnboarding } from "@/lib/onboarding.functions";
+import { getMyFeePrep } from "@/lib/fee-prep.functions";
+import { FEE_PREP } from "@/lib/fee-prep";
 import { getIgniteSeats, getMyIgnite } from "@/lib/ignite.functions";
 import {
   afterOnboarding, cleanStep, ONBOARDING_QUERY, nextStep, ONBOARDING_STEPS, prevStep, STEP_LABELS, stepNumber, type OnboardingStep,
@@ -119,6 +121,7 @@ function Welcome() {
           {step === "welcome" ? <StepWelcome onNext={forward} /> : null}
           {step === "name" ? <StepName onNext={forward} /> : null}
           {step === "wallet" ? <StepWallet /> : null}
+          {step === "fees" ? <StepFees /> : null}
           {step === "alerts" ? <StepAlerts /> : null}
           {step === "security" ? <StepSecurity /> : null}
           {step === "ignite" ? <StepIgnite /> : null}
@@ -273,6 +276,112 @@ function StepWallet() {
   );
 }
 
+function useFeePrep() {
+  const { user } = useSession();
+  const load = useServerFn(getMyFeePrep);
+  return useQuery({ queryKey: ["my-fee-prep", user?.id ?? null], queryFn: () => load(), enabled: !!user, staleTime: 30_000 });
+}
+
+const money = (n: number | null | undefined) =>
+  n == null || !Number.isFinite(n) ? "—" : n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: n < 1 ? 2 : 0, minimumFractionDigits: n < 1 ? 2 : 0 });
+const ethAmt = (n: number) => (n === 0 ? "0" : Number(n.toPrecision(3)).toString());
+
+function StepFees() {
+  const q = useFeePrep();
+  const d = q.data;
+  const perSwap = d?.perSwapUsd != null ? (d.perSwapUsd < 0.01 ? "under a cent" : `about ${money(d.perSwapUsd)}`) : null;
+  const swapsFromSuggest = d?.perSwapUsd ? Math.floor(FEE_PREP.ethereum.suggestUsd / d.perSwapUsd) : null;
+
+  return (
+    <>
+      <Heading title="Keep a little ETH for network fees">
+        Seeds never charges a trading fee. But the networks your coins travel on charge a small fee for every swap or send, and on <b className="text-foreground">Ethereum</b> and <b className="text-foreground">Base</b> that fee is paid in ETH from your own trading pocket. Seeds doesn't add anything on top. Without it, a swap can't start.
+      </Heading>
+
+      {!d?.linked && !q.isPending ? (
+        <div className="mb-4"><Note tone="warn">Link your HME Wallet first (the step before this one), so Seeds can check what's already in your pocket.</Note></div>
+      ) : null}
+      {q.isError ? <div className="mb-4"><Note tone="warn">We couldn't check your pocket just now. The suggestions below still apply.</Note></div> : null}
+
+      <div className="grid gap-3 md:grid-cols-2">
+        <FeeCard
+          network="Ethereum"
+          suggest={`About ${money(FEE_PREP.ethereum.suggestUsd)} of ETH`}
+          why={perSwap ? `Today one swap's fee is ${perSwap}${swapsFromSuggest ? `, so ${money(FEE_PREP.ethereum.suggestUsd)} covers about ${swapsFromSuggest} swaps` : ""}. Every TSD swap uses it.` : "Every TSD swap uses it."}
+          have={d?.linked ? d.ethereum.haveEth : null}
+          price={d?.ethPriceUsd ?? null}
+          level={d?.ethereum.level}
+          extra={d?.ethereum.level === "enough" && d.ethereum.swaps != null ? `Enough for about ${d.ethereum.swaps} swaps at today's fee.` : null}
+          action={
+            !d || d.ethereum.action === "none" ? null : d.ethereum.action === "convert" ? (
+              <>
+                <Button asChild><Link to="/swap" search={{ from: "TSD", to: "ETH", amount: String(FEE_PREP.convertTsd) }}>Convert {FEE_PREP.convertTsd} TSD to ETH <ArrowRight /></Link></Button>
+                <p className="mt-2 text-xs text-muted-foreground">TSD Bridge turns your TSD into USDC, then THORChain swaps it to ETH in your pocket. About 20–40 minutes; you'll see every step and price first.</p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  {d.convertBlocker && d.linked
+                    ? <>{d.convertBlocker} Until then, </>
+                    : d.linked ? <>Your very first ETH can't come from TSD: the conversion itself needs a few cents of ETH to pay its own fee. </> : null}
+                  {d.convertBlocker && d.linked ? "send" : "Send"} about {money(FEE_PREP.ethereum.suggestUsd)} of ETH <b className="text-foreground">on the Ethereum network</b> to your pocket from any exchange or wallet. After that, you can top up from TSD.
+                </p>
+                <Button asChild variant="outline" className="mt-3"><Link to="/account/balances/deposit" search={{ coin: "ETH", network: "ethereum" }}>Show my Ethereum address <ArrowRight /></Link></Button>
+              </>
+            )
+          }
+        />
+        <FeeCard
+          network="Base"
+          suggest={`About ${money(FEE_PREP.base.suggestUsd)} of ETH`}
+          why="Base fees are a fraction of a cent, so a dollar lasts a long time. You need it to move USDC or other coins you hold on Base."
+          have={d?.linked ? d.base.haveEth : null}
+          price={d?.ethPriceUsd ?? null}
+          level={d?.base.level}
+          extra={null}
+          action={
+            !d || d.base.action === "none" ? null : (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Seeds can't turn TSD into ETH on Base yet. Send about {money(FEE_PREP.base.suggestUsd)} of ETH <b className="text-foreground">on the Base network</b> from any exchange that supports Base withdrawals (most do, for a few cents).
+                </p>
+                <Button asChild variant="outline" className="mt-3"><Link to="/account/balances/deposit" search={{ coin: "ETH", network: "base" }}>Show my Base address <ArrowRight /></Link></Button>
+              </>
+            )
+          }
+        />
+      </div>
+      <p className="mt-3 text-xs text-muted-foreground">Same address on both networks, but pick the right network when you send. ETH stays in your own pocket until a fee is paid. You can skip this and add it later from Account → Balances → Deposit.</p>
+    </>
+  );
+}
+
+function FeeCard(p: { network: string; suggest: string; why: string; have: number | null; price: number | null; level: string | undefined; extra: string | null; action: ReactNode }) {
+  const status =
+    p.level === "enough" ? { tone: "ok" as const, text: "enough" }
+    : p.level === "low" ? { tone: "warn" as const, text: "running low" }
+    : p.level === "empty" ? { tone: "warn" as const, text: "none yet" }
+    : null;
+  return (
+    <div className="rounded-md border border-border bg-surface p-5">
+      <div className="flex items-center gap-2">
+        <Fuel aria-hidden className="h-5 w-5 text-primary" />
+        <p className="font-semibold">{p.network}</p>
+      </div>
+      <p className="mt-3 font-display text-xl font-extrabold">{p.suggest}</p>
+      <p className="mt-1 text-sm text-muted-foreground">{p.why}</p>
+      {p.have != null ? (
+        <p className="mt-3 text-sm">
+          In your pocket: <b>{ethAmt(p.have)} ETH</b>{p.price ? <> ({money(p.have * p.price)})</> : null}
+          {status ? <span className={status.tone === "ok" ? "text-primary" : "text-muted-foreground"}> · {status.text}</span> : null}
+        </p>
+      ) : null}
+      {p.extra ? <p className="mt-1 text-xs text-muted-foreground">{p.extra}</p> : null}
+      {p.level === "enough" ? <div className="mt-4"><Note tone="ok">You're set on {p.network}.</Note></div> : p.action ? <div className="mt-4">{p.action}</div> : null}
+    </div>
+  );
+}
+
 function StepAlerts() {
   const { user } = useSession();
   return (
@@ -346,9 +455,11 @@ function StepDone({ onFinish }: { onFinish: () => void }) {
   const open = Date.now() < new Date(SCHEDULE_START_UTC).getTime();
   const mine = useQuery({ queryKey: ["ignite", user?.id], queryFn: () => fetchMine(), enabled: !!user && open });
   const p = profile.data;
-  const rows: { done: boolean; label: string; to: "/account/profile" | "/account/security" | "/account/alerts" | "/ignite" }[] = [
+  const fees = useFeePrep();
+  const rows: { done: boolean; label: string; to: "/account/profile" | "/account/security" | "/account/alerts" | "/account/balances/deposit" | "/ignite" }[] = [
     { done: Boolean(p?.display_name), label: "Display name", to: "/account/profile" },
     { done: Boolean(link.data), label: "HME Wallet trading pocket linked", to: "/account/security" },
+    { done: fees.data?.ethereum.level === "enough" && fees.data?.base.level === "enough", label: "ETH for network fees (Ethereum and Base)", to: "/account/balances/deposit" },
     { done: Boolean(p?.telegram_verified), label: "Telegram alerts", to: "/account/alerts" },
     { done: Boolean(tf.data), label: "Two-factor sign-in", to: "/account/security" },
     ...(open ? [{ done: mine.data?.registration?.status === "confirmed", label: "Ignite seat reserved", to: "/ignite" as const }] : []),

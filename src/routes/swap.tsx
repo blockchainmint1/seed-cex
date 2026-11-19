@@ -13,8 +13,17 @@ import { getTsdRouteQuote } from "@/lib/xchain/tsd-route.functions";
 import { fmtCompact } from "@/lib/format";
 import { SwapTabs } from "@/components/swap/SwapTabs";
 
+type SwapSearch = { from?: string; to?: string; amount?: string };
+const sideOk = (v: unknown): v is Side => v === "TSD" || (typeof v === "string" && Boolean(swapCoin(v as SwapCoinId)));
+
 export const Route = createFileRoute("/swap")({
   staticData: { sitemap: true },
+  validateSearch: (s: Record<string, unknown>): SwapSearch => ({
+    from: sideOk(s.from) ? s.from : undefined,
+    to: sideOk(s.to) ? s.to : undefined,
+    // The URL may carry the amount as a number (?amount=10) or a string.
+    amount: (typeof s.amount === "string" || typeof s.amount === "number") && /^\d{1,9}(\.\d{1,8})?$/.test(String(s.amount)) ? String(s.amount) : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Cross-Chain Swap — 46 coins on THORChain & Maya | Seeds" },
@@ -121,9 +130,12 @@ function SwapPage() {
     refetchInterval: 30_000,
   });
 
-  const [from, setFrom] = useState<Side>("TSD");
-  const [to, setTo] = useState<Side>("BTC");
-  const [amount, setAmount] = useState("50");
+  // A link can open the form on a pair (e.g. the setup guide's "Convert 10 TSD to ETH").
+  const search = Route.useSearch();
+  const [initFrom, initTo] = search.from && search.to && search.from !== search.to ? fixPair(search.from as Side, search.to as Side) : ["TSD" as Side, "BTC" as Side];
+  const [from, setFrom] = useState<Side>(initFrom);
+  const [to, setTo] = useState<Side>(initTo);
+  const [amount, setAmount] = useState(search.amount ?? "50");
   const [destination, setDestination] = useState("");
   // With TSD on one side the swap runs TSD Bridge ↔ USDC ↔ THORChain; otherwise THORChain and Maya are compared directly.
   const tsdDirection = from === "TSD" ? ("buy" as const) : to === "TSD" ? ("sell" as const) : null;
