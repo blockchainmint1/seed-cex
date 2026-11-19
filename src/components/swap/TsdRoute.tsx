@@ -125,6 +125,10 @@ export function TsdRouteResult({ direction, coin, amount, q, signedIn, link, isA
               </p>
             ) : gas.data?.haveEth != null && gas.data.needEth != null ? (
               <p className="text-[11px] text-muted-foreground">Your EVM pocket holds {gas.data.haveEth.toFixed(5)} ETH for the Ethereum fee — enough.</p>
+            ) : gas.isError ? (
+              <p className="text-[11px] text-muted-foreground">
+                We couldn't check your pocket's Ethereum fee just now. The swap checks it again before anything is sent, so nothing can leave without the fee.
+              </p>
             ) : null}
             <label className="flex items-start gap-2 text-xs text-muted-foreground">
               <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-0.5 accent-primary" />
