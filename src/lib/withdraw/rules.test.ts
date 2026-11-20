@@ -37,8 +37,8 @@ describe("who can withdraw (Bobby: 2FA and Telegram both before the wallet link)
 
 describe("pilot and link checks", () => {
   const link = { mode: "access", hasKey: true, address: "D8abc" };
-  test("only beta testers while the pilot runs", () => {
-    expect(sendBlocker({ link, tester: false, frozen: false, symbol: "DOGE", networkLabel: "Dogecoin" })).toContain("beta testers");
+  test("open to every member who follows the rules, not just beta testers (Bobby, Nov 20)", () => {
+    expect(sendBlocker({ link, tester: false, frozen: false, symbol: "DOGE", networkLabel: "Dogecoin" })).toBeNull();
     expect(sendBlocker({ link, tester: true, frozen: false, symbol: "DOGE", networkLabel: "Dogecoin" })).toBeNull();
   });
   test("a paused account can't withdraw", () => {

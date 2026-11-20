@@ -222,4 +222,4 @@
 - [x] PulseChain moves onto the same rules
 - [x] Tests, auditor note
 - [ ] First small real withdrawal per coin (blocked: Bobby re-links after this publishes, then tries one)
-- [ ] Open withdrawals to all members (blocked: Bobby's answer; testers-only meanwhile)
+- [x] Open withdrawals to all members (Bobby: everyone now, Nov 20)

@@ -438,7 +438,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       ] },
       { h: "Or send it yourself from HME Wallet" },
       { p: "For coins HME Wallet supports, you can also tap **Open HME Wallet** and send from your trading pocket there." },
-      { note: "While the first real withdrawals are tested, Seeds-sent withdrawals are open to beta testers only. Zcash can't be withdrawn yet.", tone: "info" },
+      { note: "Zcash can't be withdrawn yet. ISK and ZCU need a live price to check your limit, so they may be unavailable for now.", tone: "info" },
     ],
     links: [{ label: "Withdraw", to: "/account/balances/withdraw" }],
     related: ["withdrawal-levels", "two-factor", "deposit"],

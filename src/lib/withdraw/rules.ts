@@ -16,8 +16,8 @@ export const EMAIL_CODE_MAX_TRIES = 5;
 export const EMAIL_CODES_PER_HOUR = 5;
 /** How many withdrawals may wait (for a tap, on hold or sending) at once. */
 export const MAX_WAITING = 3;
-/** Until the first small real withdrawals pass, only beta testers (admins included) can use this. */
-export const WITHDRAW_PILOT_TESTERS_ONLY = true;
+/** Bobby (Nov 20 2026): open to every member who follows the rules. Set true to limit to beta testers again. */
+export const WITHDRAW_PILOT_TESTERS_ONLY = false;
 
 export type WithdrawReadiness = "ready" | "needs_2fa" | "needs_telegram" | "needs_relink";
 
