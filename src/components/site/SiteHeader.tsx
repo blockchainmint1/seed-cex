@@ -13,7 +13,6 @@ const about = [
   { label: "Texas Stable Dollar", to: "/tsd" as const },
   { label: "Manifesto", to: "/manifesto" as const },
   { label: "No KYC", to: "/about/kyc" as const },
-  { label: "API", to: "/api" as const },
 ];
 
 const proof = [
