@@ -98,7 +98,8 @@ function TradesPage() {
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
           Every resting order and settled fill across all Seeds markets. Fills settle
-          wallet-to-wallet on-chain the moment they match — no deposits, no escrow hold.
+          wallet-to-wallet on-chain — no deposits, no escrow hold. The side that took the order
+          pays first; the other side goes out once that payment is confirmed on its network.
         </p>
       </header>
 

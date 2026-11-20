@@ -3,6 +3,16 @@ import { useServerFn } from "@tanstack/react-start";
 import { getChain, getLeg, type LegId } from "@/lib/chains";
 import { previewLeg, settleLeg, watchLeg } from "@/lib/settlement.functions";
 import { truncateMiddle } from "@/lib/format";
+import { confirmationsNeeded } from "@/lib/settle/confirm-rules";
+
+/** Plain words for each side's state. */
+const LEG_STATUS: Record<string, string> = {
+  awaiting_funding: "not sent yet",
+  funding_seen: "seen on the network",
+  confirmed: "confirmed",
+  released: "sent",
+  refunded: "refunded",
+};
 
 type Leg = {
   leg: string;
@@ -64,6 +74,8 @@ export function LegPanel({ tradeId, leg }: { tradeId: string; leg: Leg }) {
     (confirmations.data as { chain?: string } | undefined)?.chain ??
     (data as { chain?: string } | undefined)?.chain ??
     null;
+  // Same depth the server waits for before the other side is paid (settle/confirm-rules.ts).
+  const needed = confirmationsNeeded(def.kind === "evm" ? chainId : def.kind === "omni" ? "txc" : (def.chain as string));
   const venue =
     def.kind === "omni"
       ? "omni #39"
@@ -76,7 +88,7 @@ export function LegPanel({ tradeId, leg }: { tradeId: string; leg: Leg }) {
         <span className="tracking-[0.16em] text-primary uppercase">
           {def.symbol} · {venue}
         </span>
-        <span className="text-muted-foreground">{leg.status}</span>
+        <span className="text-muted-foreground">{LEG_STATUS[leg.status] ?? leg.status.replace(/_/g, " ")}</span>
       </div>
 
       <p className="mt-1 tabular-nums">
@@ -96,9 +108,7 @@ export function LegPanel({ tradeId, leg }: { tradeId: string; leg: Leg }) {
           <p className="text-muted-foreground tabular-nums">
             {depth === null || depth === undefined
               ? "waiting for the node…"
-              : depth === 0
-                ? "in mempool · 0 confirmations"
-                : `${depth} confirmation${depth === 1 ? "" : "s"}`}
+              : `${depth} of ${needed} confirmations${depth >= needed ? " · confirmed" : depth === 0 ? " · waiting for a block" : ""}`}
           </p>
         </div>
       ) : (
