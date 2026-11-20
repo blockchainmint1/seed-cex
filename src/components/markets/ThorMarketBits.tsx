@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
-import { getThorChart, getThorMarkets } from "@/lib/markets/thor-markets.functions";
-import { fmtTsd, type Timeframe } from "@/lib/markets/thor-markets";
+import { getMarketChart, getThorChart, getThorMarkets } from "@/lib/markets/thor-markets.functions";
+import { fmtTsd, type ChartRange, type Timeframe } from "@/lib/markets/thor-markets";
 
 export const thorMarketsQuery = queryOptions({
   queryKey: ["thor-markets"],
@@ -16,6 +16,16 @@ export const thorChartQuery = (slug: string, tf: Timeframe) =>
     refetchInterval: tf === "15m" || tf === "1h" ? 60_000 : 300_000,
     staleTime: 30_000,
     // Keep the last chart on screen while another candle size loads.
+    placeholderData: (prev) => prev,
+  });
+
+export const marketChartQuery = (slug: string, range: ChartRange) =>
+  queryOptions({
+    queryKey: ["market-chart", slug, range],
+    queryFn: () => getMarketChart({ data: { slug, range } }),
+    refetchInterval: range === "1d" || range === "7d" ? 60_000 : 300_000,
+    staleTime: 30_000,
+    // Keep the last chart on screen while another range loads.
     placeholderData: (prev) => prev,
   });
 

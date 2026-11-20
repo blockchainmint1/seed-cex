@@ -6,9 +6,10 @@
  * multiply calls to the public servers.
  */
 import {
-  dayStats, INTERVAL_SECONDS, mergeCandles, withLivePrice, parseCandles, THOR_MARKETS, TIMEFRAMES,
-  type Candle, type DayStats, type ThorMarket, type Timeframe,
+  CHART_RANGES, dayStats, INTERVAL_SECONDS, marketRangeCandles, mergeCandles, parseCmcOhlcv, rangeCandleSeconds, withLiveCandle, withLivePrice, parseCandles, THOR_MARKETS, TIMEFRAMES,
+  type Candle, type ChartRange, type DayStats, type MidgardInterval, type ThorMarket, type Timeframe,
 } from "./thor-markets";
+import { CMC_IDS } from "./coin-research";
 import type { RawPool } from "./snapshot-rules";
 import { midgardEndpoints, thornodeEndpoints } from "../nodes.server";
 import type { StoredMarketView } from "./snapshot-read-rules";
@@ -79,6 +80,14 @@ export type MarketRow = ThorMarket & {
 };
 
 /** Which reads would hit the network (for rate limiting only cache misses). */
+/** Whether a chart range would need a THORChain read (rate limiting only; long ranges use the shared copy). */
+export function rangeNeedsFetch(slug: string, range: ChartRange): boolean {
+  const m = THOR_MARKETS.find((x) => x.slug === slug);
+  if (!m) return true;
+  if (CHART_RANGES[range].source === "pool" && isStale(`range:${m.pool}:${range}`, range === "1m" ? 120_000 : 60_000)) return true;
+  return isStale("pools", TTL.pools);
+}
+
 export function marketsNeedFetch(slug?: string, tf?: Timeframe): boolean {
   if (slug && tf) {
     const m = THOR_MARKETS.find((x) => x.slug === slug);
@@ -242,30 +251,79 @@ export async function fetchThorChart(slug: string, tf: Timeframe): Promise<{ mar
   const [all, h, candles] = await Promise.all([
     pools(),
     hourly(m.pool).catch(() => null),
-    cached(`candles:${m.pool}:${tf}`, TTL[tf], async () => {
-      // THORChain hands out at most 400 candles per read; longer spans are read in pages, newest first.
-      const depths: Record<string, string>[] = [];
-      const swaps: Record<string, string>[] = [];
-      let to: string | null = null;
-      for (let left = t.count; left > 0; ) {
-        const n = Math.min(400, left);
-        const q: string = `${encodeURIComponent(m.pool)}?interval=${t.interval}&count=${n}${to ? `&to=${to}` : ""}`;
-        const [d, sw]: [History<Record<string, string>>, History<Record<string, string>>] = await Promise.all([
-          midgard<History<Record<string, string>>>(`/v2/history/depths/${q}`),
-          midgard<History<Record<string, string>>>(`/v2/history/swaps?pool=${q.replace("?", "&")}`).catch(() => ({ intervals: [] })),
-        ]);
-        depths.unshift(...d.intervals);
-        swaps.unshift(...sw.intervals);
-        left -= n;
-        const first: string | undefined = d.intervals[0]?.startTime;
-        if (d.intervals.length < n || !first || first === to) break; // reached the pool's start
-        to = first;
-      }
-      depths.sort((a, b) => Number(a.startTime) - Number(b.startTime));
-      return mergeCandles(parseCandles(depths, swaps), t.merge, INTERVAL_SECONDS[t.interval]);
-    }),
+    cached(`candles:${m.pool}:${tf}`, TTL[tf], () => poolCandles(m.pool, t.interval, t.count, t.merge)),
   ]);
   const market = rowFor(m, all.find((p) => p.asset === m.pool), h);
   const size = INTERVAL_SECONDS[t.interval] * t.merge;
   return { market, candles: withLivePrice(candles, market.price, size, Math.floor(Date.now() / 1000)) };
+}
+
+/** THORChain pool candles: `count` history intervals, merged `merge` at a time. */
+async function poolCandles(pool: string, interval: MidgardInterval, count: number, merge: number): Promise<Candle[]> {
+  // THORChain hands out at most 400 candles per read; longer spans are read in pages, newest first.
+  const depths: Record<string, string>[] = [];
+  const swaps: Record<string, string>[] = [];
+  let to: string | null = null;
+  for (let left = count; left > 0; ) {
+    const n = Math.min(400, left);
+    const q: string = `${encodeURIComponent(pool)}?interval=${interval}&count=${n}${to ? `&to=${to}` : ""}`;
+    const [d, sw]: [History<Record<string, string>>, History<Record<string, string>>] = await Promise.all([
+      midgard<History<Record<string, string>>>(`/v2/history/depths/${q}`),
+      midgard<History<Record<string, string>>>(`/v2/history/swaps?pool=${q.replace("?", "&")}`).catch(() => ({ intervals: [] })),
+    ]);
+    depths.unshift(...d.intervals);
+    swaps.unshift(...sw.intervals);
+    left -= n;
+    const first: string | undefined = d.intervals[0]?.startTime;
+    if (d.intervals.length < n || !first || first === to) break; // reached the pool's start
+    to = first;
+  }
+  depths.sort((a, b) => Number(a.startTime) - Number(b.startTime));
+  return mergeCandles(parseCandles(depths, swaps), merge, INTERVAL_SECONDS[interval]);
+}
+
+/** CoinMarketCap daily candles for one coin: the last ~400 days, or its whole history. Read-only. */
+async function cmcDaily(cmcId: number, sinceDays: number | null): Promise<Candle[]> {
+  const key = process.env.CMC_API;
+  if (!key) throw new Error("Market price history isn't set up.");
+  const start = sinceDays == null ? "2010-01-01" : new Date(Date.now() - sinceDays * 86400_000).toISOString().slice(0, 10);
+  const r = await fetch(
+    `https://pro-api.coinmarketcap.com/v2/cryptocurrency/ohlcv/historical?id=${cmcId}&time_period=daily&time_start=${start}&count=10000&convert=USD`,
+    { headers: { "X-CMC_PRO_API_KEY": key, Accept: "application/json" }, signal: AbortSignal.timeout(15_000) },
+  );
+  if (!r.ok) {
+    console.error("[thor-markets] CoinMarketCap history", cmcId, r.status);
+    throw new Error("Market price history is unavailable right now. Try again in a minute.");
+  }
+  return parseCmcOhlcv(await r.json());
+}
+
+/**
+ * One market's live row plus candles for a chart range (1D … All). Short ranges are
+ * the THORChain pool's own candles; 3M/1Y/All are CoinMarketCap market prices kept in
+ * Seeds' shared copy (refreshed every few hours), with today's candle on the live price.
+ */
+export async function fetchMarketChart(slug: string, range: ChartRange): Promise<{ market: MarketRow; candles: Candle[] }> {
+  const m = THOR_MARKETS.find((x) => x.slug === slug);
+  if (!m) throw new Error("Unknown market");
+  const spec = CHART_RANGES[range];
+  const load = async (): Promise<Candle[]> => {
+    if (spec.source === "pool") {
+      return cached(`range:${m.pool}:${range}`, range === "1m" ? 120_000 : 60_000, () => poolCandles(m.pool, spec.interval, spec.count, spec.merge));
+    }
+    const id = CMC_IDS[m.slug];
+    if (!id) return [];
+    const { shared } = await import("@/lib/cache/shared-cache.server");
+    const { CACHE_TIMES } = await import("@/lib/cache/shared-cache-rules");
+    // "All" stores weekly candles (small); 3M and 1Y share one ~400-day daily copy.
+    const all = range === "all";
+    const stored = await shared(`market-history:${m.slug}:${all ? "all-weekly" : "400d"}`, { ...CACHE_TIMES.marketHistory, good: (v: Candle[]) => v.length > 30 }, async () => {
+      const daily = await cmcDaily(id, all ? null : 400);
+      return all ? marketRangeCandles(daily, "all") : daily;
+    });
+    return all ? stored : marketRangeCandles(stored, range);
+  };
+  const [all, h, candles] = await Promise.all([pools(), hourly(m.pool).catch(() => null), load()]);
+  const market = rowFor(m, all.find((p) => p.asset === m.pool), h);
+  return { market, candles: withLiveCandle(candles, market.price, rangeCandleSeconds(range), Math.floor(Date.now() / 1000)) };
 }

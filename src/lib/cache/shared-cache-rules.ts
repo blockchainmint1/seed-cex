@@ -67,6 +67,8 @@ export const CACHE_TIMES = {
   coinProfiles: { freshMs: 5 * 60_000, maxStaleMs: 24 * 3_600_000 },
   coinPairs: { freshMs: 15 * 60_000, maxStaleMs: 24 * 3_600_000 },
   coinNews: { freshMs: 15 * 60_000, maxStaleMs: 24 * 3_600_000 },
+  /** 3M / 1Y / All market-price charts (CoinMarketCap daily history). */
+  marketHistory: { freshMs: 3 * 3_600_000, maxStaleMs: 7 * 24 * 3_600_000 },
 } as const satisfies Record<string, CacheTimes>;
 
 /** One cache key per coin + address. EVM addresses ignore letter case. */

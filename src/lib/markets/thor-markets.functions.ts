@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { THOR_MARKET_SLUGS, TIMEFRAME_IDS } from "./thor-markets";
+import { CHART_RANGE_IDS, THOR_MARKET_SLUGS, TIMEFRAME_IDS } from "./thor-markets";
 
 /** Public: every primary market (THORChain majors priced in TSD). */
 export const getThorMarkets = createServerFn({ method: "GET" }).handler(async () => {
@@ -28,4 +28,19 @@ export const getThorChart = createServerFn({ method: "GET" })
       await requireIpAllowance("chart", IP_LIMITS.chart);
     }
     return s.fetchThorChart(data.slug, data.tf);
+  });
+
+/** Public: candles for one primary market over a chart range (1D … All). */
+export const getMarketChart = createServerFn({ method: "GET" })
+  .inputValidator((input: unknown) =>
+    z.object({ slug: z.enum(THOR_MARKET_SLUGS), range: z.enum(CHART_RANGE_IDS) }).parse(input),
+  )
+  .handler(async ({ data }) => {
+    const s = await import("./thor-markets.server");
+    if (s.rangeNeedsFetch(data.slug, data.range)) {
+      const { requireIpAllowance } = await import("@/lib/ip-rate.server");
+      const { IP_LIMITS } = await import("@/lib/ip-rate");
+      await requireIpAllowance("chart", IP_LIMITS.chart);
+    }
+    return s.fetchMarketChart(data.slug, data.range);
   });

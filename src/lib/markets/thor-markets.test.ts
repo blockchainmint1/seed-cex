@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { dayStats, fmtTsd, withLivePrice, mergeCandles, parseCandles, priceDecimals, THOR_MARKETS, thorMarket, thorMarketForBookBase } from "./thor-markets";
+import { CHART_RANGE_IDS, CHART_RANGES, dayStats, fmtTsd, marketRangeCandles, parseCmcOhlcv, rangeCandleSeconds, withLiveCandle, withLivePrice, mergeCandles, parseCandles, priceDecimals, THOR_MARKETS, thorMarket, thorMarketForBookBase } from "./thor-markets";
 import { swapCoin } from "@/lib/xchain/assets";
 import { PAIRS } from "@/lib/chains";
 
@@ -98,5 +98,60 @@ describe("price format", () => {
     expect(priceDecimals(0.0655)).toBe(5);
     expect(priceDecimals(0.0003)).toBe(8);
     expect(fmtTsd(63286.329)).toBe("63,286.33");
+  });
+});
+
+describe("chart ranges", () => {
+  test("buttons read 1D 7D 1M 3M 1Y All, in that order", () => {
+    expect(CHART_RANGE_IDS.map((r) => CHART_RANGES[r].label)).toEqual(["1D", "7D", "1M", "3M", "1Y", "All"]);
+  });
+  test("1D covers 24 hours of 15-minute candles from the pool", () => {
+    const r = CHART_RANGES["1d"];
+    expect(r.source).toBe("pool");
+    if (r.source === "pool") expect(r.count * 300).toBe(24 * 3600);
+    expect(rangeCandleSeconds("1d")).toBe(900);
+  });
+  test("7D covers 7 days of hourly pool candles; 1M 30 days of 4-hour candles", () => {
+    const w = CHART_RANGES["7d"];
+    const m = CHART_RANGES["1m"];
+    if (w.source === "pool") expect(w.count * 3600).toBe(7 * 86400);
+    if (m.source === "pool") expect(m.count * 3600).toBe(30 * 86400);
+    expect(rangeCandleSeconds("1m")).toBe(4 * 3600);
+  });
+  test("1Y shows the last 365 daily market candles", () => {
+    const daily = Array.from({ length: 500 }, (_, i) => ({ time: i * 86400, open: 1, high: 1, low: 1, close: 1, volume: 0 }));
+    const y = marketRangeCandles(daily, "1y");
+    expect(y.length).toBe(365);
+    expect(y[364]!.time).toBe(499 * 86400);
+    expect(marketRangeCandles(daily, "3m").length).toBe(90);
+  });
+  test("All keeps every day, merged into Monday-start weeks", () => {
+    const daily = Array.from({ length: 28 }, (_, i) => ({ time: (4 + i) * 86400, open: i + 1, high: i + 2, low: i + 0.5, close: i + 1.5, volume: 1 }));
+    const w = marketRangeCandles(daily, "all");
+    expect(w.length).toBe(4);
+    expect(w[0]).toEqual({ time: 4 * 86400, open: 1, high: 8, low: 0.5, close: 7.5, volume: 7 });
+    expect(rangeCandleSeconds("all")).toBe(7 * 86400);
+  });
+});
+
+describe("market history", () => {
+  test("CoinMarketCap daily rows become candles; empty prices are dropped", () => {
+    const raw = { data: { quotes: [
+      { time_open: "2026-11-19T00:00:00.000Z", quote: { USD: { open: 62987, high: 64017, low: 61381, close: 61902, volume: 5e10 } } },
+      { time_open: "2026-11-18T00:00:00.000Z", quote: { USD: { open: 64894, high: 64929, low: 62017, close: 62987, volume: 4e10 } } },
+      { time_open: "2026-11-17T00:00:00.000Z", quote: { USD: { open: 0, high: 0, low: 0, close: 0, volume: 0 } } },
+    ] } };
+    const c = parseCmcOhlcv(raw);
+    expect(c.length).toBe(2);
+    expect(c[0]).toEqual({ time: Date.parse("2026-11-18T00:00:00Z") / 1000, open: 64894, high: 64929, low: 62017, close: 62987, volume: 4e10 });
+    expect(parseCmcOhlcv({})).toEqual([]);
+  });
+  test("today's candle starts at yesterday's close and follows the live price", () => {
+    const day = 86400;
+    const c = [{ time: 10 * day, open: 100, high: 110, low: 95, close: 105, volume: 9 }];
+    expect(withLiveCandle(c, 108, day, 11 * day + 60)[1]).toEqual({ time: 11 * day, open: 105, high: 108, low: 105, close: 108, volume: 0 });
+    expect(withLiveCandle(c, 108, day, 10 * day + 60)[0]!.close).toBe(108);
+    // History more than a day behind: no fake candle.
+    expect(withLiveCandle(c, 108, day, 13 * day)).toEqual(c);
   });
 });

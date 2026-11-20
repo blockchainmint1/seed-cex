@@ -87,7 +87,7 @@ function MarketPage() {
       <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
         <div className="min-w-0 space-y-6">
           <section className="min-w-0 rounded-sm border border-border bg-surface">
-            <ThorChartPanel slug={m.slug} base={m.base} initial="1h" height={480} />
+            <ThorChartPanel slug={m.slug} base={m.base} initial="7d" height={480} />
           </section>
           <MarketActivity market={m} />
           <NewsPanel news={research.data?.news ?? []} name={m.name} loading={research.isPending} />

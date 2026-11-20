@@ -63,6 +63,32 @@ export const TIMEFRAMES: Record<Timeframe, { label: string; interval: MidgardInt
 };
 export const TIMEFRAME_IDS = Object.keys(TIMEFRAMES) as [Timeframe, ...Timeframe[]];
 
+/**
+ * What the chart's buttons pick: how far back to look (CoinMarketCap-style).
+ * Short ranges use the THORChain pool's own candles (the price Seeds' swaps get);
+ * 3M, 1Y and All use CoinMarketCap's market-wide daily prices, because THORChain's
+ * daily history has holes (pool halts) and one-off spikes that real markets never had.
+ */
+export type ChartRange = "1d" | "7d" | "1m" | "3m" | "1y" | "all";
+export type RangeSpec =
+  | { label: string; source: "pool"; interval: MidgardInterval; count: number; merge: number; span: string }
+  | { label: string; source: "market"; days: number | null; weekly: boolean; span: string };
+export const CHART_RANGES: Record<ChartRange, RangeSpec> = {
+  "1d": { label: "1D", source: "pool", interval: "5min", count: 288, merge: 3, span: "last 24 hours · 15-minute candles · THORChain pool" },
+  "7d": { label: "7D", source: "pool", interval: "hour", count: 168, merge: 1, span: "last 7 days · hourly candles · THORChain pool" },
+  "1m": { label: "1M", source: "pool", interval: "hour", count: 720, merge: 4, span: "last 30 days · 4-hour candles · THORChain pool" },
+  "3m": { label: "3M", source: "market", days: 90, weekly: false, span: "last 90 days · daily candles · market price" },
+  "1y": { label: "1Y", source: "market", days: 365, weekly: false, span: "last year · daily candles · market price" },
+  all: { label: "All", source: "market", days: null, weekly: true, span: "all history · weekly candles · market price" },
+};
+export const CHART_RANGE_IDS = Object.keys(CHART_RANGES) as [ChartRange, ...ChartRange[]];
+
+/** Seconds in one candle of a range. */
+export function rangeCandleSeconds(r: ChartRange): number {
+  const s = CHART_RANGES[r];
+  return s.source === "pool" ? INTERVAL_SECONDS[s.interval] * s.merge : s.weekly ? 7 * 86400 : 86400;
+}
+
 /* ---------------------------------- candles -------------------------------- */
 
 /** One candle. `time` is the candle's start in unix seconds; prices in TSD (= USD); volume in TSD. */
@@ -154,6 +180,63 @@ export function withLivePrice(candles: Candle[], live: number | null, candleSeco
 }
 
 export const INTERVAL_SECONDS: Record<MidgardInterval, number> = { "5min": 300, hour: 3600, day: 86400, week: 604800 };
+
+/**
+ * CoinMarketCap daily OHLCV → candles (oldest first, one per day). Rows with a
+ * missing or non-positive price are dropped; high/low always cover open/close.
+ */
+export function parseCmcOhlcv(raw: unknown): Candle[] {
+  const quotes = (raw as { data?: { quotes?: unknown[] } } | null)?.data?.quotes;
+  if (!Array.isArray(quotes)) return [];
+  const out: Candle[] = [];
+  for (const q of quotes) {
+    const r = q as { time_open?: string; quote?: { USD?: Record<string, unknown> } };
+    const usd = r.quote?.USD;
+    const t = r.time_open ? Date.parse(r.time_open) : NaN;
+    if (!usd || !Number.isFinite(t)) continue;
+    const open = num(usd["open"]);
+    const close = num(usd["close"]);
+    if (!(open > 0) || !(close > 0)) continue;
+    const hi = num(usd["high"]);
+    const lo = num(usd["low"]);
+    const vol = num(usd["volume"]);
+    out.push({
+      time: Math.floor(t / 1000 / 86400) * 86400,
+      open,
+      close,
+      high: Math.max(hi > 0 ? hi : 0, open, close),
+      low: Math.min(lo > 0 ? lo : Infinity, open, close),
+      volume: vol > 0 ? vol : 0,
+    });
+  }
+  out.sort((a, b) => a.time - b.time);
+  return out.filter((c, i) => i === 0 || c.time !== out[i - 1]!.time);
+}
+
+/**
+ * Daily market candles → the chosen long range: the last `days` days, or every
+ * day merged into Monday-start weeks for "All".
+ */
+export function marketRangeCandles(daily: Candle[], r: ChartRange): Candle[] {
+  const s = CHART_RANGES[r];
+  if (s.source !== "market") return [];
+  if (s.weekly) return mergeCandles(daily, 7, 86400);
+  return s.days == null ? daily : daily.slice(-s.days);
+}
+
+/**
+ * Keep the last candle on the live price: update it while it's still open, or
+ * start the next one (opening at the previous close) once its period has ended.
+ * Only the very next period is started, so stale history never gets a fake jump.
+ */
+export function withLiveCandle(candles: Candle[], live: number | null, sizeSec: number, nowSec: number): Candle[] {
+  const last = candles[candles.length - 1];
+  if (!last || live == null || !(live > 0)) return candles;
+  if (nowSec < last.time + sizeSec) return withLivePrice(candles, live, sizeSec, nowSec);
+  if (nowSec >= last.time + 2 * sizeSec) return candles;
+  const open = last.close;
+  return [...candles, { time: last.time + sizeSec, open, high: Math.max(open, live), low: Math.min(open, live), close: live, volume: 0 }];
+}
 
 export type DayStats = { changePct: number | null; high: number | null; low: number | null; volume: number };
 

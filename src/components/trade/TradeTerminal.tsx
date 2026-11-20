@@ -371,7 +371,7 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
               title={`${pair.base} price · THORChain`}
               right={<Link to="/markets/$slug" params={{ slug: thor.slug }} className="font-mono text-[10px] text-primary hover:underline">full chart →</Link>}
             >
-              <ThorChartPanel slug={thor.slug} base={thor.base} initial="1h" height={320} />
+              <ThorChartPanel slug={thor.slug} base={thor.base} initial="7d" height={320} />
             </Panel>
           ) : null}
           <Panel title={thor ? "Seeds order book prints" : "Price"} right={<span className="font-mono text-[10px] text-muted-foreground">last {series.data?.length ?? 0} prints</span>}>
