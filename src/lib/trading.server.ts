@@ -26,6 +26,10 @@ function simulatedEscrowAddress(leg: Leg, tradeId: string): string {
 }
 
 export async function matchOrder(userId: string, pair: string, input: PlaceOrderInput) {
+  // A member whose trade payment vanished can't trade until an admin clears it (audit #3 A1).
+  const { tradingFrozenReason } = await import("@/lib/settle/confirm.server");
+  const frozen = await tradingFrozenReason(userId);
+  if (frozen) throw new Error(frozen);
   const opposite: Side = input.side === "buy" ? "sell" : "buy";
   // Which asset the quote leg delivers: TSD (Omni #39) or USDC (EVM).
   const { baseLeg, quoteLeg } = getPair(pair);

@@ -268,21 +268,37 @@ export async function omniSimpleSend(params: OmniSendParams): Promise<OmniSendRe
   return { txid, amount: params.amount, to: params.toAddress, from: params.fromAddress, propertyId };
 }
 
-/** Confirmation depth of an Omni transaction, plus whether Omni accepted it. */
+/** The node's Omni lookups are wallet-scoped RPCs; the wallet name is a finished value, safe to keep. */
+let omniWalletPath: string | null = null;
+async function omniPath(): Promise<string> {
+  if (omniWalletPath) return omniWalletPath;
+  const w = await rpc<string[]>("txc", "listwallets", []);
+  if (!w.length) throw new Error("The TEXITcoin node has no wallet loaded for Omni lookups");
+  omniWalletPath = `/wallet/${encodeURIComponent(w[0]!)}`;
+  return omniWalletPath;
+}
+
+/**
+ * Confirmation depth of an Omni transaction, plus whether Omni accepted it.
+ * `found`: true = the node knows it, false = the node answered "no such transaction",
+ * null = the node didn't answer (never read as "gone").
+ */
 export async function fetchOmniTx(txid: string): Promise<{
   confirmations: number | null;
   valid: boolean | null;
   invalidReason: string | null;
+  found: boolean | null;
 } > {
-  const tx = await tryRpc<{
-    confirmations?: number;
-    valid?: boolean;
-    invalidreason?: string;
-  }>("txc", "omni_gettransaction", [txid]);
-  if (!tx) return { confirmations: null, valid: null, invalidReason: null };
-  return {
-    confirmations: tx.confirmations ?? 0,
-    valid: tx.valid ?? null,
-    invalidReason: tx.invalidreason ?? null,
-  };
+  try {
+    const tx = await rpc<{ confirmations?: number; valid?: boolean; invalidreason?: string }>(
+      "txc", "omni_gettransaction", [txid], 12_000, await omniPath(),
+    );
+    return { confirmations: tx.confirmations ?? 0, valid: tx.valid ?? null, invalidReason: tx.invalidreason ?? null, found: true };
+  } catch (e) {
+    const code = (e as { code?: number }).code;
+    if (code === -5) return { confirmations: null, valid: null, invalidReason: null, found: false };
+    if (code === -18 || code === -19) omniWalletPath = null; // wallet unloaded/renamed: look it up again next time
+    console.error("[omni] gettransaction", (e as Error).message);
+    return { confirmations: null, valid: null, invalidReason: null, found: null };
+  }
 }

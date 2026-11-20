@@ -288,13 +288,29 @@ export const setAiPlanRealBuying = createServerFn({ method: "POST" })
 
 const decideInput = z.object({ checkId: z.string().uuid(), choice: z.enum(["yes", "no"]) });
 
-/** Signed-in: confirm or skip today's real AI trades (any size). Starts the first one right away. */
+/**
+ * Signed-in: confirm or skip today's real AI trades. Starts the first one right away.
+ * Above the member's one-tap limit, confirming needs a fresh authenticator code (audit #3 A6).
+ */
 export const decideAiTrades = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => decideInput.parse(input))
   .handler(async ({ data, context }) => {
     const ex = await import("./execute.server");
     if (data.choice === "yes" && !(await ex.isTesterUser(context.userId))) throw new Error("Real buying is open to beta testers for now.");
+    if (data.choice === "yes") {
+      const { data: check } = await context.supabase.from("ai_plan_checks").select("exec_total_usd").eq("id", data.checkId).eq("user_id", context.userId).maybeSingle();
+      const { limit } = await ex.oneTapLimitFor(context.userId);
+      const { hasTwoFactor } = await import("@/lib/two-factor.server");
+      const { freshTwoFactor } = await import("@/lib/two-factor");
+      const { siteConfirmProblem } = await import("./execute-rules");
+      const problem = siteConfirmProblem({
+        totalUsd: Number(check?.exec_total_usd ?? 0), limitUsd: limit,
+        twoFactorOn: await hasTwoFactor(context.userId),
+        fresh: freshTwoFactor(context.claims as never, Math.floor(Date.now() / 1000)),
+      });
+      if (problem) throw new Error(problem);
+    }
     const out = await ex.decideCheck(context.userId, data.checkId, data.choice, "site");
     if (out === "approved") await ex.advanceAiMoves({ userId: context.userId }).catch((e) => console.error("[ai-exec] first start failed", e));
     return { status: out };

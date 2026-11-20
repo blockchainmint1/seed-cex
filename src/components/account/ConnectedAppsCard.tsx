@@ -27,7 +27,7 @@ export function ConnectedAppsCard() {
   const list = grants.data ?? [];
 
   return (
-    <Card title="Connected apps" desc="AI assistants and other apps you've let look at your Seeds account. They can read, never trade or move coins.">
+    <Card title="Connected apps" desc="AI assistants and other apps you've connected. Their sign-in works like yours (orders, settings), but they can never withdraw or send coins out.">
       {grants.isLoading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : grants.error ? (

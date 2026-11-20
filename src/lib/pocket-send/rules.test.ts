@@ -103,3 +103,17 @@ test("an approval is spent only for exactly what was approved", () => {
   expect(approvalMatches(row, { ...want, nowMs: 2_000 })).toBe(false);
   expect(approvalMatches({ ...row, status: "used" }, want)).toBe(false);
 });
+
+import { approvalMetaMatches } from "./rules";
+describe("outside-address swap approval binds the receiving coin and route (audit #3 A5)", () => {
+  const approved = { from: "BTC.BTC", to: "ETH.ETH", protocol: "thorchain", shownOut: "1.2" };
+  test("the same coin and route pass", () =>
+    expect(approvalMetaMatches(approved, { from: "BTC.BTC", to: "ETH.ETH", protocol: "thorchain" })).toBe(true));
+  test("a different receiving coin is refused", () =>
+    expect(approvalMetaMatches(approved, { from: "BTC.BTC", to: "ETH.USDC", protocol: "thorchain" })).toBe(false));
+  test("a different protocol is refused", () =>
+    expect(approvalMetaMatches(approved, { from: "BTC.BTC", to: "ETH.ETH", protocol: "maya" })).toBe(false));
+  test("an approval with no recorded details is refused when details are required", () =>
+    expect(approvalMetaMatches({}, { to: "ETH.ETH" })).toBe(false));
+  test("no details asked = nothing extra to match", () => expect(approvalMetaMatches(null, undefined)).toBe(true));
+});

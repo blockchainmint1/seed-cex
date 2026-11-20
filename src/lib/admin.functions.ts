@@ -15,6 +15,9 @@ export type AdminAccountRow = {
   trades: number;
   tradedQuoteValue: number;
   lastActivity: string | null;
+  /** Set when a trade payment this member sent vanished (audit #3 A1); exchange trading is paused. */
+  tradingFrozenAt: string | null;
+  tradingFrozenReason: string | null;
 };
 
 export type AdminTradeRow = {
@@ -114,7 +117,7 @@ export const getAdminOverview = createServerFn({ method: "GET" })
 
     const [profiles, wallets, delegations, orders, trades, escrows, apiKeys, withdrawals] =
       await Promise.all([
-        supabaseAdmin.from("profiles").select("id, display_name, created_at"),
+        supabaseAdmin.from("profiles").select("id, display_name, created_at, trading_frozen_at, trading_frozen_reason"),
         supabaseAdmin.from("wallets").select("user_id, txc_address, evm_address"),
         supabaseAdmin
           .from("wallet_delegations")
@@ -193,6 +196,8 @@ export const getAdminOverview = createServerFn({ method: "GET" })
           trades: myTrades.length,
           tradedQuoteValue: myTrades.reduce((a, t) => a + quoteValue(t), 0),
           lastActivity: times.length ? times[times.length - 1]! : null,
+          tradingFrozenAt: p.trading_frozen_at ?? null,
+          tradingFrozenReason: p.trading_frozen_reason ?? null,
         };
       })
       .sort((a, b) => b.tradedQuoteValue - a.tradedQuoteValue);
@@ -236,6 +241,28 @@ export const getAdminOverview = createServerFn({ method: "GET" })
           createdAt: o.created_at,
         })),
     };
+  });
+
+/** Lift a trading freeze after reviewing the vanished payment. Admin only; logged on the trade. */
+export const liftTradingFreeze = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { userId: string }) => {
+    if (!d || typeof d.userId !== "string" || !/^[0-9a-f-]{36}$/i.test(d.userId)) throw new Error("Pick a member");
+    return { userId: d.userId };
+  })
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context as never);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: p } = await supabaseAdmin.from("profiles").select("trading_frozen_at, trading_frozen_trade").eq("id", data.userId).maybeSingle();
+    if (!p?.trading_frozen_at) return { ok: true, changed: false };
+    await supabaseAdmin.from("profiles").update({ trading_frozen_at: null, trading_frozen_reason: null, trading_frozen_trade: null }).eq("id", data.userId);
+    if (p.trading_frozen_trade) {
+      await supabaseAdmin.from("trade_events").insert({
+        trade_id: p.trading_frozen_trade, actor_id: context.userId, event: "trading_freeze_lifted",
+        detail: { member: data.userId, frozen_at: p.trading_frozen_at },
+      });
+    }
+    return { ok: true, changed: true };
   });
 
 // ---- Ignite class registrations (admin only) ----

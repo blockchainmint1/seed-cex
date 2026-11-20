@@ -17,9 +17,9 @@ export const Route = createFileRoute("/.lovable/oauth/consent")({
   head: () => ({
     meta: [
       { title: "Connect an app to Seeds" },
-      { name: "description", content: "Approve or cancel an app's read-only connection to your Seeds account." },
+      { name: "description", content: "Approve or cancel an app's connection to your Seeds account, and see exactly what it can do." },
       { property: "og:title", content: "Connect an app to Seeds" },
-      { property: "og:description", content: "Approve or cancel an app's read-only connection to your Seeds account." },
+      { property: "og:description", content: "Approve or cancel an app's connection to your Seeds account, and see exactly what it can do." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex,nofollow" },
@@ -77,6 +77,20 @@ const CAN_SEE = [
   "Your own P2P listings",
 ];
 
+/** What the app's sign-in also allows on Seeds (audit #3 A2: told plainly, Bobby's choice Nov 20). */
+const CAN_ALSO = [
+  "Place and cancel orders (coins still move only after your Approve tap in Telegram)",
+  "Open P2P trades and edit your P2P listings",
+  "Change your profile and alert settings",
+  "Create Peer Pay links for Ignite",
+  "Turn on Seeds AI real buying and confirm a plan's trades up to your one-tap limit (they stay in your own pocket)",
+];
+const CAN_NEVER = [
+  "Withdraw or send coins to an outside address",
+  "Change your Telegram connection or raise your one-tap limit",
+  "Use admin powers",
+];
+
 function Consent() {
   const details = Route.useLoaderData();
   const { authorization_id } = Route.useSearch();
@@ -108,8 +122,8 @@ function Consent() {
         Connect {client} to Seeds
       </h1>
       <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-        This lets {client} use Seeds as you, read-only. It can look things up, but it can't place orders, change
-        settings or move coins.
+        This lets {client} use Seeds as you. Its Seeds tools only look things up, but the sign-in it gets works like
+        yours on Seeds. Only connect an app you trust.
       </p>
 
       <dl className="mt-5 space-y-2 rounded-sm border border-border bg-surface p-4 text-sm">
@@ -122,9 +136,19 @@ function Consent() {
         {CAN_SEE.map((x) => <li key={x}>{x}</li>)}
         {scopes.map((s) => <li key={s}>{SCOPE_LABELS[s] ?? `Additional permission requested: ${s}`}</li>)}
       </ul>
+      <p className="mt-5 text-sm font-semibold text-foreground">A faulty or misused app could also</p>
+      <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+        {CAN_ALSO.map((x) => <li key={x}>{x}</li>)}
+      </ul>
+
+      <p className="mt-5 text-sm font-semibold text-foreground">It can never</p>
+      <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+        {CAN_NEVER.map((x) => <li key={x}>{x}</li>)}
+      </ul>
       <p className="mt-3 text-xs text-muted-foreground">
-        Seeds' own permissions still apply: it only ever sees your records, never anyone else's. You can disconnect
-        it any time in Account → Security.
+        Those need your authenticator code or your own tap in Telegram, which a connected app can't give. Seeds' own
+        permissions still apply: it only ever sees your records, never anyone else's. You can disconnect it any time
+        in Account → Security.
       </p>
 
       {error ? (

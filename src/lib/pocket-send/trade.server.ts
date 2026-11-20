@@ -72,8 +72,8 @@ export async function previewPocketLeg(userId: string, tradeId: string, leg: Leg
 
 export type PocketLegResult = { txid: string; chain: string; amount: number; to: string; from: string };
 
-/** Send one trade leg from the payer's pocket. Requires that payer's live Telegram approval. */
-export async function settlePocketLeg(userId: string, tradeId: string, leg: LegId): Promise<PocketLegResult> {
+/** Everything a pocket leg send checks before touching a key (shared by reserve and send). */
+async function preparePocketLeg(userId: string, tradeId: string, leg: LegId) {
   const def = getLeg(leg);
   const t = await loadTrade(userId, tradeId);
   if (t.status === "settled" || t.status === "released") throw new Error("This trade is already settled");
@@ -101,13 +101,34 @@ export async function settlePocketLeg(userId: string, tradeId: string, leg: LegI
   const bal = await pocketLegBalance(s.address, leg, amount);
   const problem = coverProblem(leg, bal, amount);
   if (problem) throw new Error(problem);
+  return { t, escrow, amount, s, to, sender };
+}
+
+/**
+ * Spend this leg's live Telegram approval now, without sending (audit #3 A1). The trade
+ * starts with every side's tap spent at once; the second side is sent later, only after
+ * the first side's payment has confirmed. Returns the approval id.
+ */
+export async function reservePocketLeg(userId: string, tradeId: string, leg: LegId): Promise<string> {
+  const { t, amount, s, to, sender } = await preparePocketLeg(userId, tradeId, leg);
+  const { spendApproval, reservedApproval } = await import("./approvals.server");
+  const want = { purpose: "trade_leg" as const, refId: t.id, leg, userId: sender, linkId: s.link.id, amount, from: s.address, to };
+  const already = await reservedApproval(want);
+  if (already) return already.id;
+  return (await spendApproval(want)).id;
+}
+
+/** Send one trade leg from the payer's pocket. Requires that payer's approval (live, or reserved when the trade started). */
+export async function settlePocketLeg(userId: string, tradeId: string, leg: LegId): Promise<PocketLegResult> {
+  const { t, escrow, amount, s, to, sender } = await preparePocketLeg(userId, tradeId, leg);
 
   const unclaim = await claimLeg(escrow.id);
-  const { spendApproval, recordApprovalTx, recordApprovalError } = await import("./approvals.server");
+  const { spendApproval, reservedApproval, recordApprovalTx, recordApprovalError } = await import("./approvals.server");
   let approvalId: string | null = null;
   let sent: Awaited<ReturnType<typeof sendFromPocket>>;
   try {
-    const approval = await spendApproval({ purpose: "trade_leg", refId: t.id, leg, userId: sender, linkId: s.link.id, amount, from: s.address, to });
+    const want = { purpose: "trade_leg" as const, refId: t.id, leg, userId: sender, linkId: s.link.id, amount, from: s.address, to };
+    const approval = (await reservedApproval(want)) ?? (await spendApproval(want));
     approvalId = approval.id;
     sent = await sendFromPocket({
       link: s.link, leg, from: s.address, to, amount,
@@ -123,7 +144,7 @@ export async function settlePocketLeg(userId: string, tradeId: string, leg: LegI
   }
 
   await supabaseAdmin.from("escrows")
-    .update({ status: "released", release_txid: sent.txid, funded_amount: amount, confirmations: 0 })
+    .update({ status: "released", release_txid: sent.txid, funded_amount: amount, confirmations: 0, sent_at: new Date().toISOString(), sent_network: sent.chain })
     .eq("id", escrow.id);
   await supabaseAdmin.from("trade_events").insert({
     trade_id: t.id,

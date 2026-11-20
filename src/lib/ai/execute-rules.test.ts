@@ -130,3 +130,17 @@ describe("one-tap Telegram limit: admin default, member override with two-factor
     expect(oneTapChangeProblem({ ...admin, current: 50, next: 1500, twoFactorOn: true, fresh: true })).toContain("$1,000");
   });
 });
+
+import { siteConfirmProblem } from "./execute-rules";
+describe("confirming a trade day on the website (audit #3 A6, Bobby: code above the one-tap limit)", () => {
+  test("at or under the one-tap limit: no code", () => {
+    expect(siteConfirmProblem({ totalUsd: 50, limitUsd: 50, twoFactorOn: true, fresh: false })).toBeNull();
+    expect(siteConfirmProblem({ totalUsd: 20, limitUsd: 50, twoFactorOn: false, fresh: false })).toBeNull();
+  });
+  test("above the limit without a fresh code: refused", () =>
+    expect(siteConfirmProblem({ totalUsd: 500, limitUsd: 50, twoFactorOn: true, fresh: false })).toContain("6-digit code"));
+  test("above the limit with a fresh code: allowed", () =>
+    expect(siteConfirmProblem({ totalUsd: 500, limitUsd: 50, twoFactorOn: true, fresh: true })).toBeNull());
+  test("above the limit with two-factor off: turn it on first", () =>
+    expect(siteConfirmProblem({ totalUsd: 500, limitUsd: 50, twoFactorOn: false, fresh: false })).toContain("Turn on two-factor"));
+});

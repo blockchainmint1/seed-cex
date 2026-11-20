@@ -1,4 +1,7 @@
 import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { liftTradingFreeze } from "@/lib/admin.functions";
 import { createFileRoute } from "@tanstack/react-router";
 import { Search, X } from "lucide-react";
 import { TabTitle, inputCls } from "@/components/account/ui";
@@ -78,7 +81,10 @@ function AccountsPage() {
               <tbody>
                 {view.rows.map((a) => (
                   <tr key={a.userId} className="border-b border-border/50">
-                    <td className="px-3 py-2 text-foreground">{a.displayName}</td>
+                    <td className="px-3 py-2 text-foreground">
+                      {a.displayName}
+                      {a.tradingFrozenAt ? <FrozenBadge userId={a.userId} reason={a.tradingFrozenReason} /> : null}
+                    </td>
                     <td className="px-3 py-2 text-muted-foreground">{new Date(a.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</td>
                     <td className="px-3 py-2">{a.hasVault ? "yes" : "—"}</td>
                     <td className="px-3 py-2" title={a.txcAddress ?? undefined}>{short(a.txcAddress)}</td>
@@ -102,5 +108,39 @@ function AccountsPage() {
         </section>
       )}
     </div>
+  );
+}
+
+/** A member whose trade payment vanished can't trade until an admin lifts this. */
+function FrozenBadge({ userId, reason }: { userId: string; reason: string | null }) {
+  const lift = useServerFn(liftTradingFreeze);
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  return (
+    <span className="ml-2 inline-flex items-center gap-1.5">
+      <span className="rounded-sm bg-destructive/15 px-1.5 py-0.5 text-destructive" title={reason ?? undefined}>Trading frozen</span>
+      <button
+        type="button"
+        disabled={busy}
+        className="underline underline-offset-2 hover:text-foreground disabled:opacity-50"
+        onClick={async () => {
+          if (!window.confirm(`Lift the trading freeze?\n\n${reason ?? ""}\n\nOnly do this after reviewing the trade.`)) return;
+          setBusy(true);
+          setErr(null);
+          try {
+            await lift({ data: { userId } });
+            await qc.invalidateQueries({ queryKey: ["admin-overview"] });
+          } catch (e) {
+            setErr(e instanceof Error ? e.message : "Couldn't lift it");
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        Lift
+      </button>
+      {err ? <span role="alert" className="text-destructive">{err}</span> : null}
+    </span>
   );
 }

@@ -260,6 +260,31 @@ export async function fetchEvmTxStatus(chain: ChainId, hash: string): Promise<Ev
   return { confirmations, success: receipt.status === "0x1" };
 }
 
+/**
+ * Settlement watcher lookup (audit #3 A1). `found`: true = a server has the transaction
+ * (mined or pending), false = a server that answered has never heard of it (replaced or
+ * dropped), null = no server answered. Never reads an outage as "gone".
+ */
+export async function evmTxLookup(chain: ChainId, hash: string): Promise<{ found: boolean | null; confirmations: number | null; success: boolean | null }> {
+  const first = async <T>(method: string, params: unknown[]) => {
+    for (const ep of endpoints(chain)) {
+      const a = await callOnce<T>(ep, method, params);
+      if (a.ok) return a;
+    }
+    return null;
+  };
+  const r = await first<{ blockNumber: string | null; status: string }>("eth_getTransactionReceipt", [hash]);
+  if (!r) return { found: null, confirmations: null, success: null };
+  if (r.value && r.value.blockNumber) {
+    const head = await rpc<string>(chain, "eth_blockNumber", []);
+    const confirmations = head ? Number(BigInt(head) - BigInt(r.value.blockNumber)) + 1 : null;
+    return { found: true, confirmations, success: r.value.status === "0x1" };
+  }
+  const t = await first<{ hash: string }>("eth_getTransactionByHash", [hash]);
+  if (!t) return { found: null, confirmations: null, success: null };
+  return t.value ? { found: true, confirmations: 0, success: null } : { found: false, confirmations: null, success: null };
+}
+
 /** Token balance in whole units for one asset on one chain. */
 export async function fetchTokenBalance(
   chain: ChainId,

@@ -184,7 +184,7 @@ export async function sendFromPocket(p: {
     const { omniSimpleSend } = await import("@/lib/omni.server");
     const { propertyId } = omniLegAsset(p.leg);
     const sent = await withPocketKey(p.link.ciphertext, pocket, p.from, (priv) =>
-      omniSimpleSend({ privateKeyHex: bytesToHex(priv), fromAddress: p.from, toAddress: p.to, amount: p.amount, propertyId }),
+      omniSimpleSend({ privateKeyHex: bytesToHex(priv), fromAddress: p.from, toAddress: p.to, amount: p.amount, propertyId, beforeBroadcast: p.record }),
     );
     return { txid: sent.txid, chain: "txc", from: p.from };
   }

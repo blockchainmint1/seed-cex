@@ -5,6 +5,7 @@
  * (reserve_gas_topup) before KMS signs anything. Not configured -> the member's pocket
  * must hold the ETH itself.
  */
+import { maybeBroadcast } from "@/lib/broadcast-rules";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { gasNeedWei, gasTopUpWei, GAS_LIMITS } from "./tsd-route";
 
@@ -81,7 +82,7 @@ export async function ensureGas(p: { routeId: string; userId: string; pocket: st
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     // A recorded txid may still be on the network after a timeout: leave it 'signing' (cap stays reserved) for a person.
-    const maybeSent = recorded && /timeout|unreachable|fetch|abort|network|socket|reset|50\d/i.test(msg);
+    const maybeSent = recorded && maybeBroadcast(msg);
     await mark(maybeSent ? { error: msg.slice(0, 300) } : { status: "failed", error: msg.slice(0, 300) });
     if (maybeSent) return { kind: "short", reason: "Seeds sent a network-fee top-up but the network didn't confirm receiving it. The team will check." };
     return { kind: "short", reason: `${shortMsg} (${msg})` };

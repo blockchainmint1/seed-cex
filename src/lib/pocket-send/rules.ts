@@ -134,6 +134,16 @@ export function tradeApprovalOutcome(legs: LegApproval[]): "send" | "wait" | "ca
 }
 
 /** An approval may be spent only for exactly what was approved. */
+/**
+ * Extra details an approval must also match exactly (audit #3 A5): an outside-address swap
+ * binds the receiving coin and the protocol shown in Telegram, not just what's paid and where.
+ */
+export function approvalMetaMatches(rowMeta: Record<string, unknown> | null | undefined, want: Record<string, string> | undefined): boolean {
+  if (!want) return true;
+  const m = rowMeta ?? {};
+  return Object.entries(want).every(([k, v]) => typeof m[k] === "string" && m[k] === v);
+}
+
 export function approvalMatches(
   row: { status: string; expiresAtMs: number; userId: string; linkId: string; leg: string; amount: number; fromAddress: string; toAddress: string },
   want: { userId: string; linkId: string; leg: string; amount: number; fromAddress: string; toAddress: string; nowMs: number },

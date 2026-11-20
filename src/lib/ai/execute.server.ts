@@ -456,7 +456,8 @@ async function startMove(m: { id: string; check_id: string; plan_id: string; use
     }
     const q = await quoteTsdRoute(direction, coin, amt);
     if (!q.ok) throw new Error(q.error ?? "No route right now.");
-    const row = await startTsdRoute(m.user_id, true, { direction, coin: coin.id, amount: amt, shownOut: q.out }, { waitForFirstSend: false });
+    // The plan owner's own limits apply (audit #3 A3): testers get none, members get theirs.
+    const row = await startTsdRoute(m.user_id, await isTesterUser(m.user_id), { direction, coin: coin.id, amount: amt, shownOut: q.out }, { waitForFirstSend: false });
     if (!row) return true; // the swap exists; the next run finds and links it (route lookup in step 2)
     await db.from("ai_plan_moves").update({ route_id: row.id, status: "running", updated_at: new Date().toISOString() }).eq("id", m.id);
     return true;

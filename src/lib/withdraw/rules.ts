@@ -153,9 +153,7 @@ export const WITHDRAW_STATUS: Record<string, string> = {
 };
 
 /** A broadcast error that may still have reached the network (never re-send; check by hand). */
-export function maybeBroadcast(msg: string): boolean {
-  return /timeout|unreachable|fetch|abort|network|socket|reset|50\d/i.test(msg);
-}
+export { maybeBroadcast } from "@/lib/broadcast-rules";
 
 /** "bo***@gm***.com": enough for the member to recognise their inbox, not enough to read it off a screen. */
 export function maskEmail(email: string): string {

@@ -706,6 +706,7 @@ export type Database = {
         Row: {
           claimed_at: string | null
           confirmations: number
+          confirmed_at: string | null
           created_at: string
           expected_amount: number
           funded_amount: number
@@ -714,6 +715,8 @@ export type Database = {
           leg: Database["public"]["Enums"]["escrow_leg"]
           multisig_address: string | null
           release_txid: string | null
+          sent_at: string | null
+          sent_network: string | null
           status: Database["public"]["Enums"]["escrow_status"]
           trade_id: string
           updated_at: string
@@ -721,6 +724,7 @@ export type Database = {
         Insert: {
           claimed_at?: string | null
           confirmations?: number
+          confirmed_at?: string | null
           created_at?: string
           expected_amount: number
           funded_amount?: number
@@ -729,6 +733,8 @@ export type Database = {
           leg: Database["public"]["Enums"]["escrow_leg"]
           multisig_address?: string | null
           release_txid?: string | null
+          sent_at?: string | null
+          sent_network?: string | null
           status?: Database["public"]["Enums"]["escrow_status"]
           trade_id: string
           updated_at?: string
@@ -736,6 +742,7 @@ export type Database = {
         Update: {
           claimed_at?: string | null
           confirmations?: number
+          confirmed_at?: string | null
           created_at?: string
           expected_amount?: number
           funded_amount?: number
@@ -744,6 +751,8 @@ export type Database = {
           leg?: Database["public"]["Enums"]["escrow_leg"]
           multisig_address?: string | null
           release_txid?: string | null
+          sent_at?: string | null
+          sent_network?: string | null
           status?: Database["public"]["Enums"]["escrow_status"]
           trade_id?: string
           updated_at?: string
@@ -2205,6 +2214,9 @@ export type Database = {
           telegram_verified_at: string | null
           timezone: string
           trades_completed: number
+          trading_frozen_at: string | null
+          trading_frozen_reason: string | null
+          trading_frozen_trade: string | null
           two_factor_on: boolean
           updated_at: string
         }
@@ -2240,6 +2252,9 @@ export type Database = {
           telegram_verified_at?: string | null
           timezone?: string
           trades_completed?: number
+          trading_frozen_at?: string | null
+          trading_frozen_reason?: string | null
+          trading_frozen_trade?: string | null
           two_factor_on?: boolean
           updated_at?: string
         }
@@ -2275,6 +2290,9 @@ export type Database = {
           telegram_verified_at?: string | null
           timezone?: string
           trades_completed?: number
+          trading_frozen_at?: string | null
+          trading_frozen_reason?: string | null
+          trading_frozen_trade?: string | null
           two_factor_on?: boolean
           updated_at?: string
         }

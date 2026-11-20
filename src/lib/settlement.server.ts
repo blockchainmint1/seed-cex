@@ -303,12 +303,15 @@ export async function watchTxcLeg(userId: string, tradeId: string): Promise<Watc
 export async function refreshTradeStatus(tradeId: string) {
   const { data: legs } = await supabaseAdmin
     .from("escrows")
-    .select("status")
+    .select("status, confirmed_at, release_txid")
     .eq("trade_id", tradeId);
   const statuses = (legs ?? []).map((l) => l.status);
   if (statuses.length === 0) return;
 
-  const next = statuses.every((s) => s === "released")
+  // "Settled" means every side is sent AND confirmed deep enough (audit #3 A1); the
+  // settlement watcher (settle/confirm.server.ts) sets confirmed_at.
+  const allDeep = (legs ?? []).every((l) => l.confirmed_at || (l.release_txid ?? "").startsWith("sim-"));
+  const next = statuses.every((s) => s === "released") && allDeep
     ? "settled"
     : statuses.some((s) => s === "released" || s === "confirmed")
       ? "both_funded"
@@ -322,8 +325,11 @@ export async function refreshTradeStatus(tradeId: string) {
     .maybeSingle();
   // Nothing moved: skip the write so a repeated poll can't send the alert twice.
   if (trade?.status === next) return;
+  // A dispute or a cancellation is final here; only an admin moves it on.
+  if (trade && !["matched", "maker_funded", "taker_funded", "both_funded"].includes(trade.status)) return;
 
-  await supabaseAdmin.from("trades").update({ status: next }).eq("id", tradeId);
+  const { data: moved } = await supabaseAdmin.from("trades").update({ status: next }).eq("id", tradeId).eq("status", trade?.status ?? "matched").select("id");
+  if (!moved?.length) return;
 
   if (next === "settled") {
     const { alertTradeSettled } = await import("./alerts.server");

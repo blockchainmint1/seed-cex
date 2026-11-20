@@ -13,6 +13,8 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Card, Note, TabTitle, fieldLabel, inputCls } from "@/components/account/ui";
+import { CodeField } from "@/components/account/CodeField";
+import { proveTwoFactor } from "@/components/account/two-factor";
 
 export const Route = createFileRoute("/_authenticated/account/ai")({
   staticData: { sitemap: false },
@@ -57,7 +59,14 @@ function AiTab() {
     mutationFn: (v: { id: string; on: boolean; startNow?: boolean }) => setReal({ data: v }),
     onSuccess: (r) => { setRealNote(r.note); refresh(); },
   });
-  const answer = useMutation({ mutationFn: (v: { checkId: string; choice: "yes" | "no" }) => decide({ data: v }), onSuccess: refresh });
+  const answer = useMutation({
+    mutationFn: async (v: { checkId: string; choice: "yes" | "no"; code?: string }) => {
+      // Above the one-tap limit the site asks for an authenticator code first (audit #3 A6).
+      if (v.choice === "yes" && v.code) await proveTwoFactor(v.code);
+      return decide({ data: { checkId: v.checkId, choice: v.choice } });
+    },
+    onSuccess: refresh,
+  });
   const tester = q.data?.tester === true;
   const canReal = tester && q.data?.testerExecutionOn === true;
 
@@ -85,7 +94,7 @@ function AiTab() {
       {q.data && canReal ? (
         <Note tone="info">
           <b>Beta tester: real buying is open to you.</b> Switch it on per plan. Each day Seeds works out the trades your plan wants and asks you
-          first — one tap in Telegram for days up to ${q.data.limits.oneTapLimitUsd}, a Confirm button here for bigger ones. Trades are ordinary TSD swaps from
+          first — one tap in Telegram for days up to ${q.data.limits.oneTapLimitUsd}, a Confirm button here (with your authenticator code) for bigger ones. Trades are ordinary TSD swaps from
           your own trading pocket, one at a time, with no Seeds size limit. When a plan goes to cash, the TSD stays in your pocket and isn't set aside;
           if it's gone when the plan buys back in, Seeds tells you to deposit more TSD.
         </Note>
@@ -114,7 +123,8 @@ function AiTab() {
           canReal={canReal}
           onReal={() => { setRealNote(null); if (p.execute) real.mutate({ id: p.id, on: false }); else setRealFor({ plan: p, mode: "turn-on" }); }}
           onBuyNow={(mode) => { setRealNote(null); setRealFor({ plan: p, mode }); }}
-          onAnswer={(checkId, choice) => answer.mutate({ checkId, choice })}
+          oneTapLimitUsd={q.data?.limits.oneTapLimitUsd ?? 0}
+          onAnswer={(checkId, choice, code) => answer.mutate({ checkId, choice, code })}
           onStatus={(s) => status.mutate({ id: p.id, status: s })}
           onTelegram={() => status.mutate({ id: p.id, telegramDaily: !p.telegramDaily })}
           onEdit={() => setEditing(p)} onEnd={() => setEnding(p)} />)
@@ -178,9 +188,11 @@ function rulesOf(p: MyAiPlan, symbol: (id: string) => string): [string, string][
   return out;
 }
 
-function PlanCard({ p, paper, symbol, busy, canReal, onReal, onBuyNow, onAnswer, onStatus, onTelegram, onEdit, onEnd }: {
-  p: MyAiPlan; paper: boolean; symbol: (id: string) => string; busy: boolean;
-  canReal?: boolean; onReal?: () => void; onBuyNow?: (mode: StartMode) => void; onAnswer?: (checkId: string, choice: "yes" | "no") => void;
+type AnswerFn = (checkId: string, choice: "yes" | "no", code?: string) => void;
+
+function PlanCard({ p, paper, symbol, busy, canReal, oneTapLimitUsd, onReal, onBuyNow, onAnswer, onStatus, onTelegram, onEdit, onEnd }: {
+  p: MyAiPlan; paper: boolean; symbol: (id: string) => string; busy: boolean; oneTapLimitUsd?: number;
+  canReal?: boolean; onReal?: () => void; onBuyNow?: (mode: StartMode) => void; onAnswer?: AnswerFn;
   onStatus?: (s: "locked" | "paused") => void; onTelegram?: () => void; onEdit?: () => void; onEnd?: () => void;
 }) {
   const [history, setHistory] = useState(false);
@@ -196,7 +208,7 @@ function PlanCard({ p, paper, symbol, busy, canReal, onReal, onBuyNow, onAnswer,
           <div key={k} className="flex gap-2"><dt className="w-32 shrink-0 text-muted-foreground">{k}</dt><dd className="min-w-0">{v}</dd></div>
         ))}
       </dl>
-      {p.execute || p.ledger || p.realDay ? <RealSection p={p} symbol={symbol} busy={busy} onAnswer={onAnswer} onBuyNow={canReal && p.status === "locked" ? onBuyNow : undefined} /> : null}
+      {p.execute || p.ledger || p.realDay ? <RealSection p={p} symbol={symbol} busy={busy} oneTapLimitUsd={oneTapLimitUsd ?? 0} onAnswer={onAnswer} onBuyNow={canReal && p.status === "locked" ? onBuyNow : undefined} /> : null}
       <div className="mt-4">
         <p className={fieldLabel}>Latest check{p.lastCheck ? ` · ${p.lastCheck.day}` : ""}</p>
         {p.lastCheck ? (
@@ -301,8 +313,11 @@ function moveText(m: AiRealDay["moves"][number], symbol: (id: string) => string)
 }
 
 /** Real buying: what the plan owns from finished trades, and the newest day's trades (confirm / skip while waiting). */
-function RealSection({ p, symbol, busy, onAnswer, onBuyNow }: { p: MyAiPlan; symbol: (id: string) => string; busy: boolean; onAnswer?: (checkId: string, choice: "yes" | "no") => void; onBuyNow?: (mode: StartMode) => void }) {
+function RealSection({ p, symbol, busy, oneTapLimitUsd, onAnswer, onBuyNow }: { p: MyAiPlan; symbol: (id: string) => string; busy: boolean; oneTapLimitUsd: number; onAnswer?: AnswerFn; onBuyNow?: (mode: StartMode) => void }) {
   const d = p.realDay;
+  const [code, setCode] = useState("");
+  // Same line as Telegram: bigger days need the member's authenticator code here.
+  const needsCode = (d?.totalUsd ?? 0) > oneTapLimitUsd;
   const held = Object.entries(p.ledger?.units ?? {}).filter(([, u]) => u > 0);
   const waiting = d?.status === "waiting" && (!d.expiresAt || Date.parse(d.expiresAt) > Date.now());
   const dayOpen = d && ["waiting", "approved", "running"].includes(d.status) && !(d.status === "waiting" && !waiting);
@@ -345,8 +360,14 @@ function RealSection({ p, symbol, busy, onAnswer, onBuyNow }: { p: MyAiPlan; sym
         </div>
       ) : null}
       {waiting && onAnswer ? (
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Button size="sm" disabled={busy} onClick={() => onAnswer(d!.checkId, "yes")}><Check /> {sellToTsd ? "Follow the rule: " : ""}Confirm {d!.totalUsd != null ? `about ${usd(d!.totalUsd)}` : "trades"}</Button>
+        <div className="mt-3 flex flex-wrap items-end gap-2">
+          {needsCode ? (
+            <div className="w-full sm:w-auto">
+              <CodeField id={`ai-confirm-code-${d!.checkId}`} value={code} onChange={setCode} />
+              <p className="mt-1 text-xs text-muted-foreground">Above your one-tap limit of {usd(oneTapLimitUsd)}, so it needs your authenticator code.</p>
+            </div>
+          ) : null}
+          <Button size="sm" disabled={busy || (needsCode && code.replace(/\D/g, "").length !== 6)} onClick={() => onAnswer(d!.checkId, "yes", needsCode ? code : undefined)}><Check /> {sellToTsd ? "Follow the rule: " : ""}Confirm {d!.totalUsd != null ? `about ${usd(d!.totalUsd)}` : "trades"}</Button>
           <Button size="sm" variant="ghost" disabled={busy} onClick={() => onAnswer(d!.checkId, "no")}><X /> Skip today</Button>
           {d!.expiresAt ? <span className="text-xs text-muted-foreground">Ends {new Date(d!.expiresAt).toLocaleString()}</span> : null}
         </div>

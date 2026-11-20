@@ -5,8 +5,12 @@
  *    authorization, remaining limit, balance, receiving address, node). If
  *    either is not ready, nothing is sent: the trade is cancelled and both
  *    orders get their size back.
- * 2. The taker's leg is sent first, then the maker's.
- * 3. If a leg fails after the other has already gone out, the trade is put in
+ * 2. Every pocket-paid side's Telegram approval is spent ("reserved") at once, then only
+ *    the taker's side is sent.
+ * 3. The maker's side goes out from the every-minute job (settle/confirm.server.ts), and
+ *    only once the taker's payment is confirmed deep enough on its network (audit #3 A1:
+ *    members hold their own pocket keys and could replace an unconfirmed send).
+ * 4. If a side fails after the other has already gone out, the trade is put in
  *    dispute and nothing further is sent automatically.
  */
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
@@ -37,7 +41,7 @@ async function previewOne(actorId: string, tradeId: string, leg: LegId) {
   return previewEvmSettlement(actorId, tradeId, leg);
 }
 
-async function settleOne(actorId: string, tradeId: string, leg: LegId): Promise<AutoLegResult> {
+export async function settleOne(actorId: string, tradeId: string, leg: LegId): Promise<AutoLegResult> {
   if (isOmniLeg(leg)) {
     const { settleTsdLeg } = await import("./tsd-settlement.server");
     const r = await settleTsdLeg(actorId, tradeId, leg);
@@ -54,7 +58,7 @@ async function settleOne(actorId: string, tradeId: string, leg: LegId): Promise<
 }
 
 /** Give a cancelled fill's size back to both orders. */
-async function restoreFills(orderIds: Array<string | null>, amount: number) {
+export async function restoreFills(orderIds: Array<string | null>, amount: number) {
   for (const id of orderIds) {
     if (!id) continue;
     const { data: o } = await supabaseAdmin
@@ -208,31 +212,63 @@ export async function autoSettleTrade(tradeId: string): Promise<AutoLegResult[]>
     .select("id");
   if (!lock?.length) return [];
 
-  // 3. Send, taker first. Any failure after money moved → dispute, stop.
-  const results: AutoLegResult[] = [];
-  let anySent = legs.some((l) => l.sent);
+  const cancelBeforeAnySend = async (leg: LegId, message: string) => {
+    await supabaseAdmin.from("trades").update({ status: "timed_out" }).eq("id", tradeId);
+    await restoreFills([trade.maker_order_id, trade.taker_order_id], Number(trade.amount));
+    const { cancelApprovals, voidReservedApprovals } = await import("./pocket-send/approvals.server");
+    await cancelApprovals({ purpose: "trade_leg", refId: tradeId }, `The trade was cancelled: ${message}`);
+    await voidReservedApprovals(tradeId, `The trade was cancelled before this side was sent: ${message}`);
+    await fail(`${leg}_autosettle_failed`, leg, message);
+  };
+
+  // 3. Spend every pocket-paid side's approval now: a tap is good for 15 minutes, and the
+  //    second side may wait longer than that for the first side to confirm.
+  if (legs.some((l) => l.sent)) return []; // the every-minute job carries a trade already underway
   for (const l of legs) {
-    if (l.sent) continue;
+    if (pocketPaid.get(l.leg) !== true || !l.payer) continue;
     try {
-      results.push(await settleOne(l.payer as string, tradeId, l.leg));
-      anySent = true;
+      const { reservePocketLeg } = await import("./pocket-send/trade.server");
+      await reservePocketLeg(l.payer, tradeId, l.leg);
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Settlement failed";
-      results.push({ leg: l.leg, ok: false, error: message });
-      if (anySent) {
-        await supabaseAdmin.from("trades").update({ status: "disputed" }).eq("id", tradeId);
-        await fail(`${l.leg}_autosettle_failed_disputed`, l.leg, message);
-      } else {
-        await supabaseAdmin.from("trades").update({ status: "timed_out" }).eq("id", tradeId);
-        await restoreFills([trade.maker_order_id, trade.taker_order_id], Number(trade.amount));
-        const { cancelApprovals } = await import("./pocket-send/approvals.server");
-        await cancelApprovals({ purpose: "trade_leg", refId: tradeId }, `The trade was cancelled: ${message}`);
-        await fail(`${l.leg}_autosettle_failed`, l.leg, message);
-      }
-      break;
+      const message = e instanceof Error ? e.message : "Couldn't use the approval";
+      await cancelBeforeAnySend(l.leg, message);
+      return [{ leg: l.leg, ok: false, error: `Trade cancelled, nothing was sent: ${message}` }];
     }
   }
-  return results;
+
+  // 4. Send the taker's side only. The maker's side goes out once this one is confirmed.
+  const [first, ...rest] = legs;
+  if (!first) return [];
+  let firstResult: AutoLegResult;
+  try {
+    firstResult = await settleOne(first.payer as string, tradeId, first.leg);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Settlement failed";
+    // The txid was stored before broadcast and the error says it may have gone out anyway:
+    // never cancel (the coins may be on their way) and never re-send. An admin checks it.
+    const { maybeBroadcast } = await import("./broadcast-rules");
+    const { data: recorded } = await supabaseAdmin.from("send_approvals").select("txid")
+      .eq("purpose", "trade_leg").eq("ref_id", tradeId).eq("leg", first.leg).not("txid", "is", null).limit(1).maybeSingle();
+    if (recorded?.txid && maybeBroadcast(message)) {
+      await supabaseAdmin.from("trades").update({ status: "disputed" }).eq("id", tradeId).eq("status", "matched");
+      const { voidReservedApprovals } = await import("./pocket-send/approvals.server");
+      await voidReservedApprovals(tradeId, `The first side may have been sent (${message}); the team checks before anything else moves.`);
+      await supabaseAdmin.from("trade_events").insert({ trade_id: tradeId, actor_id: null, event: "first_send_unsure", detail: { leg: first.leg, txid: recorded.txid, error: message.slice(0, 300) } });
+      const { alertTradeHeld } = await import("./alerts.server");
+      await alertTradeHeld({ userIds: [trade.maker_id, trade.taker_id], pair: trade.pair ?? tradeId, text: `the network didn't confirm it received the ${getLeg(first.leg).symbol} payment. Don't retry; the team will check it.` });
+      return [{ leg: first.leg, ok: false, error: `The network didn't confirm it received the payment (${message}). The trade is on hold; don't retry.` }];
+    }
+    await cancelBeforeAnySend(first.leg, message);
+    return [{ leg: first.leg, ok: false, error: message }];
+  }
+  await supabaseAdmin.from("trade_events").insert({
+    trade_id: tradeId, actor_id: null, event: "waiting_first_confirmation",
+    detail: { first: first.leg, then: rest.map((l) => l.leg) },
+  });
+  return [
+    firstResult,
+    ...rest.map((l) => ({ leg: l.leg, ok: false, pending: true, error: `Sent once the ${getLeg(first.leg).symbol} payment is confirmed on its network` })),
+  ];
 }
 
 /** Auto-settle a batch of fills; never throws into the order path. */

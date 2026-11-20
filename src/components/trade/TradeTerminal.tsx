@@ -169,7 +169,8 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
     onSuccess: (res) => {
       setFormError(null);
       const failed = res.settlements.filter((st) => st.legs.some((l) => !l.ok && !l.pending));
-      const waiting = res.settlements.filter((st) => !failed.includes(st) && st.legs.some((l) => l.pending)).length;
+      const confirming = res.settlements.filter((st) => !failed.includes(st) && st.legs.some((l) => l.ok) && st.legs.some((l) => l.pending)).length;
+      const waiting = res.settlements.filter((st) => !failed.includes(st) && !st.legs.some((l) => l.ok) && st.legs.some((l) => l.pending)).length;
       const unsettled = failed.length;
       const reason = failed[0]?.legs.find((l) => !l.ok)?.error?.replace(/^Trade cancelled, nothing was sent: /, "");
       const settleNote =
@@ -178,6 +179,9 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
           : "") +
         (waiting > 0
           ? ` ${waiting} trade(s) are waiting for both sides to tap Approve in Telegram (15 minutes). Nothing moves until both do; if either side doesn't, the trade is cancelled.`
+          : "") +
+        (confirming > 0
+          ? ` ${confirming} trade(s) are confirming: the first payment is sent, and the other side is sent once it's confirmed on its network (usually a few minutes).`
           : "");
       if (res.tradeIds.length > 0 && unsettled === res.tradeIds.length) {
         // Matched, but no trade could settle: say so plainly, nothing moved.

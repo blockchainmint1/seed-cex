@@ -92,6 +92,14 @@ export async function alertSettlementFailed(input: {
   }
 }
 
+/** A trade moved to an admin (a payment vanished or never confirmed). Plain words, no retry promise. */
+export async function alertTradeHeld(input: { userIds: Array<string | null>; pair: string; text: string }): Promise<void> {
+  const text = `⚠️ <b>Seeds</b>\nYour <b>${esc(input.pair)}</b> trade is on hold: ${esc(input.text)}\n\n<a href="${SITE}/trades">Open your trades</a>`;
+  for (const id of new Set(input.userIds.filter((x): x is string => Boolean(x)))) {
+    await notifyUser(id, "notify_settlement_failed", text);
+  }
+}
+
 /** A sign-in through Honest.Money single sign-on. With an active wallet link, the alert carries a
  *  one-tap "Revoke Seeds' access" button so the member doesn't have to sign in to cut Seeds off. */
 export async function alertSignIn(input: { userId: string; email?: string | null }): Promise<void> {

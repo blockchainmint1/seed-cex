@@ -12,6 +12,7 @@
  *    two-server vault checks, reserve_swap_send caps), with drift allowed only up to legTolerance.
  * The cron job (/api/public/jobs/tsd-routes) and the Swap page both call advanceRoute.
  */
+import { maybeBroadcast } from "@/lib/broadcast-rules";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Database } from "@/integrations/supabase/types";
 import { PROTOCOL_LABEL, swapCoin, type Protocol, type SwapCoin } from "./assets";
@@ -557,7 +558,7 @@ async function step(r: Row): Promise<boolean> {
         await sendRawTransaction(ETH, tx.raw);
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
-        if (!/timeout|unreachable|fetch|abort|network|socket|reset|50\d/i.test(msg)) {
+        if (!maybeBroadcast(msg)) {
           // Definitely refused by the node: safe to clear and try again next tick.
           await save(r.id, { usdc_txid: null, error: msg.slice(0, 300) });
           return false;

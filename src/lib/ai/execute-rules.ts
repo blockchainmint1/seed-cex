@@ -119,6 +119,18 @@ export function planRealMoves(p: {
 }
 
 /** Telegram one-tap only for small days; bigger ones are confirmed on Seeds. */
+/**
+ * Confirming a trade day on the website (audit #3 A6, Bobby: yes, Nov 20): above the member's
+ * one-tap limit it needs a fresh authenticator code, the same line Telegram draws. Null = OK.
+ */
+export function siteConfirmProblem(i: { totalUsd: number; limitUsd: number; twoFactorOn: boolean; fresh: boolean }): string | null {
+  if (!(i.totalUsd > i.limitUsd)) return null;
+  const lim = `$${i.limitUsd.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+  if (!i.twoFactorOn) return `This day is above your one-tap limit of ${lim}, so it needs your authenticator code. Turn on two-factor in Account → Security first.`;
+  if (!i.fresh) return `This day is above your one-tap limit of ${lim}. Enter the 6-digit code from your authenticator app to confirm it.`;
+  return null;
+}
+
 export function oneTapAllowed(totalUsd: number, oneTapLimitUsd: number): boolean {
   return totalUsd > 0 && totalUsd <= oneTapLimitUsd;
 }

@@ -42,3 +42,14 @@ describe("paying yourself", () => {
     expect(selfCheckoutBlock({ hasActivePeerLink: false, reg: { payment_method: "peer", invoice_expires_at: "2026-11-17T18:30:00Z" }, now: NOW })).not.toBeNull());
   it("allowed once the link is cancelled", () => expect(selfCheckoutBlock({ hasActivePeerLink: false, reg: { payment_method: "peer", invoice_expires_at: null } })).toBeNull());
 });
+
+import { safeOrigin } from "./ignite-peer";
+describe("Peer Pay links only point at Seeds (deep scan D1)", () => {
+  it("Seeds' own address is kept", () => expect(safeOrigin("https://seeds.honest.money")).toBe("https://seeds.honest.money"));
+  it("a look-alike site falls back to Seeds", () => {
+    expect(safeOrigin("https://seeds-honest.money")).toBe("https://seeds.honest.money");
+    expect(safeOrigin("https://seeds.honest.money.evil.example")).toBe("https://seeds.honest.money");
+    expect(safeOrigin("http://localhost.evil.example")).toBe("https://seeds.honest.money");
+  });
+  it("local development still works", () => expect(safeOrigin("http://localhost:8080")).toBe("http://localhost:8080"));
+});

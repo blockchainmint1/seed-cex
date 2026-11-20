@@ -121,7 +121,8 @@ export async function xrpReserveDrops(ownerCount: number): Promise<bigint> {
 
 export async function xrpSubmit(hex: string): Promise<void> {
   const r = await xrp<{ engine_result: string; engine_result_message?: string }>("submit", { tx_blob: hex }, true);
-  if (!/^(tesSUCCESS|terQUEUED)$/.test(r.engine_result)) {
+  // tefALREADY: this exact signed payment is already on the ledger or queued (a fail-over copy).
+  if (!/^(tesSUCCESS|terQUEUED|tefALREADY)$/.test(r.engine_result)) {
     throw new Error(`XRP Ledger refused the payment: ${r.engine_result}${r.engine_result_message ? ` — ${r.engine_result_message}` : ""}`);
   }
 }

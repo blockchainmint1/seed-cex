@@ -7,6 +7,14 @@ import { getPair, type PairId } from "@/lib/chains";
 import { LegPanel } from "@/components/trade/LegPanel";
 import { fmtAgo, fmtAmount, fmtPrice } from "@/lib/format";
 
+/** Plain words for a trade's state; "confirming" = first side sent, second waits for its confirmations. */
+function tradeStatusLabel(status: string): string {
+  if (status === "both_funded") return "Confirming";
+  if (status === "disputed") return "On hold · team review";
+  if (status === "timed_out") return "Cancelled";
+  return status.replace(/_/g, " ");
+}
+
 export const Route = createFileRoute("/_authenticated/trades")({
   staticData: { sitemap: false },
   head: () => ({
@@ -187,7 +195,7 @@ function TradesPage() {
                     <span className="tabular-nums">@ {fmtPrice(t.price)}</span>
                     <span className="text-muted-foreground">{t.role}</span>
                     <span className="rounded-sm border border-border px-2 py-0.5 tracking-wider uppercase">
-                      {t.status.replace(/_/g, " ")}
+                      {tradeStatusLabel(t.status)}
                     </span>
                     <span className="ml-auto text-muted-foreground">{fmtAgo(t.createdAt)}</span>
                   </div>

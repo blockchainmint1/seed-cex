@@ -8,7 +8,7 @@
  */
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getLeg, type LegId } from "@/lib/chains";
-import { APPROVAL_TTL_MS, approvalMatches, approvalTapDecision, parseApprovalData, type ApprovalChoice } from "./rules";
+import { APPROVAL_TTL_MS, approvalMatches, approvalMetaMatches, approvalTapDecision, parseApprovalData, type ApprovalChoice } from "./rules";
 
 /**
  * trade_leg / p2p_release: settlement sends. swap_out: a swap paying out to an outside address (audit 2026-11-19 H2).
@@ -175,6 +175,8 @@ export async function spendApproval(p: {
   amount: number;
   from: string;
   to: string;
+  /** Details that must also match what was approved (e.g. swap_out: receiving coin + protocol). */
+  meta?: Record<string, string>;
 }): Promise<ApprovalRow> {
   if (!p.refId && !p.id) throw new Error("No approval to spend. Nothing was sent.");
   let q = supabaseAdmin.from("send_approvals").select(COLS).eq("purpose", p.purpose).eq("leg", p.leg).eq("status", "approved");
@@ -186,7 +188,8 @@ export async function spendApproval(p: {
     !approvalMatches(
       { status: row.status, expiresAtMs: Date.parse(row.expires_at), userId: row.user_id, linkId: row.link_id, leg: row.leg, amount: row.amount, fromAddress: row.from_address, toAddress: row.to_address },
       { userId: p.userId, linkId: p.linkId, leg: p.leg, amount: p.amount, fromAddress: p.from, toAddress: p.to, nowMs: Date.now() },
-    )
+    ) ||
+    !approvalMetaMatches(row.meta, p.meta)
   ) {
     throw new Error("This send hasn't been approved in Telegram (or the approval ended). Nothing was sent.");
   }
@@ -197,6 +200,34 @@ export async function spendApproval(p: {
     .select("id");
   if (!claimed || claimed.length === 0) throw new Error("This approval was already used or just ended. Nothing was sent.");
   return { ...row, status: "used" };
+}
+
+/**
+ * An exchange leg's approval that was spent when the trade started but hasn't been sent
+ * yet (audit #3 A1: the second side is sent only after the first side confirms, which
+ * can outlast the tap's 15 minutes). Matches the same user, link, amount and addresses;
+ * once a txid or an error is recorded on it, it can never be used again.
+ */
+export async function reservedApproval(p: {
+  purpose: ApprovalPurpose; refId: string; leg: string; userId: string; linkId: string; amount: number; from: string; to: string;
+}): Promise<ApprovalRow | null> {
+  const { data } = await supabaseAdmin
+    .from("send_approvals")
+    .select(COLS)
+    .eq("purpose", p.purpose).eq("ref_id", p.refId).eq("leg", p.leg)
+    .eq("status", "used").is("txid", null).is("error", null)
+    .order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (!data) return null;
+  const row = norm(data);
+  const same = row.user_id === p.userId && row.link_id === p.linkId && Math.abs(row.amount - p.amount) <= 1e-8
+    && row.from_address === p.from && row.to_address === p.to;
+  return same ? row : null;
+}
+
+/** A trade stopped before its reserved sides were sent: mark those spent approvals so they can never be used. */
+export async function voidReservedApprovals(tradeId: string, why: string) {
+  await supabaseAdmin.from("send_approvals").update({ error: why.slice(0, 500) })
+    .eq("purpose", "trade_leg").eq("ref_id", tradeId).eq("status", "used").is("txid", null).is("error", null);
 }
 
 export async function recordApprovalTx(id: string, txid: string) {

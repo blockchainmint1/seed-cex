@@ -12,11 +12,16 @@
 export const CODE_MAX_AGE_SEC = 10 * 60;
 
 type AmrEntry = { method?: unknown; timestamp?: unknown };
-export type SessionClaims = { aal?: unknown; amr?: unknown };
+/** `client_id` is present only on tokens issued to a connected app (AI assistant) through OAuth. */
+export type SessionClaims = { aal?: unknown; amr?: unknown; client_id?: unknown };
 
 /** Seconds since the newest authenticator code on this session, or null if there is none. */
 export function codeAgeSec(claims: SessionClaims | null | undefined, nowSec: number): number | null {
   if (!claims || claims.aal !== "aal2" || !Array.isArray(claims.amr)) return null;
+  // A connected app's token never counts as a fresh code, even if the app managed to add and
+  // verify its own authenticator through the sign-in service (audit #3 A2): withdrawals,
+  // outside-address swaps, Telegram changes, one-tap raises and admin powers stay member-only.
+  if (claims.client_id != null && claims.client_id !== "") return null;
   const stamps = (claims.amr as AmrEntry[])
     .filter((e) => e && e.method === "totp" && typeof e.timestamp === "number" && Number.isFinite(e.timestamp))
     .map((e) => e.timestamp as number);

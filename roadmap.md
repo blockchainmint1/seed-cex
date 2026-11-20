@@ -224,10 +224,11 @@
 - [ ] First small real withdrawal per coin (blocked: Bobby re-links after this publishes, then tries one)
 - [x] Open withdrawals to all members (Bobby: everyone now, Nov 20)
 
-## Audit #3 (Nov 20) — waiting on Bobby's answers before any change
-- [ ] A1 wait for first leg to confirm before paying the second + vanished-send detector (blocked: Bobby's answer)
-- [ ] A2 AI-assistant passes read-only outside /mcp (blocked: Bobby's answer)
-- [ ] A3/A5/D1/D2 quiet fixes (blocked: Bobby's answer)
-- [ ] A4 tester withdrawal hold (blocked: Bobby's answer)
-- [ ] A6 code for site AI-trade confirmation above one-tap limit (blocked: Bobby's answer)
+## Audit #3 (Nov 20) — built in preview, waiting on the auditor before publishing
+- [x] A1 exchange trades: taker pays first, maker's side sent only after that payment is confirmed on its network; vanished/rejected payment → trade on hold + payer's trading frozen (admin lifts in Admin → Accounts); slow payments go to admin without blame
+- [ ] A1 first real two-sided exchange trade with the wait (blocked: Bobby tries a small one after publish)
+- [x] A2 AI assistants: approval screen + Connected apps say honestly what they can do (abilities unchanged)
+- [x] A3/A5/D1/D2 quiet fixes (assistant sign-ins never count as a fresh code; AI tester check; swap approvals bind the coin bought; Peer Pay links only to Seeds; "already have it" network answers treated as maybe-sent, never failed)
+- [x] A4 tester withdrawal hold — Bobby: keep no hold (each withdrawal still needs email + 2FA + Telegram)
+- [x] A6 confirming an AI trade day on the site above the one-tap limit needs a fresh authenticator code
 - [ ] A7 rate limiter rework (later, at load testing); A8 note only

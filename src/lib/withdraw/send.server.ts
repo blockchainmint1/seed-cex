@@ -165,8 +165,7 @@ export async function sendWithdrawal(c: WithdrawCoin, link: Link, from: string, 
     case "omni": {
       const { omniSimpleSend } = await import("@/lib/omni.server");
       const sent = await withPocketKey(link.ciphertext, "TXC", from, (priv) =>
-        omniSimpleSend({ privateKeyHex: bytesToHex(priv), fromAddress: from, toAddress: to, amount: coins, propertyId: omniLegAsset("tsd").propertyId }));
-      await record(sent.txid);
+        omniSimpleSend({ privateKeyHex: bytesToHex(priv), fromAddress: from, toAddress: to, amount: coins, propertyId: omniLegAsset("tsd").propertyId, beforeBroadcast: record }));
       return sent.txid;
     }
     case "utxo": {

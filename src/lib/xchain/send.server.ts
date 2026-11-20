@@ -11,6 +11,7 @@
  *  4. Decrypt the pocket key, check it controls the funding address, build and
  *     sign locally, store the txid, then broadcast. The key is wiped after.
  */
+import { maybeBroadcast } from "@/lib/broadcast-rules";
 import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { ed25519 } from "@noble/curves/ed25519.js";
 import { bytesToHex } from "@noble/hashes/utils.js";
@@ -356,6 +357,7 @@ export async function sendSwapFromPocket(userId: string, isAdmin: boolean, input
     await spendApproval({
       purpose: "swap_out", id: member.approvalId, leg: from.id, userId, linkId: link!.id,
       amount: amountCoins, from: fromAddress, to: input.destination,
+      meta: { from: from.id, to: to.id, protocol },
     });
   }
   const { data: id, error } = await supabaseAdmin.rpc("reserve_swap_send", {
@@ -399,7 +401,7 @@ export async function sendSwapFromPocket(userId: string, isAdmin: boolean, input
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     // A txid we stored may still have reached the network if the broadcast timed out.
-    const maybeSent = recordedTxid && /timeout|unreachable|fetch|abort|network|socket|reset|50\d/i.test(msg);
+    const maybeSent = recordedTxid && maybeBroadcast(msg);
     await supabaseAdmin.from("swap_sends").update({ status: maybeSent ? "unknown" : "failed", error: msg.slice(0, 500), updated_at: new Date().toISOString() }).eq("id", rowId);
     throw new Error(maybeSent ? `The network didn't confirm it received the swap (${msg}). We'll keep checking — don't retry yet.` : msg);
   } finally {

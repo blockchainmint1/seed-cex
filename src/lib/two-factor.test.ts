@@ -19,6 +19,10 @@ describe("fresh authenticator code", () => {
     expect(freshTwoFactor({ aal: "aal1", amr: [{ method: "totp", timestamp: now }] }, now)).toBe(false));
   test("a stamp far in the future isn't trusted", () =>
     expect(freshTwoFactor(withCode(-3600), now)).toBe(false));
+  test("a connected AI assistant's token never counts as a fresh code (audit #3 A2)", () => {
+    expect(freshTwoFactor({ ...withCode(60), client_id: "chatgpt-client" }, now)).toBe(false);
+    expect(freshTwoFactor({ ...withCode(60), client_id: "" }, now)).toBe(true);
+  });
 });
 
 describe("withdrawals", () => {
