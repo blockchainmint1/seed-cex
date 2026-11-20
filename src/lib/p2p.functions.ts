@@ -63,14 +63,17 @@ export const listOffers = createServerFn({ method: "GET" })
       ? await db.from("p2p_profiles").select("user_id, away, last_seen_at").in("user_id", owners)
       : { data: [] as { user_id: string; away: boolean; last_seen_at: string | null }[] };
     const { data: hme } = owners.length
-      ? await db.from("profiles").select("id, hm_member_id, hm_status").in("id", owners)
-      : { data: [] as { id: string; hm_member_id: string | null; hm_status: string }[] };
+      ? await db.from("profiles").select("id, hm_member_id, hm_status, trading_frozen_at").in("id", owners)
+      : { data: [] as { id: string; hm_member_id: string | null; hm_status: string; trading_frozen_at: string | null }[] };
     const presence = (id: string) => {
       const p = profs?.find((x) => x.user_id === id);
       return { away: Boolean(p?.away), lastSeen: p?.last_seen_at ?? null, online: onlineNow(p?.last_seen_at) && !p?.away };
     };
     // Seller tool: ads auto-pause while the owner is set to Away.
     rows = rows.filter((o) => !presence(o.seller_id).away);
+    // Ads of a trader on hold after a vanished trade payment don't show (audit #3 follow-up).
+    const frozen = new Set((hme ?? []).filter((h) => h.trading_frozen_at).map((h) => h.id));
+    rows = rows.filter((o) => !frozen.has(o.seller_id));
 
     const { refreshOffer, statsFor, rankOf, effectivePrice } = await engine();
     const livePrice: Record<string, number> = {};
