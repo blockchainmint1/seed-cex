@@ -223,3 +223,11 @@
 - [x] Tests, auditor note
 - [ ] First small real withdrawal per coin (blocked: Bobby re-links after this publishes, then tries one)
 - [x] Open withdrawals to all members (Bobby: everyone now, Nov 20)
+
+## Audit #3 (Nov 20) — waiting on Bobby's answers before any change
+- [ ] A1 wait for first leg to confirm before paying the second + vanished-send detector (blocked: Bobby's answer)
+- [ ] A2 AI-assistant passes read-only outside /mcp (blocked: Bobby's answer)
+- [ ] A3/A5/D1/D2 quiet fixes (blocked: Bobby's answer)
+- [ ] A4 tester withdrawal hold (blocked: Bobby's answer)
+- [ ] A6 code for site AI-trade confirmation above one-tap limit (blocked: Bobby's answer)
+- [ ] A7 rate limiter rework (later, at load testing); A8 note only
