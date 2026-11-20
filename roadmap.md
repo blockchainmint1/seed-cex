@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] Homepage "Seeds Genesis" hero from Cory: video plays once then rests on the final tree, phones get the still, new headline/buttons (Nov 20)
+- [ ] Higher-resolution Genesis master for big screens (blocked: Cory's team supplies a 1920px+ export)
 - [x] /admin/settings withdrawal levels: low limits for new members, automatic step-ups from history, per-member set level / pause with notes, logged (Nov 18)
 - [ ] Confirm the starting withdrawal levels (blocked: Bobby's numbers)
 - [x] Two-factor sign-in (authenticator app) in Account → Security; required for withdrawal levels 2+; code on every withdrawal; admin reset with own code + note (Nov 18)

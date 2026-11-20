@@ -8,7 +8,7 @@ import { Change, Price, thorMarketsQuery, marketsErrorText } from "@/components/
 import { PAIRS } from "@/lib/chains";
 import seedsCoin from "@/assets/seeds-cold-storage-coin.jpg.asset.json";
 import { IgnitePromo } from "@/components/ignite/IgnitePromo";
-import { TreeOfLife } from "@/components/home/TreeOfLife";
+import { GenesisHero, GENESIS_FIRST_FRAME, GENESIS_POSTER } from "@/components/home/GenesisHero";
 
 export const Route = createFileRoute("/")({
   staticData: { sitemap: true },
@@ -28,6 +28,11 @@ export const Route = createFileRoute("/")({
         content:
           "Trade crypto on a centralized exchange that never takes your keys. Seeds is the easiest way to get started with cryptocurrency — like LocalBitcoins and Binance had a baby.",
       },
+    ],
+    links: [
+      // First paint of the hero: the opening frame where the animation plays, the still tree on phones.
+      { rel: "preload", as: "image", href: GENESIS_FIRST_FRAME, media: "(min-width: 640px)" },
+      { rel: "preload", as: "image", href: GENESIS_POSTER, media: "(max-width: 639px)" },
     ],
   }),
   component: Index,
@@ -69,82 +74,26 @@ function Index() {
   return (
     <>
       <IgnitePromo />
-      <section className="relative border-b border-border">
-        <div
-          className="pointer-events-none absolute inset-0 opacity-[0.12]"
-          style={{
-            backgroundImage:
-              "linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px)",
-            backgroundSize: "44px 44px",
-          }}
-          aria-hidden
-        />
-        <div className="relative mx-auto max-w-7xl px-5 py-20 md:py-28">
-          {/* Tree of Life: canopy up from the Seeds symbol, roots down past the hero. */}
-          <div
-            className="pointer-events-none absolute top-6 right-5 hidden w-[440px] [--tol-dim:0.6] lg:block xl:w-[540px] xl:[--tol-dim:1]"
-            aria-hidden
-          >
-            <TreeOfLife className="h-auto w-full" />
-          </div>
-          <div className="relative z-10">
-          <p className="font-mono text-[11px] tracking-[0.3em] text-primary uppercase">
-            Not your keys, not your coins — until now
-          </p>
-          <h1 className="mt-5 max-w-4xl font-display text-4xl leading-[1.06] font-bold tracking-[-0.03em] text-foreground md:text-6xl">
-            The world's only
-            <br />
-            <span className="text-primary">non-custodial centralized exchange.</span>
-          </h1>
-          <p className="mt-6 max-w-2xl text-base leading-relaxed text-muted-foreground">
-            Seeds gives you the speed, depth, and ease of a centralized exchange — without ever
-            taking custody of your funds. Your recovery phrase stays in HME Wallet on your phone. We
-            settle trades directly from your own trading pocket. It's the easiest way to get started with crypto: like
-            LocalBitcoins and Binance had a baby.
-          </p>
+      <GenesisHero />
 
-          <div className="mt-9 flex flex-wrap gap-3">
-            <Link
-              to="/auth"
-              className="rounded-md bg-action px-6 py-3 text-sm font-semibold text-action-foreground transition-opacity hover:opacity-90"
-            >
-              Get started
-            </Link>
-            <Link
-              to="/markets"
-              className="rounded-md border border-foreground/70 px-6 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-foreground/5"
-            >
-              View markets
-            </Link>
-          </div>
-
-          <div className="mt-14 grid grid-cols-2 gap-6 md:grid-cols-4">
-            <Stat
-              label="Active markets"
-              value={String(ACTIVE_MARKETS)}
-              hint="THORChain + Seeds order books"
-            />
-            <Stat
-              label="24h volume"
-              value={totalVolume > 0 ? fmtAmount(totalVolume) : "—"}
-              hint="across all markets"
-            />
-            <Stat
-              label="USDC/TXC last"
-              value={stats.data?.last != null ? fmtPrice(stats.data.last) : "—"}
-              hint="live order book"
-            />
-            <Stat
-              label="Settlement"
-              value="On-chain"
-              hint="direct from your wallet"
-            />
-          </div>
-          </div>
+      <section className="border-b border-border">
+        <div className="mx-auto grid max-w-7xl grid-cols-2 gap-6 px-5 py-8 md:grid-cols-4">
+          <Stat label="Active markets" value={String(ACTIVE_MARKETS)} hint="THORChain + Seeds order books" />
+          <Stat
+            label="24h volume"
+            value={totalVolume > 0 ? fmtAmount(totalVolume) : "—"}
+            hint="across all markets"
+          />
+          <Stat
+            label="USDC/TXC last"
+            value={stats.data?.last != null ? fmtPrice(stats.data.last) : "—"}
+            hint="live order book"
+          />
+          <Stat label="Settlement" value="On-chain" hint="direct from your wallet" />
         </div>
       </section>
 
-      <section className="border-b border-border bg-surface">
+      <section id="how-it-works" className="scroll-mt-20 border-b border-border bg-surface">
         <div className="mx-auto grid max-w-7xl gap-px bg-border md:grid-cols-3">
           {[
             {

@@ -379,70 +379,62 @@
   box-shadow: 0 10px 40px -8px color-mix(in oklab, var(--action) 70%, transparent);
 }
 
-/* Homepage Tree of Life (components/home/TreeOfLife.tsx): grows from the Seeds symbol. */
-:root {
-  --tol-bark: color-mix(in oklab, var(--primary) 55%, var(--foreground));
-  --tol-root: color-mix(in oklab, var(--primary) 30%, var(--muted-foreground));
-  --tol-leaf: var(--primary);
-  --tol-leaf-alt: color-mix(in oklab, var(--primary) 60%, var(--background));
-  --tol-glow: color-mix(in oklab, var(--primary) 10%, transparent);
+/* Homepage "Seeds Genesis" hero (components/home/GenesisHero.tsx). Always dark;
+   the night colour matches the video's own edges so the artwork melts into the page. */
+.genesis-hero {
+  --background: oklch(0.153 0.024 174.3);
+  --genesis-h: clamp(420px, 38vw, 760px);
 }
-.dark {
-  --tol-bark: color-mix(in oklab, var(--primary) 50%, var(--muted-foreground));
-  --tol-root: color-mix(in oklab, var(--primary) 30%, var(--muted-foreground));
-  --tol-leaf: var(--action);
-  --tol-leaf-alt: color-mix(in oklab, var(--action) 55%, var(--foreground));
-  --tol-glow: var(--growth-glow);
+.genesis-media {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 6%, #000 74%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 6%, #000 74%, transparent 100%);
 }
-.tol { overflow: visible; }
-/* Dims the drawing (never the logo) where it sits close to the headline. */
-.tol-art { opacity: var(--tol-dim, 1); }
-.tol-limb {
-  fill: none;
-  stroke-linecap: round;
-  stroke-dasharray: 1;
-  stroke-dashoffset: 1;
-  animation-name: tol-draw;
-  animation-timing-function: cubic-bezier(0.3, 0.1, 0.4, 1);
-  animation-fill-mode: forwards;
+@media (min-width: 640px) { .genesis-media { aspect-ratio: 16 / 10; } }
+.genesis-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 52% 50%; /* phones: whole canopy and symbol in a 4:3 crop */
+  transition: opacity 700ms var(--ease-brand, ease);
 }
-.tol-branch { stroke: var(--tol-bark); }
-.tol-root { stroke: var(--tol-root); }
-.tol-leaf {
-  fill: var(--tol-leaf);
-  transform-box: view-box;
-  transform-origin: 0 0;
-  transform: scale(0);
-  animation: tol-leaf 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+@media (min-width: 640px) { .genesis-layer { object-position: 57% 50%; } }
+.genesis-layer[data-hidden="true"] { opacity: 0; }
+.genesis-first[data-hidden="true"] { pointer-events: none; }
+.genesis-scrim { display: none; }
+/* Phones and reduced motion rest on the still from the first paint. */
+@media (max-width: 639px), (prefers-reduced-motion: reduce) {
+  .genesis-first, .genesis-video { display: none; }
 }
-.tol-leaf-alt { fill: var(--tol-leaf-alt); }
-.tol-leaf-inner { fill: var(--tol-leaf-alt); fill-opacity: 0.6; }
-.tol-tip {
-  fill: var(--tol-leaf);
-  opacity: 0;
-  animation: tol-fade 0.5s ease-out forwards, tol-pulse 3.2s ease-in-out infinite;
-}
-.tol-seed {
-  transform-box: fill-box;
-  transform-origin: center;
-  opacity: 0;
-  animation: tol-seed 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 0.05s forwards;
-}
-.tol-glow { opacity: 0; animation: tol-fade 2.4s ease-out 0.4s forwards; }
-.tol-canopy {
-  transform-box: view-box;
-  animation: tol-sway 11s ease-in-out 4.5s infinite;
-}
-@keyframes tol-draw { to { stroke-dashoffset: 0; } }
-@keyframes tol-leaf { to { transform: scale(1); } }
-@keyframes tol-fade { to { opacity: 1; } }
-@keyframes tol-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
-@keyframes tol-seed { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: scale(1); } }
-@keyframes tol-sway { 0%, 100% { transform: rotate(0deg); } 30% { transform: rotate(0.7deg); } 70% { transform: rotate(-0.7deg); } }
-@media (prefers-reduced-motion: reduce) {
-  .tol-limb { stroke-dashoffset: 0; animation: none; }
-  .tol-leaf { transform: scale(1); animation: none; }
-  .tol-tip, .tol-seed, .tol-glow { opacity: 1; animation: none; }
-  .tol-seed { transform: none; }
-  .tol-canopy { animation: none; }
+/* Desktop: the frame sits right of the headline at its full shape (never cropped
+   into the tree), sized by height and centred on the trunk at 68% of the width. */
+@media (min-width: 1024px) {
+  .genesis-media {
+    position: absolute;
+    top: 0;
+    left: calc(68% - var(--genesis-h) * 440 / 464);
+    height: var(--genesis-h);
+    width: calc(var(--genesis-h) * 848 / 464);
+    aspect-ratio: auto;
+    -webkit-mask-image:
+      linear-gradient(to right, transparent 0, #000 15%, #000 93%, transparent 100%),
+      linear-gradient(to bottom, transparent 0, #000 7%, #000 86%, transparent 100%);
+    -webkit-mask-composite: source-in;
+    mask-image:
+      linear-gradient(to right, transparent 0, #000 15%, #000 93%, transparent 100%),
+      linear-gradient(to bottom, transparent 0, #000 7%, #000 86%, transparent 100%);
+    mask-composite: intersect;
+  }
+  .genesis-layer { object-position: 50% 50%; }
+  .genesis-scrim {
+    display: block;
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(90deg, var(--background) 0%, color-mix(in oklab, var(--background) 75%, transparent) 26%, transparent 42%);
+  }
 }
