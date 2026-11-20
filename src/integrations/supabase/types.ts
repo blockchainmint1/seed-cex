@@ -525,6 +525,39 @@ export type Database = {
         }
         Relationships: []
       }
+      coin_videos: {
+        Row: {
+          added_by: string
+          channel: string | null
+          created_at: string
+          id: string
+          note: string | null
+          slug: string
+          title: string
+          video_id: string
+        }
+        Insert: {
+          added_by: string
+          channel?: string | null
+          created_at?: string
+          id?: string
+          note?: string | null
+          slug: string
+          title: string
+          video_id: string
+        }
+        Update: {
+          added_by?: string
+          channel?: string | null
+          created_at?: string
+          id?: string
+          note?: string | null
+          slug?: string
+          title?: string
+          video_id?: string
+        }
+        Relationships: []
+      }
       custody_attestations: {
         Row: {
           id: string

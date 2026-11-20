@@ -83,6 +83,7 @@ import { Route as AuthenticatedAdminMarketsRouteImport } from './routes/_authent
 import { Route as AuthenticatedAdminPlanRouteImport } from './routes/_authenticated/admin.plan'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
+import { Route as AuthenticatedAdminVideosRouteImport } from './routes/_authenticated/admin.videos'
 import { Route as AuthenticatedP2pDashboardRouteImport } from './routes/_authenticated/p2p.dashboard'
 import { Route as AuthenticatedP2pJuryRouteImport } from './routes/_authenticated/p2p.jury'
 import { Route as AiCoinIdRouteImport } from './routes/ai.coin.$id'
@@ -516,6 +517,12 @@ const AuthenticatedAdminUsersRoute = AuthenticatedAdminUsersRouteImport.update({
   path: '/users',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const AuthenticatedAdminVideosRoute =
+  AuthenticatedAdminVideosRouteImport.update({
+    id: '/videos',
+    path: '/videos',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedP2pDashboardRoute =
   AuthenticatedP2pDashboardRouteImport.update({
     id: '/p2p/dashboard',
@@ -858,6 +865,7 @@ export interface FileRoutesByFullPath {
   '/admin/plan': typeof AuthenticatedAdminPlanRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/admin/videos': typeof AuthenticatedAdminVideosRoute
   '/p2p/dashboard': typeof AuthenticatedP2pDashboardRoute
   '/p2p/jury': typeof AuthenticatedP2pJuryRoute
   '/ai/coin/$id': typeof AiCoinIdRoute
@@ -979,6 +987,7 @@ export interface FileRoutesByTo {
   '/admin/plan': typeof AuthenticatedAdminPlanRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/admin/videos': typeof AuthenticatedAdminVideosRoute
   '/p2p/dashboard': typeof AuthenticatedP2pDashboardRoute
   '/p2p/jury': typeof AuthenticatedP2pJuryRoute
   '/ai/coin/$id': typeof AiCoinIdRoute
@@ -1106,6 +1115,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/plan': typeof AuthenticatedAdminPlanRoute
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/_authenticated/admin/videos': typeof AuthenticatedAdminVideosRoute
   '/_authenticated/p2p/dashboard': typeof AuthenticatedP2pDashboardRoute
   '/_authenticated/p2p/jury': typeof AuthenticatedP2pJuryRoute
   '/ai/coin/$id': typeof AiCoinIdRoute
@@ -1233,6 +1243,7 @@ export interface FileRouteTypes {
     | '/admin/plan'
     | '/admin/settings'
     | '/admin/users'
+    | '/admin/videos'
     | '/p2p/dashboard'
     | '/p2p/jury'
     | '/ai/coin/$id'
@@ -1354,6 +1365,7 @@ export interface FileRouteTypes {
     | '/admin/plan'
     | '/admin/settings'
     | '/admin/users'
+    | '/admin/videos'
     | '/p2p/dashboard'
     | '/p2p/jury'
     | '/ai/coin/$id'
@@ -1480,6 +1492,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/plan'
     | '/_authenticated/admin/settings'
     | '/_authenticated/admin/users'
+    | '/_authenticated/admin/videos'
     | '/_authenticated/p2p/dashboard'
     | '/_authenticated/p2p/jury'
     | '/ai/coin/$id'
@@ -2146,6 +2159,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminUsersRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/videos': {
+      id: '/_authenticated/admin/videos'
+      path: '/videos'
+      fullPath: '/admin/videos'
+      preLoaderRoute: typeof AuthenticatedAdminVideosRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/p2p/dashboard': {
       id: '/_authenticated/p2p/dashboard'
       path: '/p2p/dashboard'
@@ -2575,6 +2595,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminPlanRoute: typeof AuthenticatedAdminPlanRoute
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
+  AuthenticatedAdminVideosRoute: typeof AuthenticatedAdminVideosRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
   AuthenticatedAdminPlanLbtcRoute: typeof AuthenticatedAdminPlanLbtcRoute
 }
@@ -2588,6 +2609,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminPlanRoute: AuthenticatedAdminPlanRoute,
   AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
+  AuthenticatedAdminVideosRoute: AuthenticatedAdminVideosRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
   AuthenticatedAdminPlanLbtcRoute: AuthenticatedAdminPlanLbtcRoute,
 }

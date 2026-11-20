@@ -61,6 +61,12 @@ export const CACHE_TIMES = {
   nodeStatus: { freshMs: 30_000, maxStaleMs: 600_000 },
   referencePrices: { freshMs: 60_000, maxStaleMs: 900_000 },
   balance: { freshMs: 60_000, maxStaleMs: 24 * 3_600_000 },
+  /** Coin research pages: THORChain pool trades, cost-by-size quotes, CoinMarketCap facts, exchanges, news. */
+  poolTrades: { freshMs: 30_000, maxStaleMs: 15 * 60_000 },
+  costQuotes: { freshMs: 60_000, maxStaleMs: 15 * 60_000 },
+  coinProfiles: { freshMs: 5 * 60_000, maxStaleMs: 24 * 3_600_000 },
+  coinPairs: { freshMs: 15 * 60_000, maxStaleMs: 24 * 3_600_000 },
+  coinNews: { freshMs: 15 * 60_000, maxStaleMs: 24 * 3_600_000 },
 } as const satisfies Record<string, CacheTimes>;
 
 /** One cache key per coin + address. EVM addresses ignore letter case. */

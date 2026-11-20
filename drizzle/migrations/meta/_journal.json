@@ -379,6 +379,13 @@
       "when": 1795142618455,
       "tag": "0053_settle_resend_before_freeze",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1795179948223,
+      "tag": "0054_coin_videos",
+      "breakpoints": true
     }
   ]
 }

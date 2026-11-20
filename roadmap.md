@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] Coin market pages, CoinMarketCap-style: recent THORChain trades, cost by trade size, my swaps & orders, global market data, links, other exchanges, news, team-picked videos (Admin → Coin videos) (Nov 20)
+- [ ] Add the first expert videos in Admin → Coin videos (blocked: Bobby's team picks them)
 - [x] Audit #3 follow-up 2: EVM double-check before freezing (two servers + receipt re-check), 5-min resend backoff, 1-min retry after a TXC/ISK index-check failure (Nov 20)
 - [ ] Live test #4 before publishing: low-fee Base first payment dropped → watcher resends, no freeze (blocked: real funded test)
 - [x] Homepage "Seeds Genesis" hero from Cory: video plays once then rests on the final tree, phones get the still, new headline/buttons (Nov 20)

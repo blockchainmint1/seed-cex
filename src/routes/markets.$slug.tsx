@@ -7,6 +7,10 @@ import { routeCoinProblem } from "@/lib/xchain/tsd-route";
 import { Change, Price, thorMarketsQuery } from "@/components/markets/ThorMarketBits";
 import { ThorChartPanel } from "@/components/markets/ThorChartPanel";
 import { Button } from "@/components/ui/button";
+import { MarketActivity } from "@/components/markets/research/MarketActivity";
+import {
+  AboutPanel, coinResearchQuery, ExchangesPanel, LinksCard, MarketDataCard, NewsPanel, VideosPanel,
+} from "@/components/markets/research/CoinResearch";
 
 export const Route = createFileRoute("/markets/$slug")({
   staticData: { sitemap: true },
@@ -22,7 +26,7 @@ export const Route = createFileRoute("/markets/$slug")({
     const m = thorMarket(params.slug);
     if (!m) return { meta: [{ title: "Market not found — Seeds" }, { name: "robots", content: "noindex" }] };
     const title = `${m.base}/TSD price & chart — ${m.name} in TSD | Seeds`;
-    const description = `Live ${m.name} (${m.base}) price in TSD with candlestick charts, 24-hour change, volume and liquidity from THORChain. 1 TSD = $1.`;
+    const description = `Live ${m.name} (${m.base}) price in TSD: candlestick chart, recent trades, cost by trade size, market cap, supply, all-time high, other exchanges, news and videos. 1 TSD = $1.`;
     return {
       meta: [
         { title },
@@ -55,6 +59,8 @@ function MarketPage() {
   const coin = swapCoin(m.swapId);
   const buyProblem = coin ? routeCoinProblem("buy", coin) : "Not on the Swap page.";
   const sellProblem = coin ? routeCoinProblem("sell", coin) : "Not on the Swap page.";
+  const research = useQuery(coinResearchQuery(slug));
+  const profile = research.data?.profile ?? null;
 
   return (
     <div className="mx-auto max-w-7xl px-5 py-8">
@@ -79,9 +85,16 @@ function MarketPage() {
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
-        <section className="min-w-0 rounded-sm border border-border bg-surface">
-          <ThorChartPanel slug={m.slug} base={m.base} initial="1h" height={480} />
-        </section>
+        <div className="min-w-0 space-y-6">
+          <section className="min-w-0 rounded-sm border border-border bg-surface">
+            <ThorChartPanel slug={m.slug} base={m.base} initial="1h" height={480} />
+          </section>
+          <MarketActivity market={m} />
+          <NewsPanel news={research.data?.news ?? []} name={m.name} loading={research.isPending} />
+          <VideosPanel slug={m.slug} name={m.name} />
+          <ExchangesPanel pairs={research.data?.pairs ?? []} name={m.name} loading={research.isPending} />
+          <AboutPanel profile={profile} name={m.name} />
+        </div>
 
         <aside className="space-y-4">
           <section className="rounded-sm border border-border bg-surface p-4">
@@ -105,6 +118,8 @@ function MarketPage() {
               </p>
             )}
           </section>
+          <MarketDataCard profile={profile} base={m.base} loading={research.isPending} />
+          <LinksCard profile={profile} name={m.name} />
           <section className="rounded-sm border border-border bg-surface p-4 text-xs text-muted-foreground">
             <h2 className="font-display text-sm font-bold text-foreground">Where these prices come from</h2>
             <p className="mt-2">

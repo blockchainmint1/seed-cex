@@ -45,11 +45,12 @@ async function cached<T>(key: string, ttlMs: number, load: () => Promise<T>): Pr
   }
 }
 
-async function midgard<T>(path: string): Promise<T> {
+/** One Midgard read, tried across the servers best-first. Read-only. */
+export async function midgard<T>(path: string, timeoutMs = 10_000): Promise<T> {
   let last: unknown = null;
   for (const node of midgardEndpoints()) {
     try {
-      const r = await fetch(node.url + path, { headers: node.headers, signal: AbortSignal.timeout(10_000) });
+      const r = await fetch(node.url + path, { headers: node.headers, signal: AbortSignal.timeout(timeoutMs) });
       if (!r.ok) { last = new Error(`HTTP ${r.status}`); continue; }
       const text = await r.text();
       if (!text.trimStart().startsWith("{") && !text.trimStart().startsWith("[")) { last = new Error("not JSON"); continue; }
