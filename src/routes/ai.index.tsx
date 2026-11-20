@@ -90,7 +90,7 @@ function AiPage() {
             Open a coin to see its chart and how 10 popular chart theories actually played out in its history.
           </p>
           <CoinsTable coins={coins} />
-          <p className="text-xs text-muted-foreground">Prices: Binance daily closes in USDT where listed, otherwise CoinGecko. Saved once a day.</p>
+          <p className="text-xs text-muted-foreground">Prices: Binance daily closes in USDT where listed, otherwise CoinGecko. Each day's close is saved within minutes of 00:00 UTC.</p>
         </div>
       )}
 

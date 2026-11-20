@@ -344,6 +344,13 @@
       "when": 1795132370658,
       "tag": "0048_dex_swaps",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1795133753419,
+      "tag": "0049_ai_price_catchup",
+      "breakpoints": true
     }
   ]
 }

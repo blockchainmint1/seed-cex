@@ -3,9 +3,10 @@
  * clock: once every 24 hours at the time of day it was started. A plan started at
  * 2:04 pm gets its check (and Telegram message) at 2:04 pm every day.
  *
- * Prices are daily closes downloaded once a day; if a plan comes due before a new
- * price day exists it retries every few minutes for up to RETRY_WINDOW_MS, then
- * waits for its next time. One check per plan per price day stays guaranteed by
+ * Prices are daily closes, fetched within minutes of each day's end (00:00 UTC; see
+ * price-catchup.ts). If a plan comes due in those first minutes, before the new price
+ * day exists, it retries every few minutes for up to RETRY_WINDOW_MS, then waits for
+ * its next time. One check per plan per price day stays guaranteed by
  * the database.
  */
 export const DAY_MS = 24 * 60 * 60 * 1000;
