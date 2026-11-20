@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Audit #3 follow-up 2: EVM double-check before freezing (two servers + receipt re-check), 5-min resend backoff, 1-min retry after a TXC/ISK index-check failure (blocked: Bobby's go-ahead)
+- [x] Audit #3 follow-up 2: EVM double-check before freezing (two servers + receipt re-check), 5-min resend backoff, 1-min retry after a TXC/ISK index-check failure (Nov 20)
 - [ ] Live test #4 before publishing: low-fee Base first payment dropped → watcher resends, no freeze (blocked: real funded test)
 - [x] Homepage "Seeds Genesis" hero from Cory: video plays once then rests on the final tree, phones get the still, new headline/buttons (Nov 20)
 - [ ] Higher-resolution Genesis master for big screens (blocked: Cory's team supplies a 1920px+ export)

@@ -13,26 +13,28 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getLeg, isOmniLeg, type ChainId, type LegId } from "@/lib/chains";
 import { delivererOf, legRole, type TradeShape } from "@/lib/leg-roles";
-import { confirmationsNeeded, nextSettleStep, resendOutcome, sentLegState, type SentLegCheck, type SentLegState } from "./confirm-rules";
+import { confirmationsNeeded, lookupVerdict, nextSettleStep, resendDue, resendOutcome, sentLegState, txIndexCacheMs, type SentLegCheck, type SentLegState } from "./confirm-rules";
 
 /**
  * Lookup safety switch: "no such transaction" from a TXC/ISK node only means "gone" when the
  * node keeps a full transaction index. Checked live Nov 20 2026 (both synced); re-checked here
  * so a node rebuilt without it can never freeze an honest member. Finished values only.
  */
-const txIndexSeen = new Map<string, { ok: boolean; at: number }>();
+const txIndexSeen = new Map<string, { ok: boolean; at: number; failed: boolean }>();
 async function txIndexOn(chain: "txc" | "isk"): Promise<boolean> {
   const hit = txIndexSeen.get(chain);
-  if (hit && Date.now() - hit.at < 10 * 60_000) return hit.ok;
+  if (hit && Date.now() - hit.at < txIndexCacheMs(hit.failed)) return hit.ok;
   const { rpc } = await import("@/lib/rpc.server");
   let ok = false;
+  let failed = false;
   try {
     const info = await rpc<{ txindex?: { synced?: boolean } }>(chain, "getindexinfo", []);
     ok = info?.txindex?.synced === true;
   } catch {
     ok = false;
+    failed = true;
   }
-  txIndexSeen.set(chain, { ok, at: Date.now() });
+  txIndexSeen.set(chain, { ok, at: Date.now(), failed });
   return ok;
 }
 
@@ -72,9 +74,10 @@ export async function checkSentLeg(leg: LegId, txid: string, network: string | n
       }
     }
     if (!network) return { kind: "evm", found: null, confirmations: null, rejected: false, ageMs };
-    const { evmTxLookup } = await import("@/lib/evm.server");
-    const r = await evmTxLookup(network as ChainId, txid);
-    return { kind: "evm", found: r.found, confirmations: r.confirmations, rejected: r.success === false, ageMs };
+    const { evmTxLookupEach } = await import("@/lib/evm.server");
+    const r = await evmTxLookupEach(network as ChainId, txid);
+    // "Not found" needs two independent servers (a single lagging one never freezes anyone).
+    return { kind: "evm", found: lookupVerdict(r.answers), confirmations: r.confirmations, rejected: r.success === false, ageMs };
   } catch (e) {
     console.error("[settle-watch] check failed", leg, e instanceof Error ? e.message : e);
     return { kind: def.kind === "evm" ? "evm" : def.kind === "omni" ? "omni" : "utxo", found: null, confirmations: null, rejected: false, ageMs };
@@ -146,9 +149,12 @@ async function advanceOne(t: TradeRow): Promise<string> {
     const check = await checkSentLeg(l.leg, l.release_txid as string, network, ageMs);
     check.canResend = Boolean(l.sent_raw) && !l.rebroadcast_at;
     if (check.found === false && check.kind === "evm" && network && l.sent_from && l.sent_nonce != null) {
-      const { fetchConfirmedNonce } = await import("@/lib/evm.server");
-      const done = await fetchConfirmedNonce(network as ChainId, l.sent_from);
-      if (done != null && done > Number(l.sent_nonce)) check.replaced = true;
+      // Before calling it replaced: the server that reports the nonce must not hold our receipt
+      // (if it does, the nonce moved because of our own send — keep waiting, blame nobody).
+      const { confirmedNonceWithReceipt } = await import("@/lib/evm.server");
+      const n = await confirmedNonceWithReceipt(network as ChainId, l.sent_from, l.release_txid as string);
+      if (n?.receipt) check.found = null;
+      else if (n && n.nonce > Number(l.sent_nonce)) check.replaced = true;
     }
     let state = sentLegState(check, confirmationsNeeded(network));
     if (state === "resend") state = await resendLeg(t, l, network);
@@ -198,6 +204,11 @@ async function resendLeg(
   t: TradeRow, l: { id: string; leg: LegId; release_txid: string | null; sent_raw: string | null }, network: string | null,
 ): Promise<"waiting" | "vanished"> {
   const raw = l.sent_raw as string;
+  // A resend with no clear answer is retried every few minutes, not every run.
+  const { data: last } = await supabaseAdmin.from("trade_events").select("created_at")
+    .eq("trade_id", t.id).eq("event", "payment_resent").eq("detail->>leg", l.leg)
+    .order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (!resendDue(last?.created_at ? Date.parse(last.created_at) : null, Date.now())) return "waiting";
   let error: string | null = null;
   try {
     const def = getLeg(l.leg);
@@ -214,7 +225,16 @@ async function resendLeg(
   } catch (e) {
     error = e instanceof Error ? e.message : String(e);
   }
-  const outcome = resendOutcome(error);
+  let outcome = resendOutcome(error);
+  // EVM "nonce too low" is also the answer when our own send was just mined: look again on
+  // every server before calling it spent elsewhere.
+  if (outcome === "spent_elsewhere" && getLeg(l.leg).kind === "evm" && network && l.release_txid) {
+    const { evmTxLookupEach } = await import("@/lib/evm.server");
+    const again = await evmTxLookupEach(network as ChainId, l.release_txid);
+    const verdict = lookupVerdict(again.answers);
+    if (verdict === true) outcome = "accepted";
+    else if (verdict === null) outcome = "retry";
+  }
   await supabaseAdmin.from("trade_events").insert({
     trade_id: t.id, actor_id: null, event: "payment_resent",
     detail: { leg: l.leg, txid: l.release_txid, outcome, error: error?.slice(0, 300) ?? null },

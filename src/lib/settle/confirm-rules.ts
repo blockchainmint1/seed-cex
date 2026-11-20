@@ -108,3 +108,29 @@ export function resendOutcome(error: string | null): "accepted" | "spent_elsewhe
   if (/missing ?inputs|missingorspent|inputs-missing|mempool-conflict|txn-mempool-conflict|nonce too low|replacement transaction underpriced|insufficient funds/i.test(error)) return "spent_elsewhere";
   return "retry";
 }
+
+/**
+ * "No such transaction" counts only when two different servers say so (one lagging or
+ * thin server must never freeze a member; same two-server standard as THORChain vaults).
+ * Any server holding it = found. Otherwise unknown: wait, blame nobody.
+ */
+export function lookupVerdict(answers: Array<"found" | "missing" | "error">): boolean | null {
+  if (answers.includes("found")) return true;
+  return answers.filter((a) => a === "missing").length >= 2 ? false : null;
+}
+
+/** A resend with no clear answer is tried again only after this long (not every minute). */
+export const RESEND_RETRY_AFTER_MS = 5 * 60_000;
+
+export function resendDue(lastAttemptAtMs: number | null, nowMs: number): boolean {
+  return lastAttemptAtMs == null || nowMs - lastAttemptAtMs >= RESEND_RETRY_AFTER_MS;
+}
+
+/**
+ * How long a TXC/ISK "does this node keep a full transaction index" answer is reused.
+ * A real answer: 10 minutes. The check itself failing: 1 minute, so a brief hiccup
+ * doesn't switch off double-spend detection for long.
+ */
+export function txIndexCacheMs(checkFailed: boolean): number {
+  return checkFailed ? 60_000 : 10 * 60_000;
+}

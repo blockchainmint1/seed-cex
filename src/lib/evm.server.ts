@@ -17,7 +17,8 @@ const NODE_NETWORK: Partial<Record<ChainId, NodeNetwork>> = {
   pulsechain: "pulsechain",
 };
 
-type Endpoint = { url: string; headers: Record<string, string> };
+/** backupOnly = a second address for a machine already listed (never counts as a second opinion). */
+type Endpoint = { url: string; headers: Record<string, string>; backupOnly?: boolean };
 
 /**
  * Every endpoint we may try for one EVM chain, best first. ZeroChill runs on
@@ -36,7 +37,7 @@ function endpoints(chain: ChainId): Endpoint[] {
     return [{ url, headers }];
   }
   const net = NODE_NETWORK[chain];
-  return net ? nodeEndpoints(net).map(({ url, headers: h }) => ({ url, headers: h })) : [];
+  return net ? nodeEndpoints(net).map(({ url, headers: h, backupOnly }) => ({ url, headers: h, ...(backupOnly ? { backupOnly } : {}) })) : [];
 }
 
 /** True when we have a usable endpoint for the chain. */
@@ -192,6 +193,56 @@ export async function fetchConfirmedNonce(chain: ChainId, address: string): Prom
   } catch {
     return null;
   }
+}
+
+/**
+ * Settlement guard (audit #3 follow-up): the confirmed nonce plus, from the SAME server,
+ * whether it holds a receipt for our hash. A lagging server elsewhere can miss our send
+ * while this one counts it in the nonce; a receipt here means the send is ours, not replaced.
+ */
+export async function confirmedNonceWithReceipt(
+  chain: ChainId, address: string, hash: string,
+): Promise<{ nonce: number; receipt: boolean } | null> {
+  for (const ep of endpoints(chain)) {
+    const n = await callOnce<string>(ep, "eth_getTransactionCount", [address, "latest"]);
+    if (!n.ok || !n.value) continue;
+    const r = await callOnce<{ blockNumber: string | null }>(ep, "eth_getTransactionReceipt", [hash]);
+    return { nonce: Number(BigInt(n.value)), receipt: r.ok && Boolean(r.value?.blockNumber) };
+  }
+  return null;
+}
+
+/**
+ * Settlement lookup: asks every independent server (backup addresses of a listed machine
+ * don't count) and returns each one's answer, so "not found" can require two servers.
+ * Stops at the first server that has the transaction in a block.
+ */
+export async function evmTxLookupEach(
+  chain: ChainId, hash: string,
+): Promise<{ answers: Array<"found" | "missing" | "error">; confirmations: number | null; success: boolean | null }> {
+  const answers: Array<"found" | "missing" | "error"> = [];
+  let confirmations: number | null = null;
+  let success: boolean | null = null;
+  for (const ep of endpoints(chain).filter((e) => !e.backupOnly)) {
+    const r = await callOnce<{ blockNumber: string | null; status: string }>(ep, "eth_getTransactionReceipt", [hash]);
+    if (!r.ok) { answers.push("error"); continue; }
+    if (r.value?.blockNumber) {
+      const head = await callOnce<string>(ep, "eth_blockNumber", []);
+      confirmations = head.ok && head.value ? Number(BigInt(head.value) - BigInt(r.value.blockNumber)) + 1 : null;
+      success = r.value.status === "0x1";
+      answers.push("found");
+      break;
+    }
+    const t = await callOnce<{ hash: string }>(ep, "eth_getTransactionByHash", [hash]);
+    if (!t.ok) { answers.push("error"); continue; }
+    if (t.value) {
+      answers.push("found");
+      if (confirmations == null) confirmations = 0;
+    } else {
+      answers.push("missing");
+    }
+  }
+  return { answers, confirmations, success };
 }
 
 export type EvmFees = { maxFeePerGas: bigint; maxPriorityFeePerGas: bigint };

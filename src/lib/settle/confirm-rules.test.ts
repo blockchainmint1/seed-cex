@@ -80,3 +80,35 @@ describe("a dropped payment is resent once before anyone is blamed (auditor foll
     expect(resendOutcome("No txc server answered (timeout)")).toBe("retry");
   });
 });
+
+import { lookupVerdict, resendDue, RESEND_RETRY_AFTER_MS, txIndexCacheMs } from "./confirm-rules";
+
+describe("auditor follow-up 2 (Bobby: yes, all three, Nov 20)", () => {
+  test("one server saying 'no such payment' is not enough to blame anyone", () => {
+    expect(lookupVerdict(["missing"])).toBeNull();
+    expect(lookupVerdict(["missing", "error"])).toBeNull();
+    expect(lookupVerdict(["error", "error"])).toBeNull();
+  });
+  test("two different servers saying 'no such payment' counts as not found", () => {
+    expect(lookupVerdict(["missing", "missing"])).toBe(false);
+    expect(lookupVerdict(["error", "missing", "missing"])).toBe(false);
+  });
+  test("any server that has the payment wins over the ones that don't", () => {
+    expect(lookupVerdict(["missing", "missing", "found"])).toBe(true);
+  });
+  test("a single-server network (ZCU) can never reach 'not found' on its own", () => {
+    expect(lookupVerdict(["missing"])).not.toBe(false);
+  });
+  test("an unanswered resend waits 5 minutes before trying again", () => {
+    const now = 1_000_000_000;
+    expect(RESEND_RETRY_AFTER_MS).toBe(5 * MIN);
+    expect(resendDue(null, now)).toBe(true);
+    expect(resendDue(now - 1 * MIN, now)).toBe(false);
+    expect(resendDue(now - 4 * MIN, now)).toBe(false);
+    expect(resendDue(now - 5 * MIN, now)).toBe(true);
+  });
+  test("a failed TXC/ISK index check is retried after 1 minute, a real answer kept 10", () => {
+    expect(txIndexCacheMs(true)).toBe(1 * MIN);
+    expect(txIndexCacheMs(false)).toBe(10 * MIN);
+  });
+});
