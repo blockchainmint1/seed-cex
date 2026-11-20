@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { DEX_NETWORK_IDS, DEX_NETWORKS, isAddress, isNative, NATIVE, tokenRisk, type DexNetwork, type TokenRisk } from "./venues";
+import { BRIDGE_USDC_ETH, isTsdDex, MAX_SLIPPAGE_BPS, tsdPairProblem } from "./swap-rules";
 
 const net = z.enum(DEX_NETWORK_IDS as unknown as [DexNetwork, ...DexNetwork[]]);
 /** Audit 2026-11-19 L3: public lookups fan out to blockchain providers, so each connection is rate-limited. */
@@ -42,6 +44,8 @@ export type DexQuote = {
   valueOutUsd: number | null;
   roundTripLoss: number | null;
   risk: TokenRisk;
+  /** TSD side: TSD Bridge converts TSD <-> Ethereum USDC; the pool swaps that USDC. */
+  tsd: { side: "buy" | "sell"; usdc: number; bridgeFeeBps: number } | null;
   quotedAt: number;
 };
 
@@ -55,24 +59,45 @@ export const quoteDexSwap = createServerFn({ method: "POST" })
     const { fromUnits, quoteExactRoute, quoteRoutes, reverseRoute, toUnits, tokenInfo } = await import("./quote.server");
     const { tokenMarket } = await import("./market.server");
     if (data.tokenIn.toLowerCase() === data.tokenOut.toLowerCase()) throw new Error("Pick two different coins");
-    const [ia, ib, ma, mb] = await Promise.all([
-      tokenInfo(data.network, data.tokenIn),
-      tokenInfo(data.network, data.tokenOut),
-      tokenMarket(data.network, data.tokenIn),
-      tokenMarket(data.network, data.tokenOut),
+    const tsdProblem = tsdPairProblem(data.network, data.tokenIn, data.tokenOut);
+    if (tsdProblem) throw new Error(tsdProblem);
+    const side = isTsdDex(data.tokenIn) ? "buy" : isTsdDex(data.tokenOut) ? "sell" : null;
+    // The pool step trades USDC in place of TSD.
+    const legIn = side === "buy" ? BRIDGE_USDC_ETH : data.tokenIn;
+    const legOut = side === "sell" ? BRIDGE_USDC_ETH : data.tokenOut;
+    const tsdTok = { address: data.tokenIn, symbol: "TSD", name: "TSD", decimals: 8 };
+    const [ia0, ib0, ma, mb] = await Promise.all([
+      side === "buy" ? Promise.resolve(tsdTok) : tokenInfo(data.network, data.tokenIn),
+      side === "sell" ? Promise.resolve({ ...tsdTok, address: data.tokenOut }) : tokenInfo(data.network, data.tokenOut),
+      // A TSD side trades as Ethereum USDC in the pool, so the pool risk is judged on USDC.
+      tokenMarket(data.network, legIn),
+      tokenMarket(data.network, legOut),
     ]);
+    const ia = ia0, ib = ib0;
     if (!ia || !ib) throw new Error(`That address isn't a coin on ${DEX_NETWORKS[data.network].name}`);
+    let bridgeFeeBps = 0;
+    if (side) {
+      const { bridgeSettings, tsdBridgeConfigured } = await import("@/lib/xchain/tsd-bridge.server");
+      if (!tsdBridgeConfigured()) throw new Error("TSD Bridge isn't connected.");
+      const st = await bridgeSettings();
+      if (!st.live) throw new Error("TSD Bridge is paused right now.");
+      bridgeFeeBps = side === "buy" ? st.redeemFeeBps : st.mintFeeBps;
+    }
+    const { afterBridgeFeeUnits } = await import("./swap-rules");
     const amountIn = toUnits(data.amount, ia.decimals);
     if (amountIn <= 0n) throw new Error("Enter an amount above zero");
-    const routes = await quoteRoutes(data.network, data.tokenIn, data.tokenOut, amountIn);
+    const legInUnits = side === "buy" ? afterBridgeFeeUnits(toUnits(data.amount, 6), bridgeFeeBps) : amountIn;
+    const routes = await quoteRoutes(data.network, legIn, legOut, legInUnits);
     const best = routes[0] ?? null;
     const back = best ? await quoteExactRoute(data.network, reverseRoute(best), best.amountOut) : null;
-    const roundTripLoss = back === null ? null : Math.max(0, 1 - Number(back) / Number(amountIn));
-
+    const roundTripLoss = back === null ? null : Math.max(0, 1 - Number(back) / Number(legInUnits));
+    // What the member ends with: the coin, or (sell to TSD) the USDC less the bridge fee.
+    const finalUnits = !best ? 0n : side === "sell" ? afterBridgeFeeUnits(best.amountOut, bridgeFeeBps) : best.amountOut;
+    const finalDecimals = side === "sell" ? 6 : ib.decimals;
     const inNum = fromUnits(amountIn, ia.decimals);
-    const outNum = best ? fromUnits(best.amountOut, ib.decimals) : 0;
-    const valueInUsd = ma?.priceUsd != null ? inNum * ma.priceUsd : null;
-    const valueOutUsd = mb?.priceUsd != null && best ? outNum * mb.priceUsd : null;
+    const outNum = best ? fromUnits(finalUnits, finalDecimals) : 0;
+    const valueInUsd = side === "buy" ? inNum : ma?.priceUsd != null ? inNum * ma.priceUsd : null;
+    const valueOutUsd = side === "sell" ? (best ? outNum : null) : mb?.priceUsd != null && best ? outNum * mb.priceUsd : null;
     const priceImpact = valueInUsd && valueOutUsd ? Math.max(0, 1 - valueOutUsd / valueInUsd) : null;
 
     // Judge the riskier of the two coins (the network's own coin is never the risky one).
@@ -102,7 +127,7 @@ export const quoteDexSwap = createServerFn({ method: "POST" })
       tokenOut: { address: data.tokenOut, symbol: ib.symbol, decimals: ib.decimals, priceUsd: mb?.priceUsd ?? null },
       amountIn: inNum,
       best: best
-        ? { venueId: best.venueId, venueName: best.venueName, hops: best.path.length - 1, via: viaOf(best.path), amountOut: outNum, amountOutUnits: best.amountOut.toString() }
+        ? { venueId: best.venueId, venueName: best.venueName, hops: best.path.length - 1, via: viaOf(best.path), amountOut: outNum, amountOutUnits: finalUnits.toString() }
         : null,
       others: (() => {
         // Best price per venue, excluding the winner, for the comparison list.
@@ -111,7 +136,8 @@ export const quoteDexSwap = createServerFn({ method: "POST" })
         for (const r of routes) {
           if (seen.has(r.venueId)) continue;
           seen.add(r.venueId);
-          out.push({ venueName: r.venueName, hops: r.path.length - 1, amountOut: fromUnits(r.amountOut, ib.decimals) });
+          const u = side === "sell" ? afterBridgeFeeUnits(r.amountOut, bridgeFeeBps) : r.amountOut;
+          out.push({ venueName: r.venueName, hops: r.path.length - 1, amountOut: fromUnits(u, finalDecimals) });
         }
         return out;
       })(),
@@ -120,8 +146,62 @@ export const quoteDexSwap = createServerFn({ method: "POST" })
       valueOutUsd,
       roundTripLoss,
       risk,
+      tsd: side && best ? { side, usdc: fromUnits(side === "buy" ? legInUnits : best.amountOut, 6), bridgeFeeBps } : null,
       quotedAt: Date.now(),
     };
   });
 
 export { NATIVE };
+
+/* ------------------------------ swapping (signed in) ------------------------------ */
+
+const coinAddr = z.string().max(64).refine((a) => isAddress(a), "Not a coin address");
+
+/** Signed-in: can I swap here, what's in my pocket for this coin, and my fee coin balance. */
+export const getDexSwapContext = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => z.object({ network: net, tokenIn: coinAddr }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { pilotTesterAccess } = await import("@/lib/admin-guard");
+    const tester = await pilotTesterAccess(context as never);
+    const { dexSwapContext } = await import("./swap.server");
+    return dexSwapContext(context.userId, tester, data.network, data.tokenIn);
+  });
+
+/** Signed-in: ask for a swap from my own pocket. It waits for my Approve tap in Telegram. */
+export const startDexSwap = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) =>
+    z.object({
+      network: net,
+      tokenIn: coinAddr,
+      tokenOut: coinAddr,
+      amount: z.string().regex(/^\d+(\.\d+)?$/).max(40),
+      shownOut: z.number().positive(),
+      slippageBps: z.number().int().min(10).max(MAX_SLIPPAGE_BPS),
+    }).parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const { pilotTesterAccess } = await import("@/lib/admin-guard");
+    const tester = await pilotTesterAccess(context as never);
+    const { requestDexSwap } = await import("./swap.server");
+    return requestDexSwap(context.userId, tester, data);
+  });
+
+/** Signed-in: my recent token swaps (moves open ones along first). */
+export const getDexSwaps = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { listDexSwaps } = await import("./swap.server");
+    return { swaps: await listDexSwaps(context.userId) };
+  });
+
+/** Signed-in: call off a swap that is still waiting for my Telegram tap. */
+export const cancelMyDexSwap = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => z.object({ id: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { cancelDexSwap } = await import("./swap.server");
+    await cancelDexSwap(context.userId, data.id);
+    return { ok: true };
+  });

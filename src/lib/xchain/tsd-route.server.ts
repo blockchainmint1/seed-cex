@@ -694,7 +694,11 @@ export async function listTsdRoutes(userId: string) {
     .order("created_at", { ascending: false })
     .limit(10);
   if (error) throw new Error(error.message);
-  const rows = data ?? [];
+  // A token swap's TSD Bridge step is shown inside that token swap, not as a second swap.
+  const { data: dexLegs, error: dexErr } = await supabaseAdmin.from("dex_swaps").select("tsd_route_id").eq("user_id", userId).not("tsd_route_id", "is", null);
+  if (dexErr) throw new Error(dexErr.message);
+  const dexIds = new Set((dexLegs ?? []).map((d) => d.tsd_route_id));
+  const rows = (data ?? []).filter((r) => !dexIds.has(r.id));
   // The swap step's transaction, so the swap can be tracked on RuneScan / MayaScan.
   const legIds = rows.map((r) => r.swap_send_id).filter((x): x is string => Boolean(x));
   const txids = new Map<string, string | null>();

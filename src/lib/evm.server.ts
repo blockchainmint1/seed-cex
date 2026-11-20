@@ -148,6 +148,37 @@ export async function evmRpc<T>(chain: ChainId, method: string, params: unknown[
   return rpc<T>(chain, method, params);
 }
 
+/**
+ * eth_call that tells a refusal apart from an unreachable node: a revert is the same on
+ * every server, so the first answer counts; only a server that didn't answer is skipped.
+ */
+export async function evmCallDetailed(
+  chain: ChainId,
+  tx: { from: string; to: string; data: string; value?: string },
+): Promise<{ ok: true; result: string } | { ok: false; error: string } | null> {
+  for (const ep of endpoints(chain)) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 7000);
+    try {
+      const res = await fetch(ep.url, {
+        method: "POST",
+        signal: controller.signal,
+        headers: ep.headers,
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_call", params: [{ ...tx, value: tx.value ?? "0x0" }, "latest"] }),
+      });
+      if (!res.ok) continue;
+      const json = (await res.json()) as { result?: string; error?: { message?: string } };
+      if (json.error) return { ok: false, error: String(json.error.message ?? "refused").slice(0, 200) };
+      if (typeof json.result === "string") return { ok: true, result: json.result };
+    } catch {
+      /* next server */
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  return null;
+}
+
 export async function fetchNonce(chain: ChainId, address: string): Promise<number | null> {
   const hex = await rpc<string>(chain, "eth_getTransactionCount", [address, "pending"]);
   return hex ? Number(BigInt(hex)) : null;

@@ -337,6 +337,13 @@
       "when": 1795131631619,
       "tag": "0047_member_one_tap_limit",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1795132370658,
+      "tag": "0048_dex_swaps",
+      "breakpoints": true
     }
   ]
 }

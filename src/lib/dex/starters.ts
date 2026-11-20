@@ -1,10 +1,13 @@
 /** Coins offered before a member searches. Anything else: search or paste its address. Client-safe. */
 import { NATIVE, type DexNetwork } from "./venues";
+import { TSD_DEX } from "./swap-rules";
 
 export type StarterCoin = { address: string; symbol: string; name: string };
 
 export const STARTER_COINS: Record<DexNetwork, readonly StarterCoin[]> = {
   ethereum: [
+    // TSD goes through TSD Bridge (TSD <-> Ethereum USDC) and then the pool.
+    { address: TSD_DEX, symbol: "TSD", name: "TSD · TEXITcoin (through TSD Bridge)" },
     { address: NATIVE, symbol: "ETH", name: "Ether" },
     { address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", symbol: "USDC", name: "USD Coin" },
     { address: "0xdAC17F958D2ee523a2206206994597C13D831ec7", symbol: "USDT", name: "Tether" },

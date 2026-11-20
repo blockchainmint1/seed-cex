@@ -567,6 +567,141 @@ export type Database = {
         }
         Relationships: []
       }
+      dex_swaps: {
+        Row: {
+          amount_in: number
+          amount_in_units: string | null
+          amount_out: number | null
+          amount_usd: number
+          approval_id: string | null
+          approve_txid: string | null
+          bridge_fee_bps: number | null
+          created_at: string
+          decimals_in: number
+          decimals_out: number
+          error: string | null
+          fees: number[] | null
+          from_address: string
+          id: string
+          kind: string | null
+          link_id: string
+          min_out_units: string | null
+          network: string
+          path: string[] | null
+          quoted_out_units: string | null
+          received_units: string | null
+          reset_txid: string | null
+          router: string | null
+          shown_leg_in_units: string | null
+          shown_leg_out_units: string | null
+          shown_out: number
+          slippage_bps: number
+          status: string
+          step_at: string
+          swap_txid: string | null
+          symbol_in: string
+          symbol_out: string
+          token_in: string
+          token_out: string
+          tsd_address: string | null
+          tsd_route_id: string | null
+          tsd_side: string | null
+          updated_at: string
+          user_id: string
+          venue_id: string | null
+          venue_name: string | null
+          working_until: string | null
+        }
+        Insert: {
+          amount_in: number
+          amount_in_units?: string | null
+          amount_out?: number | null
+          amount_usd?: number
+          approval_id?: string | null
+          approve_txid?: string | null
+          bridge_fee_bps?: number | null
+          created_at?: string
+          decimals_in: number
+          decimals_out: number
+          error?: string | null
+          fees?: number[] | null
+          from_address: string
+          id?: string
+          kind?: string | null
+          link_id: string
+          min_out_units?: string | null
+          network: string
+          path?: string[] | null
+          quoted_out_units?: string | null
+          received_units?: string | null
+          reset_txid?: string | null
+          router?: string | null
+          shown_leg_in_units?: string | null
+          shown_leg_out_units?: string | null
+          shown_out: number
+          slippage_bps: number
+          status?: string
+          step_at?: string
+          swap_txid?: string | null
+          symbol_in: string
+          symbol_out: string
+          token_in: string
+          token_out: string
+          tsd_address?: string | null
+          tsd_route_id?: string | null
+          tsd_side?: string | null
+          updated_at?: string
+          user_id: string
+          venue_id?: string | null
+          venue_name?: string | null
+          working_until?: string | null
+        }
+        Update: {
+          amount_in?: number
+          amount_in_units?: string | null
+          amount_out?: number | null
+          amount_usd?: number
+          approval_id?: string | null
+          approve_txid?: string | null
+          bridge_fee_bps?: number | null
+          created_at?: string
+          decimals_in?: number
+          decimals_out?: number
+          error?: string | null
+          fees?: number[] | null
+          from_address?: string
+          id?: string
+          kind?: string | null
+          link_id?: string
+          min_out_units?: string | null
+          network?: string
+          path?: string[] | null
+          quoted_out_units?: string | null
+          received_units?: string | null
+          reset_txid?: string | null
+          router?: string | null
+          shown_leg_in_units?: string | null
+          shown_leg_out_units?: string | null
+          shown_out?: number
+          slippage_bps?: number
+          status?: string
+          step_at?: string
+          swap_txid?: string | null
+          symbol_in?: string
+          symbol_out?: string
+          token_in?: string
+          token_out?: string
+          tsd_address?: string | null
+          tsd_route_id?: string | null
+          tsd_side?: string | null
+          updated_at?: string
+          user_id?: string
+          venue_id?: string | null
+          venue_name?: string | null
+          working_until?: string | null
+        }
+        Relationships: []
+      }
       escrows: {
         Row: {
           claimed_at: string | null
@@ -3069,6 +3204,10 @@ export type Database = {
           _chain: string
           _user_id: string
         }
+        Returns: string
+      }
+      reserve_dex_swap: {
+        Args: { _daily_max_usd: number; _per_swap_max_usd: number; _row: Json }
         Returns: string
       }
       reserve_gas_topup: {

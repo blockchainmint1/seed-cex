@@ -1,12 +1,17 @@
 import { useEffect, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, ArrowDownUp, ChevronDown, ExternalLink, Search, ShieldCheck } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertTriangle, ArrowDownUp, ChevronDown, ExternalLink, Search, Send, ShieldCheck } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { MySwaps } from "@/components/swap/MySwaps";
+import { useSession } from "@/hooks/use-session";
+import { getSwapSendContext } from "@/lib/xchain/swap.functions";
+import { DEFAULT_SLIPPAGE_BPS, isTsdDex, SLIPPAGE_CHOICES_BPS } from "@/lib/dex/swap-rules";
 import { Input } from "@/components/ui/input";
 import { SwapTabs } from "@/components/swap/SwapTabs";
-import { quoteDexSwap, searchDexCoins } from "@/lib/dex/dex.functions";
+import { getDexSwapContext, quoteDexSwap, searchDexCoins, startDexSwap } from "@/lib/dex/dex.functions";
 import { DEX_NETWORKS, DEX_NETWORK_IDS, isNative, type DexNetwork } from "@/lib/dex/venues";
 import { STARTER_COINS, displaySymbol, type StarterCoin } from "@/lib/dex/starters";
 import { getChain } from "@/lib/chains";
@@ -16,14 +21,14 @@ export const Route = createFileRoute("/swap_/tokens")({
   staticData: { sitemap: true },
   head: () => ({
     meta: [
-      { title: "Swap Any Coin — Uniswap, PancakeSwap & PulseX Prices | Seeds" },
+      { title: "Swap Any Coin — Uniswap, PancakeSwap & PulseX | Seeds" },
       {
         name: "description",
         content:
-          "Live prices straight from Uniswap, PancakeSwap and PulseX pools on Ethereum, Base, BNB Chain and PulseChain. Search any coin or paste its address, with a sell-back safety check on every quote.",
+          "Swap any coin on Uniswap, PancakeSwap and PulseX from your own trading pocket — Ethereum, Base, BNB Chain and PulseChain, plus TSD. Prices straight from the pools, a sell-back check, and your Telegram tap before anything moves.",
       },
       { property: "og:title", content: "Swap any coin — Seeds" },
-      { property: "og:description", content: "Uniswap, PancakeSwap and PulseX prices on four networks, read straight from the pools, with plain-English risk warnings." },
+      { property: "og:description", content: "Uniswap, PancakeSwap and PulseX swaps from your own pocket on four networks, with plain-English risk warnings and a Telegram tap for every swap." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -51,7 +56,7 @@ function TokensSwapPage() {
   const [network, setNetwork] = useState<DexNetwork>("ethereum");
   const [from, setFrom] = useState<Coin>(STARTER_COINS.ethereum[0]);
   const [to, setTo] = useState<Coin>(STARTER_COINS.ethereum[1]);
-  const [amount, setAmount] = useState("1");
+  const [amount, setAmount] = useState("100");
   const [picking, setPicking] = useState<null | "from" | "to">(null);
   const debounced = useDebounced(amount, 500);
   const quote = useServerFn(quoteDexSwap);
@@ -67,6 +72,7 @@ function TokensSwapPage() {
 
   function pickNetwork(n: DexNetwork) {
     setNetwork(n);
+    setAmount(n === "ethereum" ? "100" : "1");
     setFrom(STARTER_COINS[n][0]);
     setTo(STARTER_COINS[n][1]);
   }
@@ -96,7 +102,7 @@ function TokensSwapPage() {
         </p>
         <p className="inline-flex items-center gap-2 rounded-sm border border-primary/40 bg-primary/10 px-3 py-1.5 font-mono text-[11px] text-foreground">
           <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-primary" />
-          Prices only for now. Swapping from your trading pocket starts as a small test with the Seeds team.
+          Swaps come out of your trading pocket and go back into it. Beta testers first.
         </p>
       </header>
 
@@ -161,7 +167,9 @@ function TokensSwapPage() {
           </div>
 
           {q.error ? <p role="alert" className="text-sm text-destructive">{(q.error as Error).message}</p> : null}
+          {d ? <PocketSwap d={d} network={network} from={from} to={to} amount={debounced} /> : null}
           {d ? <QuoteDetails d={d} network={network} from={from} to={to} /> : null}
+          <History />
         </section>
 
         <aside className="space-y-4">
@@ -169,9 +177,11 @@ function TokensSwapPage() {
             <h2 className="mb-3 font-mono text-[11px] tracking-[0.2em] uppercase">How Seeds prices it</h2>
             <ul className="list-disc space-y-2 pl-5 text-muted-foreground">
               <li>Every pool listed below is asked directly, and the best answer wins. No outside price service.</li>
+              <li>TSD (Ethereum): TSD Bridge turns TSD into USDC in your own pocket, then the pool swaps it — or the other way round.</li>
               <li>Seeds also asks what selling straight back would return, so a coin that can't be sold shows up red.</li>
               <li>Anyone can list a coin on these pools. Warnings never stop you choosing — they make the risk plain.</li>
-              <li>When swapping goes live, coins stay in your own trading pocket and every swap waits for your Approve tap in Telegram.</li>
+              <li>Every swap waits for your Approve tap in Telegram, pays back into the same pocket, and gives the pool permission for exactly that amount — never more.</li>
+              <li>You pay the network fee from your pocket: ETH on Ethereum and Base, BNB on BNB Chain, PLS on PulseChain.</li>
             </ul>
           </div>
           <div className="rounded-sm border border-border bg-surface p-5 text-sm">
@@ -196,6 +206,167 @@ function TokensSwapPage() {
       </div>
 
       <CoinPicker open={picking !== null} network={network} onClose={() => setPicking(null)} onPick={choose} />
+    </div>
+  );
+}
+
+function History() {
+  const { user } = useSession();
+  const fetchSendCtx = useServerFn(getSwapSendContext);
+  const { data } = useQuery({
+    queryKey: ["swap-send-ctx", user?.id ?? null],
+    queryFn: () => fetchSendCtx(),
+    enabled: Boolean(user),
+    refetchInterval: 60_000,
+  });
+  if (!user) return null;
+  return <MySwaps signedIn sends={data?.sends ?? []} />;
+}
+
+const pct = (bps: number) => `${bps / 100}%`;
+
+/** Swap from the member's own pocket: shows what's there, price protection, and the Telegram step. */
+function PocketSwap({ d, network, from, to, amount }: { d: Awaited<ReturnType<typeof quoteDexSwap>>; network: DexNetwork; from: Coin; to: Coin; amount: string }) {
+  const { user } = useSession();
+  const qc = useQueryClient();
+  const [slippage, setSlippage] = useState<number>(DEFAULT_SLIPPAGE_BPS);
+  const [confirming, setConfirming] = useState(false);
+  const fetchCtx = useServerFn(getDexSwapContext);
+  const ctx = useQuery({
+    queryKey: ["dex-ctx", user?.id ?? null, network, from.address],
+    queryFn: () => fetchCtx({ data: { network, tokenIn: from.address } }),
+    enabled: Boolean(user),
+    refetchInterval: 60_000,
+  });
+  const start = useServerFn(startDexSwap);
+  const go = useMutation({
+    mutationFn: () => start({ data: { network, tokenIn: from.address, tokenOut: to.address, amount, shownOut: d.best!.amountOut, slippageBps: slippage } }),
+    onSuccess: () => {
+      setConfirming(false);
+      void qc.invalidateQueries({ queryKey: ["dex-swaps"] });
+    },
+  });
+  const fromSym = displaySymbol(network, from.address, from.symbol);
+  const toSym = displaySymbol(network, to.address, to.symbol);
+  const def = DEX_NETWORKS[network];
+
+  if (!user) {
+    return (
+      <p className="rounded-sm border border-border bg-surface p-4 text-sm text-muted-foreground">
+        <Link to="/auth" search={{ redirect: "/swap/tokens" }} className="text-primary underline">Sign in</Link> to swap from your trading pocket.
+      </p>
+    );
+  }
+  if (!d.best) return null;
+  const c = ctx.data;
+  const minOut = d.best.amountOut * (1 - slippage / 10_000);
+  const short = c?.balanceIn != null && Number(amount) > c.balanceIn;
+  const blocked = c?.blocker ?? null;
+
+  return (
+    <div className="space-y-4 rounded-sm border border-border bg-surface p-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="font-display text-lg font-bold">Swap from my pocket</h2>
+        {c?.pocket ? <span className="font-mono text-[11px] text-muted-foreground">{truncateMiddle(c.pocket, 6, 4)}</span> : null}
+      </div>
+      {c && !blocked ? (
+        <dl className="grid gap-2 font-mono text-xs sm:grid-cols-2">
+          <div className="flex justify-between gap-3 rounded-sm border border-border bg-background px-3 py-2">
+            <dt className="text-muted-foreground">{fromSym} in your pocket</dt>
+            <dd className={`tabular-nums ${short ? "text-destructive" : ""}`}>{c.balanceIn == null ? "—" : fmtNum(c.balanceIn)}</dd>
+          </div>
+          <div className="flex justify-between gap-3 rounded-sm border border-border bg-background px-3 py-2">
+            <dt className="text-muted-foreground">{c.nativeSymbol} for fees</dt>
+            <dd className="tabular-nums">{c.nativeBalance == null ? "—" : fmtNum(c.nativeBalance)}</dd>
+          </div>
+        </dl>
+      ) : null}
+
+      <div className="space-y-2">
+        <div className="font-mono text-[11px] tracking-[0.16em] text-muted-foreground uppercase">Price protection</div>
+        <div role="radiogroup" aria-label="Price protection" className="flex flex-wrap gap-2">
+          {SLIPPAGE_CHOICES_BPS.map((b) => (
+            <button
+              key={b}
+              type="button"
+              role="radio"
+              aria-checked={slippage === b}
+              onClick={() => setSlippage(b)}
+              className={`rounded-sm border px-3 py-1.5 text-sm ${slippage === b ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:text-foreground"}`}
+            >
+              {pct(b)}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          You get at least <span className="font-semibold text-foreground tabular-nums">{fmtNum(minOut)} {toSym}</span>, or the swap cancels itself and your coins stay put.
+          {slippage >= 300 ? " Coins with a built-in tax may need 3–10%." : ""}
+        </p>
+      </div>
+
+      {blocked ? <p className="rounded-sm border border-warning/50 bg-warning/10 p-3 text-sm">{blocked}</p> : null}
+      {short && !blocked ? <p className="text-sm text-destructive">Your pocket holds less {fromSym} than that.</p> : null}
+      {go.data ? (
+        <p role="status" className="flex items-start gap-2 rounded-sm border border-primary/40 bg-primary/10 p-3 text-sm">
+          <Send className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+          Check Telegram and tap Approve. The request ends in 15 minutes, and nothing moves until you tap it. Progress shows under My swaps.
+        </p>
+      ) : null}
+      {go.error ? <p role="alert" className="text-sm text-destructive">{(go.error as Error).message}</p> : null}
+
+      <Button
+        type="button"
+        className="w-full bg-action text-action-foreground hover:bg-action/90 disabled:opacity-40"
+        disabled={!c || Boolean(blocked) || short || go.isPending}
+        onClick={() => { go.reset(); setConfirming(true); }}
+      >
+        Swap {fromSym} → {toSym}
+      </Button>
+
+      <Dialog open={confirming} onOpenChange={(o) => { if (!go.isPending) setConfirming(o); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Swap from your pocket?</DialogTitle>
+            <DialogDescription>Seeds asks your Telegram for an Approve tap first. Nothing moves until you tap it.</DialogDescription>
+          </DialogHeader>
+          <dl className="space-y-2 text-sm">
+            <Line k="You send" v={`${fmtNum(Number(amount))} ${fromSym}`} />
+            <Line k="You get about" v={`${fmtNum(d.best.amountOut)} ${toSym}`} />
+            <Line k="At least" v={`${fmtNum(minOut)} ${toSym}`} />
+            <Line k="Through" v={`${d.best.venueName} on ${def.name}${d.tsd ? " + TSD Bridge" : ""}`} />
+            <Line k="Lands in" v="Your own trading pocket" />
+            <Line k="Network fee" v={`Paid in ${def.nativeSymbol} from your pocket`} />
+          </dl>
+          <ul className="list-disc space-y-1 pl-5 text-xs text-muted-foreground">
+            {d.tsd ? (
+              <li>
+                {d.tsd.side === "buy"
+                  ? `TSD Bridge first turns your TSD into about ${fmtNum(d.tsd.usdc)} USDC in your own pocket (fee ${d.tsd.bridgeFeeBps / 100}%). If the pool price moves more than 2% meanwhile, Seeds stops and you keep the USDC.`
+                  : `The pool swaps to about ${fmtNum(d.tsd.usdc)} USDC in your pocket, then TSD Bridge issues TSD for it (fee ${d.tsd.bridgeFeeBps / 100}%).`}
+              </li>
+            ) : null}
+            <li>The pool gets permission to spend exactly this amount, never more. Tokens need one extra small network fee for that the first time.</li>
+            <li>Before sending, Seeds checks the price again and does a test run. If either fails, nothing is swapped.</li>
+            {d.risk.level !== "ok" ? <li className="text-destructive">{d.risk.level === "danger" ? "High risk:" : "Be careful:"} {d.risk.reasons[0]}</li> : null}
+          </ul>
+          {go.error ? <p role="alert" className="text-sm text-destructive">{(go.error as Error).message}</p> : null}
+          <DialogFooter className="gap-2">
+            <Button type="button" variant="outline" disabled={go.isPending} onClick={() => setConfirming(false)}>Not now</Button>
+            <Button type="button" className="bg-action text-action-foreground hover:bg-action/90" disabled={go.isPending} onClick={() => go.mutate()}>
+              {go.isPending ? "Checking the price…" : "Send to Telegram for approval"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function Line({ k, v }: { k: string; v: string }) {
+  return (
+    <div className="flex justify-between gap-4">
+      <dt className="text-muted-foreground">{k}</dt>
+      <dd className="text-right font-semibold">{v}</dd>
     </div>
   );
 }
@@ -266,7 +437,7 @@ function QuoteDetails({ d, network, from, to }: { d: Awaited<ReturnType<typeof q
       </div>
 
       <div className="grid gap-2 font-mono text-[11px] sm:grid-cols-2">
-        {[from, to].filter((c) => !isNative(c.address)).map((c) => (
+        {[from, to].filter((c) => !isNative(c.address) && !isTsdDex(c.address)).map((c) => (
           <a key={c.address} href={`${explorer}${c.address}`} target="_blank" rel="noreferrer" className="flex min-w-0 items-center gap-1 text-primary hover:underline">
             <span className="shrink-0">{displaySymbol(network, c.address, c.symbol)} contract</span>
             <span className="truncate">{c.address}</span>
@@ -326,7 +497,7 @@ function CoinPicker({ open, network, onClose, onPick }: { open: boolean; network
                   <span className="min-w-0">
                     <span className="block font-semibold">{displaySymbol(network, c.address, c.symbol)}</span>
                     <span className="block truncate text-xs text-muted-foreground">
-                      {c.name}{isNative(c.address) ? "" : ` · ${truncateMiddle(c.address, 6, 4)}`}
+                      {c.name}{isNative(c.address) || isTsdDex(c.address) ? "" : ` · ${truncateMiddle(c.address, 6, 4)}`}
                     </span>
                   </span>
                   <span className="shrink-0 text-right font-mono text-[11px]">

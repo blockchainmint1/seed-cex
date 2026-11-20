@@ -6,9 +6,13 @@ import type { getSwapSendContext } from "@/lib/xchain/swap.functions";
 import { answerTsdSwap, getTsdRoutes } from "@/lib/xchain/tsd-route.functions";
 import { isTerminal, routeSteps, stepIndex, SWAPPER_SHORT, type RouteDirection } from "@/lib/xchain/tsd-route";
 import { TRACKER_NAME, trackerUrl } from "@/lib/xchain/send-rules";
+import { cancelMyDexSwap, getDexSwaps } from "@/lib/dex/dex.functions";
+import { DEX_STATUS_LABEL, dexStepIndex, dexSteps, type DexStatus } from "@/lib/dex/swap-rules";
+import { DEX_NETWORKS, type DexNetwork } from "@/lib/dex/venues";
 
 type SendRow = Awaited<ReturnType<typeof getSwapSendContext>>["sends"][number];
 type RouteRow = Awaited<ReturnType<typeof getTsdRoutes>>["routes"][number];
+type DexRow = Awaited<ReturnType<typeof getDexSwaps>>["swaps"][number];
 
 const num = (n: number | null | undefined, d = 8) => (n == null || !Number.isFinite(n) ? "—" : n.toLocaleString("en-US", { maximumFractionDigits: d }));
 const when = (iso: string) => new Date(iso).toLocaleString("en-US", { dateStyle: "short", timeStyle: "short" });
@@ -52,12 +56,26 @@ export function MySwaps({ signedIn, sends }: { signedIn: boolean; sends: SendRow
     mutationFn: (v: { id: string; choice: "continue" | "stop" }) => answer({ data: v }),
     onSettled: () => qc.invalidateQueries({ queryKey: ["tsd-routes"] }),
   });
+  const fetchDex = useServerFn(getDexSwaps);
+  const { data: dexData } = useQuery({
+    queryKey: ["dex-swaps"],
+    queryFn: () => fetchDex(),
+    enabled: signedIn,
+    refetchInterval: (q) => (q.state.data?.swaps.some((r) => !r.terminal) ? 10_000 : 60_000),
+  });
+  const cancelDex = useServerFn(cancelMyDexSwap);
+  const stopDex = useMutation({
+    mutationFn: (id: string) => cancelDex({ data: { id } }),
+    onSettled: () => qc.invalidateQueries({ queryKey: ["dex-swaps"] }),
+  });
   const routes: RouteRow[] = data?.routes ?? [];
+  const dexRows: DexRow[] = dexData?.swaps ?? [];
   // Older swaps may predate the server hiding TSD steps; never show one twice.
   const legIds = new Set(routes.map((r) => r.swap_send_id).filter(Boolean));
   const rows = [
     ...routes.map((r) => ({ kind: "tsd" as const, at: r.created_at, r })),
     ...sends.filter((s) => !legIds.has(s.id)).map((s) => ({ kind: "send" as const, at: s.created_at, s })),
+    ...dexRows.map((d) => ({ kind: "dex" as const, at: d.created_at, d })),
   ].sort((a, b) => b.at.localeCompare(a.at));
   if (!rows.length) return null;
 
@@ -66,6 +84,7 @@ export function MySwaps({ signedIn, sends }: { signedIn: boolean; sends: SendRow
       <h2 className="border-b border-border px-4 py-3 font-mono text-[11px] tracking-[0.2em] uppercase">My swaps</h2>
       <ul className="divide-y divide-border">
         {rows.map((row) => {
+          if (row.kind === "dex") return <DexItem key={`d-${row.d.id}`} d={row.d} onCancel={() => stopDex.mutate(row.d.id)} cancelling={stopDex.isPending} />;
           if (row.kind === "send") {
             const s = row.s;
             const from = coinLabel(s.from_asset), to = coinLabel(s.to_asset);
@@ -133,6 +152,57 @@ export function MySwaps({ signedIn, sends }: { signedIn: boolean; sends: SendRow
         })}
       </ul>
       {act.error ? <p role="alert" className="px-4 pb-3 font-mono text-xs text-destructive">{(act.error as Error).message}</p> : null}
+      {stopDex.error ? <p role="alert" className="px-4 pb-3 font-mono text-xs text-destructive">{(stopDex.error as Error).message}</p> : null}
     </div>
+  );
+}
+
+/** A Uniswap / PancakeSwap / PulseX swap: one row with its steps (a TSD Bridge step is part of it). */
+function DexItem({ d, onCancel, cancelling }: { d: DexRow; onCancel: () => void; cancelling: boolean }) {
+  const side = (d.tsd_side as "buy" | "sell" | null) ?? null;
+  const venue = d.venue_name ?? "Pool";
+  const steps = dexSteps(side, venue, d.symbol_out);
+  const at = dexStepIndex(side, d.status);
+  const stopped = ["failed", "kept_usdc", "declined", "expired", "cancelled"].includes(d.status);
+  const netName = DEX_NETWORKS[d.network as DexNetwork]?.name ?? d.network;
+  return (
+    <li className="space-y-2 px-4 py-3 text-xs">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <span className="font-semibold">
+          {num(d.amount_in)} {d.symbol_in} → {d.symbol_out}
+          <span className="ml-2 font-mono text-[10px] font-normal text-muted-foreground">{venue} · {netName}</span>
+        </span>
+        <span className={`font-mono text-[11px] ${d.status === "done" ? "text-primary" : stopped ? "text-destructive" : ""}`}>{DEX_STATUS_LABEL[d.status as DexStatus] ?? d.status}</span>
+      </div>
+      {!stopped ? (
+        <ol className="flex flex-wrap gap-x-4 gap-y-1">
+          {steps.map((s, i) => (
+            <li key={s} className={`flex items-center gap-1.5 ${i < at ? "text-foreground" : "text-muted-foreground"}`}>
+              {i < at ? <Check className="h-3.5 w-3.5 text-primary" /> : i === at ? <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" /> : <Circle className="h-3 w-3" />}
+              {s}
+            </li>
+          ))}
+        </ol>
+      ) : null}
+      <p className="font-mono text-[11px] text-muted-foreground">
+        {d.status === "done" && d.amount_out != null ? `Got ${num(d.amount_out)} ${d.symbol_out}` : `Expecting ≈ ${num(d.shown_out)} ${d.symbol_out}${d.min_out != null ? ` (at least ${num(d.min_out)})` : ""}`}
+        {" · "}
+        {when(d.created_at)}
+      </p>
+      {d.error ? <p className="text-[11px] text-muted-foreground">{d.error}</p> : null}
+      {d.swap_txid ? (
+        <a href={`${d.explorerTx}${d.swap_txid}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-mono text-[11px] text-primary underline">
+          See the swap on the explorer <ExternalLink className="h-3 w-3" />
+        </a>
+      ) : null}
+      {d.status === "awaiting_approval" ? (
+        <div className="flex flex-wrap items-center gap-2 border-t border-border pt-2">
+          <span className="flex-1 text-[11px]">Tap Approve in Telegram to start. Nothing moves until you do.</span>
+          <button type="button" disabled={cancelling} onClick={onCancel} className="h-8 rounded-md border border-border px-3 disabled:opacity-50">
+            Cancel
+          </button>
+        </div>
+      ) : null}
+    </li>
   );
 }

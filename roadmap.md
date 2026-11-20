@@ -138,8 +138,10 @@
 
 ## Uniswap / PancakeSwap / PulseX (Bobby, Nov 18: more coins; Ethereum, Base, BNB Chain, PulseChain; pools directly; any coin)
 - [x] Live prices from the pools on /swap/tokens: coin search or pasted address, best of every pool, sell-back check, plain warnings
-- [ ] Swapping from the member's EVM pocket: exact-amount spend permission + swap, server re-quote floor, Telegram Approve tap, admin-only small test first (next build)
-- [ ] First small real swap per network (blocked: send step built, Bobby's pocket funded on that network, two-factor + re-link done)
+- [x] Swapping from the member's EVM pocket on all four networks: exact-amount pool permission, server re-quote, agreed minimum, test run before sending, Telegram Approve tap, pays back into the same pocket, beta testers only (Nov 20)
+- [x] TSD as a coin on Ethereum: TSD → any token (TSD Bridge pays USDC into the pocket, then the pool) and any token → TSD; one Telegram tap covers the whole swap (Nov 20)
+- [ ] First small real swap per network (blocked: Bobby publishes, funds his pocket's fee coin on that network, taps Approve)
+- [ ] Open token swaps to every member (blocked: first real swaps + Bobby's limits choice)
 
 ## List on Seeds (Bobby, Nov 18)
 - [x] /list page (footer link): why Seeds, stop getting rugged, 3 packages $1,000/$2,500/$5,000, comparison, signed-in application form, /admin/listings review + admin Telegram ping
