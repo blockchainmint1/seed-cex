@@ -48,3 +48,14 @@ export function webhookOrderId(body: unknown): string | null {
   const id = (body as { order?: { id?: unknown } } | null)?.order?.id;
   return typeof id === "string" && UUID.test(id) ? id.toLowerCase() : null;
 }
+
+/**
+ * Seeds' TSD Bridge keys in the order to use them: the notification key first (new
+ * orders are created with it so TSD Bridge pushes their steps), then the main key.
+ * Blank or repeated keys are left out.
+ */
+export function bridgeReadKeys(webhookKey: string | undefined, mainKey: string | undefined): string[] {
+  const out: string[] = [];
+  for (const k of [webhookKey?.trim(), mainKey?.trim()]) if (k && !out.includes(k)) out.push(k);
+  return out;
+}

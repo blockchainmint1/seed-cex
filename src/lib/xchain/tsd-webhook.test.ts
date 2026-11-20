@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { tsdSignature, verifyTsdWebhook, webhookOrderId, TSD_WEBHOOK_MAX_AGE_SEC } from "./tsd-webhook";
+import { bridgeReadKeys, tsdSignature, verifyTsdWebhook, webhookOrderId, TSD_WEBHOOK_MAX_AGE_SEC } from "./tsd-webhook";
 
 const secret = "test-signing-secret";
 const body = JSON.stringify({ type: "payout_sent", order: { id: "833f5fc2-f630-4ed1-84ec-783daee8db21", status: "released" } });
@@ -28,5 +28,16 @@ describe("TSD Bridge notifications", () => {
     expect(webhookOrderId(JSON.parse(body))).toBe("833f5fc2-f630-4ed1-84ec-783daee8db21");
     expect(webhookOrderId({ order: { id: "TX-1234ABCD" } })).toBeNull();
     expect(webhookOrderId({})).toBeNull();
+  });
+});
+
+describe("which TSD Bridge key", () => {
+  test("new orders use the notification key; reads fall back to the main key", () => {
+    expect(bridgeReadKeys("tsd_new", "tsd_main")).toEqual(["tsd_new", "tsd_main"]);
+  });
+  test("without a notification key everything uses the main key", () => {
+    expect(bridgeReadKeys(undefined, "tsd_main")).toEqual(["tsd_main"]);
+    expect(bridgeReadKeys("  ", "tsd_main")).toEqual(["tsd_main"]);
+    expect(bridgeReadKeys("tsd_main", "tsd_main")).toEqual(["tsd_main"]);
   });
 });

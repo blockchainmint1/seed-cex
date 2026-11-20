@@ -46,9 +46,11 @@ type IssuerOrder = {
 
 export async function issuerFetch<T>(
   path: string,
-  init?: { method?: string; body?: unknown },
+  init?: { method?: string; body?: unknown; apiKey?: string },
 ): Promise<T> {
-  const cfg = issuerConfig();
+  const base = issuerConfig();
+  // A caller may pick another of Seeds' own TSD Bridge keys (same bridge address, same redirect rules).
+  const cfg = base && init?.apiKey ? { ...base, apiKey: init.apiKey } : base;
   if (!cfg) {
     throw new Error(
       "Wrap desk is not configured. The issuer endpoint and API key are missing.",
@@ -93,7 +95,7 @@ export async function issuerFetch<T>(
         (parsed as { error?: string; message?: string } | null)?.error ??
         (parsed as { message?: string } | null)?.message ??
         `Issuer returned ${res.status}`;
-      throw new Error(msg);
+      throw Object.assign(new Error(msg), { status: res.status });
     }
     return parsed as T;
   } catch (err) {
