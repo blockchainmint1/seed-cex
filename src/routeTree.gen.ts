@@ -114,6 +114,7 @@ import { Route as ApiPublicJobsTsdRoutesRouteImport } from './routes/api/public/
 import { Route as ApiPublicMinehmeProfileUpdateRouteImport } from './routes/api/public/minehme/profile-update'
 import { Route as ApiPublicNectarpayWebhookRouteImport } from './routes/api/public/nectarpay/webhook'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
+import { Route as ApiPublicTsdBridgeWebhookRouteImport } from './routes/api/public/tsd-bridge/webhook'
 import { Route as ApiPublicV1IndexRouteImport } from './routes/api/public/v1/index'
 import { Route as ApiPublicV1AccountRouteImport } from './routes/api/public/v1/account'
 import { Route as ApiPublicV1AllOrdersRouteImport } from './routes/api/public/v1/allOrders'
@@ -688,6 +689,12 @@ const ApiPublicTelegramWebhookRoute =
     path: '/api/public/telegram/webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicTsdBridgeWebhookRoute =
+  ApiPublicTsdBridgeWebhookRouteImport.update({
+    id: '/api/public/tsd-bridge/webhook',
+    path: '/api/public/tsd-bridge/webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicV1IndexRoute = ApiPublicV1IndexRouteImport.update({
   id: '/api/public/v1/',
   path: '/api/public/v1/',
@@ -895,6 +902,7 @@ export interface FileRoutesByFullPath {
   '/api/public/minehme/profile-update': typeof ApiPublicMinehmeProfileUpdateRoute
   '/api/public/nectarpay/webhook': typeof ApiPublicNectarpayWebhookRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
+  '/api/public/tsd-bridge/webhook': typeof ApiPublicTsdBridgeWebhookRoute
   '/api/public/v1/account': typeof ApiPublicV1AccountRoute
   '/api/public/v1/allOrders': typeof ApiPublicV1AllOrdersRoute
   '/api/public/v1/depth': typeof ApiPublicV1DepthRoute
@@ -1017,6 +1025,7 @@ export interface FileRoutesByTo {
   '/api/public/minehme/profile-update': typeof ApiPublicMinehmeProfileUpdateRoute
   '/api/public/nectarpay/webhook': typeof ApiPublicNectarpayWebhookRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
+  '/api/public/tsd-bridge/webhook': typeof ApiPublicTsdBridgeWebhookRoute
   '/api/public/v1/account': typeof ApiPublicV1AccountRoute
   '/api/public/v1/allOrders': typeof ApiPublicV1AllOrdersRoute
   '/api/public/v1/depth': typeof ApiPublicV1DepthRoute
@@ -1145,6 +1154,7 @@ export interface FileRoutesById {
   '/api/public/minehme/profile-update': typeof ApiPublicMinehmeProfileUpdateRoute
   '/api/public/nectarpay/webhook': typeof ApiPublicNectarpayWebhookRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
+  '/api/public/tsd-bridge/webhook': typeof ApiPublicTsdBridgeWebhookRoute
   '/api/public/v1/account': typeof ApiPublicV1AccountRoute
   '/api/public/v1/allOrders': typeof ApiPublicV1AllOrdersRoute
   '/api/public/v1/depth': typeof ApiPublicV1DepthRoute
@@ -1273,6 +1283,7 @@ export interface FileRouteTypes {
     | '/api/public/minehme/profile-update'
     | '/api/public/nectarpay/webhook'
     | '/api/public/telegram/webhook'
+    | '/api/public/tsd-bridge/webhook'
     | '/api/public/v1/account'
     | '/api/public/v1/allOrders'
     | '/api/public/v1/depth'
@@ -1395,6 +1406,7 @@ export interface FileRouteTypes {
     | '/api/public/minehme/profile-update'
     | '/api/public/nectarpay/webhook'
     | '/api/public/telegram/webhook'
+    | '/api/public/tsd-bridge/webhook'
     | '/api/public/v1/account'
     | '/api/public/v1/allOrders'
     | '/api/public/v1/depth'
@@ -1522,6 +1534,7 @@ export interface FileRouteTypes {
     | '/api/public/minehme/profile-update'
     | '/api/public/nectarpay/webhook'
     | '/api/public/telegram/webhook'
+    | '/api/public/tsd-bridge/webhook'
     | '/api/public/v1/account'
     | '/api/public/v1/allOrders'
     | '/api/public/v1/depth'
@@ -1617,6 +1630,7 @@ export interface RootRouteChildren {
   ApiPublicMinehmeProfileUpdateRoute: typeof ApiPublicMinehmeProfileUpdateRoute
   ApiPublicNectarpayWebhookRoute: typeof ApiPublicNectarpayWebhookRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
+  ApiPublicTsdBridgeWebhookRoute: typeof ApiPublicTsdBridgeWebhookRoute
   ApiPublicV1AccountRoute: typeof ApiPublicV1AccountRoute
   ApiPublicV1AllOrdersRoute: typeof ApiPublicV1AllOrdersRoute
   ApiPublicV1DepthRoute: typeof ApiPublicV1DepthRoute
@@ -2376,6 +2390,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicTelegramWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/tsd-bridge/webhook': {
+      id: '/api/public/tsd-bridge/webhook'
+      path: '/api/public/tsd-bridge/webhook'
+      fullPath: '/api/public/tsd-bridge/webhook'
+      preLoaderRoute: typeof ApiPublicTsdBridgeWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/v1/': {
       id: '/api/public/v1/'
       path: '/api/public/v1'
@@ -2729,6 +2750,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicMinehmeProfileUpdateRoute: ApiPublicMinehmeProfileUpdateRoute,
   ApiPublicNectarpayWebhookRoute: ApiPublicNectarpayWebhookRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
+  ApiPublicTsdBridgeWebhookRoute: ApiPublicTsdBridgeWebhookRoute,
   ApiPublicV1AccountRoute: ApiPublicV1AccountRoute,
   ApiPublicV1AllOrdersRoute: ApiPublicV1AllOrdersRoute,
   ApiPublicV1DepthRoute: ApiPublicV1DepthRoute,
