@@ -186,6 +186,17 @@ describe("Override days (enterOn): the clock starts on the override day", () => 
     expect(run.current?.["bitcoin"]).toBeCloseTo(1, 6);
     expect(run.fills.find((f) => f.day === days[60])?.side).toBe("buy");
   });
+  it("an override on a live plan's first day, redone for that day only, buys on that day", () => {
+    // Live plan locked the day after days[60]: its check runs start = end = days[60].
+    const run = runPlan({ bitcoin: down }, { ...plan, start: days[60]!, end: days[60]!, enterOn: [days[60]!] }, { minDays: 1 });
+    expect(run.points.at(-1)?.day).toBe(days[60]);
+    expect(run.current?.["bitcoin"]).toBeCloseTo(1, 6);
+  });
+  it("the next day's check keeps holding the override (the rule alone would say TSD)", () => {
+    const run = runPlan({ bitcoin: down }, { ...plan, start: days[60]!, end: days[61]!, enterOn: [days[60]!] }, { minDays: 1 });
+    expect(run.points.at(-1)?.day).toBe(days[61]);
+    expect(run.current?.["bitcoin"]).toBeCloseTo(1, 6);
+  });
   it("after the coin closes above its average once, a later fall below it sells to TSD", () => {
     // falls to day 60 (buy now), climbs to day 85, then falls again
     const vshape = { days, closes: days.map((_, i) => (i <= 60 ? 100 * 0.99 ** i : i <= 85 ? 100 * 0.99 ** 60 * 1.02 ** (i - 60) : 100 * 0.99 ** 60 * 1.02 ** 25 * 0.97 ** (i - 85))) };

@@ -52,7 +52,8 @@ export function ledgerValue(l: Ledger, prices: Record<string, number>): number {
 /** Split an amount into pieces of at most `max` (last piece takes the rest). */
 export function pieces(total: number, max: number): number[] {
   if (!(total > 0) || !(max > 0)) return [];
-  const n = Math.ceil(total / max - 1e-9);
+  // At least one piece: with a huge (tester "no limit") max, total/max - 1e-9 is below zero.
+  const n = Math.max(1, Math.ceil(total / max - 1e-9));
   const each = total / n;
   return Array.from({ length: n }, () => each);
 }

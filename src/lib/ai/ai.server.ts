@@ -45,14 +45,18 @@ export type DailyTally = { plans: number; checked: number; sent: number; skipped
 type CheckPlan = { id: string; user_id: string; name: string; settings: unknown; commit_tsd: number; locked_at: string; telegram_daily: boolean; execute: boolean | null; override_days: string[] | null };
 type Built = { day: string; message: string; suggestion: { moves: unknown[]; hold: unknown[]; value: number; current: Record<string, number> } };
 
-/** Today's check for one plan: the same engine run the browser tester does, from the lock day on. */
-async function buildCheck(p: CheckPlan, ctx: { symbol: Map<string, string>; series: (id: string) => Promise<Series>; executionEnabled: boolean }): Promise<Built | null> {
+/**
+ * Today's check for one plan: the same engine run the browser tester does, from the lock day on.
+ * `endDay` redoes the check for that price day (an override of the day on screen) even when a
+ * newer price day has arrived since.
+ */
+async function buildCheck(p: CheckPlan, ctx: { symbol: Map<string, string>; series: (id: string) => Promise<Series>; executionEnabled: boolean }, endDay = ""): Promise<Built | null> {
   const s = p.settings as unknown as PlanSettings;
   const ids = [...new Set(["bitcoin", ...s.coins])];
   const all: Record<string, Series> = {};
   for (const id of ids) all[id] = await ctx.series(id);
   const lockDay = new Date(new Date(p.locked_at).getTime() - 86_400_000).toISOString().slice(0, 10);
-  const run = runPlan(all, { ...s, start: lockDay, end: "", amount: Number(p.commit_tsd), weeklyAdd: 0, holdout: 0, enterOn: p.override_days ?? [] }, { minDays: 1 });
+  const run = runPlan(all, { ...s, start: lockDay, end: endDay, amount: Number(p.commit_tsd), weeklyAdd: 0, holdout: 0, enterOn: p.override_days ?? [] }, { minDays: 1 });
   const day = run.points.at(-1)?.day;
   if (run.error || !day) return null;
   const value = run.points.at(-1)!.plan;
@@ -168,15 +172,21 @@ export async function overridePlanDay(planId: string, userId: string): Promise<s
   } else if (last.exec_status !== "none") {
     throw new Error("Today's trades for this plan were already decided. You can override after the next daily check.");
   }
-  const { data: cur } = await db.from("ai_plans").select("override_days").eq("id", planId).eq("user_id", userId).single();
-  const days = [...new Set([...((cur?.override_days as string[] | null) ?? []), last.day])].sort();
-  const { data: plan } = await db.from("ai_plans").update({ override_days: days, updated_at: new Date().toISOString() }).eq("id", planId).eq("user_id", userId).select(PLAN_COLS).single();
-  if (!plan) throw new Error("Plan not found.");
-  const built = await buildCheck(plan as CheckPlan, await checkContext(db));
+  const { data: cur } = await db.from("ai_plans").select(PLAN_COLS).eq("id", planId).eq("user_id", userId).single();
+  if (!cur) throw new Error("Plan not found.");
+  const before = (cur.override_days as string[] | null) ?? [];
+  const days = [...new Set([...before, last.day])].sort();
+  // Redo the check for the day on screen (last.day), even if a newer price day arrived since;
+  // the next daily check carries the override forward. Nothing is saved unless this works.
+  const built = await buildCheck({ ...(cur as CheckPlan), override_days: days }, await checkContext(db), last.day);
   if (!built || built.day !== last.day) throw new Error("Couldn't redo today's plan check. Try again in a minute.");
+  await db.from("ai_plans").update({ override_days: days, updated_at: new Date().toISOString() }).eq("id", planId).eq("user_id", userId);
   const { data: upd } = await db.from("ai_plan_checks").update({ message: built.message, suggestion: built.suggestion as never })
     .eq("id", last.id).eq("exec_status", "none").select("id");
-  if (!upd?.length) throw new Error("Today's trades for this plan were already decided.");
+  if (!upd?.length) {
+    await db.from("ai_plans").update({ override_days: before }).eq("id", planId).eq("user_id", userId);
+    throw new Error("Today's trades for this plan were already decided.");
+  }
   return last.id;
 }
 

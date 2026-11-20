@@ -38,6 +38,12 @@ describe("real moves", () => {
   test("trades under $10 are skipped", () => {
     expect(planRealMoves({ ledger: { tsd: 8, units: {} }, targets: { bitcoin: 1 }, prices, planTradedToday: true, perSwapUsd: 250 })).toEqual([]);
   });
+  test("a beta tester with no swap limit gets the whole buy as one trade", () => {
+    const m = planRealMoves({ ledger: { tsd: 500, units: {} }, targets: { bitcoin: 1 }, prices, planTradedToday: true, perSwapUsd: 1e12 });
+    expect(m).toHaveLength(1);
+    expect(m[0]!.side).toBe("buy");
+    expect(m[0]!.usd).toBe(500);
+  });
 });
 
 describe("approval", () => {
