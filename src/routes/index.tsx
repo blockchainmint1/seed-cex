@@ -93,7 +93,7 @@ function Index() {
         </div>
       </section>
 
-      <section id="how-it-works" className="scroll-mt-20 border-b border-border bg-surface">
+      <section className="border-b border-border bg-surface">
         <div className="mx-auto grid max-w-7xl gap-px bg-border md:grid-cols-3">
           {[
             {

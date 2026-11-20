@@ -11,9 +11,28 @@ export const GENESIS_MOTION_QUERY = "(min-width: 640px) and (prefers-reduced-mot
 export const GENESIS_FIRST_FRAME = firstFrame.url;
 export const GENESIS_POSTER = suppliedPoster.url;
 
-// Remembered only in the browser (set after playback), so moving between pages
-// never restarts the growth; a fresh page load plays it once more.
+// Remembered only in the browser (set once playback starts), for this tab: coming
+// back to the homepage rests on the grown tree instead of restarting the growth.
+// A new tab or browser session plays it once more.
 let playedThisVisit = false;
+const PLAYED_KEY = "seeds-genesis-played";
+
+function rememberPlayed() {
+  playedThisVisit = true;
+  try {
+    sessionStorage.setItem(PLAYED_KEY, "1");
+  } catch {
+    /* private mode */
+  }
+}
+
+function playedEarlierInTab() {
+  try {
+    return sessionStorage.getItem(PLAYED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
 
 type Phase = "waiting" | "playing" | "rest";
 
@@ -25,7 +44,7 @@ function GenesisMedia() {
   useEffect(() => {
     if (phase !== "waiting") return;
     const conn = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
-    if (!window.matchMedia(GENESIS_MOTION_QUERY).matches || conn?.saveData) {
+    if (!window.matchMedia(GENESIS_MOTION_QUERY).matches || conn?.saveData || playedEarlierInTab()) {
       setPhase("rest");
       return;
     }
@@ -44,7 +63,7 @@ function GenesisMedia() {
   }, [mountVideo]);
 
   const finish = () => {
-    playedThisVisit = true;
+    rememberPlayed();
     setPhase("rest");
   };
 
@@ -85,7 +104,10 @@ function GenesisMedia() {
           disablePictureInPicture
           disableRemotePlayback
           tabIndex={-1}
-          onPlaying={() => setPhase((p) => (p === "waiting" ? "playing" : p))}
+          onPlaying={() => {
+            rememberPlayed();
+            setPhase((p) => (p === "waiting" ? "playing" : p));
+          }}
           onEnded={finish}
           onError={() => setPhase("rest")}
         >
@@ -126,12 +148,12 @@ export function GenesisHero() {
             >
               Explore Seeds
             </Link>
-            <a
-              href="#how-it-works"
+            <Link
+              to="/how-it-works"
               className="inline-flex min-h-12 items-center justify-center rounded-xl border border-foreground/40 px-6 text-[0.9375rem] font-semibold text-foreground transition-colors hover:bg-foreground/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             >
               How it works
-            </a>
+            </Link>
           </div>
         </div>
       </div>

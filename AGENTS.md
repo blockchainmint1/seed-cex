@@ -43,4 +43,4 @@
 - /admin/plan business plan: src/lib/AGENTS.md.
 - AI-assistant connections (MCP): src/lib/mcp/AGENTS.md.
 - Help center (/help): src/lib/help/AGENTS.md.
-- Homepage hero = src/components/home/GenesisHero.tsx: the video mounts after hydration only where motion is allowed, plays once per page load and fades to its own extracted last frame; phones, reduced motion and no-JS show the supplied still. Why: no flash or jump between video and still, and no video download on phones.
+- Homepage hero = src/components/home/GenesisHero.tsx: the video mounts after hydration only where motion is allowed, plays once per browser tab (sessionStorage) and fades to its own extracted last frame; phones, reduced motion and no-JS show the supplied still. Why: no flash or jump between video and still, and no video download on phones.
