@@ -112,6 +112,12 @@ export async function releaseTrade(tradeId: string, actorId: string, resolution?
   const { data: t } = await supabaseAdmin.from("p2p_trades").select("*").eq("id", tradeId).maybeSingle();
   if (!t) throw new Error("Trade not found");
   if (!["open", "paid", "disputed"].includes(t.status)) throw new Error(`Trade is ${t.status}`);
+  // A frozen seller's own release waits for the team; a release ordered by a dispute ruling may go ahead.
+  if (!resolution) {
+    const { tradingFrozenReason } = await import("@/lib/settle/confirm.server");
+    const frozen = await tradingFrozenReason(t.seller_id);
+    if (frozen) throw new Error(actorId === t.seller_id ? frozen : "The seller's account is on hold for a team review. Open a dispute so the team can sort out this trade.");
+  }
   const leg = legFor(t.asset as P2pAsset);
   const { pocketSender, pocketLegBalance, coverProblem, validDestination } = await import("@/lib/pocket-send/pocket.server");
   const s = await pocketSender(t.seller_id, leg);
@@ -153,6 +159,14 @@ export async function continueP2pRelease(tradeId: string) {
   }
   if (ap.status !== "approved") return null;
   if (!["open", "paid", "disputed"].includes(t.status)) return null;
+  const resolved = Boolean(ap.meta?.resolution);
+  if (!resolved) {
+    const { tradingFrozenReason } = await import("@/lib/settle/confirm.server");
+    if (await tradingFrozenReason(t.seller_id)) {
+      await systemMessage(t.id, "Release paused: the seller's account is on hold for a team review. Nothing was sent; the coins stay reserved.");
+      return null;
+    }
+  }
 
   const { pocketSender, sendFromPocket } = await import("@/lib/pocket-send/pocket.server");
   const s = await pocketSender(t.seller_id, leg);

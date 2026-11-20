@@ -38,18 +38,27 @@ export type SentLegCheck = {
   confirmations: number | null;
   /** The network included it but rejected it (EVM revert, Omni "invalid"). */
   rejected: boolean;
-  /** Time since Seeds broadcast it. */
+  /** Time since Seeds broadcast it (or since it was resent). */
   ageMs: number;
+  /** Seeds still holds the signed send and hasn't resent it yet. */
+  canResend?: boolean;
+  /** EVM: the pocket's confirmed nonce moved past ours without our hash — another send took its place. */
+  replaced?: boolean;
 };
 
-export type SentLegState = "confirmed" | "waiting" | "vanished";
+export type SentLegState = "confirmed" | "waiting" | "vanished" | "resend";
 
 export function sentLegState(c: SentLegCheck, needed: number): SentLegState {
   if (c.rejected) return "vanished";
   if (c.found === true && (c.confirmations ?? 0) >= needed) return "confirmed";
   // Nobody answered: never accuse a member because Seeds' own servers are down.
   if (c.found === null) return "waiting";
-  if (c.found === false && c.ageMs > NOT_FOUND_AFTER_MS) return "vanished";
+  if (c.found === false && c.ageMs > NOT_FOUND_AFTER_MS) {
+    // A low-fee send can simply drop out of the network's waiting room. Before calling it a
+    // double-spend, Seeds resends the exact same signed send once (unless it was clearly replaced).
+    if (c.replaced) return "vanished";
+    return c.canResend ? "resend" : "vanished";
+  }
   // Seen but slow (low fee, busy network) is Seeds' fee choice, not the payer's doing:
   // it waits, and after STUCK_AFTER_MS an admin looks without blaming anyone.
   return "waiting";
@@ -86,4 +95,16 @@ function stepFor(legs: Array<{ leg: string; sent: boolean; state: SentLegState |
   if (second && !second.sent) return { action: "send_second" };
   if (legs.every((l) => l.sent && l.state === "confirmed")) return { action: "settled" };
   return { action: "wait" };
+}
+
+/**
+ * What a resend's answer means. "accepted": the network took it (or already has it), wait again.
+ * "spent_elsewhere": the coins it spends were used by another send — a real double-spend.
+ * "retry": no clear answer (server down, timeout); try again next run, blame nobody.
+ */
+export function resendOutcome(error: string | null): "accepted" | "spent_elsewhere" | "retry" {
+  if (error == null) return "accepted";
+  if (/already[ -]known|known transaction|txn-already|already[ -]in[ -](the )?(mempool|block ?chain)/i.test(error)) return "accepted";
+  if (/missing ?inputs|missingorspent|inputs-missing|mempool-conflict|txn-mempool-conflict|nonce too low|replacement transaction underpriced|insufficient funds/i.test(error)) return "spent_elsewhere";
+  return "retry";
 }

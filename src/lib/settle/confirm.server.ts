@@ -13,7 +13,28 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getLeg, isOmniLeg, type ChainId, type LegId } from "@/lib/chains";
 import { delivererOf, legRole, type TradeShape } from "@/lib/leg-roles";
-import { confirmationsNeeded, nextSettleStep, sentLegState, type SentLegCheck, type SentLegState } from "./confirm-rules";
+import { confirmationsNeeded, nextSettleStep, resendOutcome, sentLegState, type SentLegCheck, type SentLegState } from "./confirm-rules";
+
+/**
+ * Lookup safety switch: "no such transaction" from a TXC/ISK node only means "gone" when the
+ * node keeps a full transaction index. Checked live Nov 20 2026 (both synced); re-checked here
+ * so a node rebuilt without it can never freeze an honest member. Finished values only.
+ */
+const txIndexSeen = new Map<string, { ok: boolean; at: number }>();
+async function txIndexOn(chain: "txc" | "isk"): Promise<boolean> {
+  const hit = txIndexSeen.get(chain);
+  if (hit && Date.now() - hit.at < 10 * 60_000) return hit.ok;
+  const { rpc } = await import("@/lib/rpc.server");
+  let ok = false;
+  try {
+    const info = await rpc<{ txindex?: { synced?: boolean } }>(chain, "getindexinfo", []);
+    ok = info?.txindex?.synced === true;
+  } catch {
+    ok = false;
+  }
+  txIndexSeen.set(chain, { ok, at: Date.now() });
+  return ok;
+}
 
 /** A trade locked for settlement with nothing sent after this long goes to an admin. */
 const NOTHING_SENT_AFTER_MS = 30 * 60_000;
@@ -46,7 +67,7 @@ export async function checkSentLeg(leg: LegId, txid: string, network: string | n
         const tx = await rpc<{ confirmations?: number }>(def.chain as "txc" | "isk", "getrawtransaction", [txid, true]);
         return { kind: "utxo", found: true, confirmations: tx.confirmations ?? 0, rejected: false, ageMs };
       } catch (e) {
-        const notFound = (e as { code?: number }).code === -5;
+        const notFound = (e as { code?: number }).code === -5 && (await txIndexOn(def.chain as "txc" | "isk"));
         return { kind: "utxo", found: notFound ? false : null, confirmations: null, rejected: false, ageMs };
       }
     }
@@ -93,7 +114,7 @@ async function hold(t: TradeRow, event: string, detail: Record<string, string | 
 async function advanceOne(t: TradeRow): Promise<string> {
   const { data: rows } = await supabaseAdmin
     .from("escrows")
-    .select("id, leg, release_txid, sent_at, sent_network, confirmed_at, updated_at")
+    .select("id, leg, release_txid, sent_at, sent_network, confirmed_at, updated_at, sent_raw, sent_from, sent_nonce, rebroadcast_at")
     .eq("trade_id", t.id);
   const legs = (rows ?? []).map((r) => ({
     ...r,
@@ -121,9 +142,16 @@ async function advanceOne(t: TradeRow): Promise<string> {
       const { pocketLegChain } = await import("@/lib/pocket-send/trade.server");
       network = (await pocketLegChain(t.id, l.leg)) ?? getLeg(l.leg).evmChains?.[0] ?? null;
     }
-    const ageMs = Date.now() - Date.parse(l.sent_at ?? l.updated_at);
+    const ageMs = Date.now() - Date.parse(l.rebroadcast_at ?? l.sent_at ?? l.updated_at);
     const check = await checkSentLeg(l.leg, l.release_txid as string, network, ageMs);
-    const state = sentLegState(check, confirmationsNeeded(network));
+    check.canResend = Boolean(l.sent_raw) && !l.rebroadcast_at;
+    if (check.found === false && check.kind === "evm" && network && l.sent_from && l.sent_nonce != null) {
+      const { fetchConfirmedNonce } = await import("@/lib/evm.server");
+      const done = await fetchConfirmedNonce(network as ChainId, l.sent_from);
+      if (done != null && done > Number(l.sent_nonce)) check.replaced = true;
+    }
+    let state = sentLegState(check, confirmationsNeeded(network));
+    if (state === "resend") state = await resendLeg(t, l, network);
     const patch: { confirmations?: number; confirmed_at?: string } = {};
     if (check.confirmations != null) patch.confirmations = check.confirmations;
     if (state === "confirmed") patch.confirmed_at = new Date().toISOString();
@@ -163,6 +191,39 @@ async function advanceOne(t: TradeRow): Promise<string> {
     return "settled";
   }
   return "waiting";
+}
+
+/** Resend the exact signed send once. Returns what the leg now counts as. */
+async function resendLeg(
+  t: TradeRow, l: { id: string; leg: LegId; release_txid: string | null; sent_raw: string | null }, network: string | null,
+): Promise<"waiting" | "vanished"> {
+  const raw = l.sent_raw as string;
+  let error: string | null = null;
+  try {
+    const def = getLeg(l.leg);
+    if (isOmniLeg(l.leg)) {
+      const { rpc } = await import("@/lib/rpc.server");
+      await rpc<string>("txc", "sendrawtransaction", [raw]);
+    } else if (def.kind === "utxo") {
+      const { broadcastFor } = await import("@/lib/utxo/io.server");
+      await broadcastFor(def.chain as never, raw);
+    } else {
+      const { sendRawTransaction } = await import("@/lib/evm.server");
+      await sendRawTransaction(network as ChainId, raw);
+    }
+  } catch (e) {
+    error = e instanceof Error ? e.message : String(e);
+  }
+  const outcome = resendOutcome(error);
+  await supabaseAdmin.from("trade_events").insert({
+    trade_id: t.id, actor_id: null, event: "payment_resent",
+    detail: { leg: l.leg, txid: l.release_txid, outcome, error: error?.slice(0, 300) ?? null },
+  });
+  if (outcome === "accepted") {
+    await supabaseAdmin.from("escrows").update({ rebroadcast_at: new Date().toISOString() }).eq("id", l.id).is("rebroadcast_at", null);
+    return "waiting";
+  }
+  return outcome === "spent_elsewhere" ? "vanished" : "waiting";
 }
 
 /** One pass over every trade whose settlement has started and isn't finished. */

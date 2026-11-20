@@ -232,3 +232,8 @@
 - [x] A4 tester withdrawal hold — Bobby: keep no hold (each withdrawal still needs email + 2FA + Telegram)
 - [x] A6 confirming an AI trade day on the site above the one-tap limit needs a fresh authenticator code
 - [ ] A7 rate limiter rework (later, at load testing); A8 note only
+- [x] Auditor follow-up: TXC/ISK servers have the full lookup index (checked live Nov 20)
+- [x] Follow-up: resend a dropped payment once before calling it a double-spend (EVM: check if another payment used its slot)
+- [x] Follow-up: a frozen trader can't release P2P sales, open P2P trades or swap to outside addresses
+- [x] Follow-up: if a TXC/ISK server loses its lookup index, "not found" never blames anyone
+- [x] A2 again — Bobby: keep as is (honest wording, abilities unchanged), Nov 20

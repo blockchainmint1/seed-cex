@@ -159,7 +159,8 @@ export function coverProblem(leg: LegId, b: PocketBalance, amount: number): stri
   return null;
 }
 
-export type PocketSendResult = { txid: string; chain: string; from: string };
+/** raw = the signed transaction (rebroadcast if the network drops it); nonce = EVM only. */
+export type PocketSendResult = { txid: string; chain: string; from: string; raw?: string; nonce?: number };
 
 /**
  * Sign and broadcast ONE transfer from the pocket. Callers must already have spent a
@@ -186,7 +187,7 @@ export async function sendFromPocket(p: {
     const sent = await withPocketKey(p.link.ciphertext, pocket, p.from, (priv) =>
       omniSimpleSend({ privateKeyHex: bytesToHex(priv), fromAddress: p.from, toAddress: p.to, amount: p.amount, propertyId, beforeBroadcast: p.record }),
     );
-    return { txid: sent.txid, chain: "txc", from: p.from };
+    return { txid: sent.txid, chain: "txc", from: p.from, raw: sent.hex };
   }
 
   if (def.kind === "utxo") {
@@ -202,7 +203,7 @@ export async function sendFromPocket(p: {
     );
     if (p.record) await p.record(built.txid);
     const txid = await broadcastFor(chain, built.hex);
-    return { txid: txid || built.txid, chain, from: p.from };
+    return { txid: txid || built.txid, chain, from: p.from, raw: built.hex };
   }
 
   // EVM: pick the network that holds enough, then sign an EIP-1559 transfer.
@@ -243,5 +244,5 @@ export async function sendFromPocket(p: {
   if (signed.from.toLowerCase() !== p.from.toLowerCase()) throw new Error("The stored key doesn't match your pocket address. Nothing was sent.");
   if (p.record) await p.record(signed.hash);
   await sendRawTransaction(chainId, signed.raw);
-  return { txid: signed.hash, chain: chainId, from: p.from };
+  return { txid: signed.hash, chain: chainId, from: p.from, raw: signed.raw, nonce };
 }

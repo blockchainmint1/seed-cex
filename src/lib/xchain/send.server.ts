@@ -334,6 +334,11 @@ export async function sendSwapFromPocket(userId: string, isAdmin: boolean, input
   // TSD-route legs (leg set) always pay the member's own pocket and never get here unchecked.
   if (!isOwnPocketDestination(to, link!.addresses, input.destination)) {
     if (leg || !member) throw new Error("This swap can only pay out to your own pocket. Nothing was sent.");
+    {
+      const { tradingFrozenReason } = await import("@/lib/settle/confirm.server");
+      const frozen = await tradingFrozenReason(userId);
+      if (frozen) throw new Error(`${frozen} Swaps to an outside address are paused too. Nothing was sent.`);
+    }
     const amountCoins = Number(amount) / 1e8;
     const { spendApproval, requestSendApproval } = await import("@/lib/pocket-send/approvals.server");
     if (!member.approvalId) {

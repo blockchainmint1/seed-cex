@@ -144,7 +144,10 @@ export async function settlePocketLeg(userId: string, tradeId: string, leg: LegI
   }
 
   await supabaseAdmin.from("escrows")
-    .update({ status: "released", release_txid: sent.txid, funded_amount: amount, confirmations: 0, sent_at: new Date().toISOString(), sent_network: sent.chain })
+    .update({
+      status: "released", release_txid: sent.txid, funded_amount: amount, confirmations: 0, sent_at: new Date().toISOString(), sent_network: sent.chain,
+      sent_raw: sent.raw ?? null, sent_from: sent.from, sent_nonce: sent.nonce ?? null,
+    })
     .eq("id", escrow.id);
   await supabaseAdmin.from("trade_events").insert({
     trade_id: t.id,

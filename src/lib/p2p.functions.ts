@@ -486,6 +486,12 @@ export const openTrade = createServerFn({ method: "POST" })
     const buyAd = o.side === "buy";
     const sellerId = buyAd ? me : o.seller_id;
     const buyerId = buyAd ? o.seller_id : me;
+    // A trader frozen after a vanished exchange payment can't start P2P trades either (audit #3 follow-up).
+    {
+      const { tradingFrozenReason } = await import("@/lib/settle/confirm.server");
+      if (await tradingFrozenReason(me)) throw new Error("Trading is paused on your account while the team reviews a trade payment. Contact support from the Help page.");
+      if (await tradingFrozenReason(o.seller_id)) throw new Error("This trader can't take new trades right now.");
+    }
 
     // Trust & safety: ad owner's requirements for the person responding.
     const myCount = await completedCount(me);

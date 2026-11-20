@@ -176,6 +176,8 @@ export type OmniSendResult = {
   to: string;
   from: string;
   propertyId: number;
+  /** The signed carrier transaction, kept so the exact same send can be rebroadcast. */
+  hex: string;
 };
 
 /** Confirmed UTXOs at an address, used to pay the carrier transaction's fee. */
@@ -265,7 +267,7 @@ export async function omniSimpleSend(params: OmniSendParams): Promise<OmniSendRe
 
   if (params.beforeBroadcast) await params.beforeBroadcast(signed.txid);
   const txid = await rpc<string>("txc", "sendrawtransaction", [signed.hex]);
-  return { txid, amount: params.amount, to: params.toAddress, from: params.fromAddress, propertyId };
+  return { txid, amount: params.amount, to: params.toAddress, from: params.fromAddress, propertyId, hex: signed.hex };
 }
 
 /** The node's Omni lookups are wallet-scoped RPCs; the wallet name is a finished value, safe to keep. */

@@ -714,9 +714,13 @@ export type Database = {
           id: string
           leg: Database["public"]["Enums"]["escrow_leg"]
           multisig_address: string | null
+          rebroadcast_at: string | null
           release_txid: string | null
           sent_at: string | null
+          sent_from: string | null
           sent_network: string | null
+          sent_nonce: number | null
+          sent_raw: string | null
           status: Database["public"]["Enums"]["escrow_status"]
           trade_id: string
           updated_at: string
@@ -732,9 +736,13 @@ export type Database = {
           id?: string
           leg: Database["public"]["Enums"]["escrow_leg"]
           multisig_address?: string | null
+          rebroadcast_at?: string | null
           release_txid?: string | null
           sent_at?: string | null
+          sent_from?: string | null
           sent_network?: string | null
+          sent_nonce?: number | null
+          sent_raw?: string | null
           status?: Database["public"]["Enums"]["escrow_status"]
           trade_id: string
           updated_at?: string
@@ -750,9 +758,13 @@ export type Database = {
           id?: string
           leg?: Database["public"]["Enums"]["escrow_leg"]
           multisig_address?: string | null
+          rebroadcast_at?: string | null
           release_txid?: string | null
           sent_at?: string | null
+          sent_from?: string | null
           sent_network?: string | null
+          sent_nonce?: number | null
+          sent_raw?: string | null
           status?: Database["public"]["Enums"]["escrow_status"]
           trade_id?: string
           updated_at?: string

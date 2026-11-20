@@ -62,3 +62,21 @@ describe("second side waits for the first side's confirmations (audit #3 A1, Bob
     expect(nextSettleStep([{ ...legs[0], ageMs: STUCK_AFTER_MS - MIN }, legs[1]])).toEqual({ action: "wait" });
   });
 });
+
+import { resendOutcome } from "./confirm-rules";
+describe("a dropped payment is resent once before anyone is blamed (auditor follow-up)", () => {
+  const MIN = 60_000;
+  test("not found after 20 minutes, Seeds still has the signed send: resend, don't freeze", () =>
+    expect(sentLegState({ kind: "utxo", found: false, confirmations: null, rejected: false, ageMs: 21 * MIN, canResend: true }, 2)).toBe("resend"));
+  test("already resent and still not found 20 minutes later: vanished", () =>
+    expect(sentLegState({ kind: "utxo", found: false, confirmations: null, rejected: false, ageMs: 21 * MIN, canResend: false }, 2)).toBe("vanished"));
+  test("EVM slot taken by another send: vanished without resending", () =>
+    expect(sentLegState({ kind: "evm", found: false, confirmations: null, rejected: false, ageMs: 21 * MIN, canResend: true, replaced: true }, 3)).toBe("vanished"));
+  test("resend answers", () => {
+    expect(resendOutcome(null)).toBe("accepted");
+    expect(resendOutcome("txn-already-in-mempool")).toBe("accepted");
+    expect(resendOutcome("bad-txns-inputs-missingorspent")).toBe("spent_elsewhere");
+    expect(resendOutcome("Broadcast rejected: nonce too low")).toBe("spent_elsewhere");
+    expect(resendOutcome("No txc server answered (timeout)")).toBe("retry");
+  });
+});

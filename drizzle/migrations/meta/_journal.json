@@ -372,6 +372,13 @@
       "when": 1795140579172,
       "tag": "0052_settle_wait_for_confirmations",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1795142618455,
+      "tag": "0053_settle_resend_before_freeze",
+      "breakpoints": true
     }
   ]
 }

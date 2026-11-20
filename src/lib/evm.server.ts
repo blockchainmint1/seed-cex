@@ -184,6 +184,16 @@ export async function fetchNonce(chain: ChainId, address: string): Promise<numbe
   return hex ? Number(BigInt(hex)) : null;
 }
 
+/** Transactions from this address already in blocks (the next nonce, ignoring the mempool). Null = no answer. */
+export async function fetchConfirmedNonce(chain: ChainId, address: string): Promise<number | null> {
+  try {
+    const hex = await rpc<string>(chain, "eth_getTransactionCount", [address, "latest"]);
+    return hex ? Number(BigInt(hex)) : null;
+  } catch {
+    return null;
+  }
+}
+
 export type EvmFees = { maxFeePerGas: bigint; maxPriorityFeePerGas: bigint };
 
 /**
