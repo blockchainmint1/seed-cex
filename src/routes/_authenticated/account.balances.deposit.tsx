@@ -7,7 +7,7 @@ import { Card, Note, TabTitle } from "@/components/account/ui";
 import { CoinNetworkPicker } from "@/components/account/CoinNetworkPicker";
 import { fmtCoin, usePocketBalances, usePocketLink } from "@/components/account/use-pocket";
 import { depositState, findAsset, findNetwork, withdrawRoute } from "@/lib/account/deposit-options";
-import { usePulseWithdrawals } from "@/components/account/PulseWithdraw";
+import { useWithdrawals } from "@/components/account/SeedsWithdraw";
 
 type Search = { coin?: string; network?: string };
 
@@ -39,8 +39,10 @@ function Deposit() {
   const asset = findAsset(search.coin);
   const net = findNetwork(asset, search.network);
   const linked = new Set(Object.keys(l?.addresses ?? {}));
-  const pulse = usePulseWithdrawals(Boolean(l));
-  const seedsBlocker = pulse.data ? pulse.data.blocker : undefined;
+  // Networks only Seeds can send out (PulseChain): deposits open only when this member could withdraw them.
+  const seedsKey = asset && net && withdrawRoute(net) === "seeds" ? `${asset.symbol}:${net.id}` : null;
+  const seeds = useWithdrawals(seedsKey, Boolean(l) && seedsKey !== null);
+  const seedsBlocker = seeds.data ? seeds.data.blocker : undefined;
   const state = net ? depositState(net, Boolean(l), l?.addresses ?? {}, seedsBlocker) : null;
   const balance = net ? rows.find((r) => r.asset.symbol === asset?.symbol && r.net.id === net.id)?.balance ?? null : null;
   const [copied, setCopied] = useState(false);
@@ -83,7 +85,7 @@ function Deposit() {
                         <li key={n} className="flex gap-2 text-sm"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warn" /> <span className="min-w-0 [overflow-wrap:anywhere]">{n}</span></li>
                       ))}
                     </ul>
-                    {withdrawRoute(net) === "swap" ? <Note tone="warn">This coin can only leave your pocket by swapping it to TSD on Seeds — HME Wallet can't send it.</Note> : null}
+                    {withdrawRoute(net) === "swap" ? <Note tone="warn">HME Wallet can't send this coin. To take it out, withdraw it through Seeds (Withdraw tab) or swap it to TSD.</Note> : null}
                   </div>
                 </div>
               ) : (

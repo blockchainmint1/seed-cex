@@ -351,6 +351,20 @@
       "when": 1795133753419,
       "tag": "0049_ai_price_catchup",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1795138897826,
+      "tag": "0050_withdrawals_every_coin",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1795139153638,
+      "tag": "0051_withdrawal_destination_tag",
+      "breakpoints": true
     }
   ]
 }

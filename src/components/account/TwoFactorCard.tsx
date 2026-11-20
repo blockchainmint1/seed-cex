@@ -36,7 +36,7 @@ export function TwoFactorCard() {
   const after = async (msg: string) => {
     await sync().catch(() => null); // best effort: stores the state and sends the security email
     await qc.invalidateQueries({ queryKey: TWO_FACTOR_QUERY });
-    await qc.invalidateQueries({ queryKey: ["pulse-withdrawals"] });
+    await qc.invalidateQueries({ queryKey: ["withdrawals"] });
     await qc.invalidateQueries({ queryKey: ["admin-gate"] });
     setSetup(null); setTurningOff(false); setCode(""); setDone(msg);
   };

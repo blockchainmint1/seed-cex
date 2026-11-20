@@ -1,0 +1,1 @@
+ALTER TABLE public.pocket_withdrawals ADD COLUMN IF NOT EXISTS destination_tag bigint CHECK (destination_tag IS NULL OR (destination_tag >= 0 AND destination_tag <= 4294967295));

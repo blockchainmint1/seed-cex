@@ -51,7 +51,7 @@ function AdminSettingsPage() {
           <Note tone="info">
             These limits cover <b>PulseChain withdrawals (PLS and pHEX)</b>, the only time Seeds sends coins out of a member's pocket for them.
             Other coins leave through HME Wallet, which Seeds can't limit.{" "}
-            {d.pilotAdminOnly ? <>Right now only admins can withdraw while the first real-money tests run, so these levels apply to admins only for now.</> : null}
+            {d.pilotAdminOnly ? <>Right now only beta testers (admins included) can withdraw while the first real-money tests run, and testers have no limits — so these levels take effect when withdrawals open to members.</> : null}
           </Note>
           <TierEditor tiers={d.tiers} members={d.members} maxWaiting={d.maxWaiting} />
           <MemberLimits members={d.members} tiers={d.tiers} me={d.me} meTwoFactor={d.meTwoFactor} />

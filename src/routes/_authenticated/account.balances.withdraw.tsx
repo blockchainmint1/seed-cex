@@ -5,8 +5,8 @@ import { Card, Note, TabTitle } from "@/components/account/ui";
 import { CoinNetworkPicker } from "@/components/account/CoinNetworkPicker";
 import { fmtCoin, usePocketBalances, usePocketLink } from "@/components/account/use-pocket";
 import { findAsset, findNetwork, withdrawRoute, type DepositNetwork } from "@/lib/account/deposit-options";
-import { PulseWithdraw } from "@/components/account/PulseWithdraw";
-import { isPulseCoin } from "@/lib/pulse/withdraw-rules";
+import { SeedsWithdraw } from "@/components/account/SeedsWithdraw";
+import { withdrawCoin } from "@/lib/withdraw/catalog";
 
 type Search = { coin?: string; network?: string };
 
@@ -19,7 +19,7 @@ export const Route = createFileRoute("/_authenticated/account/balances/withdraw"
   head: () => ({
     meta: [
       { title: "Withdraw crypto — Seeds" },
-      { name: "description", content: "Withdraw from your HME trading pocket: HME Wallet sends HME-supported coins with your own keys; PulseChain coins are sent by Seeds after a hold; other coins swap back to TSD first." },
+      { name: "description", content: "Withdraw any coin from your HME trading pocket: Seeds sends it after an email code, your authenticator code and a Telegram tap, or send it yourself from HME Wallet." },
       { property: "og:title", content: "Withdraw crypto — Seeds" },
       { property: "og:description", content: "How to move coins out of your HME trading pocket, coin by coin." },
       { property: "og:type", content: "website" },
@@ -41,12 +41,13 @@ function Withdraw() {
   const net = findNetwork(asset, search.network);
   const linked = new Set(Object.keys(l?.addresses ?? {}));
   const row = net ? rows.find((r) => r.asset.symbol === asset?.symbol && r.net.id === net.id) : undefined;
+  const coin = withdrawCoin(asset?.symbol, net?.id);
 
   return (
     <div className="space-y-5">
       <TabTitle
         title="Withdraw"
-        desc="Your HME Wallet holds the keys to your trading pocket, so withdrawals to outside addresses are signed by you in HME Wallet. The one exception is PulseChain, which HME Wallet can't send on yet: there Seeds sends for you, after a hold you can cancel."
+        desc="Seeds can send any coin in your trading pocket to an outside address. Every withdrawal needs a code we email you, your authenticator code and your tap in Telegram, then your level's wait. Coins HME Wallet supports can also be sent from HME Wallet yourself."
       />
       {!link.isPending && !l ? (
         <Note tone="warn">Link your HME Wallet trading pocket first — <Link to="/account/security" className="text-primary underline">go to Security</Link>.</Note>
@@ -77,8 +78,16 @@ function Withdraw() {
                       <p className="mt-0.5 truncate font-mono text-xs">{row.address}</p>
                     </div>
                   </div>
-                  {withdrawRoute(net) === "seeds" && isPulseCoin(asset.symbol) ? (
-                    <PulseWithdraw coin={asset.symbol} from={row.address} balance={row.balance} />
+                  {coin ? (
+                    <>
+                      <SeedsWithdraw coin={coin} from={row.address} balance={row.balance} />
+                      {withdrawRoute(net) === "hme" ? (
+                        <details className="rounded-sm border border-border px-3 py-2 text-sm">
+                          <summary className="cursor-pointer font-semibold">Or send it yourself from HME Wallet</summary>
+                          <div className="mt-3"><Steps net={net} symbol={asset.symbol} account={l.account} /></div>
+                        </details>
+                      ) : null}
+                    </>
                   ) : (
                     <Steps net={net} symbol={asset.symbol} account={l.account} />
                   )}
@@ -88,18 +97,18 @@ function Withdraw() {
           ) : null}
         </Card>
         <aside className="space-y-4 text-sm">
-          <Card title="Why withdraw in HME Wallet?">
-            <p className="text-muted-foreground">
-              When your own wallet signs, a hacked Seeds account or a stolen API key can't drain your pocket to a stranger.
-              PulseChain is the one exception (HME Wallet can't send there yet): Seeds sends only after a hold of at least 24 hours, tells
-              you by email straight away, and you can cancel. API keys can never do this.
-            </p>
+          <Card title="How Seeds keeps withdrawals safe">
+            <ul className="list-disc space-y-1.5 pl-4 text-muted-foreground">
+              <li>Turn on two-factor and connect Telegram first, then link your HME Wallet. A link made before both can't withdraw — so someone who gets into your sign-in can't add their own phone and take your coins.</li>
+              <li>Every withdrawal: an email code for that exact amount and address, your authenticator code, and your Approve tap in Telegram.</li>
+              <li>Then your level's wait (at least 24 hours for members). You get an email straight away and can cancel until it goes out.</li>
+              <li>API keys and AI assistants can never withdraw.</li>
+            </ul>
           </Card>
           <Card title="Before you revoke">
             <p className="text-muted-foreground">
-              Swap any DOGE, BCH, XRP, TRX or SOL back to TSD first. HME Wallet can't hold those coins, and after a revoke Seeds
-              deletes its key. Withdraw PLS and pHEX first too: they stay safe at your EVM address, but HME Wallet won't show them,
-              and you'd need your recovery phrase in a PulseChain wallet to move them.
+              Withdraw (or swap back to TSD) any DOGE, BCH, XRP, TRX, SOL, PLS or pHEX first. HME Wallet can't send those coins, and after a
+              revoke Seeds deletes its key, so you'd need your recovery phrase in another wallet to move them.
             </p>
           </Card>
         </aside>

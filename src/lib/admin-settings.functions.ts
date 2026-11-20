@@ -28,7 +28,7 @@ export const getWithdrawalSettings = createServerFn({ method: "GET" })
     await requireAdmin(context as never);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { loadTiers, loadAllHistories } = await import("./withdraw-limits.server");
-    const { PULSE_MAX_WAITING, PULSE_WITHDRAW_PILOT_ADMIN_ONLY } = await import("./pulse/withdraw-rules");
+    const { MAX_WAITING, WITHDRAW_PILOT_TESTERS_ONLY } = await import("./withdraw/rules");
     const [tiers, histories, { data: profiles }, { data: overrides }, { data: events }] = await Promise.all([
       loadTiers(),
       loadAllHistories(),
@@ -65,7 +65,7 @@ export const getWithdrawalSettings = createServerFn({ method: "GET" })
     const me = members.find((m) => m.id === context.userId);
     return {
       me: context.userId, meTwoFactor: Boolean(me?.history.twoFactor), meCodeFresh: freshTwoFactor(context.claims as never, Math.floor(Date.now() / 1000)),
-      tiers, members, history, pilotAdminOnly: PULSE_WITHDRAW_PILOT_ADMIN_ONLY, maxWaiting: PULSE_MAX_WAITING };
+      tiers, members, history, pilotAdminOnly: WITHDRAW_PILOT_TESTERS_ONLY, maxWaiting: MAX_WAITING };
   });
 
 const tierSchema = z.object({

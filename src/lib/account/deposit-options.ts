@@ -44,7 +44,7 @@ const PULSE_NOTES = (coin: string) => [
 ];
 const pulse = (coin: string): DepositNetwork => ({ id: "pulsechain", label: "PulseChain", pocket: "EVM", evmChain: "pulsechain", notes: PULSE_NOTES(coin), seedsSends: true });
 
-const HME_CANT = "HME Wallet can't hold this coin. To take it out, swap it back to TSD on Seeds first.";
+const HME_CANT = "HME Wallet can't hold this coin. To take it out, withdraw it through Seeds or swap it back to TSD.";
 const EXTRA_NOTES: Record<"DOGE" | "BCH" | "XRP" | "TRX" | "SOL" | "ZEC", string[]> = {
   DOGE: [HME_CANT, "Send DOGE on the Dogecoin network only."],
   BCH: [HME_CANT, "Send Bitcoin Cash only — not Bitcoin or Bitcoin SV."],

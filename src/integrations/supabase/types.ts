@@ -2099,13 +2099,17 @@ export type Database = {
           amount: number
           amount_units: string
           amount_usd: number
+          approval_id: string | null
+          approved_at: string | null
           cancelled_at: string | null
           chain: string
           coin: string
           confirmations: number | null
           created_at: string
+          destination_tag: number | null
           error: string | null
           from_address: string
+          hold_hours: number
           id: string
           link_id: string
           release_at: string
@@ -2120,13 +2124,17 @@ export type Database = {
           amount: number
           amount_units: string
           amount_usd: number
+          approval_id?: string | null
+          approved_at?: string | null
           cancelled_at?: string | null
           chain?: string
           coin: string
           confirmations?: number | null
           created_at?: string
+          destination_tag?: number | null
           error?: string | null
           from_address: string
+          hold_hours?: number
           id?: string
           link_id: string
           release_at: string
@@ -2141,13 +2149,17 @@ export type Database = {
           amount?: number
           amount_units?: string
           amount_usd?: number
+          approval_id?: string | null
+          approved_at?: string | null
           cancelled_at?: string | null
           chain?: string
           coin?: string
           confirmations?: number | null
           created_at?: string
+          destination_tag?: number | null
           error?: string | null
           from_address?: string
+          hold_hours?: number
           id?: string
           link_id?: string
           release_at?: string
@@ -2190,6 +2202,7 @@ export type Database = {
           telegram_code: string | null
           telegram_code_expires_at: string | null
           telegram_verified: boolean
+          telegram_verified_at: string | null
           timezone: string
           trades_completed: number
           two_factor_on: boolean
@@ -2224,6 +2237,7 @@ export type Database = {
           telegram_code?: string | null
           telegram_code_expires_at?: string | null
           telegram_verified?: boolean
+          telegram_verified_at?: string | null
           timezone?: string
           trades_completed?: number
           two_factor_on?: boolean
@@ -2258,6 +2272,7 @@ export type Database = {
           telegram_code?: string | null
           telegram_code_expires_at?: string | null
           telegram_verified?: boolean
+          telegram_verified_at?: string | null
           timezone?: string
           trades_completed?: number
           two_factor_on?: boolean
@@ -2900,6 +2915,39 @@ export type Database = {
         }
         Relationships: []
       }
+      withdrawal_email_codes: {
+        Row: {
+          attempts: number
+          code_digest: string
+          created_at: string
+          details: string
+          expires_at: string
+          id: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          code_digest: string
+          created_at?: string
+          details: string
+          expires_at: string
+          id?: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          code_digest?: string
+          created_at?: string
+          details?: string
+          expires_at?: string
+          id?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       withdrawal_limit_events: {
         Row: {
           action: string
@@ -3118,6 +3166,10 @@ export type Database = {
         Args: { _key: string; _weight: number; _window: string }
         Returns: number
       }
+      approve_pocket_withdrawal: {
+        Args: { _approval_id: string; _id: string }
+        Returns: boolean
+      }
       cancel_pocket_withdrawal: {
         Args: { _id: string; _user_id: string }
         Returns: boolean
@@ -3288,6 +3340,24 @@ export type Database = {
         }
         Returns: string
       }
+      reserve_withdrawal: {
+        Args: {
+          _amount: number
+          _amount_units: string
+          _amount_usd: number
+          _chain: string
+          _coin: string
+          _daily_max_usd: number
+          _from_address: string
+          _hold_hours: number
+          _link_id: string
+          _max_held: number
+          _per_max_usd: number
+          _to_address: string
+          _user_id: string
+        }
+        Returns: string
+      }
       save_withdrawal_tiers: {
         Args: { _actor: string; _tiers: Json }
         Returns: string
@@ -3340,6 +3410,10 @@ export type Database = {
           pageviews: number
           visitors: number
         }[]
+      }
+      use_withdrawal_email_code: {
+        Args: { _code_digest: string; _details: string; _user_id: string }
+        Returns: string
       }
     }
     Enums: {

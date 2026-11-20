@@ -14,6 +14,7 @@ import { IgniteSeatConfirmedEmail, type IgniteSeatConfirmedProps } from "./templ
 import { LegacyLinkEmail, type LegacyLinkProps } from "./templates/legacy-link";
 import { IgniteReminderEmail, type IgniteReminderProps } from "./templates/ignite-reminder";
 import { IgniteMessageEmail, type IgniteMessageProps } from "./templates/ignite-message";
+import { WithdrawalCodeEmail, type WithdrawalCodeProps } from "./templates/withdrawal-code";
 import { fmt, usd } from "./components";
 
 export type TemplateProps = {
@@ -28,6 +29,7 @@ export type TemplateProps = {
   "legacy-link": LegacyLinkProps;
   "ignite-reminder": IgniteReminderProps;
   "ignite-message": IgniteMessageProps;
+  "withdrawal-code": WithdrawalCodeProps;
 };
 export type TemplateName = keyof TemplateProps;
 /** security = always sent; trades = email_trade_confirmations; weekly = email_weekly_update; welcome = once; receipt = always (payment receipts); invite = to a non-member, sent by direct delivery; ignite = sent by an admin to an Ignite registrant's registration email. */
@@ -42,6 +44,13 @@ type Def<K extends TemplateName> = {
 };
 
 export const TEMPLATES: { [K in TemplateName]: Def<K> } = {
+  "withdrawal-code": {
+    label: "Withdrawal code",
+    category: "security",
+    subject: (p) => `Seeds withdrawal code ${p.code} for ${p.amount} ${p.symbol}`,
+    render: (p) => <WithdrawalCodeEmail {...p} />,
+    sample: { name: "Alex", code: "482913", amount: "250", symbol: "TSD", network: "TEXITcoin · Omni #39", to: "TKx8sample3Fh9zQyW2m7cR1vB4nD6pLaEo", minutes: 10 },
+  },
   welcome: {
     label: "Welcome to Seeds",
     category: "welcome",

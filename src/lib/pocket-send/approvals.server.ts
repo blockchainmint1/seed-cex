@@ -13,8 +13,9 @@ import { APPROVAL_TTL_MS, approvalMatches, approvalTapDecision, parseApprovalDat
 /**
  * trade_leg / p2p_release: settlement sends. swap_out: a swap paying out to an outside address (audit 2026-11-19 H2).
  * dex_swap: a Uniswap / PancakeSwap / PulseX swap from the member's pocket back into the same pocket.
+ * withdrawal: a Seeds-signed withdrawal to an outside address (src/lib/withdraw/); the tap starts its hold.
  */
-export type ApprovalPurpose = "trade_leg" | "p2p_release" | "swap_out" | "dex_swap";
+export type ApprovalPurpose = "trade_leg" | "p2p_release" | "swap_out" | "dex_swap" | "withdrawal";
 
 export type ApprovalRow = {
   id: string;
@@ -229,6 +230,11 @@ async function continueAfter(r: ApprovalRow) {
   // A swap_out send is finished by the member's open Swap page, which re-quotes and spends the approval.
   if (r.purpose === "swap_out") return;
   try {
+    if (r.purpose === "withdrawal") {
+      const { continueWithdrawal } = await import("@/lib/withdraw/withdraw.server");
+      await continueWithdrawal(r);
+      return;
+    }
     if (r.purpose === "dex_swap") {
       const { advanceDexSwap } = await import("@/lib/dex/swap.server");
       await advanceDexSwap(r.ref_id);
@@ -319,6 +325,8 @@ export async function handleApprovalTap(cq: CallbackQuery): Promise<string | nul
     ? `✅ <b>Approved</b>\n${what}\nYour open Seeds Swap page sends it now, after one last price check. If you closed that page, nothing is sent.`
     : row.purpose === "dex_swap"
       ? `✅ <b>Approved</b>\n${what}\nSwapping now, after one last price check and a test run. You'll get a message when it's done.`
+      : row.purpose === "withdrawal"
+      ? `✅ <b>Approved</b>\n${what}\nSeeds sends it after your withdrawal wait (none for beta testers). You can still cancel on Seeds until then.`
       : `✅ <b>Approved</b>\n${what}\nSending now. You'll get a message when it's on the way.`);
   await answer("Approved. Sending now.");
   await continueAfter({ ...row, status: "approved" });
@@ -327,6 +335,10 @@ export async function handleApprovalTap(cq: CallbackQuery): Promise<string | nul
 
 /** Why an Approve tap can't be honoured any more (link changed, two-factor, Telegram…), or null. */
 async function approveBlocker(row: ApprovalRow): Promise<string | null> {
+  if (row.purpose === "withdrawal") {
+    const { withdrawalApproveBlocker } = await import("@/lib/withdraw/withdraw.server");
+    return withdrawalApproveBlocker(row);
+  }
   if (row.purpose === "swap_out" || row.purpose === "dex_swap") {
     const { loadLink } = await import("@/lib/xchain/send.server");
     const link = await loadLink(row.user_id);

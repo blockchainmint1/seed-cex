@@ -21,7 +21,7 @@
 - [ ] Joint HME Wallet test: 5→16 coins on same pocket, one active link, old 5-coin build refused, wallet revoke hits the active link (blocked: HME publishes their update)
 - [x] Warn members HME Wallet can't hold DOGE/BCH/ZEC/XRP/TRX/SOL: swap back to TSD before revoking (Profile, revoke dialog, swap page, Telegram, revoke email); TSD swaps never buy a coin Seeds can't sell back
 - [ ] Zcash v5 (ZIP-244) signing
-- [ ] Per-coin "send out" for the new coins before taking deposits (HME Wallet can't move them)
+- [x] Per-coin "send out" for the new coins before taking deposits (HME Wallet can't move them) — Nov 20, Seeds withdrawals
 - [x] Cross-chain swaps: Seeds fee — Bobby chose no fee for now (no THORName needed)
 - [x] Cross-chain swaps: send step built for BTC, LTC, ETH + Ethereum tokens, DOGE, BCH, XRP, TRX, SOL (THORChain, instant-access pockets, admin-only pilot, $250/swap, $1,000/day)
 - [ ] Swap pilot: first small real swap per coin (blocked: Bobby funds his pocket and presses Send)
@@ -215,3 +215,11 @@
 - [ ] Launch-day queue for Telegram/email blasts; batch the visit counter
 - [ ] Load test at 5k/20k/50k on a test copy (blocked: needs publish + a test copy)
 
+
+## Withdrawals for every coin (Bobby, Nov 20 2026)
+- [x] One rule set for all coins: 2FA + Telegram both on before the wallet link; each withdrawal needs email code + 2FA code + Telegram tap; level limits + cancelable hold
+- [x] Seeds sends every coin it can sign (TSD, TXC, ISK, LTC, BTC, ETH, USDC, USDT, BNB, ZCU, HEX, PLS, pHEX, DOGE, BCH, XRP, TRX, SOL); ZEC later (no signer yet)
+- [x] PulseChain moves onto the same rules
+- [x] Tests, auditor note
+- [ ] First small real withdrawal per coin (blocked: Bobby re-links after this publishes, then tries one)
+- [ ] Open withdrawals to all members (blocked: Bobby's answer; testers-only meanwhile)

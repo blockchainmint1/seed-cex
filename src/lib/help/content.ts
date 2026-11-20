@@ -5,7 +5,7 @@
  */
 import type { HelpArticle, HelpCategory, HelpCategoryId, HelpFaq, HelpLink } from "./types";
 
-export const HELP_REVIEWED = "November 19, 2026";
+export const HELP_REVIEWED = "November 20, 2026";
 
 export const HELP_CATEGORIES: HelpCategory[] = [
   { id: "start", title: "Getting started", blurb: "What Seeds is, signing in and the setup guide." },
@@ -165,7 +165,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
         "Scan the QR code with an authenticator app (such as Google Authenticator, Authy or 1Password), or type in the setup key.",
         "Enter the 6-digit code the app shows and tap **Turn on**.",
       ] },
-      { note: "**Order matters.** Withdrawals Seeds sends for you only work with a wallet link made **after** two-factor was turned on. If you linked your wallet first, re-link it once (Security → **Re-link HME Wallet**). Trading isn't affected.", tone: "warn" },
+      { note: "**Order matters.** Withdrawals Seeds sends for you only work with a wallet link made **after** both two-factor and Telegram were set up. If you linked your wallet first, re-link it once (Security → **Re-link HME Wallet**). Trading isn't affected.", tone: "warn" },
       { h: "Where you'll be asked for a code" },
       { list: ["Every withdrawal", "Connecting or unlinking Telegram", "Swaps paid out to an address outside your pocket", "Turning two-factor off"] },
       { h: "Turning it off" },
@@ -403,10 +403,10 @@ export const HELP_ARTICLES: HelpArticle[] = [
       ] },
       { note: "Always match the network. USDC sent on Ethereum to a Base address won't show up where you expect.", tone: "warn" },
       { h: "Why some deposits are closed" },
-      { p: "Seeds only opens a deposit when the coin can leave again: through HME Wallet, by swapping to TSD, or (for PulseChain) by a Seeds-sent withdrawal. A deposit also needs your linked pocket to have an address for that coin. That way no deposit is one-way." },
+      { p: "Seeds only opens a deposit when the coin can leave again: through HME Wallet, a Seeds-sent withdrawal, or a swap to TSD. A deposit also needs your linked pocket to have an address for that coin. That way no deposit is one-way." },
       { list: [
         "Coins with deposits: TSD, TXC, BTC, ETH, USDC and USDT (Ethereum, Base, BNB Chain), LTC, ISK, BNB, ZCU, HEX, DOGE, BCH, XRP, TRX, SOL.",
-        "PulseChain (PLS, pHEX): opens once Seeds can send withdrawals for you, which needs two-factor before your wallet link.",
+        "PulseChain (PLS, pHEX): opens once Seeds can send withdrawals for you, which needs two-factor and Telegram set up before your wallet link.",
         "ZEC: closed for now.",
       ] },
     ],
@@ -416,21 +416,29 @@ export const HELP_ARTICLES: HelpArticle[] = [
   {
     slug: "withdraw",
     title: "Withdraw coins",
-    summary: "Most coins are sent from HME Wallet itself. PulseChain coins are sent by Seeds after a hold of at least 24 hours that you can cancel.",
+    summary: "Seeds can send any coin out for you after an email code, your authenticator code and a Telegram tap, then a wait you can cancel. Coins HME Wallet supports can also be sent from HME Wallet.",
     category: "money",
     keywords: ["withdraw", "send", "cash out", "take out", "pulsechain", "hold"],
     blocks: [
       { p: "Go to Account → Balances → **Withdraw** and pick the coin." },
-      { h: "Most coins: send from HME Wallet" },
-      { p: "Tap **Open HME Wallet** and send from your trading pocket there. Seeds never touches it." },
-      { h: "PulseChain (PLS, pHEX): Seeds sends it" },
+      { h: "Before your first withdrawal" },
       { steps: [
-        "Enter the address and amount.",
-        "Enter your 6-digit two-factor code.",
-        "The withdrawal waits on a safety hold (**at least 24 hours**; 48 hours at the first level). You can cancel it during the hold.",
-        "After the hold, Seeds sends it and shows the transaction.",
+        "Turn on two-factor (Account → **Security**).",
+        "Connect Telegram (Account → **Alerts**).",
+        "Then link (or re-link) your HME Wallet. Same pocket, same coins, nothing moves.",
       ] },
-      { note: "Seeds-sent withdrawals need two-factor on, and a wallet link made after you turned it on.", tone: "warn" },
+      { note: "A wallet link made before both two-factor and Telegram can't withdraw. That way someone who gets into your sign-in can't add their own phone or Telegram and take your coins.", tone: "warn" },
+      { h: "Seeds sends it (every coin)" },
+      { steps: [
+        "Enter the amount and the address (and an XRP destination tag if the receiver gave you one). Tap **Email me a code**.",
+        "Enter the code from the Seeds email and the code from your authenticator app. The email code works only for that exact amount and address, for 10 minutes.",
+        "Tap **Approve** on the Seeds message in Telegram within 15 minutes.",
+        "The withdrawal waits (**at least 24 hours**; 48 hours at the first level). You can cancel it until then.",
+        "After the wait, Seeds sends it and shows the transaction.",
+      ] },
+      { h: "Or send it yourself from HME Wallet" },
+      { p: "For coins HME Wallet supports, you can also tap **Open HME Wallet** and send from your trading pocket there." },
+      { note: "While the first real withdrawals are tested, Seeds-sent withdrawals are open to beta testers only. Zcash can't be withdrawn yet.", tone: "info" },
     ],
     links: [{ label: "Withdraw", to: "/account/balances/withdraw" }],
     related: ["withdrawal-levels", "two-factor", "deposit"],
@@ -442,7 +450,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     category: "money",
     keywords: ["limits", "levels", "tier", "daily limit", "increase limit"],
     blocks: [
-      { p: "Limits apply to withdrawals Seeds sends for you (PulseChain today). Your level, limits and progress show on the Withdraw page. These are the starting values; Seeds may adjust them." },
+      { p: "Limits apply to withdrawals Seeds sends for you. Your level, limits and progress show on the Withdraw page. These are the starting values; Seeds may adjust them." },
       { list: [
         "**New:** $100 per withdrawal, $250 a day, 48-hour hold.",
         "**Regular:** $250 per withdrawal, $1,000 a day, 24-hour hold. After 30 days and 3 withdrawals, with two-factor on.",
@@ -897,14 +905,14 @@ export const HELP_FAQS: HelpFaq[] = [
   { category: "money", q: "What fees does Seeds charge?", a: "None to traders: 0% maker and taker, and no Seeds fee on deposits, withdrawals, P2P or swaps. You still pay each blockchain's network fee and any swap partner's fee, which are shown before you confirm.", article: "fees" },
   { category: "money", q: "Why do I need ETH?", a: "Ethereum and Base charge their network fee in ETH. Keep about **$10 of ETH on Ethereum** and **$1 on Base** in your trading pocket.", article: "network-fees" },
   { category: "money", q: "Why can't I deposit a certain coin?", a: "Seeds only opens a deposit when the coin can leave again, and when your linked pocket has an address for it. For example, ZEC is closed for now, and PulseChain opens once Seeds can send withdrawals for you.", article: "deposit" },
-  { category: "money", q: "How do I withdraw?", a: "Most coins: Account → Balances → **Withdraw** → **Open HME Wallet**, and send from your pocket there. PulseChain coins are sent by Seeds after a safety hold you can cancel, and need your two-factor code.", article: "withdraw" },
+  { category: "money", q: "How do I withdraw?", a: "Account → Balances → **Withdraw**, pick the coin, then confirm with an email code, your authenticator code and a Telegram tap. Seeds sends it after a wait you can cancel. Coins HME Wallet supports can also be sent from HME Wallet.", article: "withdraw" },
   { category: "money", q: "How do I raise my withdrawal limit?", a: "It rises by itself as you build history: time as a member, number of withdrawals and amount withdrawn. Levels above New need two-factor on.", article: "withdrawal-levels" },
   { category: "money", q: "Why does my withdrawal say I need to re-link my wallet?", a: "Seeds-sent withdrawals need a wallet link made **after** you turned on two-factor. Re-link once from Account → Security. Your pocket and coins stay the same.", article: "two-factor" },
   { category: "account", q: "Do I have to use Telegram?", a: "It's strongly recommended. Coins only leave your pocket after you tap Approve in the Seeds Telegram bot, so trades, P2P releases and swaps need it.", article: "telegram-alerts" },
   { category: "account", q: "I lost the phone with my authenticator app.", a: "Ask for help at help.honest.money using your Honest.Money email. A Seeds admin can reset two-factor once they've confirmed it's you. Afterwards, set it up again and re-link your wallet." },
   { category: "account", q: "How do I change my name or email?", a: "Your name and email come from Honest.Money. Use **Edit on Honest.Money** on Account → Profile. Your Seeds display name for P2P can be set in the setup guide and your trader profile.", links: [{ label: "Profile", to: "/account/profile" }] },
   { category: "account", q: "Can I connect Claude or ChatGPT to my account?", a: "Yes, read-only. Add **https://seeds.honest.money/mcp** as a custom connector in your assistant, sign in and approve. It can look up prices and your own records, never trade or move coins. Disconnect any time in Account → Security.", article: "connected-apps" },
-  { category: "account", q: "Can an API key withdraw my coins?", a: "No. Keys can read, or read and trade. Withdrawals always go through HME Wallet or a two-factor-checked, held Seeds withdrawal.", article: "api-keys" },
+  { category: "account", q: "Can an API key withdraw my coins?", a: "No. Keys can read, or read and trade. Withdrawals always go through HME Wallet, or a Seeds withdrawal checked by email code, authenticator code and Telegram tap.", article: "api-keys" },
   { category: "wallet", q: "What is the trading pocket?", a: "A separate part of your HME Wallet just for trading on Seeds, kept apart from your savings. Seeds can only see and use that pocket.", article: "link-wallet" },
   { category: "wallet", q: "Where do I link, re-link or disconnect my wallet?", a: "All on Account → **Security**: **Link HME Wallet**, **Add new coins**, **Re-link HME Wallet** and revoke. Every change is kept in **Wallet link history**.", article: "link-wallet" },
   { category: "wallet", q: "What happens to my coins if I revoke the link?", a: "Revoking on Seeds only deletes Seeds' trading key. Your coins stay in your pocket. Swap any coin marked \"Not in HME Wallet\" back to TSD first, because HME Wallet can't send those.", article: "revoke-link" },

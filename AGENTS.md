@@ -32,7 +32,7 @@
 - Members share referral links as seeds.honest.money/invite/{code} (inviteUrl); that route only 302s a cleanRefCode-validated code to honest.money/r/{code}?to=/ignite (old /register links 301 to /ignite). Why: the raw HME link is unreadable in emails, and HME must still count the click.
 - Human API docs live at /api (src/routes/api/index.tsx, markets from PAIRS); machine endpoints stay under /api/public/v1 and /api/public/cmc; /api-docs 301s to /api. Why: one short address for developers; external callers keep the auth-bypassing /api/public prefix.
 - Long legal pages use site/LegalDoc.tsx. Why: consistent layout.
-- Seeds sends coins out only on PulseChain (see src/lib/pulse/AGENTS.md).
+- Withdrawals (Seeds sends any coin it can sign to an outside address): src/lib/withdraw/AGENTS.md.
 - Seeds AI rules live in src/lib/ai/AGENTS.md. Why: the engine and playbook have their own constraints.
 - /admin is a layout (side menu) with child-route tabs; each child server fn still checks admin. Admin access changes only via set_admin_role (admin-users.functions.ts; rules in admin-users-rules.ts, tested): locked, HME members only, no self or last-admin removal, logged. Ignite admin emails (ignite-admin*.ts) are logged in ignite_admin_emails; payment links point to /ignite, never an old checkout. Why: access and payment emails must never be silent or repeatable.
 - DemoBanner renders once in __root above the header (→ /coming-soon); remove at trading launch. Why: one switch.
