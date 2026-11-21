@@ -7,13 +7,10 @@ export const P2P_ASSETS = {
   BTC: { leg: "wbtc" as LegId, family: "txc", name: "Bitcoin", decimals: 8 },
   USDC: { leg: "usdc" as LegId, family: "evm", name: "USD Coin", decimals: 2 },
   USDT: { leg: "usdt" as LegId, family: "evm", name: "Tether", decimals: 2 },
-  PLS: { leg: "pls" as LegId, family: "evm", name: "PulseChain (PLS)", decimals: 0 },
-  HEX: { leg: "hex" as LegId, family: "evm", name: "HEX on Ethereum", decimals: 2 },
-  pHEX: { leg: "phex" as LegId, family: "evm", name: "HEX on PulseChain", decimals: 2 },
 } as const;
 export type P2pAsset = keyof typeof P2P_ASSETS;
 
-/** A coin's dollar price, readable even for sub-cent coins like PLS ($0.0000048). */
+/** A coin's dollar price, readable even for sub-cent coins. */
 export function fmtCoinPrice(price: number): string {
   if (!Number.isFinite(price)) return "—";
   return price >= 1 ? price.toLocaleString("en-US", { maximumFractionDigits: 2 }) : price.toLocaleString("en-US", { maximumSignificantDigits: 4 });
