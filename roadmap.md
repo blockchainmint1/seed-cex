@@ -269,4 +269,4 @@
 - [ ] Wallet warnings checked in real MetaMask / Rabby / Coinbase Wallet / Phantom (blocked: Seeds Key page must exist first)
 - [x] Auditor follow-up (key sign-in): Fix A standard wallet sign-in message, Fix B held key change (auditor's version), burst alarm, Solana sign-in note
 - [ ] Real-wallet test: MetaMask shows its look-alike-site warning on both Seeds Key messages (blocked: Key page built + a person with a real wallet)
-- [ ] Turn on the address index on the TXC (and ISK) nodes (`addressindex=1`, needs a one-time reindex by whoever runs the node), then switch sends/settlement from scantxoutset to getaddressutxos. Blocked on: node operator.
+- [x] TXC sends/settlement read Seeds' own TXC indexer (mempool.texitcoin.org) first when it has caught up with our node; node scan as fallback (no addressindex reindex needed)

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { EXPLORER_BASE, parseExplorerUtxos } from "./explorer-rules";
+import { EXPLORER_BASE, indexerUsableForSend, parseExplorerUtxos, parseIndexedTip } from "./explorer-rules";
 
 const tx = "a".repeat(64);
 const conf = (value: number, vout = 0) => ({ txid: tx, vout, value, status: { confirmed: true, block_height: 133096 } });
@@ -23,5 +23,27 @@ describe("TXC/ISK explorer coins", () => {
     expect(() => parseExplorerUtxos([conf(1e8), { txid: "zz", vout: 0, value: 1 }], "s")).toThrow();
     expect(() => parseExplorerUtxos([{ ...conf(1e8), value: "100" }], "s")).toThrow();
     expect(() => parseExplorerUtxos({ error: "x" }, "s")).toThrow();
+  });
+});
+
+describe("TXC indexer for sends", () => {
+  test("usable when it has indexed our node's tip and the list is complete", () => {
+    expect(indexerUsableForSend({ indexedTip: 386226, nodeTip: 386226, truncated: false })).toBe(true);
+  });
+  test("one block behind our node: use the node instead", () => {
+    expect(indexerUsableForSend({ indexedTip: 386225, nodeTip: 386226, truncated: false })).toBe(false);
+  });
+  test("a cut-off coin list is never used for a send", () => {
+    expect(indexerUsableForSend({ indexedTip: 386226, nodeTip: 386226, truncated: true })).toBe(false);
+  });
+  test("unknown tip on either side: use the node", () => {
+    expect(indexerUsableForSend({ indexedTip: null, nodeTip: 386226, truncated: false })).toBe(false);
+    expect(indexerUsableForSend({ indexedTip: 386226, nodeTip: null, truncated: false })).toBe(false);
+  });
+  test("status reply parses only a real, ok height", () => {
+    expect(parseIndexedTip({ ok: true, indexed_tip: 386226 })).toBe(386226);
+    expect(parseIndexedTip({ ok: false, indexed_tip: 386226 })).toBe(null);
+    expect(parseIndexedTip({ ok: true, indexed_tip: "386226" })).toBe(null);
+    expect(parseIndexedTip(null)).toBe(null);
   });
 });

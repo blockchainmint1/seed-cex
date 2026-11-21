@@ -42,3 +42,28 @@ export function parseExplorerUtxos(rows: unknown, scriptPubKey: string): Explore
   }
   return out;
 }
+
+/** Largest coin list the TXC indexer returns in one reply; a longer list is marked x-truncated. */
+export const EXPLORER_UTXO_LIMIT = 5000;
+
+/**
+ * May a send (coin picking, P2P reserve, settlement) use the TXC indexer's coin list
+ * instead of our node's full scan? Only when the indexer has caught up with our own
+ * node's tip and the list is complete. The indexer (Seeds' own TXC mempool stack) is
+ * fronted by a 5-second cache that can serve a stale copy when it errors; a stale copy
+ * shows an old indexed tip, so this check also catches that. Our node still validates
+ * every input when the send is broadcast.
+ */
+export function indexerUsableForSend(i: { indexedTip: number | null; nodeTip: number | null; truncated: boolean }): boolean {
+  if (i.truncated) return false;
+  if (i.indexedTip === null || i.nodeTip === null) return false;
+  if (!Number.isSafeInteger(i.indexedTip) || !Number.isSafeInteger(i.nodeTip) || i.indexedTip < 0) return false;
+  return i.indexedTip >= i.nodeTip;
+}
+
+/** Parse the indexer's /api/address/_status reply into its indexed tip, or null. */
+export function parseIndexedTip(body: unknown): number | null {
+  const b = body as { ok?: unknown; indexed_tip?: unknown } | null;
+  if (!b || b.ok !== true || !Number.isSafeInteger(b.indexed_tip) || (b.indexed_tip as number) < 0) return null;
+  return b.indexed_tip as number;
+}

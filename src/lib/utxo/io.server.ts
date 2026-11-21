@@ -1,17 +1,18 @@
 /**
  * UTXO chain I/O for the settlement engine.
  *
- * TXC and ISK go through our own Bitcoin-Core-style nodes (`rpc.server`), with
- * their public explorers as fallback; ISK balance displays read the explorer first.
+ * TXC sends read Seeds' own TXC indexer (mempool.texitcoin.org) first when it has
+ * caught up with our node, else our node's scan; ISK sends use our node first.
+ * Explorers are the fallback when a node is down; displays read them first.
  * Litecoin has no private node, so it goes through NowNodes' Blockbook
  * indexer. Server-only: every credential is read from the environment inside
  * the call, never at module scope.
  */
 import { bytesToHex } from "@noble/hashes/utils.js";
 import { getChain, type UtxoChainId } from "@/lib/chains";
-import { broadcastRawTx, fetchTxConfirmations, rpcConfigured, scanAddressUtxos } from "@/lib/rpc.server";
+import { broadcastRawTx, fetchTxConfirmations, rpc, rpcConfigured, scanAddressUtxos } from "@/lib/rpc.server";
 import { addressToScriptFor, type Utxo } from "@/lib/txc/tx.server";
-import { EXPLORER_BASE, parseExplorerUtxos, type ExplorerChain } from "@/lib/utxo/explorer-rules";
+import { EXPLORER_BASE, EXPLORER_UTXO_LIMIT, indexerUsableForSend, parseExplorerUtxos, parseIndexedTip, type ExplorerChain } from "@/lib/utxo/explorer-rules";
 
 const LTC_BOOK = "https://ltcbook.nownodes.io/api/v2";
 const DEFAULT_FEE_RATE: Record<UtxoChainId, number> = { txc: 10, ltc: 8, isk: 10 };
@@ -77,6 +78,14 @@ export async function loadUtxosFor(chain: UtxoChainId, address: string): Promise
     }));
   }
 
+  // TXC: Seeds' own indexer (the TXC mempool stack) answers in ~150 ms; the node's
+  // scantxoutset walks the whole coin set (~10 s, one at a time). Used only when it
+  // has caught up with our node and the list is complete (indexerUsableForSend).
+  if (chain === "txc" && rpcConfigured("txc")) {
+    const fast = await loadIndexerUtxosForSend(address);
+    if (fast) return fast;
+  }
+
   if (rpcConfigured(chain)) {
     const scan = await scanAddressUtxos(chain, [address]);
     if (scan) {
@@ -94,15 +103,48 @@ export async function loadUtxosFor(chain: UtxoChainId, address: string): Promise
   return loadExplorerUtxos(chain, address);
 }
 
-/** Confirmed coins from the chain's public explorer (address index). TXC and ISK only. */
-async function loadExplorerUtxos(chain: ExplorerChain, address: string): Promise<Utxo[]> {
+/** Confirmed coins from the chain's explorer (address index). TXC and ISK only. A cut-off list throws. */
+async function loadExplorerUtxos(chain: ExplorerChain, address: string, timeoutMs = 10_000): Promise<Utxo[]> {
   const script = bytesToHex(addressToScriptFor(address, p2pkhVersionOf(chain)));
-  const res = await fetch(`${EXPLORER_BASE[chain]}/api/address/${encodeURIComponent(address)}/utxo`, {
+  const res = await fetch(`${EXPLORER_BASE[chain]}/api/address/${encodeURIComponent(address)}/utxo?limit=${EXPLORER_UTXO_LIMIT}`, {
     headers: { accept: "application/json", "User-Agent": "seeds-exchange/1.0" },
-    signal: AbortSignal.timeout(10_000),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   if (!res.ok) throw new Error(`Could not read ${getChain(chain).name} coins for ${address}`);
+  if (res.headers.get("x-truncated") === "true") throw new Error(`${getChain(chain).name} explorer cut off the coin list for ${address}`);
   return parseExplorerUtxos(await res.json(), script);
+}
+
+/** The TXC indexer's own sync height, or null when it can't be read. */
+async function txcIndexedTip(): Promise<number | null> {
+  try {
+    const res = await fetch(`${EXPLORER_BASE.txc}/api/address/_status`, {
+      headers: { accept: "application/json", "User-Agent": "seeds-exchange/1.0" },
+      signal: AbortSignal.timeout(4_000),
+    });
+    return res.ok ? parseIndexedTip(await res.json()) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * TXC coins for a send, from the indexer, or null to fall back to the node scan.
+ * Reads the indexer's height and our node's height alongside the coin list; the
+ * list counts only if the indexer has reached our node's tip and isn't cut off.
+ */
+async function loadIndexerUtxosForSend(address: string): Promise<Utxo[] | null> {
+  const [coins, indexedTip, nodeTip] = await Promise.all([
+    loadExplorerUtxos("txc", address, 5_000).then(
+      (c) => ({ c, truncated: false }),
+      (e: Error) => ({ c: null, truncated: /cut off/.test(e.message) }),
+    ),
+    txcIndexedTip(),
+    rpc<number>("txc", "getblockcount", [], 4_000).catch(() => null),
+  ]);
+  if (!coins.c) return null;
+  if (!indexerUsableForSend({ indexedTip, nodeTip, truncated: coins.truncated })) return null;
+  return coins.c;
 }
 
 /**
