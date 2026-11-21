@@ -279,3 +279,7 @@
 - [x] Auditor follow-up (Nov 21): TXC/ISK fee limit 0.0001 → 0.01 (Bobby: yes)
 - [x] Auditor follow-up: slow-check coins through the same double-check + tidier batch-reply check (Bobby: yes)
 - [ ] One real TXC send and one real TSD send with the new coin double-check before launch (needs a member's Telegram tap)
+
+## Coin / wallet accounts (Bobby, Nov 21)
+- [ ] Decide when coin/wallet members must join Honest.Money (waiting on Bobby)
+- [ ] Security page wording for coin/wallet accounts: no "Sign-in through Honest.Money" check, "sign in again with your coin" instead of "re-link HME Wallet", show the email step (after Bobby's answer)
