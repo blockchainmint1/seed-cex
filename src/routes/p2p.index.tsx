@@ -59,10 +59,6 @@ function Market() {
             Pay a seller with Zelle, Venmo, a bank transfer or cash. Every seller's coins sit in their own trading pocket
             and we check them on-chain before you pay. Nobody here holds your money, us included.
           </p>
-          <div className="mt-5 flex gap-3">
-            <Link to="/account/p2p/listings"><Button>Sell crypto</Button></Link>
-            <Link to="/p2p/jury"><Button variant="outline">Community jury</Button></Link>
-          </div>
         </div>
         <div className="grid gap-2 text-sm">
           {[
@@ -84,7 +80,7 @@ function Market() {
       <div className="mb-3 flex rounded-sm border border-border text-sm w-fit">
         {(["sell", "buy"] as const).map((x) => (
           <button key={x} onClick={() => setSide(x)} className={`px-4 py-2 font-display font-bold ${side === x ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-            {x === "sell" ? "Buy crypto" : "Sell to buyers"}
+            {x === "sell" ? "Buy crypto" : "Sell crypto"}
           </button>
         ))}
       </div>
