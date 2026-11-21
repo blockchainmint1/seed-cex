@@ -42,6 +42,7 @@ const columns: { heading: string; links: FooterLink[] }[] = [
       { label: "Privacy", to: "/privacy" },
       { label: "Risk", to: "/risk" },
       { label: "No KYC", to: "/about/kyc" },
+      { label: "Ads on Seeds", to: "/about/ads" },
     ],
   },
 ];

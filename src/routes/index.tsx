@@ -9,6 +9,9 @@ import { PAIRS } from "@/lib/chains";
 import seedsCoin from "@/assets/seeds-cold-storage-coin.jpg.asset.json";
 import { IgnitePromo } from "@/components/ignite/IgnitePromo";
 import { GenesisHero, GENESIS_FIRST_FRAME, GENESIS_POSTER } from "@/components/home/GenesisHero";
+import { HomeSpotlight } from "@/components/ads/AdSpots";
+import { liveAdsQuery } from "@/components/ads/live-ads";
+import { adsForSpot } from "@/lib/ads/ad-rules";
 
 export const Route = createFileRoute("/")({
   staticData: { sitemap: true },
@@ -35,6 +38,10 @@ export const Route = createFileRoute("/")({
       { rel: "preload", as: "image", href: GENESIS_POSTER, media: "(max-width: 639px)" },
     ],
   }),
+  // Sponsored spots render on the server too, so the page never jumps when they arrive.
+  loader: async ({ context }) => ({
+    ads: await context.queryClient.ensureQueryData(liveAdsQuery).catch(() => null),
+  }),
   component: Index,
 });
 
@@ -54,6 +61,9 @@ function Stat({ label, value, hint }: { label: string; value: string; hint?: str
 }
 
 function Index() {
+  const { ads } = Route.useLoaderData();
+  const live = useQuery({ ...liveAdsQuery, initialData: ads ?? undefined });
+  const spotlight = adsForSpot(live.data?.ads ?? [], "home_spotlight", { nowMs: live.data?.nowMs ?? ads?.nowMs ?? 0 });
   const summary = useQuery({
     queryKey: ["cmc-summary"],
     queryFn: () => getCmcSummary(),
@@ -92,6 +102,8 @@ function Index() {
           <Stat label="Settlement" value="On-chain" hint="direct from your wallet" />
         </div>
       </section>
+
+      <HomeSpotlight ads={spotlight} />
 
       <section className="border-b border-border bg-surface">
         <div className="mx-auto grid max-w-7xl gap-px bg-border md:grid-cols-3">

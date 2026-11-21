@@ -11,6 +11,9 @@ import { MarketActivity } from "@/components/markets/research/MarketActivity";
 import {
   AboutPanel, coinResearchQuery, ExchangesPanel, LinksCard, MarketDataCard, NewsPanel, VideosPanel,
 } from "@/components/markets/research/CoinResearch";
+import { CoinBanner, CoinSideCard, CoinStory } from "@/components/ads/AdSpots";
+import { liveAdsQuery } from "@/components/ads/live-ads";
+import { adsForSpot } from "@/lib/ads/ad-rules";
 
 export const Route = createFileRoute("/markets/$slug")({
   staticData: { sitemap: true },
@@ -21,6 +24,7 @@ export const Route = createFileRoute("/markets/$slug")({
   // if THORChain can't be reached the page still opens and retries.
   loader: async ({ context }) => ({
     markets: await context.queryClient.ensureQueryData(thorMarketsQuery).catch(() => null),
+    ads: await context.queryClient.ensureQueryData(liveAdsQuery).catch(() => null),
   }),
   head: ({ params }) => {
     const m = thorMarket(params.slug);
@@ -53,7 +57,12 @@ function Stat({ label, children }: { label: string; children: React.ReactNode })
 function MarketPage() {
   const { slug } = Route.useParams();
   const m = thorMarket(slug)!;
-  const { markets } = Route.useLoaderData();
+  const { markets, ads } = Route.useLoaderData();
+  const live = useQuery({ ...liveAdsQuery, initialData: ads ?? undefined });
+  const spotOpts = { coinSlug: slug, nowMs: live.data?.nowMs ?? 0 };
+  const banner = adsForSpot(live.data?.ads ?? [], "coin_banner", spotOpts)[0];
+  const side = adsForSpot(live.data?.ads ?? [], "coin_side", spotOpts)[0];
+  const story = adsForSpot(live.data?.ads ?? [], "coin_story", spotOpts)[0];
   const list = useQuery({ ...thorMarketsQuery, initialData: markets ?? undefined });
   const row = list.data?.find((r) => r.slug === slug);
   const coin = swapCoin(m.swapId);
@@ -83,6 +92,7 @@ function MarketPage() {
           <Stat label="Liquidity">{fmtTsdCompact(row?.liquidity)} TSD</Stat>
         </div>
       </div>
+      {banner ? <CoinBanner ad={banner} /> : null}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
         <div className="min-w-0 space-y-6">
@@ -90,7 +100,7 @@ function MarketPage() {
             <ThorChartPanel slug={m.slug} base={m.base} initial="7d" height={480} />
           </section>
           <MarketActivity market={m} />
-          <NewsPanel news={research.data?.news ?? []} name={m.name} loading={research.isPending} />
+          <NewsPanel news={research.data?.news ?? []} name={m.name} loading={research.isPending} sponsored={story ? <CoinStory ad={story} /> : null} />
           <VideosPanel slug={m.slug} name={m.name} />
           <ExchangesPanel pairs={research.data?.pairs ?? []} name={m.name} loading={research.isPending} />
           <AboutPanel profile={profile} name={m.name} />
@@ -120,6 +130,7 @@ function MarketPage() {
           </section>
           <MarketDataCard profile={profile} base={m.base} loading={research.isPending} />
           <LinksCard profile={profile} name={m.name} />
+          {side ? <CoinSideCard ad={side} /> : null}
           <section className="rounded-sm border border-border bg-surface p-4 text-xs text-muted-foreground">
             <h2 className="font-display text-sm font-bold text-foreground">Where these prices come from</h2>
             <p className="mt-2">

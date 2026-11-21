@@ -14,6 +14,98 @@ export type Database = {
   }
   public: {
     Tables: {
+      ad_daily_stats: {
+        Row: {
+          ad_id: string
+          clicks: number
+          day: string
+          views: number
+        }
+        Insert: {
+          ad_id: string
+          clicks?: number
+          day: string
+          views?: number
+        }
+        Update: {
+          ad_id?: string
+          clicks?: number
+          day?: string
+          views?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_daily_stats_ad_id_fkey"
+            columns: ["ad_id"]
+            isOneToOne: false
+            referencedRelation: "ad_placements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ad_placements: {
+        Row: {
+          accent: string
+          advertiser: string
+          advertiser_kind: string
+          body: string
+          coin_slug: string | null
+          created_at: string
+          created_by: string
+          cta_label: string
+          ends_at: string | null
+          id: string
+          image_path: string | null
+          link: string
+          note: string | null
+          paused: boolean
+          spot: string
+          starts_at: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          accent?: string
+          advertiser: string
+          advertiser_kind: string
+          body?: string
+          coin_slug?: string | null
+          created_at?: string
+          created_by: string
+          cta_label: string
+          ends_at?: string | null
+          id?: string
+          image_path?: string | null
+          link: string
+          note?: string | null
+          paused?: boolean
+          spot: string
+          starts_at?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          accent?: string
+          advertiser?: string
+          advertiser_kind?: string
+          body?: string
+          coin_slug?: string | null
+          created_at?: string
+          created_by?: string
+          cta_label?: string
+          ends_at?: string | null
+          id?: string
+          image_path?: string | null
+          link?: string
+          note?: string | null
+          paused?: boolean
+          spot?: string
+          starts_at?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       admin_role_events: {
         Row: {
           action: string
@@ -3223,6 +3315,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      ad_stat_bump: { Args: { _ad: string; _kind: string }; Returns: undefined }
       ai_sync_ingest: { Args: never; Returns: number }
       ai_sync_request: { Args: { _with_markets?: boolean }; Returns: number }
       api_bump_rate: {

@@ -12,6 +12,8 @@ export const IP_LIMITS = {
   quote: 40,
   /** Market prices and charts read from THORChain, counted only when the cache misses. */
   chart: 60,
+  /** Ad views and clicks per minute from one connection (a page shows at most five ads). */
+  adEvent: 40,
 } as const;
 
 /** Start of the current one-minute window. */

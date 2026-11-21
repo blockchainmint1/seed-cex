@@ -39,6 +39,7 @@ import { Route as AuthenticatedApiKeysRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedTradesRouteImport } from './routes/_authenticated/trades'
 import { Route as AuthenticatedWalletRouteImport } from './routes/_authenticated/wallet'
 import { Route as AuthenticatedWelcomeRouteImport } from './routes/_authenticated/welcome'
+import { Route as AboutAdsRouteImport } from './routes/about.ads'
 import { Route as AboutKycRouteImport } from './routes/about.kyc'
 import { Route as AiIndexRouteImport } from './routes/ai.index'
 import { Route as ApiIndexRouteImport } from './routes/api/index'
@@ -76,6 +77,7 @@ import { Route as AuthenticatedAccountReferralsRouteImport } from './routes/_aut
 import { Route as AuthenticatedAccountSecurityRouteImport } from './routes/_authenticated/account.security'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as AuthenticatedAdminAccountsRouteImport } from './routes/_authenticated/admin.accounts'
+import { Route as AuthenticatedAdminAdsRouteImport } from './routes/_authenticated/admin.ads'
 import { Route as AuthenticatedAdminAiRouteImport } from './routes/_authenticated/admin.ai'
 import { Route as AuthenticatedAdminIgniteRouteImport } from './routes/_authenticated/admin.ignite'
 import { Route as AuthenticatedAdminListingsRouteImport } from './routes/_authenticated/admin.listings'
@@ -87,6 +89,7 @@ import { Route as AuthenticatedAdminVideosRouteImport } from './routes/_authenti
 import { Route as AuthenticatedP2pDashboardRouteImport } from './routes/_authenticated/p2p.dashboard'
 import { Route as AuthenticatedP2pJuryRouteImport } from './routes/_authenticated/p2p.jury'
 import { Route as AiCoinIdRouteImport } from './routes/ai.coin.$id'
+import { Route as ApiPublicAdEventRouteImport } from './routes/api/public/ad-event'
 import { Route as ApiPublicTrackRouteImport } from './routes/api/public/track'
 import { Route as P2pSellerHandleRouteImport } from './routes/p2p.seller.$handle'
 import { Route as AuthenticatedAccountBalancesIndexRouteImport } from './routes/_authenticated/account.balances.index'
@@ -286,6 +289,11 @@ const AuthenticatedWelcomeRoute = AuthenticatedWelcomeRouteImport.update({
   path: '/welcome',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AboutAdsRoute = AboutAdsRouteImport.update({
+  id: '/about/ads',
+  path: '/about/ads',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AboutKycRoute = AboutKycRouteImport.update({
   id: '/about/kyc',
   path: '/about/kyc',
@@ -479,6 +487,11 @@ const AuthenticatedAdminAccountsRoute =
     path: '/accounts',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminAdsRoute = AuthenticatedAdminAdsRouteImport.update({
+  id: '/ads',
+  path: '/ads',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
 const AuthenticatedAdminAiRoute = AuthenticatedAdminAiRouteImport.update({
   id: '/ai',
   path: '/ai',
@@ -538,6 +551,11 @@ const AuthenticatedP2pJuryRoute = AuthenticatedP2pJuryRouteImport.update({
 const AiCoinIdRoute = AiCoinIdRouteImport.update({
   id: '/ai/coin/$id',
   path: '/ai/coin/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicAdEventRoute = ApiPublicAdEventRouteImport.update({
+  id: '/api/public/ad-event',
+  path: '/api/public/ad-event',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicTrackRoute = ApiPublicTrackRouteImport.update({
@@ -830,6 +848,7 @@ export interface FileRoutesByFullPath {
   '/trades': typeof AuthenticatedTradesRoute
   '/wallet': typeof AuthenticatedWalletRoute
   '/welcome': typeof AuthenticatedWelcomeRoute
+  '/about/ads': typeof AboutAdsRoute
   '/about/kyc': typeof AboutKycRoute
   '/help/$slug': typeof HelpSlugRoute
   '/help/faq': typeof HelpFaqRoute
@@ -865,6 +884,7 @@ export interface FileRoutesByFullPath {
   '/account/referrals': typeof AuthenticatedAccountReferralsRoute
   '/account/security': typeof AuthenticatedAccountSecurityRoute
   '/admin/accounts': typeof AuthenticatedAdminAccountsRoute
+  '/admin/ads': typeof AuthenticatedAdminAdsRoute
   '/admin/ai': typeof AuthenticatedAdminAiRoute
   '/admin/ignite': typeof AuthenticatedAdminIgniteRoute
   '/admin/listings': typeof AuthenticatedAdminListingsRoute
@@ -876,6 +896,7 @@ export interface FileRoutesByFullPath {
   '/p2p/dashboard': typeof AuthenticatedP2pDashboardRoute
   '/p2p/jury': typeof AuthenticatedP2pJuryRoute
   '/ai/coin/$id': typeof AiCoinIdRoute
+  '/api/public/ad-event': typeof ApiPublicAdEventRoute
   '/api/public/track': typeof ApiPublicTrackRoute
   '/p2p/seller/$handle': typeof P2pSellerHandleRoute
   '/account/': typeof AuthenticatedAccountIndexRoute
@@ -955,6 +976,7 @@ export interface FileRoutesByTo {
   '/trades': typeof AuthenticatedTradesRoute
   '/wallet': typeof AuthenticatedWalletRoute
   '/welcome': typeof AuthenticatedWelcomeRoute
+  '/about/ads': typeof AboutAdsRoute
   '/about/kyc': typeof AboutKycRoute
   '/help/$slug': typeof HelpSlugRoute
   '/help/faq': typeof HelpFaqRoute
@@ -988,6 +1010,7 @@ export interface FileRoutesByTo {
   '/account/referrals': typeof AuthenticatedAccountReferralsRoute
   '/account/security': typeof AuthenticatedAccountSecurityRoute
   '/admin/accounts': typeof AuthenticatedAdminAccountsRoute
+  '/admin/ads': typeof AuthenticatedAdminAdsRoute
   '/admin/ai': typeof AuthenticatedAdminAiRoute
   '/admin/ignite': typeof AuthenticatedAdminIgniteRoute
   '/admin/listings': typeof AuthenticatedAdminListingsRoute
@@ -999,6 +1022,7 @@ export interface FileRoutesByTo {
   '/p2p/dashboard': typeof AuthenticatedP2pDashboardRoute
   '/p2p/jury': typeof AuthenticatedP2pJuryRoute
   '/ai/coin/$id': typeof AiCoinIdRoute
+  '/api/public/ad-event': typeof ApiPublicAdEventRoute
   '/api/public/track': typeof ApiPublicTrackRoute
   '/p2p/seller/$handle': typeof P2pSellerHandleRoute
   '/account': typeof AuthenticatedAccountIndexRoute
@@ -1082,6 +1106,7 @@ export interface FileRoutesById {
   '/_authenticated/trades': typeof AuthenticatedTradesRoute
   '/_authenticated/wallet': typeof AuthenticatedWalletRoute
   '/_authenticated/welcome': typeof AuthenticatedWelcomeRoute
+  '/about/ads': typeof AboutAdsRoute
   '/about/kyc': typeof AboutKycRoute
   '/help/$slug': typeof HelpSlugRoute
   '/help/faq': typeof HelpFaqRoute
@@ -1117,6 +1142,7 @@ export interface FileRoutesById {
   '/_authenticated/account/referrals': typeof AuthenticatedAccountReferralsRoute
   '/_authenticated/account/security': typeof AuthenticatedAccountSecurityRoute
   '/_authenticated/admin/accounts': typeof AuthenticatedAdminAccountsRoute
+  '/_authenticated/admin/ads': typeof AuthenticatedAdminAdsRoute
   '/_authenticated/admin/ai': typeof AuthenticatedAdminAiRoute
   '/_authenticated/admin/ignite': typeof AuthenticatedAdminIgniteRoute
   '/_authenticated/admin/listings': typeof AuthenticatedAdminListingsRoute
@@ -1128,6 +1154,7 @@ export interface FileRoutesById {
   '/_authenticated/p2p/dashboard': typeof AuthenticatedP2pDashboardRoute
   '/_authenticated/p2p/jury': typeof AuthenticatedP2pJuryRoute
   '/ai/coin/$id': typeof AiCoinIdRoute
+  '/api/public/ad-event': typeof ApiPublicAdEventRoute
   '/api/public/track': typeof ApiPublicTrackRoute
   '/p2p/seller/$handle': typeof P2pSellerHandleRoute
   '/_authenticated/account/': typeof AuthenticatedAccountIndexRoute
@@ -1211,6 +1238,7 @@ export interface FileRouteTypes {
     | '/trades'
     | '/wallet'
     | '/welcome'
+    | '/about/ads'
     | '/about/kyc'
     | '/help/$slug'
     | '/help/faq'
@@ -1246,6 +1274,7 @@ export interface FileRouteTypes {
     | '/account/referrals'
     | '/account/security'
     | '/admin/accounts'
+    | '/admin/ads'
     | '/admin/ai'
     | '/admin/ignite'
     | '/admin/listings'
@@ -1257,6 +1286,7 @@ export interface FileRouteTypes {
     | '/p2p/dashboard'
     | '/p2p/jury'
     | '/ai/coin/$id'
+    | '/api/public/ad-event'
     | '/api/public/track'
     | '/p2p/seller/$handle'
     | '/account/'
@@ -1336,6 +1366,7 @@ export interface FileRouteTypes {
     | '/trades'
     | '/wallet'
     | '/welcome'
+    | '/about/ads'
     | '/about/kyc'
     | '/help/$slug'
     | '/help/faq'
@@ -1369,6 +1400,7 @@ export interface FileRouteTypes {
     | '/account/referrals'
     | '/account/security'
     | '/admin/accounts'
+    | '/admin/ads'
     | '/admin/ai'
     | '/admin/ignite'
     | '/admin/listings'
@@ -1380,6 +1412,7 @@ export interface FileRouteTypes {
     | '/p2p/dashboard'
     | '/p2p/jury'
     | '/ai/coin/$id'
+    | '/api/public/ad-event'
     | '/api/public/track'
     | '/p2p/seller/$handle'
     | '/account'
@@ -1462,6 +1495,7 @@ export interface FileRouteTypes {
     | '/_authenticated/trades'
     | '/_authenticated/wallet'
     | '/_authenticated/welcome'
+    | '/about/ads'
     | '/about/kyc'
     | '/help/$slug'
     | '/help/faq'
@@ -1497,6 +1531,7 @@ export interface FileRouteTypes {
     | '/_authenticated/account/referrals'
     | '/_authenticated/account/security'
     | '/_authenticated/admin/accounts'
+    | '/_authenticated/admin/ads'
     | '/_authenticated/admin/ai'
     | '/_authenticated/admin/ignite'
     | '/_authenticated/admin/listings'
@@ -1508,6 +1543,7 @@ export interface FileRouteTypes {
     | '/_authenticated/p2p/dashboard'
     | '/_authenticated/p2p/jury'
     | '/ai/coin/$id'
+    | '/api/public/ad-event'
     | '/api/public/track'
     | '/p2p/seller/$handle'
     | '/_authenticated/account/'
@@ -1585,6 +1621,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   TsdRoute: typeof TsdRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  AboutAdsRoute: typeof AboutAdsRoute
   AboutKycRoute: typeof AboutKycRoute
   HelpSlugRoute: typeof HelpSlugRoute
   HelpFaqRoute: typeof HelpFaqRoute
@@ -1612,6 +1649,7 @@ export interface RootRouteChildren {
   P2pIndexRoute: typeof P2pIndexRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   AiCoinIdRoute: typeof AiCoinIdRoute
+  ApiPublicAdEventRoute: typeof ApiPublicAdEventRoute
   ApiPublicTrackRoute: typeof ApiPublicTrackRoute
   P2pSellerHandleRoute: typeof P2pSellerHandleRoute
   ApiPublicCmcAssetsRoute: typeof ApiPublicCmcAssetsRoute
@@ -1864,6 +1902,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/welcome'
       preLoaderRoute: typeof AuthenticatedWelcomeRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/about/ads': {
+      id: '/about/ads'
+      path: '/about/ads'
+      fullPath: '/about/ads'
+      preLoaderRoute: typeof AboutAdsRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/about/kyc': {
       id: '/about/kyc'
@@ -2124,6 +2169,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminAccountsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/ads': {
+      id: '/_authenticated/admin/ads'
+      path: '/ads'
+      fullPath: '/admin/ads'
+      preLoaderRoute: typeof AuthenticatedAdminAdsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/ai': {
       id: '/_authenticated/admin/ai'
       path: '/ai'
@@ -2199,6 +2251,13 @@ declare module '@tanstack/react-router' {
       path: '/ai/coin/$id'
       fullPath: '/ai/coin/$id'
       preLoaderRoute: typeof AiCoinIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/ad-event': {
+      id: '/api/public/ad-event'
+      path: '/api/public/ad-event'
+      fullPath: '/api/public/ad-event'
+      preLoaderRoute: typeof ApiPublicAdEventRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/track': {
@@ -2609,6 +2668,7 @@ const AuthenticatedAccountRouteWithChildren =
 
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminAccountsRoute: typeof AuthenticatedAdminAccountsRoute
+  AuthenticatedAdminAdsRoute: typeof AuthenticatedAdminAdsRoute
   AuthenticatedAdminAiRoute: typeof AuthenticatedAdminAiRoute
   AuthenticatedAdminIgniteRoute: typeof AuthenticatedAdminIgniteRoute
   AuthenticatedAdminListingsRoute: typeof AuthenticatedAdminListingsRoute
@@ -2623,6 +2683,7 @@ interface AuthenticatedAdminRouteChildren {
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminAccountsRoute: AuthenticatedAdminAccountsRoute,
+  AuthenticatedAdminAdsRoute: AuthenticatedAdminAdsRoute,
   AuthenticatedAdminAiRoute: AuthenticatedAdminAiRoute,
   AuthenticatedAdminIgniteRoute: AuthenticatedAdminIgniteRoute,
   AuthenticatedAdminListingsRoute: AuthenticatedAdminListingsRoute,
@@ -2705,6 +2766,7 @@ const rootRouteChildren: RootRouteChildren = {
   TsdRoute: TsdRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
+  AboutAdsRoute: AboutAdsRoute,
   AboutKycRoute: AboutKycRoute,
   HelpSlugRoute: HelpSlugRoute,
   HelpFaqRoute: HelpFaqRoute,
@@ -2732,6 +2794,7 @@ const rootRouteChildren: RootRouteChildren = {
   P2pIndexRoute: P2pIndexRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   AiCoinIdRoute: AiCoinIdRoute,
+  ApiPublicAdEventRoute: ApiPublicAdEventRoute,
   ApiPublicTrackRoute: ApiPublicTrackRoute,
   P2pSellerHandleRoute: P2pSellerHandleRoute,
   ApiPublicCmcAssetsRoute: ApiPublicCmcAssetsRoute,

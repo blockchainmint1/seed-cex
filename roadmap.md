@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] Ad spots (ecosystem + Seeds-listed coins only): homepage spotlight, markets sponsored row, coin-page side card, sponsored news story, slim coin banner + Admin → Ads with view/click counts + /about/ads (Nov 21)
+- [ ] First real ad booked in Admin → Ads, and ad prices per spot (blocked: Bobby's prices and advertisers)
 - [x] Coin market pages, CoinMarketCap-style: recent THORChain trades, cost by trade size, my swaps & orders, global market data, links, other exchanges, news, team-picked videos (Admin → Coin videos) (Nov 20)
 - [ ] Add the first expert videos in Admin → Coin videos (blocked: Bobby's team picks them)
 - [x] Audit #3 follow-up 2: EVM double-check before freezing (two servers + receipt re-check), 5-min resend backoff, 1-min retry after a TXC/ISK index-check failure (Nov 20)

@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { ExternalLink, Play } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getCoinResearch } from "@/lib/markets/coin-research.functions";
 import { fromAth, supplyShare, type CoinProfile, type ExchangeRow, type NewsItem } from "@/lib/markets/coin-research";
 import { Change } from "@/components/markets/ThorMarketBits";
+import { STORY_AFTER } from "@/lib/ads/ad-rules";
 import { ago, coins, shortDate, usdCompact, usdPrice } from "./format";
 
 export const coinResearchQuery = (slug: string) =>
@@ -149,25 +150,31 @@ export function AboutPanel({ profile, name }: { profile: CoinProfile | null; nam
   );
 }
 
-export function NewsPanel({ news, name, loading }: { news: NewsItem[]; name: string; loading: boolean }) {
+export function NewsPanel({ news, name, loading, sponsored }: { news: NewsItem[]; name: string; loading: boolean; sponsored?: ReactNode }) {
+  // A sponsored story (if any) sits after the first few headlines, clearly labelled.
+  const items = news.map((n) => (
+    <li key={n.url} className="border-b border-border/50 last:border-b-0">
+      <a href={n.url} target="_blank" rel="noopener noreferrer nofollow" className="block px-4 py-3 hover:bg-muted/40">
+        <p className="text-sm font-semibold text-foreground">{n.title}</p>
+        {n.summary ? <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{n.summary}</p> : null}
+        <p className="mt-1 font-mono text-[10px] text-muted-foreground">{n.source} · {ago(n.at)}</p>
+      </a>
+    </li>
+  ));
+  const at = Math.min(STORY_AFTER, items.length);
   return (
     <section className={card}>
       <SectionHead title={`${name} news`} note="via CoinMarketCap" />
       {news.length === 0 ? (
         <p className="px-4 py-6 text-xs text-muted-foreground">{loading ? "Loading headlines…" : "No recent headlines right now."}</p>
-      ) : (
+      ) : null}
+      {news.length > 0 || sponsored ? (
         <ul>
-          {news.map((n) => (
-            <li key={n.url} className="border-b border-border/50 last:border-b-0">
-              <a href={n.url} target="_blank" rel="noopener noreferrer nofollow" className="block px-4 py-3 hover:bg-muted/40">
-                <p className="text-sm font-semibold text-foreground">{n.title}</p>
-                {n.summary ? <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{n.summary}</p> : null}
-                <p className="mt-1 font-mono text-[10px] text-muted-foreground">{n.source} · {ago(n.at)}</p>
-              </a>
-            </li>
-          ))}
+          {items.slice(0, at)}
+          {sponsored ?? null}
+          {items.slice(at)}
         </ul>
-      )}
+      ) : null}
       <p className="border-t border-border px-4 py-2 text-[11px] text-muted-foreground">Written by other publishers. Seeds doesn't write or check these stories, and none of it is advice.</p>
     </section>
   );

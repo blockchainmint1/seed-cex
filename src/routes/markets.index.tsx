@@ -6,6 +6,9 @@ import { ArrowRight } from "lucide-react";
 import { PAIRS } from "@/lib/chains";
 import { fmtTsdCompact } from "@/lib/markets/thor-markets";
 import { Change, Price, Spark, thorMarketsQuery, marketsErrorText } from "@/components/markets/ThorMarketBits";
+import { MarketsSponsoredRow } from "@/components/ads/AdSpots";
+import { liveAdsQuery } from "@/components/ads/live-ads";
+import { adsForSpot } from "@/lib/ads/ad-rules";
 
 const title = "Crypto Markets in TSD — BTC, ETH, SOL, XRP & more | Seeds";
 const description =
@@ -27,6 +30,7 @@ export const Route = createFileRoute("/markets/")({
   // if THORChain can't be reached the page still opens and retries.
   loader: async ({ context }) => ({
     markets: await context.queryClient.ensureQueryData(thorMarketsQuery).catch(() => null),
+    ads: await context.queryClient.ensureQueryData(liveAdsQuery).catch(() => null),
   }),
   component: MarketsPage,
 });
@@ -35,9 +39,11 @@ export const Route = createFileRoute("/markets/")({
 const tradeHref = (slug: string): string => `/trade/${slug}`;
 
 function MarketsPage() {
-  const { markets } = Route.useLoaderData();
+  const { markets, ads } = Route.useLoaderData();
   const q = useQuery({ ...thorMarketsQuery, initialData: markets ?? undefined });
   const rows = q.data ?? [];
+  const live = useQuery({ ...liveAdsQuery, initialData: ads ?? undefined });
+  const sponsored = adsForSpot(live.data?.ads ?? [], "markets_row", { nowMs: live.data?.nowMs ?? 0 })[0];
 
   // Lets an agent browser read the table the member is looking at.
   useWebMCP({
@@ -76,6 +82,7 @@ function MarketsPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
+            {sponsored ? <MarketsSponsoredRow ad={sponsored} colSpan={8} /> : null}
             {!rows.length ? (
               <tr>
                 <td colSpan={8} className="px-4 py-10 text-center text-sm text-muted-foreground">

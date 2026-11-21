@@ -1,0 +1,1 @@
+COMMENT ON COLUMN public.ad_placements.image_path IS 'DEPRECATED: unused; ads use designed tiles (advertiser initial + accent). Public storage buckets are not available.';
