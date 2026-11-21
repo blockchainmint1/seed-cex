@@ -7,6 +7,7 @@ import { useSession } from "@/hooks/use-session";
 import { getMyListingApplications, submitListingApplication } from "@/lib/listing.functions";
 import { LISTING_NETWORKS, LISTING_PACKAGES, packageById, type PackageId } from "@/lib/listing";
 import { LAUNCH_DATE_LABEL } from "@/lib/launch";
+import { shownEmail } from "@/lib/key-signin/rules";
 
 const TITLE = "List on Seeds — bring your community, keep your holders safe";
 const DESC = "List your coin on Seeds from $1,000. No trading-volume minimum, no liquidity or market-maker requirements, and no Seeds fee on trades, ever. Holders keep their coins in their own wallets.";
@@ -333,7 +334,7 @@ function ApplySection({ pkg, setPkg }: { pkg: PackageId; setPkg: (p: PackageId) 
             </div>
             <div className="grid gap-5 sm:grid-cols-3 [&>*]:min-w-0">
               <div><label className={label} htmlFor="contactName">Your name</label><input id="contactName" name="contactName" required maxLength={80} autoComplete="name" className={field} /></div>
-              <div><label className={label} htmlFor="contactEmail">Email</label><input id="contactEmail" name="contactEmail" type="email" required maxLength={200} defaultValue={user.email ?? ""} autoComplete="email" className={field} /></div>
+              <div><label className={label} htmlFor="contactEmail">Email</label><input id="contactEmail" name="contactEmail" type="email" required maxLength={200} defaultValue={shownEmail(user.email) ?? ""} autoComplete="email" className={field} /></div>
               <div><label className={label} htmlFor="contactTelegram">Telegram <span className="font-normal text-muted-foreground">(optional)</span></label><input id="contactTelegram" name="contactTelegram" maxLength={33} placeholder="@username" className={field} /></div>
             </div>
             <div><label className={label} htmlFor="notes">Anything we should know? <span className="font-normal text-muted-foreground">(optional)</span></label><textarea id="notes" name="notes" rows={4} maxLength={2000} className={field} /></div>

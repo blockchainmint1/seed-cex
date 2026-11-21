@@ -1,6 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { shownEmail } from "@/lib/key-signin/rules";
 
 /**
  * OAuth approval screen for AI assistants (MCP clients) connecting to Seeds.
@@ -127,7 +128,7 @@ function Consent() {
       </p>
 
       <dl className="mt-5 space-y-2 rounded-sm border border-border bg-surface p-4 text-sm">
-        <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Signed in as</dt><dd className="break-all text-right text-foreground">{details.user?.email || "your Seeds account"}</dd></div>
+        <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Signed in as</dt><dd className="break-all text-right text-foreground">{shownEmail(details.user?.email) || "your Seeds account"}</dd></div>
         <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Sends you back to</dt><dd className="break-all text-right font-mono text-xs text-foreground">{site}</dd></div>
       </dl>
 

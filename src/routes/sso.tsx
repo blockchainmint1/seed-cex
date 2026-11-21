@@ -42,7 +42,14 @@ function Sso() {
       try {
         // Honest.Money's script doesn't run on this page (audit M4), so read the referral it saved directly.
         const ref = savedHmRef() || undefined;
-        const r = await redeem({ data: { token, ref } });
+        // "Join Honest.Money" from a coin / wallet account: attach to the account signed in here.
+        let attach: string | undefined;
+        try {
+          const at = Number(localStorage.getItem("seeds-sso-attach") ?? 0);
+          localStorage.removeItem("seeds-sso-attach");
+          if (at && Date.now() - at < 10 * 60_000) attach = (await supabase.auth.getSession()).data.session?.access_token;
+        } catch { /* plain sign-in */ }
+        const r = await redeem({ data: { token, ref, ...(attach ? { attach } : {}) } });
         if (!r.tokenHash) return setLegacy({ state: r.legacy ?? "failed", to: r.to ?? "your email" });
         const { error: err } = await supabase.auth.verifyOtp({ type: "magiclink", token_hash: r.tokenHash });
         if (err) throw err;

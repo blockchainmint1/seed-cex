@@ -16,6 +16,8 @@ export type AdminUserRow = {
   isBeta: boolean;
   createdAt: string;
   lastSignInAt: string | null;
+  /** How they signed up: hme, coin, evm or sol. */
+  signup: string;
 };
 
 export type AdminRoleEvent = { at: string; action: "grant" | "revoke"; role: "admin" | "beta"; targetName: string; actorName: string };
@@ -26,6 +28,7 @@ export const listAdminUsers = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     await requireAdmin(context as never);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { isPlaceholderEmail } = await import("./key-signin/rules");
 
     const authUsers: { id: string; email: string | null; lastSignInAt: string | null }[] = [];
     for (let page = 1; page <= 20; page++) {
@@ -35,7 +38,7 @@ export const listAdminUsers = createServerFn({ method: "GET" })
       if (data.users.length < 1000) break;
     }
     const [{ data: profiles }, { data: roles }, { data: events }, { data: betas }] = await Promise.all([
-      supabaseAdmin.from("profiles").select("id, display_name, hm_member_id, hm_status, created_at"),
+      supabaseAdmin.from("profiles").select("id, display_name, hm_member_id, hm_status, created_at, identity_kind"),
       supabaseAdmin.from("user_roles").select("user_id, created_at").eq("role", "admin"),
       supabaseAdmin.from("admin_role_events").select("target_id, actor_id, action, role, created_at").order("created_at", { ascending: false }).limit(50),
       supabaseAdmin.from("user_roles").select("user_id").eq("role", "beta"),
@@ -46,7 +49,8 @@ export const listAdminUsers = createServerFn({ method: "GET" })
     const users: AdminUserRow[] = (profiles ?? []).map((p) => ({
       id: p.id,
       name: p.display_name || authById.get(p.id)?.email?.split("@")[0] || "Unnamed",
-      email: authById.get(p.id)?.email ?? null,
+      email: isPlaceholderEmail(authById.get(p.id)?.email) ? null : authById.get(p.id)?.email ?? null,
+      signup: p.identity_kind ?? "hme",
       hmMemberId: p.hm_member_id,
       hmStatus: p.hm_status,
       isAdmin: adminSince.has(p.id),

@@ -414,6 +414,13 @@
       "when": 1795224889307,
       "tag": "0058_recruit_leads",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1795279377194,
+      "tag": "0059_coin_and_wallet_signin",
+      "breakpoints": true
     }
   ]
 }

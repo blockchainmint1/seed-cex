@@ -31,6 +31,8 @@ Mt. Gox, QuadrigaCX, FTX, Celsius — the same story every time: people handed a
 
 You keep your coins in **HME Wallet**, part of the [Honest.Money ecosystem](https://honest.money). You link a separate **trading pocket** to Seeds, and trades settle directly between the two traders' wallets on-chain. Your savings never leave your wallet. Revoke the link and Seeds' access ends.
 
+No HME Wallet yet? Start with a **Cold Storage Coin** (scan its QR on the separate Seeds Key page) or **your own wallet** — MetaMask, Ledger, Trezor, Phantom or a phone wallet. Either way Seeds never sees a recovery phrase: it receives only a sign-in signature and the keys to one trading pocket, and you can join your [Honest.Money](https://honest.money) membership later.
+
 ## What's inside
 
 | Feature | What you get |
@@ -86,6 +88,7 @@ This repository is the code behind [seeds.honest.money](https://seeds.honest.mon
 | Deposit / withdrawal network rules | `src/lib/account/deposit-options.ts` |
 | AI strategy engine | `src/lib/ai/plan.ts` |
 | HME sign-in tickets | `src/lib/hme-auth.server.ts` |
+| Coin / outside-wallet sign-in (Seeds Key) | `src/lib/key-signin/`, `docs/seeds-key-page.md` |
 
 ```sh
 bun install

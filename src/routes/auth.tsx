@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "@/hooks/use-session";
 import { rememberReturnPath, takeReturnPath } from "@/lib/return-path";
@@ -117,6 +117,21 @@ function Auth() {
       <p className="mt-2 font-mono text-[11px] text-muted-foreground">
         One member login across the Honest.Money ecosystem.
       </p>
+
+      <div className="mt-8 border-t border-border pt-6">
+        <p className="text-sm text-muted-foreground">Got a Cold Storage Coin, or your own wallet?</p>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <Link to="/key-signin" search={{ kind: "coin" }} className="rounded-md border border-border px-4 py-3 text-center text-sm font-semibold hover:border-primary">
+            Start with a coin
+          </Link>
+          <Link to="/key-signin" search={{ kind: "wallet" }} className="rounded-md border border-border px-4 py-3 text-center text-sm font-semibold hover:border-primary">
+            Use another wallet
+          </Link>
+        </div>
+        <p className="mt-2 font-mono text-[11px] text-muted-foreground">
+          MetaMask, Ledger, Trezor, Phantom and phone wallets. Seeds never sees your recovery phrase.
+        </p>
+      </div>
     </div>
   );
 }

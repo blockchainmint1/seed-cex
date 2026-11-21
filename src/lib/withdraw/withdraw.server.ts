@@ -149,7 +149,7 @@ export async function sendWithdrawalEmailCode(userId: string, tester: boolean, i
   const { sesConfigured } = await import("@/lib/email/ses.server");
   if (!sesConfigured()) throw new Error("Seeds can't send email right now, so withdrawals are paused. Try again later.");
   const r = await loadRecipient(userId);
-  if (!r) throw new Error("Your account has no email address, so Seeds can't send a withdrawal code.");
+  if (!r) throw new Error("Add and confirm an email address in Account → Profile (or join Honest.Money) before withdrawing. Seeds emails a code for every withdrawal.");
   const { count } = await supabaseAdmin.from("withdrawal_email_codes").select("id", { count: "exact", head: true })
     .eq("user_id", userId).gt("created_at", new Date(Date.now() - 3_600_000).toISOString());
   if ((count ?? 0) >= EMAIL_CODES_PER_HOUR) throw new Error("Too many withdrawal codes in the last hour. Wait a little and try again.");

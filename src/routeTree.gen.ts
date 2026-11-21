@@ -18,6 +18,7 @@ import { Route as ComingSoonRouteImport } from './routes/coming-soon'
 import { Route as CustodyRouteImport } from './routes/custody'
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
 import { Route as IgniteRouteImport } from './routes/ignite'
+import { Route as KeySigninRouteImport } from './routes/key-signin'
 import { Route as LbtcRouteImport } from './routes/lbtc'
 import { Route as LinkAccountRouteImport } from './routes/link-account'
 import { Route as ListRouteImport } from './routes/list'
@@ -118,6 +119,7 @@ import { Route as ApiPublicJobsMarketSnapshotRouteImport } from './routes/api/pu
 import { Route as ApiPublicJobsPulseWithdrawalsRouteImport } from './routes/api/public/jobs/pulse-withdrawals'
 import { Route as ApiPublicJobsSendApprovalsRouteImport } from './routes/api/public/jobs/send-approvals'
 import { Route as ApiPublicJobsTsdRoutesRouteImport } from './routes/api/public/jobs/tsd-routes'
+import { Route as ApiPublicKeySigninSubmitRouteImport } from './routes/api/public/key-signin/submit'
 import { Route as ApiPublicMinehmeProfileUpdateRouteImport } from './routes/api/public/minehme/profile-update'
 import { Route as ApiPublicNectarpayWebhookRouteImport } from './routes/api/public/nectarpay/webhook'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
@@ -140,6 +142,7 @@ import { Route as ApiPublicCmcOrderbookPairRouteImport } from './routes/api/publ
 import { Route as ApiPublicCmcTradesPairRouteImport } from './routes/api/public/cmc/trades.$pair'
 import { Route as ApiPublicHmeLinkManifestIdRouteImport } from './routes/api/public/hme-link/manifest.$id'
 import { Route as ApiPublicHmeLinkTradesRespondRouteImport } from './routes/api/public/hme-link/trades.respond'
+import { Route as ApiPublicKeySigninManifestIdRouteImport } from './routes/api/public/key-signin/manifest.$id'
 import { Route as ApiPublicV1Ticker24hrRouteImport } from './routes/api/public/v1/ticker/24hr'
 import { Route as ApiPublicV1TickerPriceRouteImport } from './routes/api/public/v1/ticker/price'
 
@@ -185,6 +188,11 @@ const HowItWorksRoute = HowItWorksRouteImport.update({
 const IgniteRoute = IgniteRouteImport.update({
   id: '/ignite',
   path: '/ignite',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KeySigninRoute = KeySigninRouteImport.update({
+  id: '/key-signin',
+  path: '/key-signin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LbtcRoute = LbtcRouteImport.update({
@@ -717,6 +725,12 @@ const ApiPublicJobsTsdRoutesRoute = ApiPublicJobsTsdRoutesRouteImport.update({
   path: '/api/public/jobs/tsd-routes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicKeySigninSubmitRoute =
+  ApiPublicKeySigninSubmitRouteImport.update({
+    id: '/api/public/key-signin/submit',
+    path: '/api/public/key-signin/submit',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicMinehmeProfileUpdateRoute =
   ApiPublicMinehmeProfileUpdateRouteImport.update({
     id: '/api/public/minehme/profile-update',
@@ -835,6 +849,12 @@ const ApiPublicHmeLinkTradesRespondRoute =
     path: '/respond',
     getParentRoute: () => ApiPublicHmeLinkTradesRoute,
   } as any)
+const ApiPublicKeySigninManifestIdRoute =
+  ApiPublicKeySigninManifestIdRouteImport.update({
+    id: '/api/public/key-signin/manifest/$id',
+    path: '/api/public/key-signin/manifest/$id',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicV1Ticker24hrRoute = ApiPublicV1Ticker24hrRouteImport.update({
   id: '/api/public/v1/ticker/24hr',
   path: '/api/public/v1/ticker/24hr',
@@ -855,6 +875,7 @@ export interface FileRoutesByFullPath {
   '/custody': typeof CustodyRoute
   '/how-it-works': typeof HowItWorksRoute
   '/ignite': typeof IgniteRoute
+  '/key-signin': typeof KeySigninRoute
   '/lbtc': typeof LbtcRoute
   '/link-account': typeof LinkAccountRoute
   '/list': typeof ListRoute
@@ -951,6 +972,7 @@ export interface FileRoutesByFullPath {
   '/api/public/jobs/pulse-withdrawals': typeof ApiPublicJobsPulseWithdrawalsRoute
   '/api/public/jobs/send-approvals': typeof ApiPublicJobsSendApprovalsRoute
   '/api/public/jobs/tsd-routes': typeof ApiPublicJobsTsdRoutesRoute
+  '/api/public/key-signin/submit': typeof ApiPublicKeySigninSubmitRoute
   '/api/public/minehme/profile-update': typeof ApiPublicMinehmeProfileUpdateRoute
   '/api/public/nectarpay/webhook': typeof ApiPublicNectarpayWebhookRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
@@ -977,6 +999,7 @@ export interface FileRoutesByFullPath {
   '/api/public/cmc/trades/$pair': typeof ApiPublicCmcTradesPairRoute
   '/api/public/hme-link/manifest/$id': typeof ApiPublicHmeLinkManifestIdRoute
   '/api/public/hme-link/trades/respond': typeof ApiPublicHmeLinkTradesRespondRoute
+  '/api/public/key-signin/manifest/$id': typeof ApiPublicKeySigninManifestIdRoute
   '/api/public/v1/ticker/24hr': typeof ApiPublicV1Ticker24hrRoute
   '/api/public/v1/ticker/price': typeof ApiPublicV1TickerPriceRoute
 }
@@ -989,6 +1012,7 @@ export interface FileRoutesByTo {
   '/custody': typeof CustodyRoute
   '/how-it-works': typeof HowItWorksRoute
   '/ignite': typeof IgniteRoute
+  '/key-signin': typeof KeySigninRoute
   '/lbtc': typeof LbtcRoute
   '/link-account': typeof LinkAccountRoute
   '/list': typeof ListRoute
@@ -1080,6 +1104,7 @@ export interface FileRoutesByTo {
   '/api/public/jobs/pulse-withdrawals': typeof ApiPublicJobsPulseWithdrawalsRoute
   '/api/public/jobs/send-approvals': typeof ApiPublicJobsSendApprovalsRoute
   '/api/public/jobs/tsd-routes': typeof ApiPublicJobsTsdRoutesRoute
+  '/api/public/key-signin/submit': typeof ApiPublicKeySigninSubmitRoute
   '/api/public/minehme/profile-update': typeof ApiPublicMinehmeProfileUpdateRoute
   '/api/public/nectarpay/webhook': typeof ApiPublicNectarpayWebhookRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
@@ -1106,6 +1131,7 @@ export interface FileRoutesByTo {
   '/api/public/cmc/trades/$pair': typeof ApiPublicCmcTradesPairRoute
   '/api/public/hme-link/manifest/$id': typeof ApiPublicHmeLinkManifestIdRoute
   '/api/public/hme-link/trades/respond': typeof ApiPublicHmeLinkTradesRespondRoute
+  '/api/public/key-signin/manifest/$id': typeof ApiPublicKeySigninManifestIdRoute
   '/api/public/v1/ticker/24hr': typeof ApiPublicV1Ticker24hrRoute
   '/api/public/v1/ticker/price': typeof ApiPublicV1TickerPriceRoute
 }
@@ -1120,6 +1146,7 @@ export interface FileRoutesById {
   '/custody': typeof CustodyRoute
   '/how-it-works': typeof HowItWorksRoute
   '/ignite': typeof IgniteRoute
+  '/key-signin': typeof KeySigninRoute
   '/lbtc': typeof LbtcRoute
   '/link-account': typeof LinkAccountRoute
   '/list': typeof ListRoute
@@ -1216,6 +1243,7 @@ export interface FileRoutesById {
   '/api/public/jobs/pulse-withdrawals': typeof ApiPublicJobsPulseWithdrawalsRoute
   '/api/public/jobs/send-approvals': typeof ApiPublicJobsSendApprovalsRoute
   '/api/public/jobs/tsd-routes': typeof ApiPublicJobsTsdRoutesRoute
+  '/api/public/key-signin/submit': typeof ApiPublicKeySigninSubmitRoute
   '/api/public/minehme/profile-update': typeof ApiPublicMinehmeProfileUpdateRoute
   '/api/public/nectarpay/webhook': typeof ApiPublicNectarpayWebhookRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
@@ -1242,6 +1270,7 @@ export interface FileRoutesById {
   '/api/public/cmc/trades/$pair': typeof ApiPublicCmcTradesPairRoute
   '/api/public/hme-link/manifest/$id': typeof ApiPublicHmeLinkManifestIdRoute
   '/api/public/hme-link/trades/respond': typeof ApiPublicHmeLinkTradesRespondRoute
+  '/api/public/key-signin/manifest/$id': typeof ApiPublicKeySigninManifestIdRoute
   '/api/public/v1/ticker/24hr': typeof ApiPublicV1Ticker24hrRoute
   '/api/public/v1/ticker/price': typeof ApiPublicV1TickerPriceRoute
 }
@@ -1256,6 +1285,7 @@ export interface FileRouteTypes {
     | '/custody'
     | '/how-it-works'
     | '/ignite'
+    | '/key-signin'
     | '/lbtc'
     | '/link-account'
     | '/list'
@@ -1352,6 +1382,7 @@ export interface FileRouteTypes {
     | '/api/public/jobs/pulse-withdrawals'
     | '/api/public/jobs/send-approvals'
     | '/api/public/jobs/tsd-routes'
+    | '/api/public/key-signin/submit'
     | '/api/public/minehme/profile-update'
     | '/api/public/nectarpay/webhook'
     | '/api/public/telegram/webhook'
@@ -1378,6 +1409,7 @@ export interface FileRouteTypes {
     | '/api/public/cmc/trades/$pair'
     | '/api/public/hme-link/manifest/$id'
     | '/api/public/hme-link/trades/respond'
+    | '/api/public/key-signin/manifest/$id'
     | '/api/public/v1/ticker/24hr'
     | '/api/public/v1/ticker/price'
   fileRoutesByTo: FileRoutesByTo
@@ -1390,6 +1422,7 @@ export interface FileRouteTypes {
     | '/custody'
     | '/how-it-works'
     | '/ignite'
+    | '/key-signin'
     | '/lbtc'
     | '/link-account'
     | '/list'
@@ -1481,6 +1514,7 @@ export interface FileRouteTypes {
     | '/api/public/jobs/pulse-withdrawals'
     | '/api/public/jobs/send-approvals'
     | '/api/public/jobs/tsd-routes'
+    | '/api/public/key-signin/submit'
     | '/api/public/minehme/profile-update'
     | '/api/public/nectarpay/webhook'
     | '/api/public/telegram/webhook'
@@ -1507,6 +1541,7 @@ export interface FileRouteTypes {
     | '/api/public/cmc/trades/$pair'
     | '/api/public/hme-link/manifest/$id'
     | '/api/public/hme-link/trades/respond'
+    | '/api/public/key-signin/manifest/$id'
     | '/api/public/v1/ticker/24hr'
     | '/api/public/v1/ticker/price'
   id:
@@ -1520,6 +1555,7 @@ export interface FileRouteTypes {
     | '/custody'
     | '/how-it-works'
     | '/ignite'
+    | '/key-signin'
     | '/lbtc'
     | '/link-account'
     | '/list'
@@ -1616,6 +1652,7 @@ export interface FileRouteTypes {
     | '/api/public/jobs/pulse-withdrawals'
     | '/api/public/jobs/send-approvals'
     | '/api/public/jobs/tsd-routes'
+    | '/api/public/key-signin/submit'
     | '/api/public/minehme/profile-update'
     | '/api/public/nectarpay/webhook'
     | '/api/public/telegram/webhook'
@@ -1642,6 +1679,7 @@ export interface FileRouteTypes {
     | '/api/public/cmc/trades/$pair'
     | '/api/public/hme-link/manifest/$id'
     | '/api/public/hme-link/trades/respond'
+    | '/api/public/key-signin/manifest/$id'
     | '/api/public/v1/ticker/24hr'
     | '/api/public/v1/ticker/price'
   fileRoutesById: FileRoutesById
@@ -1656,6 +1694,7 @@ export interface RootRouteChildren {
   CustodyRoute: typeof CustodyRoute
   HowItWorksRoute: typeof HowItWorksRoute
   IgniteRoute: typeof IgniteRoute
+  KeySigninRoute: typeof KeySigninRoute
   LbtcRoute: typeof LbtcRoute
   LinkAccountRoute: typeof LinkAccountRoute
   ListRoute: typeof ListRoute
@@ -1715,6 +1754,7 @@ export interface RootRouteChildren {
   ApiPublicJobsPulseWithdrawalsRoute: typeof ApiPublicJobsPulseWithdrawalsRoute
   ApiPublicJobsSendApprovalsRoute: typeof ApiPublicJobsSendApprovalsRoute
   ApiPublicJobsTsdRoutesRoute: typeof ApiPublicJobsTsdRoutesRoute
+  ApiPublicKeySigninSubmitRoute: typeof ApiPublicKeySigninSubmitRoute
   ApiPublicMinehmeProfileUpdateRoute: typeof ApiPublicMinehmeProfileUpdateRoute
   ApiPublicNectarpayWebhookRoute: typeof ApiPublicNectarpayWebhookRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
@@ -1737,6 +1777,7 @@ export interface RootRouteChildren {
   ApiPublicCmcOrderbookPairRoute: typeof ApiPublicCmcOrderbookPairRoute
   ApiPublicCmcTradesPairRoute: typeof ApiPublicCmcTradesPairRoute
   ApiPublicHmeLinkManifestIdRoute: typeof ApiPublicHmeLinkManifestIdRoute
+  ApiPublicKeySigninManifestIdRoute: typeof ApiPublicKeySigninManifestIdRoute
   ApiPublicV1Ticker24hrRoute: typeof ApiPublicV1Ticker24hrRoute
   ApiPublicV1TickerPriceRoute: typeof ApiPublicV1TickerPriceRoute
 }
@@ -1804,6 +1845,13 @@ declare module '@tanstack/react-router' {
       path: '/ignite'
       fullPath: '/ignite'
       preLoaderRoute: typeof IgniteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/key-signin': {
+      id: '/key-signin'
+      path: '/key-signin'
+      fullPath: '/key-signin'
+      preLoaderRoute: typeof KeySigninRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/lbtc': {
@@ -2506,6 +2554,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicJobsTsdRoutesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/key-signin/submit': {
+      id: '/api/public/key-signin/submit'
+      path: '/api/public/key-signin/submit'
+      fullPath: '/api/public/key-signin/submit'
+      preLoaderRoute: typeof ApiPublicKeySigninSubmitRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/minehme/profile-update': {
       id: '/api/public/minehme/profile-update'
       path: '/api/public/minehme/profile-update'
@@ -2659,6 +2714,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/public/hme-link/trades/respond'
       preLoaderRoute: typeof ApiPublicHmeLinkTradesRespondRouteImport
       parentRoute: typeof ApiPublicHmeLinkTradesRoute
+    }
+    '/api/public/key-signin/manifest/$id': {
+      id: '/api/public/key-signin/manifest/$id'
+      path: '/api/public/key-signin/manifest/$id'
+      fullPath: '/api/public/key-signin/manifest/$id'
+      preLoaderRoute: typeof ApiPublicKeySigninManifestIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/public/v1/ticker/24hr': {
       id: '/api/public/v1/ticker/24hr'
@@ -2851,6 +2913,7 @@ const rootRouteChildren: RootRouteChildren = {
   CustodyRoute: CustodyRoute,
   HowItWorksRoute: HowItWorksRoute,
   IgniteRoute: IgniteRoute,
+  KeySigninRoute: KeySigninRoute,
   LbtcRoute: LbtcRoute,
   LinkAccountRoute: LinkAccountRoute,
   ListRoute: ListRoute,
@@ -2911,6 +2974,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicJobsPulseWithdrawalsRoute: ApiPublicJobsPulseWithdrawalsRoute,
   ApiPublicJobsSendApprovalsRoute: ApiPublicJobsSendApprovalsRoute,
   ApiPublicJobsTsdRoutesRoute: ApiPublicJobsTsdRoutesRoute,
+  ApiPublicKeySigninSubmitRoute: ApiPublicKeySigninSubmitRoute,
   ApiPublicMinehmeProfileUpdateRoute: ApiPublicMinehmeProfileUpdateRoute,
   ApiPublicNectarpayWebhookRoute: ApiPublicNectarpayWebhookRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
@@ -2933,6 +2997,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCmcOrderbookPairRoute: ApiPublicCmcOrderbookPairRoute,
   ApiPublicCmcTradesPairRoute: ApiPublicCmcTradesPairRoute,
   ApiPublicHmeLinkManifestIdRoute: ApiPublicHmeLinkManifestIdRoute,
+  ApiPublicKeySigninManifestIdRoute: ApiPublicKeySigninManifestIdRoute,
   ApiPublicV1Ticker24hrRoute: ApiPublicV1Ticker24hrRoute,
   ApiPublicV1TickerPriceRoute: ApiPublicV1TickerPriceRoute,
 }

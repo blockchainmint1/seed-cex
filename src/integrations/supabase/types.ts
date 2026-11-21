@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_email_codes: {
+        Row: {
+          code_hash: string
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          tries: number
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          code_hash: string
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: string
+          tries?: number
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          code_hash?: string
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          tries?: number
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       ad_daily_stats: {
         Row: {
           ad_id: string
@@ -990,6 +1023,7 @@ export type Database = {
           paths: Json
           revoked_at: string | null
           revoked_by: string | null
+          source: string
           status: string
           user_id: string
           xpubs: Json
@@ -1004,6 +1038,7 @@ export type Database = {
           paths: Json
           revoked_at?: string | null
           revoked_by?: string | null
+          source?: string
           status?: string
           user_id: string
           xpubs: Json
@@ -1018,6 +1053,7 @@ export type Database = {
           paths?: Json
           revoked_at?: string | null
           revoked_by?: string | null
+          source?: string
           status?: string
           user_id?: string
           xpubs?: Json
@@ -1284,6 +1320,54 @@ export type Database = {
           status?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      key_signin_requests: {
+        Row: {
+          browser_secret_hash: string
+          challenge: string
+          challenge_id: string
+          claimed_at: string | null
+          consumed_at: string | null
+          created_account: boolean
+          created_at: string
+          expires_at: string
+          identity_kind: string | null
+          ip_hash: string
+          recipient_priv_ciphertext: string
+          recipient_pubkey: string
+          user_id: string | null
+        }
+        Insert: {
+          browser_secret_hash: string
+          challenge: string
+          challenge_id: string
+          claimed_at?: string | null
+          consumed_at?: string | null
+          created_account?: boolean
+          created_at?: string
+          expires_at: string
+          identity_kind?: string | null
+          ip_hash: string
+          recipient_priv_ciphertext: string
+          recipient_pubkey: string
+          user_id?: string | null
+        }
+        Update: {
+          browser_secret_hash?: string
+          challenge?: string
+          challenge_id?: string
+          claimed_at?: string | null
+          consumed_at?: string | null
+          created_account?: boolean
+          created_at?: string
+          expires_at?: string
+          identity_kind?: string | null
+          ip_hash?: string
+          recipient_priv_ciphertext?: string
+          recipient_pubkey?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -2331,6 +2415,8 @@ export type Database = {
           hm_member_id: string | null
           hm_status: string
           id: string
+          identity_address: string | null
+          identity_kind: string
           notify_auth_expiring: boolean
           notify_deposit: boolean
           notify_login: boolean
@@ -2369,6 +2455,8 @@ export type Database = {
           hm_member_id?: string | null
           hm_status?: string
           id: string
+          identity_address?: string | null
+          identity_kind?: string
           notify_auth_expiring?: boolean
           notify_deposit?: boolean
           notify_login?: boolean
@@ -2407,6 +2495,8 @@ export type Database = {
           hm_member_id?: string | null
           hm_status?: string
           id?: string
+          identity_address?: string | null
+          identity_kind?: string
           notify_auth_expiring?: boolean
           notify_deposit?: boolean
           notify_login?: boolean

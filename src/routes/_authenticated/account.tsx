@@ -13,6 +13,7 @@ import { useSession } from "@/hooks/use-session";
 import { Button } from "@/components/ui/button";
 import { usePocketLink } from "@/components/account/use-pocket";
 import { IgniteReminder } from "@/components/ignite/IgniteReminder";
+import { shownEmail } from "@/lib/key-signin/rules";
 
 export const Route = createFileRoute("/_authenticated/account")({
   staticData: { sitemap: false },
@@ -88,11 +89,11 @@ function AccountLayout() {
     <div className="mx-auto max-w-7xl px-5 py-10">
       <header className="flex flex-wrap items-center gap-4 border-b border-border pb-6">
         <div aria-hidden className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-action font-display text-lg font-extrabold text-action-foreground">
-          {initials(p?.display_name, user?.email)}
+          {initials(p?.display_name, shownEmail(user?.email))}
         </div>
         <div className="min-w-[12rem] flex-1">
           <p className="font-mono text-[11px] tracking-[0.28em] text-primary uppercase">Account</p>
-          <h1 className="truncate font-display text-2xl font-extrabold md:text-3xl">{p?.display_name || user?.email || "Your account"}</h1>
+          <h1 className="truncate font-display text-2xl font-extrabold md:text-3xl">{p?.display_name || shownEmail(user?.email) || "Your account"}</h1>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             {p?.hm_member_id ? <span className="font-mono">HME {p.hm_member_id.slice(0, 8)}</span> : null}
             {p ? (

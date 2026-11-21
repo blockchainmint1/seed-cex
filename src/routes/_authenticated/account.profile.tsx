@@ -8,6 +8,9 @@ import { PAIRS } from "@/lib/chains";
 import { useSession } from "@/hooks/use-session";
 import { Button } from "@/components/ui/button";
 import { Card, Note, Saved, TabTitle, Toggle, fieldLabel, inputCls } from "@/components/account/ui";
+import { KeyIdentityCard } from "@/components/account/KeyIdentityCard";
+import { getMyIdentity } from "@/lib/key-signin/key-signin.functions";
+import { shownEmail } from "@/lib/key-signin/rules";
 
 export const Route = createFileRoute("/_authenticated/account/profile")({
   staticData: { sitemap: false },
@@ -31,6 +34,9 @@ function ProfileTab() {
   const save = useServerFn(updateMyProfile);
   const profile = useQuery({ queryKey: ["my-profile"], queryFn: () => load() });
   const p = profile.data;
+  const loadIdentity = useServerFn(getMyIdentity);
+  const identity = useQuery({ queryKey: ["my-identity"], queryFn: () => loadIdentity() });
+  const keyOnly = identity.data ? identity.data.kind !== "hme" && !identity.data.hmeMember : false;
   const [form, setForm] = useState<Partial<Profile>>({});
   const [savedFor, setSavedFor] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -46,16 +52,18 @@ function ProfileTab() {
 
   return (
     <div className="space-y-5">
-      <TabTitle title="Profile" desc="Your identity comes from Honest.Money, so it's the same on every HME site." />
+      <TabTitle title="Profile" desc={keyOnly ? "Your account opens with your own coin or wallet." : "Your identity comes from Honest.Money, so it's the same on every HME site."} />
 
-      <Card
+      <KeyIdentityCard />
+
+      {keyOnly ? null : <Card
         title="Identity"
         desc="Managed on Honest.Money — changes there update here automatically."
         right={<Button asChild variant="outline" size="sm"><a href="https://honest.money/dashboard/account" target="_blank" rel="noreferrer"><ExternalLink /> Edit on Honest.Money</a></Button>}
       >
         <dl className="grid gap-4 sm:grid-cols-2">
           <Item label="Display name" value={p?.display_name || "—"} />
-          <Item label="Email" value={user?.email || "—"} />
+          <Item label="Email" value={shownEmail(user?.email) || "—"} />
           <div>
             <dt className={fieldLabel}>Honest.Money member ID</dt>
             <dd className="mt-1 flex items-center gap-2">
@@ -72,7 +80,7 @@ function ProfileTab() {
           <Item label="Seeds account since" value={p ? new Date(p.created_at).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" }) : "—"} />
           <Item label="Sign-in" value="Honest.Money single sign-on" />
         </dl>
-      </Card>
+      </Card>}
 
       <Card title="Region" desc="Used for times in emails, alerts and your P2P hours.">
         <form className="flex flex-wrap items-end gap-3" onSubmit={(e) => { e.preventDefault(); m.mutate({ section: "tz", data: { timezone: form.timezone?.trim() || "UTC" } }); }}>

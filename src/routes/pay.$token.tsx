@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useSession } from "@/hooks/use-session";
 import { getPeerLinkPublic, startPeerCheckout } from "@/lib/ignite-peer.functions";
 import { SCHEDULE_DATES, SCHEDULE_TIME } from "@/lib/ignite-registration";
+import { shownEmail } from "@/lib/key-signin/rules";
 
 const peerQuery = (token: string) => queryOptions({ queryKey: ["peer-link", token], queryFn: () => getPeerLinkPublic({ data: { token } }) });
 
@@ -87,7 +88,7 @@ function PayPage() {
           </>
         ) : (
           <>
-            <p className="text-sm text-muted-foreground">Signed in as <strong className="text-foreground">{user.email}</strong>. {data.forName} will see your Honest.Money name.</p>
+            <p className="text-sm text-muted-foreground">Signed in as <strong className="text-foreground">{shownEmail(user.email) ?? "your Seeds account"}</strong>. {data.forName} will see your Honest.Money name.</p>
             <button type="button" className="seed-btn" disabled={busy} onClick={pay}>{busy ? "Opening checkout…" : `Pay $${data.amount} with crypto (NectarPay)`}</button>
             <p className="text-xs text-muted-foreground">BTC, TXC, TSD, USDC, ETH, LTC, DOGE, ISK or ZCU, paid straight to Seeds' own wallet through NectarPay.</p>
           </>

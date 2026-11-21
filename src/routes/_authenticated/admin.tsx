@@ -11,6 +11,7 @@ import { Note } from "@/components/account/ui";
 import { CodeField } from "@/components/account/CodeField";
 import { TwoFactorCard } from "@/components/account/TwoFactorCard";
 import { proveTwoFactor } from "@/components/account/two-factor";
+import { shownEmail } from "@/lib/key-signin/rules";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   staticData: { sitemap: false },
@@ -84,7 +85,7 @@ function AdminLayout() {
           <p className="font-mono text-[11px] tracking-[0.28em] text-primary uppercase">Admin</p>
           <h1 className="font-display text-2xl font-extrabold md:text-3xl">Admin console</h1>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <span>Signed in as {profile.data?.display_name || user?.email || "admin"}</span>
+            <span>Signed in as {profile.data?.display_name || shownEmail(user?.email) || "admin"}</span>
             <span className="rounded-sm bg-primary/15 px-1.5 py-0.5 font-mono text-[10px] text-primary uppercase">admin</span>
             {admin.data.unlockedUntil ? (
               <span className="inline-flex items-center gap-1"><LockKeyhole className="h-3 w-3" /> Unlocked until {new Date(admin.data.unlockedUntil * 1000).toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" })}</span>

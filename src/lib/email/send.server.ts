@@ -12,6 +12,7 @@ import { SITE } from "./components";
 import { makeUnsubToken } from "./links";
 import { TEMPLATES, renderTemplate, type TemplateName, type TemplateProps } from "./registry";
 import { sesConfigured, sesSend } from "./ses.server";
+import { isPlaceholderEmail } from "../key-signin/rules";
 
 /** honest.money is a verified SES identity; seeds.honest.money is a subdomain of it. */
 export const EMAIL_FROM = "Seeds <no-reply@seeds.honest.money>";
@@ -26,7 +27,8 @@ export async function loadRecipient(userId: string): Promise<Recipient | null> {
     supabaseAdmin.auth.admin.getUserById(userId),
   ]);
   const email = u?.user?.email;
-  if (!email) return null;
+  // Coin / outside-wallet accounts start with an address nobody owns until they confirm a real one.
+  if (!email || isPlaceholderEmail(email)) return null;
   return {
     userId, email,
     name: (prof?.display_name || email.split("@")[0] || "there").slice(0, 40),
@@ -44,6 +46,7 @@ export function unsubscribeUrl(userId: string): string {
 
 /** Deliver one message to an address (used by previews/tests and by emailUser). */
 export async function deliver<K extends TemplateName>(to: string, name: K, props: TemplateProps[K], opts: { subjectPrefix?: string } = {}) {
+  if (isPlaceholderEmail(to)) throw new Error("No deliverable email on this account");
   const r = await renderTemplate(name, props);
   const unsub = name === "weekly-update" ? (props as TemplateProps["weekly-update"]).unsubscribeUrl : undefined;
   return sesSend({ from: EMAIL_FROM, replyTo: EMAIL_REPLY_TO, to, subject: `${opts.subjectPrefix ?? ""}${r.subject}`, html: r.html, text: r.text, unsubscribeUrl: unsub });

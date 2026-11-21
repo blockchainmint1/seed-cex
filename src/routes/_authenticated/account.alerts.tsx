@@ -8,6 +8,7 @@ import { OneTapCard } from "@/components/account/OneTapCard";
 import { useSession } from "@/hooks/use-session";
 import { Button } from "@/components/ui/button";
 import { Card, Note, Saved, TabTitle, Toggle } from "@/components/account/ui";
+import { shownEmail } from "@/lib/key-signin/rules";
 
 export const Route = createFileRoute("/_authenticated/account/alerts")({
   staticData: { sitemap: false },
@@ -89,7 +90,7 @@ function AlertsTab() {
         <p className="mt-4 text-xs text-muted-foreground">Daily AI plan checks are switched per plan in <Link to="/account/ai" className="text-primary underline">AI strategies</Link>.</p>
       </Card>
 
-      <Card title="Email" desc={`Sent to ${user?.email ?? "your Honest.Money email"}. Change it on Honest.Money.`}>
+      <Card title="Email" desc={shownEmail(user?.email) ? `Sent to ${shownEmail(user?.email)}. Honest.Money members change it on Honest.Money.` : "Add an email in Account → Profile to get receipts and security notices."}>
         <form onSubmit={(e) => { e.preventDefault(); m.mutate({ section: "email", data: Object.fromEntries(EMAILS.map(([k]) => [k, Boolean(form[k])])) }); }}>
           <div className="grid gap-3 sm:grid-cols-2">
             {EMAILS.map(([k, label, hint]) => <Toggle key={k} checked={Boolean(form[k])} onChange={(v) => patch({ [k]: v } as Partial<Profile>)} label={label} hint={hint} />)}

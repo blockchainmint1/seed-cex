@@ -19,6 +19,7 @@ import { HmeWalletLinkCard } from "@/components/wallet/HmeWalletLinkCard";
 import { usePocketLink } from "@/components/account/use-pocket";
 import { TelegramCard } from "@/components/account/TelegramCard";
 import { TwoFactorCard, useMyTwoFactor } from "@/components/account/TwoFactorCard";
+import { shownEmail } from "@/lib/key-signin/rules";
 
 const RESUME_KEY = "seeds-welcome-step";
 
@@ -186,7 +187,7 @@ function StepWelcome({ onNext }: { onNext: () => void }) {
   const profile = useQuery({ queryKey: ["my-profile"], queryFn: () => load() });
   const first = (profile.data?.display_name ?? "").trim().split(/\s+/)[0];
   const points = [
-    { icon: HandCoins, title: "Your coins stay with you", text: "Seeds trades from a trading pocket inside your own HME Wallet. Seeds never holds your coins." },
+    { icon: HandCoins, title: "Your coins stay with you", text: "Seeds trades from a separate trading pocket that only your own wallet or coin can open. Seeds never holds your coins." },
     { icon: ShieldCheck, title: "No KYC, no trading fees", text: "No ID uploads, and Seeds takes no cut of your trades.", to: "/about/kyc" as const, cta: "Why no KYC" },
     { icon: CalendarDays, title: "Trading opens November 30, 2026", text: "Until then Seeds is in demo mode. You can set up your account and link your wallet now.", to: "/coming-soon" as const, cta: "What's coming" },
   ];
@@ -401,7 +402,7 @@ function StepAlerts() {
         Hear right away when an order fills, a deposit lands or someone signs in to your account. One tap links it; there are no codes to type.
       </Heading>
       <TelegramCard desc="Optional, and you can change what you hear about in Account → Alerts." />
-      <p className="mt-3 text-xs text-muted-foreground">Receipts and security notices also go to {user?.email ?? "your Honest.Money email"}.</p>
+      <p className="mt-3 text-xs text-muted-foreground">Receipts and security notices also go to {shownEmail(user?.email) ?? "your email once you add one in Account → Profile"}.</p>
     </>
   );
 }

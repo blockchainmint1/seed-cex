@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { IDENTITY_LABEL } from "@/lib/key-signin/rules";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -168,6 +169,7 @@ function AdminUsersPage() {
                           {u.hmMemberId
                             ? <span className={`rounded-sm px-1.5 py-0.5 font-mono text-[10px] uppercase ${u.hmStatus === "active" || u.hmStatus === "oceanfront" ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>{u.hmStatus}</span>
                             : <span className="font-mono text-[10px] text-muted-foreground uppercase">not linked</span>}
+                          {u.signup !== "hme" ? <span className="ml-1.5 rounded-sm bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground uppercase" title="How they signed up">{IDENTITY_LABEL[u.signup] ?? u.signup}</span> : null}
                         </td>
                         <td className="px-3 py-2 text-muted-foreground">{new Date(u.createdAt).toLocaleDateString()}</td>
                         <td className="px-3 py-2 text-muted-foreground">{u.lastSignInAt ? fmtAgo(u.lastSignInAt) : "never"}</td>

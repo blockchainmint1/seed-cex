@@ -3,7 +3,7 @@ import { z } from "zod";
 
 /** Verified, single-use HME tickets identify accounts by permanent member UUID, never email. */
 export const redeemHonestMoneyToken = createServerFn({ method: "POST" })
-  .inputValidator((d) => z.object({ token: z.string().min(10).max(4000), ref: z.string().max(64).optional() }).parse(d))
+  .inputValidator((d) => z.object({ token: z.string().min(10).max(4000), ref: z.string().max(64).optional(), attach: z.string().min(20).max(4000).optional() }).parse(d))
   .handler(async ({ data }) => {
     const { sendHubEvent } = await import("./hme-hub.server");
     const { ecosystemKey, verifyHmeTicket } = await import("./hme-auth.server");
@@ -14,6 +14,15 @@ export const redeemHonestMoneyToken = createServerFn({ method: "POST" })
     if (nonceErr) throw new Error("That sign-in ticket was already used.");
 
     const ticketEmail = p.email.toLowerCase();
+
+    // "Join Honest.Money" from a coin / outside-wallet account: the signed-in session (proved by its
+    // own token) and the signed HME ticket together attach the membership to that same account.
+    if (data.attach) {
+      const { attachMembership } = await import("./key-signin/attach.server");
+      const tokenHash = await attachMembership({ accessToken: data.attach, minerId: p.minerId, email: ticketEmail });
+      await sendHubEvent({ event: "signup", member_id: p.minerId, ref: data.ref, metadata: { via: "seeds-key-attach" } });
+      return { tokenHash };
+    }
     // The permanent UUID finds the existing account even after a contact-email change.
     const { data: linked, error: lookupError } = await supabaseAdmin.from("profiles").select("id, hm_status").eq("hm_member_id", p.minerId).maybeSingle();
     if (lookupError) throw new Error("Could not check your Honest.Money account. Try again.");

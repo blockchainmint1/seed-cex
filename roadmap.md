@@ -249,3 +249,12 @@
 - [x] Follow-up: a frozen trader can't release P2P sales, open P2P trades or swap to outside addresses
 - [x] Follow-up: if a TXC/ISK server loses its lookup index, "not found" never blames anyone
 - [x] A2 again — Bobby: keep as is (honest wording, abilities unchanged), Nov 20
+
+## Coin & outside-wallet sign-up (Bobby, Nov 21 2026)
+- [x] Seeds side: "Start with a coin" / "Use another wallet" sign-in, coin/wallet accounts, pocket-key intake (same format as HME Wallet)
+- [x] Join Honest.Money later attaches the membership to the same account
+- [x] Withdrawals for coin/wallet accounts need a confirmed email first
+- [x] Admin → Users shows how each person signed up
+- [x] Build guide + test vectors for the separate Seeds Key page; auditor note
+- [ ] Build the Seeds Key page itself (blocked: separate project + its web address; guide provided)
+- [ ] Set SEEDS_KEY_URL on Seeds once that address exists (blocked: address)
