@@ -1,10 +1,10 @@
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BadgeCheck } from "lucide-react";
 import { toast } from "sonner";
-import { blockTrader, getMyP2p, getP2pMarketPrices, saveOffer, saveP2pProfile, setP2pAway } from "@/lib/p2p.functions";
+import { blockTrader, checkMyP2pPockets, getMyP2p, getP2pMarketPrices, saveOffer, saveP2pProfile, setP2pAway } from "@/lib/p2p.functions";
 import { fmtCoinPrice, P2P_ASSET_IDS, PAYMENT_METHODS, STATUS_LABEL, type P2pAsset } from "@/lib/p2p-config";
 import { ScorePill, mins } from "@/components/p2p/SellerBadge";
 import { Card } from "@/components/account/ui";
@@ -25,9 +25,33 @@ type OfferRow = Data["offers"][number];
 
 export const P2P_ME_QUERY = ["p2p-me"] as const;
 
+/** Under P2P_ME_QUERY, so every invalidation of the desk also re-checks the pockets. */
+const P2P_POCKETS_QUERY = [...P2P_ME_QUERY, "pockets"] as const;
+
+/**
+ * The desk loads in two parts: database rows first (fast, shown at once), then the
+ * live pocket check for sell ads (slow chain reads), merged in when it arrives.
+ */
 export function useMyP2p() {
   const fetch = useServerFn(getMyP2p);
-  return useQuery({ queryKey: P2P_ME_QUERY, queryFn: () => fetch(), refetchInterval: 20_000 });
+  const check = useServerFn(checkMyP2pPockets);
+  const base = useQuery({ queryKey: P2P_ME_QUERY, queryFn: () => fetch(), refetchInterval: 20_000 });
+  const hasSellAds = Boolean(base.data?.offers.some((o) => o.side === "sell"));
+  const pockets = useQuery({ queryKey: P2P_POCKETS_QUERY, queryFn: () => check(), refetchInterval: 60_000, enabled: hasSellAds });
+  const data = useMemo(() => {
+    if (!base.data) return undefined;
+    const live = pockets.data;
+    const failed = Boolean(pockets.error) && !live;
+    return {
+      ...base.data,
+      offers: base.data.offers.map((o) => {
+        const c = live?.[o.id];
+        if (c) return { ...o, ...c, checking: false };
+        return o.checking && failed ? { ...o, checking: false, verified: 0, shown: null, pocketBlocker: "Couldn't read your pocket just now" } : o;
+      }),
+    };
+  }, [base.data, pockets.data, pockets.error]);
+  return { data, error: base.error, isPending: base.isPending };
 }
 
 /** Trades waiting on someone (open, paid, disputed). */
@@ -66,7 +90,11 @@ export function OfferList({ data: d }: { data: Data }) {
             <li key={o.id} className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-border p-3">
               <div className="min-w-0 flex-1">
                 <div className="font-mono"><span className={o.side === "buy" ? "text-primary" : "text-destructive"}>{o.side === "buy" ? "BUY" : "SELL"}</span> {o.asset} @ {o.priceMode === "market" ? `market ${o.marginPct >= 0 ? "+" : ""}${o.marginPct}%` : `$${fmtCoinPrice(o.price)}`} <span className="text-xs text-muted-foreground">fee {o.feePct}% · ${o.minFiat}–${o.maxFiat}</span></div>
-                {o.side === "sell" ? <div className={`flex items-center gap-1 font-mono text-[11px] ${o.verified > 0 ? "text-primary" : "text-destructive"}`}>
+                {o.side === "sell" && o.checking ? <div className="flex items-center gap-1 font-mono text-[11px] text-muted-foreground">
+                  <BadgeCheck className="h-3 w-3 shrink-0" />
+                  Checking your HME trading pocket…
+                </div> : null}
+                {o.side === "sell" && !o.checking ? <div className={`flex items-center gap-1 font-mono text-[11px] ${o.verified > 0 ? "text-primary" : "text-destructive"}`}>
                   <BadgeCheck className="h-3 w-3 shrink-0" />
                   {o.verified > 0
                     ? `${o.verified} ${o.asset} verified & available in your HME trading pocket`
@@ -74,7 +102,7 @@ export function OfferList({ data: d }: { data: Data }) {
                       ? `Not live yet: ${o.pocketBlocker}`
                       : `No ${o.asset} in your HME trading pocket yet — deposit some from Account → Balances`}
                 </div> : null}
-                {o.side === "sell" && o.shown && o.verified > 0 ? (
+                {o.side === "sell" && !o.checking && o.shown && o.verified > 0 ? (
                   o.shown.live ? (
                     o.shown.reduced ? (
                       <div className="text-xs text-foreground">

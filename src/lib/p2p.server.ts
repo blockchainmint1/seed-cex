@@ -32,7 +32,8 @@ export async function pocketStatus(sellerId: string, asset: P2pAsset): Promise<{
   const leg = legFor(asset);
   const s = await pocketSender(sellerId, leg);
   if (!s.ok) return { balance: null, blocker: s.reason };
-  const b = await pocketLegBalance(s.address, leg);
+  // Balance only: P2P reserves the coin itself; the actual send re-checks fees.
+  const b = await pocketLegBalance(s.address, leg, 0, { balanceOnly: true });
   return { balance: b.balance, blocker: b.balance === null ? (b.reason ?? "Couldn't read your pocket") : null };
 }
 

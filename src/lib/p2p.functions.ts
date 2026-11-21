@@ -249,7 +249,9 @@ export const getMyP2p = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const db = await admin();
     const me = context.userId;
-    const [{ data: profile }, { data: offers }, { data: trades }, { data: wallet }] = await Promise.all([
+    // Fast part only: database rows. The slow live pocket re-read is checkMyP2pPockets,
+    // so the trader profile shows at once instead of waiting on the TEXITcoin node.
+    const [{ data: profile }, { data: offers }, { data: trades }, { data: wallet }, { data: acct }, { data: blocks }] = await Promise.all([
       db.from("p2p_profiles").select("*").eq("user_id", me).maybeSingle(),
       db.from("p2p_offers").select("*, p2p_offer_instructions(instructions)").eq("seller_id", me).order("created_at", { ascending: false }),
       db
@@ -259,34 +261,23 @@ export const getMyP2p = createServerFn({ method: "GET" })
         .order("created_at", { ascending: false })
         .limit(100),
       db.from("wallets").select("txc_address, evm_address").eq("user_id", me).maybeSingle(),
+      db.from("profiles").select("display_name").eq("id", me).maybeSingle(),
+      db.from("p2p_blocks").select("blocked_id").eq("blocker_id", me),
     ]);
-    const { data: acct } = await db.from("profiles").select("display_name").eq("id", me).maybeSingle();
     const { statsFor } = await engine();
-    const names = await namesFor((trades ?? []).flatMap((t) => [t.seller_id, t.buyer_id]));
-    const { data: blocks } = await db.from("p2p_blocks").select("blocked_id").eq("blocker_id", me);
-    const blockedNames = await namesFor((blocks ?? []).map((b) => b.blocked_id));
-    await touchSeen(me);
-    // Re-read the HME pocket for my own sell ads, and say plainly why it can't count yet.
-    const { refreshOffer, pocketStatus } = await engine();
-    const sellAssets = [...new Set((offers ?? []).filter((o) => o.side !== "buy").map((o) => o.asset as P2pAsset))];
-    const pocket: Record<string, string | null> = {};
-    await Promise.all(sellAssets.map(async (a) => { pocket[a] = (await pocketStatus(me, a).catch(() => ({ blocker: "Couldn't read your pocket" }))).blocker; }));
-    const fresh: Record<string, number> = {};
-    await Promise.all((offers ?? []).filter((o) => o.side !== "buy").map(async (o) => { const v = await refreshOffer(o.id).catch(() => null); if (v !== null) fresh[o.id] = v; }));
     const { activeLink } = await import("@/lib/pocket-send/pocket.server");
-    const linked = Boolean(await activeLink(me).catch(() => null));
-    // What buyers actually see on each sell ad: the max is cut to what the pocket covers.
-    const { effectivePrice } = await engine();
-    const ranges: Record<string, ReturnType<typeof offerRange>> = {};
-    await Promise.all((offers ?? []).filter((o) => o.side !== "buy").map(async (o) => {
-      const price = await effectivePrice(o).catch(() => 0);
-      ranges[o.id] = offerRange({ side: "sell", minFiat: Number(o.min_fiat), maxFiat: Number(o.max_fiat), available: fresh[o.id] ?? Number(o.verified_balance), price });
-    }));
+    const [names, blockedNames, stats, linked] = await Promise.all([
+      namesFor((trades ?? []).flatMap((t) => [t.seller_id, t.buyer_id])),
+      namesFor((blocks ?? []).map((b) => b.blocked_id)),
+      statsFor([me]),
+      activeLink(me).then(Boolean).catch(() => false),
+      touchSeen(me),
+    ]);
     return {
       profile,
       displayName: acct?.display_name ?? null,
       blocked: (blocks ?? []).map((b) => ({ id: b.blocked_id, handle: blockedNames[b.blocked_id] })),
-      stats: (await statsFor([me]))[me],
+      stats: stats[me],
       hasWallet: linked || Boolean(wallet?.txc_address),
       offers: (offers ?? []).map((o) => ({
         id: o.id,
@@ -305,9 +296,12 @@ export const getMyP2p = createServerFn({ method: "GET" })
         terms: o.terms,
         windowMinutes: o.window_minutes,
         active: o.active,
-        verified: fresh[o.id] ?? Number(o.verified_balance),
-        shown: ranges[o.id] ?? null,
-        pocketBlocker: o.side === "buy" ? null : (pocket[o.asset] ?? null),
+        /** Last saved check; checkMyP2pPockets replaces it with a live read. */
+        verified: Number(o.verified_balance),
+        shown: null as ReturnType<typeof offerRange> | null,
+        pocketBlocker: null as string | null,
+        /** True until the live pocket check for this sell ad has come back. */
+        checking: o.side !== "buy",
         instructions: (o.p2p_offer_instructions as { instructions: string } | null)?.instructions ?? "",
       })),
       trades: (trades ?? []).map((t) => ({
@@ -323,6 +317,55 @@ export const getMyP2p = createServerFn({ method: "GET" })
         at: t.created_at,
       })),
     };
+  });
+
+/**
+ * Live pocket check for my own sell ads (the slow part of the desk). Each coin's
+ * pocket is read once and shared by every ad for that coin; each ad's saved
+ * verified balance is updated, and the range buyers see is worked out the same
+ * way as on the marketplace (offerRange).
+ */
+export const checkMyP2pPockets = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const db = await admin();
+    const me = context.userId;
+    const { data: offers } = await db
+      .from("p2p_offers")
+      .select("id, asset, side, price, price_mode, margin_pct, min_fiat, max_fiat")
+      .eq("seller_id", me)
+      .neq("side", "buy");
+    const { pocketStatus, lockedAmount, effectivePrice } = await engine();
+    const assets = [...new Set((offers ?? []).map((o) => o.asset as P2pAsset))];
+    const perAsset: Record<string, { balance: number | null; blocker: string | null; locked: number }> = {};
+    await Promise.all(
+      assets.map(async (a) => {
+        const [st, locked] = await Promise.all([
+          pocketStatus(me, a).catch(() => ({ balance: null, blocker: "Couldn't read your pocket" })),
+          lockedAmount(me, a).catch(() => 0),
+        ]);
+        perAsset[a] = { balance: st.balance, blocker: st.blocker, locked };
+      }),
+    );
+    const now = new Date().toISOString();
+    const out: Record<string, { verified: number; shown: ReturnType<typeof offerRange>; pocketBlocker: string | null }> = {};
+    await Promise.all(
+      (offers ?? []).map(async (o) => {
+        const a = perAsset[o.asset];
+        if (!a) return;
+        const verified = Math.max(0, (a.balance ?? 0) - a.locked);
+        const [price] = await Promise.all([
+          effectivePrice(o).catch(() => 0),
+          db.from("p2p_offers").update({ verified_balance: verified, verified_at: now }).eq("id", o.id),
+        ]);
+        out[o.id] = {
+          verified,
+          shown: offerRange({ side: "sell", minFiat: Number(o.min_fiat), maxFiat: Number(o.max_fiat), available: verified, price }),
+          pocketBlocker: a.blocker,
+        };
+      }),
+    );
+    return out;
   });
 
 export const saveP2pProfile = createServerFn({ method: "POST" })

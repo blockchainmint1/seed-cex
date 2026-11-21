@@ -107,17 +107,24 @@ export type PocketBalance = {
 /** TSD/wrapped coins need a little TXC on the same address for the Omni carrier fee. */
 export const OMNI_CARRIER_FEE_TXC = 0.001;
 
-/** Live balance of one leg at a pocket address. `need` picks the EVM network that can cover it. */
-export async function pocketLegBalance(address: string, leg: LegId, need = 0): Promise<PocketBalance> {
+/**
+ * Live balance of one leg at a pocket address. `need` picks the EVM network that can cover it.
+ * `balanceOnly` skips the TSD/wrapped-coin TXC fee read (feeBalance comes back null) for
+ * callers that only show or reserve the coin itself; anything that sends must leave it off.
+ */
+export async function pocketLegBalance(address: string, leg: LegId, need = 0, opts: { balanceOnly?: boolean } = {}): Promise<PocketBalance> {
   const def = getLeg(leg);
   try {
     if (isOmniLeg(leg)) {
       const { fetchOmniBalance } = await import("@/lib/omni.server");
       const { loadUtxosFor } = await import("@/lib/utxo/io.server");
       const { propertyId } = omniLegAsset(leg);
-      const [omni, utxos] = await Promise.all([fetchOmniBalance(address, propertyId), loadUtxosFor("txc", address).catch(() => [])]);
+      const [omni, utxos] = await Promise.all([
+        fetchOmniBalance(address, propertyId),
+        opts.balanceOnly ? Promise.resolve(null) : loadUtxosFor("txc", address).catch(() => []),
+      ]);
       if (!omni.online) return { balance: null, feeBalance: null, chain: null, reason: "The TEXITcoin node is not reachable" };
-      return { balance: omni.balance, feeBalance: utxos.reduce((s, u) => s + u.amount, 0), chain: null, reason: null };
+      return { balance: omni.balance, feeBalance: utxos ? utxos.reduce((s, u) => s + u.amount, 0) : null, chain: null, reason: null };
     }
     if (def.kind === "utxo") {
       const { loadUtxosFor } = await import("@/lib/utxo/io.server");
