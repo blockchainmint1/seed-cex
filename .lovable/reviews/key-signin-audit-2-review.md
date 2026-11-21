@@ -60,3 +60,7 @@ shows its warning. I can't run MetaMask in my test browser, so this needs a pers
 
 ## What I'd skip
 Nothing. Every point holds up.
+
+## Decisions (Bobby, Nov 21)
+- Fix B: the auditor's version (warn first; fresh authenticator code when two-factor is on), not the stricter refusal.
+- Fix A, the alarm fix and the Solana note: yes, all three.

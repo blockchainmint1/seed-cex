@@ -73,7 +73,8 @@ Manifest (`GET`, 404 when expired or used):
   "type": "seeds-key-signin", "version": 1, "app_name": "Seeds Exchange",
   "origin": "https://seeds.honest.money", "domain": "seeds.honest.money",
   "challenge_id": "…", "challenge": "…", "recipient_pubkey": "<X25519, base64url>",
-  "expires_at": "…", "submit_url": "https://seeds.honest.money/api/public/key-signin/submit",
+  "key_host": "key.seeds.honest.money", "issued_at": "…", "expires_at": "…",
+  "submit_url": "https://seeds.honest.money/api/public/key-signin/submit",
   "kinds": ["coin", "evm", "sol"], "pocket": 1106,
   "request": [{ "chain": "TXC", "path": "m/44'/696969'/1106'", "curve": "secp256k1", "format": "bip32" }, "…"],
   "request_optional": ["…DOGE, BCH, ZEC, XRP, TRX, SOL, DASH, ATOM, RUNE, ADA, XMR…"]
@@ -126,23 +127,37 @@ before wiping. The Seeds side doesn't need any change for that.)*
 1. Connect: EIP-1193 (`window.ethereum`) for browser wallets including Ledger/Trezor inside
    MetaMask, WalletConnect v2 for phone wallets, `window.phantom.solana` for Phantom.
 2. `identity` = the wallet address (EVM `0x…`, Solana base58). `kind` = `"evm"` or `"sol"`.
-   Ask for **two** signatures of `walletPocketMessage(location.host, kind, identity)`. EVM uses
-   `personal_sign`; Solana uses `signMessage` (UTF-8 bytes) — not `signIn`, which lets the wallet
-   add its own fields. **If the two signatures differ, stop**: smart-contract and passkey wallets
-   can't rebuild the same pocket, so explain that and offer the coin route or HME Wallet instead.
+   Ask for **two** signatures of `walletPocketMessage(location.host, kind, identity)`. **If the two
+   signatures differ, stop**: smart-contract, passkey and shared-custody (MPC) wallets can't rebuild
+   the same pocket, so explain that and offer the coin route or HME Wallet instead.
    The message is in the standard **Sign-In with Ethereum (EIP-4361) / Sign-In with Solana**
    layout with every field fixed (fixed nonce, fixed issued-at), so it never changes for a wallet.
    Wallets that understand the layout warn the member when the site asking isn't
    `key.seeds.honest.money` — that warning is the protection against look-alike sites (auditor K1).
+   - **EVM:** `personal_sign` of the UTF-8 text.
+   - **Solana (auditor follow-up):** Phantom and Solflare only check the site for their built-in
+     **sign-in** request, not for `signMessage`. So when the wallet offers it (Wallet Standard
+     `solana:signIn`, or `window.phantom.solana.signIn`), call it with the message's own fields —
+     `domain`, `address`, `statement`, `uri`, `version: "1"`, `chainId: "mainnet"`, `nonce`,
+     `issuedAt` (and `expirationTime` / `resources` when the message has them) — then **check that
+     the returned `signedMessage` bytes equal the UTF-8 of Seeds' message exactly**. If they don't,
+     stop and use `signMessage` instead (a wallet that formats differently must not produce a
+     different pocket). Wallets without `signIn` use `signMessage`; for those, show a line asking the
+     member to check the address bar says `key.seeds.honest.money` before signing.
    **Before launch, confirm in MetaMask, Rabby, Coinbase Wallet and Phantom that the real page
    shows a normal sign-in request and a page on another host shows the mismatch warning.**
 3. `words = walletPocketWords(signatureBytes, location.host)`. EVM: the 65 signature bytes. Solana:
    the 64 bytes.
 4. Show `shortKeyName(kind, identity)` so the member can compare it with the Seeds tab.
-5. `h = await buildHandoff({ manifest, words, kind, identity })`. Then sign `h.message` with the
-   wallet (third prompt): EVM → `personal_sign`, hex signature; Solana → `signMessage`, hex or
-   base58 signature.
-6. POST, then handle `use_pocket` and success the same way as the coin flow.
+5. `h = await buildHandoff({ manifest, words, kind, identity })`. `h.message` is also in the
+   Sign-In with Ethereum / Solana layout (domain = `manifest.key_host`, nonce = the one-time
+   challenge, issued-at / expiration = the request's times, pocket, paths and payload hash listed
+   under `Resources`), so wallets warn on a look-alike page at this step too. Sign it with the wallet
+   (third prompt) exactly like step 2: EVM → `personal_sign`, hex signature; Solana → `signIn` with
+   the byte-for-byte check, else `signMessage`; hex or base58 signature.
+6. POST, then handle `use_pocket` and success the same way as the coin flow. If the answer has
+   `needs_confirm: true`, say: "Finish on the Seeds screen — it will ask you to confirm replacing your
+   pocket keys." (see below).
 
 The pocket depends on the Seeds Key site's **host name**. Never change the host once people use it,
 or their wallets will rebuild a different (empty) pocket. If you ever must move, keep the old host
@@ -153,6 +168,8 @@ working as a recovery page.
 | Status | Body | Meaning |
 | --- | --- | --- |
 | 200 | `{ signed_in: true, new_account, pocket }` | Done |
+| 200 | `{ signed_in: false, needs_confirm: true, pocket }` | This sign-in brought **different** pocket keys than the member's active link. Nothing changed yet: the member was told on Telegram/email, and the Seeds screen must approve (with an authenticator code when they use two-factor) |
+| 503 | `{ error: "Wallet sign-in isn't switched on yet." }` | Seeds has no Seeds Key address configured |
 | 409 | `{ error: "use_pocket", account }` | Derive again on that pocket number |
 | 409 | `{ error: "This key is already linked to an Honest.Money account…" }` | This phrase is already an HME member's linked pocket. They should sign in with Honest.Money |
 | 410 | `{ error: "expired" }` | Start again on Seeds (requests last 10 minutes and work once) |

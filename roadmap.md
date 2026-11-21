@@ -267,5 +267,5 @@
 - [x] K5 hourly clean-up of day-old sign-in requests; K6 admin alarm at 500 coin/wallet sign-ups an hour; K7 unbiased email code
 - [x] K8 test accounts' pocket keys deleted and sign-in blocked
 - [ ] Wallet warnings checked in real MetaMask / Rabby / Coinbase Wallet / Phantom (blocked: Seeds Key page must exist first)
-- [ ] Auditor follow-up (key sign-in): Fix A standard wallet sign-in message, Fix B different-keys sign-in, burst alarm, Solana sign-in button note (blocked: Bobby's decisions)
+- [x] Auditor follow-up (key sign-in): Fix A standard wallet sign-in message, Fix B held key change (auditor's version), burst alarm, Solana sign-in note
 - [ ] Real-wallet test: MetaMask shows its look-alike-site warning on both Seeds Key messages (blocked: Key page built + a person with a real wallet)

@@ -1323,6 +1323,21 @@ export type Database = {
         }
         Relationships: []
       }
+      key_signin_alarm: {
+        Row: {
+          id: number
+          sent_at: string
+        }
+        Insert: {
+          id?: number
+          sent_at?: string
+        }
+        Update: {
+          id?: number
+          sent_at?: string
+        }
+        Relationships: []
+      }
       key_signin_requests: {
         Row: {
           browser_secret_hash: string
@@ -1335,8 +1350,12 @@ export type Database = {
           expires_at: string
           identity_kind: string | null
           ip_hash: string
+          pending_link: Json | null
           recipient_priv_ciphertext: string
           recipient_pubkey: string
+          replace_link_id: string | null
+          replace_tries: number
+          replaced_at: string | null
           user_id: string | null
         }
         Insert: {
@@ -1350,8 +1369,12 @@ export type Database = {
           expires_at: string
           identity_kind?: string | null
           ip_hash: string
+          pending_link?: Json | null
           recipient_priv_ciphertext: string
           recipient_pubkey: string
+          replace_link_id?: string | null
+          replace_tries?: number
+          replaced_at?: string | null
           user_id?: string | null
         }
         Update: {
@@ -1365,8 +1388,12 @@ export type Database = {
           expires_at?: string
           identity_kind?: string | null
           ip_hash?: string
+          pending_link?: Json | null
           recipient_priv_ciphertext?: string
           recipient_pubkey?: string
+          replace_link_id?: string | null
+          replace_tries?: number
+          replaced_at?: string | null
           user_id?: string | null
         }
         Relationships: []

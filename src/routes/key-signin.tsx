@@ -4,9 +4,10 @@ import { useServerFn } from "@tanstack/react-start";
 import { QRCodeSVG } from "qrcode.react";
 import { ExternalLink, KeyRound, ShieldCheck, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { claimKeySignin, startKeySignin } from "@/lib/key-signin/key-signin.functions";
+import { claimKeySignin, confirmKeyReplace, dropKeyReplace, startKeySignin } from "@/lib/key-signin/key-signin.functions";
 import { takeReturnPath } from "@/lib/return-path";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 type Kind = "coin" | "wallet";
 
@@ -30,6 +31,8 @@ export const Route = createFileRoute("/key-signin")({
 
 type Req = { id: string; secret: string; keyPageUrl: string | null; expiresAt: string; pairCode?: string };
 type Ready = { tokenHash: string; isNew: boolean; who: string };
+/** A sign-in that would replace the active pocket link with different keys (held until approved here). */
+type Held = { id: string; secret: string; who: string; needsCode: boolean };
 
 /** The one real Seeds Key address, shown so members can spot a fake (auditor K4). Never changes. */
 const KEY_HOST = "key.seeds.honest.money";
@@ -38,11 +41,15 @@ function KeySignin() {
   const { kind } = Route.useSearch();
   const start = useServerFn(startKeySignin);
   const claim = useServerFn(claimKeySignin);
+  const confirmReplace = useServerFn(confirmKeyReplace);
+  const dropReplace = useServerFn(dropKeyReplace);
   const navigate = useNavigate();
   const [req, setReq] = useState<Req | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [state, setState] = useState<"starting" | "waiting" | "confirm" | "signing" | "expired" | "refused">("starting");
+  const [state, setState] = useState<"starting" | "waiting" | "confirm" | "replace" | "signing" | "expired" | "refused">("starting");
   const [ready, setReady] = useState<Ready | null>(null);
+  const [held, setHeld] = useState<Held | null>(null);
+  const [code, setCode] = useState("");
   const started = useRef<string | null>(null);
 
   async function begin() {
@@ -85,6 +92,13 @@ function KeySignin() {
           setState("confirm");
           return;
         }
+        if (r.status === "replace") {
+          stop = true;
+          sessionStorage.removeItem("seeds-key-req");
+          setHeld({ id: req.id, secret: req.secret, who: r.who, needsCode: r.needsCode });
+          setState("replace");
+          return;
+        }
         if (r.status === "expired" || r.status === "used") { stop = true; sessionStorage.removeItem("seeds-key-req"); setState("expired"); return; }
       } catch (e) {
         setError(e instanceof Error ? e.message : "Sign-in failed");
@@ -111,7 +125,27 @@ function KeySignin() {
 
   function refuse() {
     setReady(null);
+    if (held) void dropReplace({ data: { id: held.id, secret: held.secret, code: null } }).catch(() => undefined);
+    setHeld(null);
     setState("refused");
+  }
+
+  async function approveReplace() {
+    if (!held) return;
+    setError(null);
+    const c = code.replace(/\s+/g, "");
+    if (held.needsCode && !/^\d{6}$/.test(c)) { setError("Enter the 6-digit code from your authenticator app."); return; }
+    setState("signing");
+    try {
+      const r = await confirmReplace({ data: { id: held.id, secret: held.secret, code: held.needsCode ? c : null } });
+      const { error: err } = await supabase.auth.verifyOtp({ type: "magiclink", token_hash: r.tokenHash });
+      if (err) throw err;
+      navigate({ href: takeReturnPath(), replace: true });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Sign-in failed";
+      setError(msg);
+      setState(/ran out|already used|Too many|changed in the meantime|Start again/i.test(msg) ? "expired" : "replace");
+    }
   }
 
   const coin = kind === "coin";
@@ -145,6 +179,28 @@ function KeySignin() {
               <div className="flex flex-wrap gap-2">
                 <Button onClick={() => void openAccount()}>Yes, that's mine — open it</Button>
                 <Button variant="outline" onClick={refuse}>No, that's not mine</Button>
+              </div>
+            </div>
+          ) : null}
+          {state === "replace" && held ? (
+            <div className="space-y-4">
+              <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm">
+                <b>This sign-in would replace your trading-pocket keys.</b> The Seeds Key page signed in as{" "}
+                <b className="font-mono">{held.who}</b>, but brought different pocket keys than the ones Seeds already has.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Your own {coin ? "coin" : "wallet"} always brings the same keys, so this usually means the Seeds Key page you used wasn't the real one
+                ({KEY_HOST}). Seeds has messaged your Telegram and email. If you didn't just do this yourself, choose "No" — nothing changes.
+              </p>
+              {held.needsCode ? (
+                <label className="block max-w-xs text-sm">
+                  Code from your authenticator app
+                  <Input inputMode="numeric" autoComplete="one-time-code" maxLength={7} value={code} onChange={(e) => setCode(e.target.value)} className="mt-1 font-mono tracking-[0.3em]" />
+                </label>
+              ) : null}
+              <div className="flex flex-wrap gap-2">
+                <Button variant="destructive" onClick={() => void approveReplace()}>Yes, it's me — replace my pocket keys</Button>
+                <Button variant="outline" onClick={refuse}>No, keep everything as it is</Button>
               </div>
             </div>
           ) : null}

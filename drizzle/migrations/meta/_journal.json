@@ -421,6 +421,13 @@
       "when": 1795279377194,
       "tag": "0059_coin_and_wallet_signin",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1795282714281,
+      "tag": "0060_key_signin_replace_hold",
+      "breakpoints": true
     }
   ]
 }

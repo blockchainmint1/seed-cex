@@ -48,13 +48,22 @@ export const claimKeySignin = createServerFn({ method: "POST" })
     const { sameDigest, sha256Hex } = await import("./signin.server");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: r } = await supabaseAdmin.from("key_signin_requests")
-      .select("browser_secret_hash, expires_at, consumed_at, user_id, created_account, claimed_at").eq("challenge_id", data.id).maybeSingle();
+      .select("browser_secret_hash, expires_at, consumed_at, user_id, created_account, claimed_at, replace_link_id, pending_link").eq("challenge_id", data.id).maybeSingle();
     if (!r || !sameDigest(r.browser_secret_hash, sha256Hex(data.secret))) return { status: "expired" as const };
     if (r.claimed_at) return { status: "used" as const };
     if (!r.consumed_at || !r.user_id) return { status: new Date(r.expires_at) < new Date() ? ("expired" as const) : ("waiting" as const) };
     const { data: won } = await supabaseAdmin.from("key_signin_requests").update({ claimed_at: new Date().toISOString() })
       .eq("challenge_id", data.id).is("claimed_at", null).select("challenge_id");
     if (!won?.length) return { status: "used" as const };
+    const { isKeyKind, shortKeyName } = await import("./rules");
+    const { data: p } = await supabaseAdmin.from("profiles").select("identity_kind, identity_address").eq("id", r.user_id).maybeSingle();
+    const who = p && isKeyKind(p.identity_kind) && p.identity_address ? shortKeyName(p.identity_kind, p.identity_address) : "this key";
+    // Different pocket keys than the active link: nothing is applied or signed in until this screen approves
+    // (with a fresh authenticator code when the member uses one) — see replace.server.ts.
+    if (r.replace_link_id && r.pending_link) {
+      const { hasTwoFactor } = await import("../two-factor.server");
+      return { status: "replace" as const, who, needsCode: await hasTwoFactor(r.user_id) };
+    }
     const u = await supabaseAdmin.auth.admin.getUserById(r.user_id);
     const email = u.data.user?.email;
     if (!email) throw new Error("Couldn't open your Seeds account. Try again.");
@@ -63,10 +72,46 @@ export const claimKeySignin = createServerFn({ method: "POST" })
     const { alertSignIn } = await import("../alerts.server");
     await alertSignIn({ userId: r.user_id }).catch(() => undefined);
     // Who signed in, so the tab can ask "is this your coin?" before opening the account (auditor K2).
-    const { isKeyKind, shortKeyName } = await import("./rules");
-    const { data: p } = await supabaseAdmin.from("profiles").select("identity_kind, identity_address").eq("id", r.user_id).maybeSingle();
-    const who = p && isKeyKind(p.identity_kind) && p.identity_address ? shortKeyName(p.identity_kind, p.identity_address) : "this key";
     return { status: "ready" as const, tokenHash: link.data.properties.hashed_token, isNew: r.created_account, who };
+  });
+
+const replaceInput = (d: unknown) =>
+  z.object({ id: z.string().regex(/^[a-f0-9]{32}$/), secret: z.string().regex(/^[a-f0-9]{64}$/), code: z.string().regex(/^\d{6}$/).nullable().default(null) }).parse(d);
+
+async function startingScreen(id: string, secret: string) {
+  const { sameDigest, sha256Hex } = await import("./signin.server");
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: r } = await supabaseAdmin.from("key_signin_requests").select("browser_secret_hash, claimed_at, user_id").eq("challenge_id", id).maybeSingle();
+  if (!r || !r.claimed_at || !r.user_id || !sameDigest(r.browser_secret_hash, sha256Hex(secret))) throw new Error("That sign-in ran out. Start again.");
+  return r.user_id;
+}
+
+/** The starting screen approves a held pocket-key change; on success it gets the session like a normal sign-in. */
+export const confirmKeyReplace = createServerFn({ method: "POST" })
+  .inputValidator(replaceInput)
+  .handler(async ({ data }) => {
+    const userId = await startingScreen(data.id, data.secret);
+    const { confirmHeldReplace } = await import("./replace.server");
+    await confirmHeldReplace({ challengeId: data.id, code: data.code });
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const u = await supabaseAdmin.auth.admin.getUserById(userId);
+    const email = u.data.user?.email;
+    if (!email) throw new Error("Couldn't open your Seeds account. Try again.");
+    const link = await supabaseAdmin.auth.admin.generateLink({ type: "magiclink", email });
+    if (link.error || !link.data.properties?.hashed_token || link.data.user?.id !== userId) throw new Error("Couldn't start a session. Try again.");
+    const { alertSignIn } = await import("../alerts.server");
+    await alertSignIn({ userId }).catch(() => undefined);
+    return { tokenHash: link.data.properties.hashed_token };
+  });
+
+/** The starting screen said "not mine": throw the held pocket keys away. */
+export const dropKeyReplace = createServerFn({ method: "POST" })
+  .inputValidator(replaceInput)
+  .handler(async ({ data }) => {
+    await startingScreen(data.id, data.secret);
+    const { dropHeldReplace } = await import("./replace.server");
+    await dropHeldReplace(data.id);
+    return { ok: true };
   });
 
 /** How this account signs in, and whether it still needs a real email. */

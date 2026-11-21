@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
-  cleanEmail, isPlaceholderEmail, keySigninMessage, normalizeIdentity, placeholderEmail, pocketFor,
+  cleanEmail, isPlaceholderEmail, keySigninMessage, keyHostOf, keysDiffer, replaceConfirmProblem, REPLACE_CODE_NEEDED, REPLACE_CODE_TRIES, REPLACE_CONFIRM_MS, normalizeIdentity, placeholderEmail, pocketFor,
   walletPocketMessage, withdrawEmailProblem, checksumEvmAddress, pairingCode, accountEmailProblem,
   ACCOUNT_EMAIL_CODE_NEEDED, shouldAlarmNewAccounts,
 } from "./rules";
@@ -30,6 +30,31 @@ describe("identities", () => {
 });
 
 describe("messages", () => {
+  const W = { domain: "seeds.honest.money", challenge: "c".repeat(48), account: 1106, paths: ["m/44'/696969'/1106'", "m/44'/60'/1106'"], payloadSha: "ff",
+    keyHost: "key.seeds.honest.money", issuedAt: "2026-11-21T17:00:00.000Z", expiresAt: "2026-11-21T17:10:00.000Z" };
+  test("wallet sign-ins use the Sign-In with Ethereum layout bound to the Seeds Key host", () => {
+    const m = keySigninMessage({ ...W, kind: "evm", identity: "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23" });
+    expect(m.split("\n")[0]).toBe("key.seeds.honest.money wants you to sign in with your Ethereum account:");
+    expect(m.split("\n")[1]).toBe(checksumEvmAddress("0x2c7536e3605d9c16a7a3d7b1898e529396a65c23"));
+    expect(m).toContain("\nURI: https://key.seeds.honest.money\n");
+    expect(m).toContain(`\nNonce: ${"c".repeat(48)}\n`);
+    expect(m).toContain("\nExpiration Time: 2026-11-21T17:10:00.000Z\n");
+    expect(m).toContain("\n- urn:seeds:path:m/44'/60'/1106'");
+    expect(m.endsWith("- urn:seeds:payload-sha256:ff")).toBe(true);
+  });
+  test("Solana sign-ins use the same layout with the Solana chain", () => {
+    const m = keySigninMessage({ ...W, kind: "sol", identity: "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM" });
+    expect(m.split("\n")[0]).toBe("key.seeds.honest.money wants you to sign in with your Solana account:");
+    expect(m).toContain("\nChain ID: mainnet\n");
+  });
+  test("a wallet sign-in can't be built without the Seeds Key host", () => {
+    expect(() => keySigninMessage({ ...W, keyHost: undefined, kind: "evm", identity: "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23" })).toThrow();
+  });
+  test("the Seeds Key host comes only from an https address", () => {
+    expect(keyHostOf("https://key.seeds.honest.money")).toBe("key.seeds.honest.money");
+    expect(keyHostOf("http://key.seeds.honest.money")).toBeNull();
+    expect(keyHostOf("")).toBeNull();
+  });
   test("the sign-in message names the site, pocket and payload", () => {
     const m = keySigninMessage({ domain: "seeds.honest.money", challenge: "abc", kind: "coin", identity: "Tx", account: 1106, paths: ["m/44'/696969'/1106'"], payloadSha: "ff" });
     expect(m).toContain("Domain: seeds.honest.money");
@@ -86,11 +111,43 @@ describe("adding an email to a coin / wallet account", () => {
 });
 
 describe("new-account burst alarm", () => {
-  test("pages admins at 500 new coin/wallet accounts in an hour, then every further 500", () => {
-    expect(shouldAlarmNewAccounts(499)).toBe(false);
-    expect(shouldAlarmNewAccounts(500)).toBe(true);
-    expect(shouldAlarmNewAccounts(501)).toBe(false);
-    expect(shouldAlarmNewAccounts(1000)).toBe(true);
+  const NOW = 1_800_000_000_000;
+  test("pages admins at 500 or more new coin/wallet accounts in an hour", () => {
+    expect(shouldAlarmNewAccounts(499, null, NOW)).toBe(false);
+    expect(shouldAlarmNewAccounts(500, null, NOW)).toBe(true);
+    // Two sign-ups finishing together can jump 499 -> 501: still alarms.
+    expect(shouldAlarmNewAccounts(501, null, NOW)).toBe(true);
+  });
+  test("at most once every 10 minutes", () => {
+    expect(shouldAlarmNewAccounts(800, NOW - 9 * 60_000, NOW)).toBe(false);
+    expect(shouldAlarmNewAccounts(800, NOW - 10 * 60_000, NOW)).toBe(true);
+  });
+});
+
+describe("sign-in bringing different pocket keys (auditor follow-up)", () => {
+  const active = { account: 1106, xpubs: { TXC: "xpubA", BTC: "xpubB" } };
+  test("same keys (a normal re-sign-in) are not a key change", () => {
+    expect(keysDiffer(active, { account: 1106, xpubs: { TXC: "xpubA", BTC: "xpubB" } })).toBe(false);
+  });
+  test("adding coins with the existing keys unchanged is not a key change", () => {
+    expect(keysDiffer(active, { account: 1106, xpubs: { TXC: "xpubA", BTC: "xpubB", DOGE: "xpubD" } })).toBe(false);
+  });
+  test("any shared coin with a different key is a key change", () => {
+    expect(keysDiffer(active, { account: 1106, xpubs: { TXC: "xpubEVIL", BTC: "xpubB" } })).toBe(true);
+    expect(keysDiffer(active, { account: 1107, xpubs: active.xpubs })).toBe(true);
+  });
+  const T = 1_800_000_000_000;
+  test("with two-factor on, the change needs a 6-digit authenticator code", () => {
+    expect(replaceConfirmProblem({ claimedMs: T, nowMs: T + 1000, tries: 0, twoFactorOn: true, code: null })).toBe(REPLACE_CODE_NEEDED);
+    expect(replaceConfirmProblem({ claimedMs: T, nowMs: T + 1000, tries: 0, twoFactorOn: true, code: "123456" })).toBeNull();
+  });
+  test("with two-factor off, the screen's yes is enough (the member was already told)", () => {
+    expect(replaceConfirmProblem({ claimedMs: T, nowMs: T + 1000, tries: 0, twoFactorOn: false, code: null })).toBeNull();
+  });
+  test("runs out 10 minutes after the screen collects it, and after 5 wrong codes", () => {
+    expect(replaceConfirmProblem({ claimedMs: T, nowMs: T + REPLACE_CONFIRM_MS + 1, tries: 0, twoFactorOn: false, code: null })).toContain("ran out");
+    expect(replaceConfirmProblem({ claimedMs: T, nowMs: T + 1000, tries: REPLACE_CODE_TRIES, twoFactorOn: true, code: "123456" })).toContain("Too many");
+    expect(REPLACE_CODE_TRIES).toBe(5);
   });
 });
 

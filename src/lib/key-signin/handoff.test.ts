@@ -12,7 +12,7 @@ import { walletPocketMessage } from "./rules";
 const WORDS = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
 
 function manifest(pub: string): KeyManifest {
-  return { type: "seeds-key-signin", version: 1, domain: "seeds.honest.money", challenge_id: "a".repeat(32), challenge: "c".repeat(48), recipient_pubkey: pub, submit_url: "https://seeds.honest.money/api/public/key-signin/submit", expires_at: new Date(Date.now() + 60_000).toISOString(), pocket: 1106 };
+  return { type: "seeds-key-signin", version: 1, domain: "seeds.honest.money", challenge_id: "a".repeat(32), challenge: "c".repeat(48), recipient_pubkey: pub, submit_url: "https://seeds.honest.money/api/public/key-signin/submit", expires_at: new Date(Date.now() + 60_000).toISOString(), pocket: 1106, key_host: "key.seeds.honest.money", issued_at: "2026-11-21T17:00:00.000Z" };
 }
 
 function personalSign(priv: Uint8Array, message: string): string {
@@ -58,6 +58,14 @@ describe("outside-wallet hand-off", () => {
   test("a different Seeds Key site gives a different pocket", () => {
     const sig = hex.decode(pocketSig().slice(2));
     expect(walletPocketWords(sig, "other.example")).not.toBe(walletPocketWords(sig, "key.example"));
+  });
+
+  test("a wallet's sign-in hand-off is the Sign-In with Ethereum layout and verifies", async () => {
+    const kp = newRecipientKeypair();
+    const h = await buildHandoff({ manifest: manifest(kp.pub), words: WORDS, kind: "evm", identity: addr });
+    expect(h.message.startsWith("key.seeds.honest.money wants you to sign in with your Ethereum account:\n")).toBe(true);
+    expect(h.message).toContain(`- urn:seeds:payload-sha256:${payloadSha256(h.body.payload)}`);
+    expect(verifyKeySignature("evm", addr, h.message, personalSign(priv, h.message))).toBe(true);
   });
 
   test("Seeds checks an Ethereum wallet's sign-in signature", () => {

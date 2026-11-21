@@ -37,10 +37,42 @@ export function normalizeIdentity(kind: KeyKind, address: string): string | null
   return /^T[1-9A-HJ-NP-Za-km-z]{25,34}$/.test(a) ? a : null;
 }
 
-/** The exact text the Seeds Key page signs to sign in and hand over one trading pocket. */
+/**
+ * The exact text the Seeds Key page signs to sign in and hand over one trading pocket.
+ *
+ * Coin: Seeds' own text (the Key page signs it itself with the coin's key, no wallet in between).
+ * Wallets (auditor follow-up): the standard Sign-In with Ethereum (EIP-4361) / Sign-In with Solana layout,
+ * so MetaMask, Phantom and friends warn when any site other than the Seeds Key host asks for it. The
+ * one-time challenge is the nonce; the pocket, its paths and the sealed keys' hash are listed as resources.
+ */
 export function keySigninMessage(p: {
   domain: string; challenge: string; kind: KeyKind; identity: string; account: number; paths: string[]; payloadSha: string;
+  /** Seeds Key host (wallet kinds only): the domain wallets check against the page's address. */
+  keyHost?: string; issuedAt?: string; expiresAt?: string;
 }): string {
+  if (p.kind !== "coin") {
+    if (!p.keyHost || !p.issuedAt || !p.expiresAt) throw new Error("wallet sign-in needs the Seeds Key host and request times");
+    const addr = p.kind === "evm" ? checksumEvmAddress(p.identity) : normalizeIdentity("sol", p.identity);
+    if (!addr) throw new Error("bad wallet address");
+    return [
+      `${p.keyHost} wants you to sign in with your ${p.kind === "evm" ? "Ethereum" : "Solana"} account:`,
+      addr,
+      "",
+      `Sign in to Seeds (${p.domain}) and give it the keys to trading pocket ${p.account} only, until I revoke. Signing in moves nothing. Only sign this on ${p.keyHost}.`,
+      "",
+      `URI: https://${p.keyHost}`,
+      "Version: 1",
+      `Chain ID: ${p.kind === "evm" ? "1" : "mainnet"}`,
+      `Nonce: ${p.challenge}`,
+      `Issued At: ${p.issuedAt}`,
+      `Expiration Time: ${p.expiresAt}`,
+      "Resources:",
+      `- https://${p.domain}`,
+      `- urn:seeds:pocket:${p.account}`,
+      ...p.paths.map((x) => `- urn:seeds:path:${x}`),
+      `- urn:seeds:payload-sha256:${p.payloadSha}`,
+    ].join("\n");
+  }
   return [
     "Seeds - Sign in with your key",
     "",
@@ -54,6 +86,12 @@ export function keySigninMessage(p: {
     "",
     "Signing in moves nothing. It gives this site the keys to this trading pocket only, until I revoke.",
   ].join("\n");
+}
+
+/** Host part of the configured Seeds Key address (https only), or null when it isn't set up. */
+export function keyHostOf(url: string | null | undefined): string | null {
+  const m = /^https:\/\/([a-z0-9.-]+(?::\d+)?)(?:\/.*)?$/i.exec(String(url ?? "").trim());
+  return m ? m[1]!.toLowerCase() : null;
 }
 
 /** EIP-55 mixed-case address (Sign-In with Ethereum requires it). */
@@ -125,9 +163,13 @@ export function accountEmailProblem(input: { twoFactorOn: boolean; fresh: boolea
 
 /** New coin / wallet accounts per hour, across all of Seeds, that pages the admins (auditor K6). An alarm, never a block. */
 export const NEW_KEY_ACCOUNTS_ALARM_PER_HOUR = 500;
-/** Alarm once at the threshold and again at every further multiple, so a burst sends a few alerts, not thousands. */
-export function shouldAlarmNewAccounts(countLastHour: number): boolean {
-  return countLastHour >= NEW_KEY_ACCOUNTS_ALARM_PER_HOUR && countLastHour % NEW_KEY_ACCOUNTS_ALARM_PER_HOUR === 0;
+/** Quiet time between alarms, so a burst sends a few alerts, not thousands. */
+export const NEW_KEY_ACCOUNTS_ALARM_GAP_MS = 10 * 60_000;
+/** Alarm whenever the hourly count is at or above the threshold and no alarm went out in the last ten minutes
+ *  (auditor follow-up: an exact-multiple check could be stepped over by two sign-ups finishing together). */
+export function shouldAlarmNewAccounts(countLastHour: number, lastAlarmMs: number | null, nowMs: number): boolean {
+  if (countLastHour < NEW_KEY_ACCOUNTS_ALARM_PER_HOUR) return false;
+  return lastAlarmMs == null || nowMs - lastAlarmMs >= NEW_KEY_ACCOUNTS_ALARM_GAP_MS;
 }
 
 /** Old sign-in requests are deleted after this (the per-network new-account cap looks back one hour). */
@@ -209,4 +251,31 @@ export function startingName(kind: KeyKind, identity: string): string {
 /** The email to show a member, or null for a coin / wallet account that hasn't added one. */
 export function shownEmail(email: string | null | undefined): string | null {
   return isPlaceholderEmail(email) ? null : (email as string);
+}
+
+/**
+ * Does a sign-in bring different pocket keys than the active link? (auditor follow-up)
+ * The same coin or wallet always rebuilds the same keys, so a difference on any coin both links share is a
+ * security event: the swap waits for the member's screen (and a fresh authenticator code when they use one)
+ * and the member is told first. Adding coins with the existing keys unchanged is not a difference.
+ */
+export function keysDiffer(active: { account: number; xpubs: Record<string, string> }, incoming: { account: number; xpubs: Record<string, string> }): boolean {
+  if (active.account !== incoming.account) return true;
+  return Object.keys(active.xpubs).some((k) => k in incoming.xpubs && incoming.xpubs[k] !== active.xpubs[k]);
+}
+
+/** How long the member has, after their screen collects the sign-in, to approve a held key change. */
+export const REPLACE_CONFIRM_MS = 10 * 60_000;
+/** Wrong authenticator codes allowed on a held key change before it is thrown away. */
+export const REPLACE_CODE_TRIES = 5;
+export const REPLACE_CODE_NEEDED = "Enter the 6-digit code from your authenticator app to replace your pocket keys.";
+
+/** Can the held key change go ahead? null = yes; otherwise why not. */
+export function replaceConfirmProblem(i: {
+  claimedMs: number | null; nowMs: number; tries: number; twoFactorOn: boolean; code: string | null;
+}): string | null {
+  if (i.claimedMs == null || i.nowMs - i.claimedMs > REPLACE_CONFIRM_MS) return "That sign-in ran out. Start again.";
+  if (i.tries >= REPLACE_CODE_TRIES) return "Too many wrong codes. Start again.";
+  if (i.twoFactorOn && !(i.code && /^\d{6}$/.test(i.code))) return REPLACE_CODE_NEEDED;
+  return null;
 }

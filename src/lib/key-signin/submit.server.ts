@@ -7,7 +7,7 @@
 import { ACCEPTED_CHAINS, ALLOWED_CHAINS, type LinkChain, chainForPath, checkXprvMatches, linkDomainFor, openSealed, parseExtKey, payloadSha256 } from "../hme-link.server";
 import { replaceProblem } from "../hme-link-rules";
 import { decryptDelegatedKey, encryptDelegatedKey } from "../delegation.server";
-import { NEW_ACCOUNTS_PER_IP_HOUR, NEW_KEY_ACCOUNTS_ALARM_PER_HOUR, shouldAlarmNewAccounts, isKeyKind, keepExistingLink, keySigninMessage, normalizeIdentity, placeholderEmail, pocketFor, startingName, type KeyKind } from "./rules";
+import { NEW_ACCOUNTS_PER_IP_HOUR, NEW_KEY_ACCOUNTS_ALARM_GAP_MS, NEW_KEY_ACCOUNTS_ALARM_PER_HOUR, shouldAlarmNewAccounts, isKeyKind, keepExistingLink, keyHostOf, keySigninMessage, keysDiffer, normalizeIdentity, placeholderEmail, pocketFor, startingName, type KeyKind } from "./rules";
 import { corsJson, ipHash, sha256Hex, verifyKeySignature } from "./signin.server";
 import { requestIp } from "../ip-rate.server";
 
@@ -50,7 +50,13 @@ export async function handleKeySubmit(request: Request): Promise<Response> {
   }
 
   const payloadSha = payloadSha256(b.payload);
-  const expected = keySigninMessage({ domain: linkDomainFor(request), challenge: req.challenge, kind, identity: b.identity_address!.trim(), account: b.account!, paths: b.paths, payloadSha });
+  // Wallet sign-ins use the Sign-In with Ethereum / Solana layout bound to the Seeds Key host.
+  const keyHost = keyHostOf(process.env.SEEDS_KEY_URL);
+  if (kind !== "coin" && !keyHost) return corsJson({ error: "Wallet sign-in isn't switched on yet." }, 503);
+  const expected = keySigninMessage({
+    domain: linkDomainFor(request), challenge: req.challenge, kind, identity: b.identity_address!.trim(), account: b.account!, paths: b.paths, payloadSha,
+    keyHost: keyHost ?? undefined, issuedAt: new Date(req.created_at).toISOString(), expiresAt: new Date(req.expires_at).toISOString(),
+  });
   if (b.message !== expected) return corsJson({ error: "message mismatch", expected }, 400);
   if (!verifyKeySignature(kind, b.identity_address!.trim(), b.message, b.signature)) return corsJson({ error: "bad signature" }, 401);
 
@@ -103,7 +109,12 @@ export async function handleKeySubmit(request: Request): Promise<Response> {
     // Botnet alarm (auditor K6): page the admins when coin/wallet sign-ups across all of Seeds spike. Never blocks.
     const { count: hour } = await supabaseAdmin.from("profiles").select("id", { count: "exact", head: true })
       .in("identity_kind", ["coin", "evm", "sol"]).gte("created_at", since);
-    if (shouldAlarmNewAccounts(hour ?? 0)) {
+    // At or above the level, at most once every ten minutes: claim the single alarm row so only one caller pages.
+    const { data: claimed } = shouldAlarmNewAccounts(hour ?? 0, null, Date.now())
+      ? await supabaseAdmin.from("key_signin_alarm").update({ sent_at: new Date().toISOString() })
+          .eq("id", 1).lt("sent_at", new Date(Date.now() - NEW_KEY_ACCOUNTS_ALARM_GAP_MS).toISOString()).select("id")
+      : { data: null };
+    if (claimed?.length) {
       const { alertAdmins } = await import("../alerts.server");
       await alertAdmins(`⚠️ <b>Seeds admin</b>\n${hour} new coin/wallet accounts in the last hour (alarm level ${NEW_KEY_ACCOUNTS_ALARM_PER_HOUR}). If there's no event running, check Admin → Users for a burst of empty accounts.`).catch(() => undefined);
     }
@@ -116,6 +127,19 @@ export async function handleKeySubmit(request: Request): Promise<Response> {
     { account: b.account!, chains, mode: "access" },
   );
   if (problem) return corsJson({ error: problem }, 409);
+
+  // Different keys than the active link = security event (auditor follow-up): hold the swap until the
+  // member's screen approves it (with a fresh authenticator code when they use one), and tell them first.
+  if (active && keysDiffer({ account: active.account, xpubs: active.xpubs as Record<string, string> }, { account: b.account!, xpubs })) {
+    const pending = { account: b.account!, paths: b.paths, xpubs, identity, key_ciphertext: encryptDelegatedKey(JSON.stringify(keep)) };
+    const { error: he } = await supabaseAdmin.from("key_signin_requests")
+      .update({ user_id: userId, identity_kind: kind, created_account: false, replace_link_id: active.id, pending_link: pending })
+      .eq("challenge_id", b.token);
+    if (he) return corsJson({ error: "store failed" }, 500);
+    const { warnKeyReplaceHeld } = await import("./replace.server");
+    await warnKeyReplaceHeld({ userId, linkId: active.id, kind }).catch((e) => console.error("[key-signin] replace warning failed", e));
+    return corsJson({ linked_to: "Seeds Exchange", signed_in: false, needs_confirm: true, new_account: false, pocket: b.account });
+  }
 
   if (active && active.key_ciphertext) {
     const { twoFactorSinceMs } = await import("../two-factor.server");

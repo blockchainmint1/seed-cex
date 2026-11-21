@@ -11,10 +11,10 @@ export const Route = createFileRoute("/api/public/key-signin/manifest/$id")({
         const { ALLOWED_CHAINS, OPTIONAL_CHAINS, KEY_FORMATS, linkDomainFor } = await import("@/lib/hme-link.server");
         const { POCKET_SPECS, accountPath, FIRST_POCKET } = await import("@/lib/pockets/coins");
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const { pairingCode } = await import("@/lib/key-signin/rules");
+        const { pairingCode, keyHostOf } = await import("@/lib/key-signin/rules");
         if (!/^[A-Za-z0-9_-]{8,64}$/.test(params.id)) return corsJson({ error: "expired" }, 404);
         const { data: r } = await supabaseAdmin.from("key_signin_requests")
-          .select("challenge_id, challenge, recipient_pubkey, expires_at, consumed_at").eq("challenge_id", params.id).maybeSingle();
+          .select("challenge_id, challenge, recipient_pubkey, expires_at, consumed_at, created_at").eq("challenge_id", params.id).maybeSingle();
         if (!r || r.consumed_at || new Date(r.expires_at) < new Date()) return corsJson({ error: "expired" }, 404);
         const origin = new URL(request.url).origin;
         const chain = (c: (typeof ALLOWED_CHAINS)[number] | (typeof OPTIONAL_CHAINS)[number]) => ({
@@ -32,7 +32,11 @@ export const Route = createFileRoute("/api/public/key-signin/manifest/$id")({
           // The Seeds tab shows the same three digits; continue only when they match.
           pairing_code: pairingCode(r.challenge),
           recipient_pubkey: r.recipient_pubkey,
-          expires_at: r.expires_at,
+          // Wallet sign-ins sign these exact values (Sign-In with Ethereum / Solana: domain = key_host,
+          // Issued At = issued_at, Expiration Time = expires_at, Nonce = challenge).
+          key_host: keyHostOf(process.env.SEEDS_KEY_URL),
+          issued_at: new Date(r.created_at).toISOString(),
+          expires_at: new Date(r.expires_at).toISOString(),
           submit_url: `${origin}/api/public/key-signin/submit`,
           kinds: ["coin", "evm", "sol"],
           // Paths are shown for pocket 1106. If submit answers 409 {error:"use_pocket", account:N}, derive again on pocket N.
