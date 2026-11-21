@@ -111,8 +111,10 @@ export const OMNI_CARRIER_FEE_TXC = 0.001;
  * Live balance of one leg at a pocket address. `need` picks the EVM network that can cover it.
  * `balanceOnly` skips the TSD/wrapped-coin TXC fee read (feeBalance comes back null) for
  * callers that only show or reserve the coin itself; anything that sends must leave it off.
+ * `display` reads TXC/ISK coins through loadDisplayUtxosFor (explorer index first) — for
+ * balances shown on screen only, never for reserving, settling or sending.
  */
-export async function pocketLegBalance(address: string, leg: LegId, need = 0, opts: { balanceOnly?: boolean } = {}): Promise<PocketBalance> {
+export async function pocketLegBalance(address: string, leg: LegId, need = 0, opts: { balanceOnly?: boolean; display?: boolean } = {}): Promise<PocketBalance> {
   const def = getLeg(leg);
   try {
     if (isOmniLeg(leg)) {
@@ -127,8 +129,8 @@ export async function pocketLegBalance(address: string, leg: LegId, need = 0, op
       return { balance: omni.balance, feeBalance: utxos ? utxos.reduce((s, u) => s + u.amount, 0) : null, chain: null, reason: null };
     }
     if (def.kind === "utxo") {
-      const { loadUtxosFor } = await import("@/lib/utxo/io.server");
-      const utxos = await loadUtxosFor(def.chain as UtxoChainId, address);
+      const { loadUtxosFor, loadDisplayUtxosFor } = await import("@/lib/utxo/io.server");
+      const utxos = await (opts.display ? loadDisplayUtxosFor : loadUtxosFor)(def.chain as UtxoChainId, address);
       const bal = utxos.reduce((s, u) => s + u.amount, 0);
       return { balance: bal, feeBalance: bal, chain: null, reason: null };
     }

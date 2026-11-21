@@ -341,7 +341,7 @@ export const checkMyP2pPockets = createServerFn({ method: "GET" })
     await Promise.all(
       assets.map(async (a) => {
         const [st, locked] = await Promise.all([
-          pocketStatus(me, a).catch(() => ({ balance: null, blocker: "Couldn't read your pocket" })),
+          pocketStatus(me, a, { display: true }).catch(() => ({ balance: null, blocker: "Couldn't read your pocket" })),
           lockedAmount(me, a).catch(() => 0),
         ]);
         perAsset[a] = { balance: st.balance, blocker: st.blocker, locked };

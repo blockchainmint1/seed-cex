@@ -107,15 +107,16 @@ async function loadExplorerUtxos(chain: ExplorerChain, address: string): Promise
 
 /**
  * Coins for showing a balance or watching for deposits — never for picking coins
- * to send. ISK reads the explorer's address index first (fast, many at once) and
- * falls back to our node's full scan; everything else is the same as loadUtxosFor.
+ * to send. TXC and ISK read the explorer's address index first (~150 ms, many at
+ * once) and fall back to our node's full scan (scantxoutset walks the whole coin
+ * set — 18M+ outputs on TXC, ~10 s, one at a time); Litecoin is the same as loadUtxosFor.
  */
 export async function loadDisplayUtxosFor(chain: UtxoChainId, address: string): Promise<Utxo[]> {
-  if (chain === "isk") {
+  if (chain === "isk" || chain === "txc") {
     try {
-      return await loadExplorerUtxos("isk", address);
+      return await loadExplorerUtxos(chain, address);
     } catch (err) {
-      console.error("[isk] explorer read failed, using node", (err as Error).message);
+      console.error(`[${chain}] explorer read failed, using node`, (err as Error).message);
     }
   }
   return loadUtxosFor(chain, address);

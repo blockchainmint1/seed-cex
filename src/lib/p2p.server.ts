@@ -26,14 +26,18 @@ export async function pocketBalance(sellerId: string, asset: P2pAsset): Promise<
   return (await pocketStatus(sellerId, asset)).balance;
 }
 
-/** Balance plus the plain reason it isn't usable (for the seller's own desk). */
-export async function pocketStatus(sellerId: string, asset: P2pAsset): Promise<{ balance: number | null; blocker: string | null }> {
+/**
+ * Balance plus the plain reason it isn't usable. `display` (seller desk, "funds verified"
+ * labels) reads TXC/ISK from the explorer index first; opening/watching a trade leaves it
+ * off and reads our own node.
+ */
+export async function pocketStatus(sellerId: string, asset: P2pAsset, opts: { display?: boolean } = {}): Promise<{ balance: number | null; blocker: string | null }> {
   const { pocketSender, pocketLegBalance } = await import("@/lib/pocket-send/pocket.server");
   const leg = legFor(asset);
   const s = await pocketSender(sellerId, leg);
   if (!s.ok) return { balance: null, blocker: s.reason };
   // Balance only: P2P reserves the coin itself; the actual send re-checks fees.
-  const b = await pocketLegBalance(s.address, leg, 0, { balanceOnly: true });
+  const b = await pocketLegBalance(s.address, leg, 0, { balanceOnly: true, display: opts.display === true });
   return { balance: b.balance, blocker: b.balance === null ? (b.reason ?? "Couldn't read your pocket") : null };
 }
 
@@ -58,8 +62,11 @@ export async function refreshOffer(offerId: string) {
     .maybeSingle();
   if (!offer) return null;
   if (offer.side === "buy") return 0; // buy ads have no coins to verify
-  const bal = await pocketBalance(offer.seller_id, offer.asset as P2pAsset);
-  const locked = await lockedAmount(offer.seller_id, offer.asset);
+  // Display figure only ("funds verified"); openTrade re-reads the pocket from our node.
+  const [{ balance: bal }, locked] = await Promise.all([
+    pocketStatus(offer.seller_id, offer.asset as P2pAsset, { display: true }),
+    lockedAmount(offer.seller_id, offer.asset),
+  ]);
   const available = Math.max(0, (bal ?? 0) - locked);
   await supabaseAdmin
     .from("p2p_offers")
