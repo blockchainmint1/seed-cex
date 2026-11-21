@@ -1,5 +1,9 @@
 # Roadmap
 
+- [x] /admin/marketing panel: one home for coin recruiting, ads and coin videos; old /admin/ads and /admin/videos addresses forward there (Nov 21)
+- [x] Admin → Marketing → Coin recruiting: find coin teams on CoinMarketCap (mid-size, newest, MEXC/LBank/XT/Gate/BingX) or a pasted list (BitMart), score 0–100 with reasons, pipeline stages, AI-drafted outreach a person approves and sends, 10M-pairs goal tracker (Nov 21)
+- [ ] Paste the BitMart stranded-coin list into Admin → Recruiting (blocked: someone gathers the list)
+- [ ] "Who sent you?" on /list + finder payouts for the 20% finder's fee (blocked: Bobby confirms the finder's-fee program)
 - [x] Ad spots (ecosystem + Seeds-listed coins only): homepage spotlight, markets sponsored row, coin-page side card, sponsored news story, slim coin banner + Admin → Ads with view/click counts + /about/ads (Nov 21)
 - [ ] First real ad booked in Admin → Ads, and ad prices per spot (blocked: Bobby's prices and advertisers)
 - [x] Coin market pages, CoinMarketCap-style: recent THORChain trades, cost by trade size, my swaps & orders, global market data, links, other exchanges, news, team-picked videos (Admin → Coin videos) (Nov 20)

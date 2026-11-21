@@ -34,7 +34,7 @@
 - Human API docs live at /api (src/routes/api/index.tsx, markets from PAIRS); machine endpoints stay under /api/public/v1 and /api/public/cmc; /api-docs 301s to /api. Why: one short address for developers; external callers keep the auth-bypassing /api/public prefix.
 - Long legal pages use site/LegalDoc.tsx. Why: consistent layout.
 - Withdrawals (Seeds sends any coin it can sign to an outside address): src/lib/withdraw/AGENTS.md.
-- Seeds AI rules live in src/lib/ai/AGENTS.md. Why: the engine and playbook have their own constraints.
+- Seeds AI: src/lib/ai/AGENTS.md.
 - /admin is a layout (side menu) with child-route tabs; each child server fn still checks admin. Admin access changes only via set_admin_role (admin-users.functions.ts; rules in admin-users-rules.ts, tested): locked, HME members only, no self or last-admin removal, logged. Ignite admin emails (ignite-admin*.ts) are logged in ignite_admin_emails; payment links point to /ignite, never an old checkout. Why: access and payment emails must never be silent or repeatable.
 - DemoBanner renders once in __root above the header (→ /coming-soon); remove at trading launch. Why: one switch.
 - 2FA = sign-in service TOTP (two-factor*.ts); server trusts only session aal2+amr; 2FA levels need it; withdrawals need a link created after the newest verified factor (withdrawLinkState, re-checked at send); admin powers via admin-guard.ts requireAdmin. Why: browsers can't fake it; a hijacked sign-in can't add its own phone and withdraw.
@@ -45,3 +45,4 @@
 - Help center (/help): src/lib/help/AGENTS.md.
 - Homepage hero = src/components/home/GenesisHero.tsx: the video mounts after hydration only where motion is allowed, plays once per browser tab (sessionStorage) and fades to its own extracted last frame; phones, reduced motion and no-JS show the supplied still. Why: no flash or jump between video and still, and no video download on phones.
 - Sponsored spots (homepage spotlight, markets row, coin side card/story/banner): which ads run, where, how many, allowed links and Seeds' own fill-ins only in src/lib/ads/ad-rules.ts (tested); ad_placements is admin-written via ads.functions.ts (pause/end, never delete) and visitors read a column-limited, running-only view; views/clicks are daily totals via /api/public/ad-event (live host, IP-capped). Ads never render on money, account, sign-in or admin pages and never change prices, rankings or AI plans. Why: ads must stay labelled and away from anything that moves coins, with no third-party code or tracking.
+- Admin → Marketing (recruiting, ads, videos): src/lib/recruit/AGENTS.md.

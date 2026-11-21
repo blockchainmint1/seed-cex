@@ -407,6 +407,13 @@
       "when": 1795223199727,
       "tag": "0057_ads_column_privileges",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1795224889307,
+      "tag": "0058_recruit_leads",
+      "breakpoints": true
     }
   ]
 }

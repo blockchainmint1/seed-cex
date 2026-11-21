@@ -2435,6 +2435,196 @@ export type Database = {
         }
         Relationships: []
       }
+      recruit_events: {
+        Row: {
+          actor: string | null
+          created_at: string
+          detail: Json
+          id: string
+          kind: string
+          lead_id: string
+        }
+        Insert: {
+          actor?: string | null
+          created_at?: string
+          detail?: Json
+          id?: string
+          kind: string
+          lead_id: string
+        }
+        Update: {
+          actor?: string | null
+          created_at?: string
+          detail?: Json
+          id?: string
+          kind?: string
+          lead_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recruit_events_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "recruit_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recruit_leads: {
+        Row: {
+          chain: string | null
+          cmc_id: number | null
+          cmc_slug: string | null
+          contact_name: string | null
+          contract: string | null
+          created_at: string
+          created_by: string | null
+          date_added: string | null
+          dedupe_key: string
+          discord: string | null
+          email: string | null
+          facts_at: string | null
+          finder: string | null
+          id: string
+          last_contacted_at: string | null
+          market_cap_usd: number | null
+          name: string
+          notes: string | null
+          num_market_pairs: number | null
+          score: number
+          score_reasons: Json
+          source: string
+          source_detail: string | null
+          stage: string
+          symbol: string
+          tags: string[]
+          telegram: string | null
+          twitter: string | null
+          updated_at: string
+          volume_24h_usd: number | null
+          website: string | null
+        }
+        Insert: {
+          chain?: string | null
+          cmc_id?: number | null
+          cmc_slug?: string | null
+          contact_name?: string | null
+          contract?: string | null
+          created_at?: string
+          created_by?: string | null
+          date_added?: string | null
+          dedupe_key: string
+          discord?: string | null
+          email?: string | null
+          facts_at?: string | null
+          finder?: string | null
+          id?: string
+          last_contacted_at?: string | null
+          market_cap_usd?: number | null
+          name: string
+          notes?: string | null
+          num_market_pairs?: number | null
+          score?: number
+          score_reasons?: Json
+          source: string
+          source_detail?: string | null
+          stage?: string
+          symbol: string
+          tags?: string[]
+          telegram?: string | null
+          twitter?: string | null
+          updated_at?: string
+          volume_24h_usd?: number | null
+          website?: string | null
+        }
+        Update: {
+          chain?: string | null
+          cmc_id?: number | null
+          cmc_slug?: string | null
+          contact_name?: string | null
+          contract?: string | null
+          created_at?: string
+          created_by?: string | null
+          date_added?: string | null
+          dedupe_key?: string
+          discord?: string | null
+          email?: string | null
+          facts_at?: string | null
+          finder?: string | null
+          id?: string
+          last_contacted_at?: string | null
+          market_cap_usd?: number | null
+          name?: string
+          notes?: string | null
+          num_market_pairs?: number | null
+          score?: number
+          score_reasons?: Json
+          source?: string
+          source_detail?: string | null
+          stage?: string
+          symbol?: string
+          tags?: string[]
+          telegram?: string | null
+          twitter?: string | null
+          updated_at?: string
+          volume_24h_usd?: number | null
+          website?: string | null
+        }
+        Relationships: []
+      }
+      recruit_messages: {
+        Row: {
+          ai_written: boolean
+          body: string
+          channel: string
+          created_at: string
+          created_by: string
+          id: string
+          lead_id: string
+          sent_at: string | null
+          sent_by: string | null
+          status: string
+          subject: string | null
+          updated_at: string
+        }
+        Insert: {
+          ai_written?: boolean
+          body: string
+          channel: string
+          created_at?: string
+          created_by: string
+          id?: string
+          lead_id: string
+          sent_at?: string | null
+          sent_by?: string | null
+          status?: string
+          subject?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ai_written?: boolean
+          body?: string
+          channel?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          lead_id?: string
+          sent_at?: string | null
+          sent_by?: string | null
+          status?: string
+          subject?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recruit_messages_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "recruit_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       send_approvals: {
         Row: {
           amount: number

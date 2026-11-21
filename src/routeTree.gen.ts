@@ -81,6 +81,7 @@ import { Route as AuthenticatedAdminAdsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedAdminAiRouteImport } from './routes/_authenticated/admin.ai'
 import { Route as AuthenticatedAdminIgniteRouteImport } from './routes/_authenticated/admin.ignite'
 import { Route as AuthenticatedAdminListingsRouteImport } from './routes/_authenticated/admin.listings'
+import { Route as AuthenticatedAdminMarketingRouteImport } from './routes/_authenticated/admin.marketing'
 import { Route as AuthenticatedAdminMarketsRouteImport } from './routes/_authenticated/admin.markets'
 import { Route as AuthenticatedAdminPlanRouteImport } from './routes/_authenticated/admin.plan'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
@@ -98,6 +99,9 @@ import { Route as AuthenticatedAccountBalancesWithdrawRouteImport } from './rout
 import { Route as AuthenticatedAccountP2pIndexRouteImport } from './routes/_authenticated/account.p2p.index'
 import { Route as AuthenticatedAccountP2pListingsRouteImport } from './routes/_authenticated/account.p2p.listings'
 import { Route as AuthenticatedAccountP2pTradesRouteImport } from './routes/_authenticated/account.p2p.trades'
+import { Route as AuthenticatedAdminMarketingIndexRouteImport } from './routes/_authenticated/admin.marketing.index'
+import { Route as AuthenticatedAdminMarketingAdsRouteImport } from './routes/_authenticated/admin.marketing.ads'
+import { Route as AuthenticatedAdminMarketingVideosRouteImport } from './routes/_authenticated/admin.marketing.videos'
 import { Route as AuthenticatedAdminPlanLbtcRouteImport } from './routes/_authenticated/admin.plan_.lbtc'
 import { Route as AuthenticatedP2pTradeIdRouteImport } from './routes/_authenticated/p2p.trade.$id'
 import { Route as ApiPublicCmcIndexRouteImport } from './routes/api/public/cmc/index'
@@ -509,6 +513,12 @@ const AuthenticatedAdminListingsRoute =
     path: '/listings',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminMarketingRoute =
+  AuthenticatedAdminMarketingRouteImport.update({
+    id: '/marketing',
+    path: '/marketing',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminMarketsRoute =
   AuthenticatedAdminMarketsRouteImport.update({
     id: '/markets',
@@ -603,6 +613,24 @@ const AuthenticatedAccountP2pTradesRoute =
     id: '/trades',
     path: '/trades',
     getParentRoute: () => AuthenticatedAccountP2pRoute,
+  } as any)
+const AuthenticatedAdminMarketingIndexRoute =
+  AuthenticatedAdminMarketingIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedAdminMarketingRoute,
+  } as any)
+const AuthenticatedAdminMarketingAdsRoute =
+  AuthenticatedAdminMarketingAdsRouteImport.update({
+    id: '/ads',
+    path: '/ads',
+    getParentRoute: () => AuthenticatedAdminMarketingRoute,
+  } as any)
+const AuthenticatedAdminMarketingVideosRoute =
+  AuthenticatedAdminMarketingVideosRouteImport.update({
+    id: '/videos',
+    path: '/videos',
+    getParentRoute: () => AuthenticatedAdminMarketingRoute,
   } as any)
 const AuthenticatedAdminPlanLbtcRoute =
   AuthenticatedAdminPlanLbtcRouteImport.update({
@@ -888,6 +916,7 @@ export interface FileRoutesByFullPath {
   '/admin/ai': typeof AuthenticatedAdminAiRoute
   '/admin/ignite': typeof AuthenticatedAdminIgniteRoute
   '/admin/listings': typeof AuthenticatedAdminListingsRoute
+  '/admin/marketing': typeof AuthenticatedAdminMarketingRouteWithChildren
   '/admin/markets': typeof AuthenticatedAdminMarketsRoute
   '/admin/plan': typeof AuthenticatedAdminPlanRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
@@ -905,6 +934,8 @@ export interface FileRoutesByFullPath {
   '/account/balances/withdraw': typeof AuthenticatedAccountBalancesWithdrawRoute
   '/account/p2p/listings': typeof AuthenticatedAccountP2pListingsRoute
   '/account/p2p/trades': typeof AuthenticatedAccountP2pTradesRoute
+  '/admin/marketing/ads': typeof AuthenticatedAdminMarketingAdsRoute
+  '/admin/marketing/videos': typeof AuthenticatedAdminMarketingVideosRoute
   '/admin/plan/lbtc': typeof AuthenticatedAdminPlanLbtcRoute
   '/p2p/trade/$id': typeof AuthenticatedP2pTradeIdRoute
   '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
@@ -939,6 +970,7 @@ export interface FileRoutesByFullPath {
   '/api/public/v1/trades': typeof ApiPublicV1TradesRoute
   '/account/balances/': typeof AuthenticatedAccountBalancesIndexRoute
   '/account/p2p/': typeof AuthenticatedAccountP2pIndexRoute
+  '/admin/marketing/': typeof AuthenticatedAdminMarketingIndexRoute
   '/api/public/cmc/': typeof ApiPublicCmcIndexRoute
   '/api/public/v1/': typeof ApiPublicV1IndexRoute
   '/api/public/cmc/orderbook/$pair': typeof ApiPublicCmcOrderbookPairRoute
@@ -1031,6 +1063,8 @@ export interface FileRoutesByTo {
   '/account/balances/withdraw': typeof AuthenticatedAccountBalancesWithdrawRoute
   '/account/p2p/listings': typeof AuthenticatedAccountP2pListingsRoute
   '/account/p2p/trades': typeof AuthenticatedAccountP2pTradesRoute
+  '/admin/marketing/ads': typeof AuthenticatedAdminMarketingAdsRoute
+  '/admin/marketing/videos': typeof AuthenticatedAdminMarketingVideosRoute
   '/admin/plan/lbtc': typeof AuthenticatedAdminPlanLbtcRoute
   '/p2p/trade/$id': typeof AuthenticatedP2pTradeIdRoute
   '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
@@ -1065,6 +1099,7 @@ export interface FileRoutesByTo {
   '/api/public/v1/trades': typeof ApiPublicV1TradesRoute
   '/account/balances': typeof AuthenticatedAccountBalancesIndexRoute
   '/account/p2p': typeof AuthenticatedAccountP2pIndexRoute
+  '/admin/marketing': typeof AuthenticatedAdminMarketingIndexRoute
   '/api/public/cmc': typeof ApiPublicCmcIndexRoute
   '/api/public/v1': typeof ApiPublicV1IndexRoute
   '/api/public/cmc/orderbook/$pair': typeof ApiPublicCmcOrderbookPairRoute
@@ -1146,6 +1181,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/ai': typeof AuthenticatedAdminAiRoute
   '/_authenticated/admin/ignite': typeof AuthenticatedAdminIgniteRoute
   '/_authenticated/admin/listings': typeof AuthenticatedAdminListingsRoute
+  '/_authenticated/admin/marketing': typeof AuthenticatedAdminMarketingRouteWithChildren
   '/_authenticated/admin/markets': typeof AuthenticatedAdminMarketsRoute
   '/_authenticated/admin/plan': typeof AuthenticatedAdminPlanRoute
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
@@ -1163,6 +1199,8 @@ export interface FileRoutesById {
   '/_authenticated/account/balances/withdraw': typeof AuthenticatedAccountBalancesWithdrawRoute
   '/_authenticated/account/p2p/listings': typeof AuthenticatedAccountP2pListingsRoute
   '/_authenticated/account/p2p/trades': typeof AuthenticatedAccountP2pTradesRoute
+  '/_authenticated/admin/marketing/ads': typeof AuthenticatedAdminMarketingAdsRoute
+  '/_authenticated/admin/marketing/videos': typeof AuthenticatedAdminMarketingVideosRoute
   '/_authenticated/admin/plan_/lbtc': typeof AuthenticatedAdminPlanLbtcRoute
   '/_authenticated/p2p/trade/$id': typeof AuthenticatedP2pTradeIdRoute
   '/api/public/cmc/assets': typeof ApiPublicCmcAssetsRoute
@@ -1197,6 +1235,7 @@ export interface FileRoutesById {
   '/api/public/v1/trades': typeof ApiPublicV1TradesRoute
   '/_authenticated/account/balances/': typeof AuthenticatedAccountBalancesIndexRoute
   '/_authenticated/account/p2p/': typeof AuthenticatedAccountP2pIndexRoute
+  '/_authenticated/admin/marketing/': typeof AuthenticatedAdminMarketingIndexRoute
   '/api/public/cmc/': typeof ApiPublicCmcIndexRoute
   '/api/public/v1/': typeof ApiPublicV1IndexRoute
   '/api/public/cmc/orderbook/$pair': typeof ApiPublicCmcOrderbookPairRoute
@@ -1278,6 +1317,7 @@ export interface FileRouteTypes {
     | '/admin/ai'
     | '/admin/ignite'
     | '/admin/listings'
+    | '/admin/marketing'
     | '/admin/markets'
     | '/admin/plan'
     | '/admin/settings'
@@ -1295,6 +1335,8 @@ export interface FileRouteTypes {
     | '/account/balances/withdraw'
     | '/account/p2p/listings'
     | '/account/p2p/trades'
+    | '/admin/marketing/ads'
+    | '/admin/marketing/videos'
     | '/admin/plan/lbtc'
     | '/p2p/trade/$id'
     | '/api/public/cmc/assets'
@@ -1329,6 +1371,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/trades'
     | '/account/balances/'
     | '/account/p2p/'
+    | '/admin/marketing/'
     | '/api/public/cmc/'
     | '/api/public/v1/'
     | '/api/public/cmc/orderbook/$pair'
@@ -1421,6 +1464,8 @@ export interface FileRouteTypes {
     | '/account/balances/withdraw'
     | '/account/p2p/listings'
     | '/account/p2p/trades'
+    | '/admin/marketing/ads'
+    | '/admin/marketing/videos'
     | '/admin/plan/lbtc'
     | '/p2p/trade/$id'
     | '/api/public/cmc/assets'
@@ -1455,6 +1500,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/trades'
     | '/account/balances'
     | '/account/p2p'
+    | '/admin/marketing'
     | '/api/public/cmc'
     | '/api/public/v1'
     | '/api/public/cmc/orderbook/$pair'
@@ -1535,6 +1581,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/ai'
     | '/_authenticated/admin/ignite'
     | '/_authenticated/admin/listings'
+    | '/_authenticated/admin/marketing'
     | '/_authenticated/admin/markets'
     | '/_authenticated/admin/plan'
     | '/_authenticated/admin/settings'
@@ -1552,6 +1599,8 @@ export interface FileRouteTypes {
     | '/_authenticated/account/balances/withdraw'
     | '/_authenticated/account/p2p/listings'
     | '/_authenticated/account/p2p/trades'
+    | '/_authenticated/admin/marketing/ads'
+    | '/_authenticated/admin/marketing/videos'
     | '/_authenticated/admin/plan_/lbtc'
     | '/_authenticated/p2p/trade/$id'
     | '/api/public/cmc/assets'
@@ -1586,6 +1635,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/trades'
     | '/_authenticated/account/balances/'
     | '/_authenticated/account/p2p/'
+    | '/_authenticated/admin/marketing/'
     | '/api/public/cmc/'
     | '/api/public/v1/'
     | '/api/public/cmc/orderbook/$pair'
@@ -2197,6 +2247,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminListingsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/marketing': {
+      id: '/_authenticated/admin/marketing'
+      path: '/marketing'
+      fullPath: '/admin/marketing'
+      preLoaderRoute: typeof AuthenticatedAdminMarketingRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/markets': {
       id: '/_authenticated/admin/markets'
       path: '/markets'
@@ -2315,6 +2372,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/account/p2p/trades'
       preLoaderRoute: typeof AuthenticatedAccountP2pTradesRouteImport
       parentRoute: typeof AuthenticatedAccountP2pRoute
+    }
+    '/_authenticated/admin/marketing/': {
+      id: '/_authenticated/admin/marketing/'
+      path: '/'
+      fullPath: '/admin/marketing/'
+      preLoaderRoute: typeof AuthenticatedAdminMarketingIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminMarketingRoute
+    }
+    '/_authenticated/admin/marketing/ads': {
+      id: '/_authenticated/admin/marketing/ads'
+      path: '/ads'
+      fullPath: '/admin/marketing/ads'
+      preLoaderRoute: typeof AuthenticatedAdminMarketingAdsRouteImport
+      parentRoute: typeof AuthenticatedAdminMarketingRoute
+    }
+    '/_authenticated/admin/marketing/videos': {
+      id: '/_authenticated/admin/marketing/videos'
+      path: '/videos'
+      fullPath: '/admin/marketing/videos'
+      preLoaderRoute: typeof AuthenticatedAdminMarketingVideosRouteImport
+      parentRoute: typeof AuthenticatedAdminMarketingRoute
     }
     '/_authenticated/admin/plan_/lbtc': {
       id: '/_authenticated/admin/plan_/lbtc'
@@ -2666,12 +2744,33 @@ const AuthenticatedAccountRouteChildren: AuthenticatedAccountRouteChildren = {
 const AuthenticatedAccountRouteWithChildren =
   AuthenticatedAccountRoute._addFileChildren(AuthenticatedAccountRouteChildren)
 
+interface AuthenticatedAdminMarketingRouteChildren {
+  AuthenticatedAdminMarketingAdsRoute: typeof AuthenticatedAdminMarketingAdsRoute
+  AuthenticatedAdminMarketingVideosRoute: typeof AuthenticatedAdminMarketingVideosRoute
+  AuthenticatedAdminMarketingIndexRoute: typeof AuthenticatedAdminMarketingIndexRoute
+}
+
+const AuthenticatedAdminMarketingRouteChildren: AuthenticatedAdminMarketingRouteChildren =
+  {
+    AuthenticatedAdminMarketingAdsRoute: AuthenticatedAdminMarketingAdsRoute,
+    AuthenticatedAdminMarketingVideosRoute:
+      AuthenticatedAdminMarketingVideosRoute,
+    AuthenticatedAdminMarketingIndexRoute:
+      AuthenticatedAdminMarketingIndexRoute,
+  }
+
+const AuthenticatedAdminMarketingRouteWithChildren =
+  AuthenticatedAdminMarketingRoute._addFileChildren(
+    AuthenticatedAdminMarketingRouteChildren,
+  )
+
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminAccountsRoute: typeof AuthenticatedAdminAccountsRoute
   AuthenticatedAdminAdsRoute: typeof AuthenticatedAdminAdsRoute
   AuthenticatedAdminAiRoute: typeof AuthenticatedAdminAiRoute
   AuthenticatedAdminIgniteRoute: typeof AuthenticatedAdminIgniteRoute
   AuthenticatedAdminListingsRoute: typeof AuthenticatedAdminListingsRoute
+  AuthenticatedAdminMarketingRoute: typeof AuthenticatedAdminMarketingRouteWithChildren
   AuthenticatedAdminMarketsRoute: typeof AuthenticatedAdminMarketsRoute
   AuthenticatedAdminPlanRoute: typeof AuthenticatedAdminPlanRoute
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
@@ -2687,6 +2786,8 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminAiRoute: AuthenticatedAdminAiRoute,
   AuthenticatedAdminIgniteRoute: AuthenticatedAdminIgniteRoute,
   AuthenticatedAdminListingsRoute: AuthenticatedAdminListingsRoute,
+  AuthenticatedAdminMarketingRoute:
+    AuthenticatedAdminMarketingRouteWithChildren,
   AuthenticatedAdminMarketsRoute: AuthenticatedAdminMarketsRoute,
   AuthenticatedAdminPlanRoute: AuthenticatedAdminPlanRoute,
   AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
