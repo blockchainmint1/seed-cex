@@ -284,3 +284,5 @@
 - [x] Coin/wallet members never forced to join Honest.Money; optional reminders on Overview, Security and Profile (Bobby, Nov 21)
 - [x] Coin/wallet account pages: own sign-in check, email step, "Turn on withdrawals" steps, "Sign in again with your coin" instead of HME Wallet re-link (Security, Overview, Withdraw, setup guide, withdrawal messages) (Nov 21)
 - [ ] First real coin member walks the withdrawal steps end to end (blocked: Seeds Key page catch-up + auditor + publish)
+- [ ] Always pocket 1106: HME Wallet links refuse other numbers; coin/wallet sign-ins reuse 1106 after a revoke; wording + Seeds Key rules copy (waiting on Bobby's confirm)
+- [ ] Setup guide asks for withdrawal checks (email / two-factor / Telegram) before the wallet step so nobody has to re-link (waiting on Bobby: how many checks, coin re-link approach)
