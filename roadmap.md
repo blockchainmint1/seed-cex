@@ -259,10 +259,11 @@
 - [ ] Build the Seeds Key page itself (blocked: separate project + its web address; guide provided)
 - [x] Seeds Key address = key.seeds.honest.money (Bobby, Nov 21); point the subdomain at the Key page host once built
 
-## Key sign-in auditor review (Nov 21) — waiting on Bobby's go-ahead
-- [ ] K1 standard Sign-In-with-Ethereum/Solana format for the wallet-pocket message (before anyone uses it)
-- [ ] K2 match code on both screens + "is this your coin?" confirm
-- [ ] K3 2FA code + Telegram notice when adding an email
-- [ ] K4 one-true-address wording on sign-in + Help center; verifiable-build rules in the Key page guide
-- [ ] K5 daily clean-up of old sign-in requests; K6 admin alarm on account bursts; K7 unbiased email code
-- [ ] K8 revoke + block the two test accounts
+## Key sign-in auditor review (Nov 21) — built in preview, waiting on the auditor
+- [x] K1 wallet-pocket message in the standard Sign-In with Ethereum/Solana layout (Bobby: no Seeds-held secret)
+- [x] K2 match code on both screens + "is this your coin?" confirm
+- [x] K3 2FA code + Telegram notice when adding an email (Bobby: no 24-hour wait)
+- [x] K4 one-true-address wording on sign-in + Help center guide; verifiable-build rules in the Key page guide
+- [x] K5 hourly clean-up of day-old sign-in requests; K6 admin alarm at 500 coin/wallet sign-ups an hour; K7 unbiased email code
+- [x] K8 test accounts' pocket keys deleted and sign-in blocked
+- [ ] Wallet warnings checked in real MetaMask / Rabby / Coinbase Wallet / Phantom (blocked: Seeds Key page must exist first)

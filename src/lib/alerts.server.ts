@@ -130,6 +130,31 @@ export async function alertSignIn(input: { userId: string; email?: string | null
   );
 }
 
+/** A coin / wallet account added an email (it now receives withdrawal codes). Security notice: sent whatever the alert settings. */
+export async function alertAccountEmailAdded(input: { userId: string; email: string }): Promise<void> {
+  const { sendTelegram, telegramConfigured } = await import("@/lib/telegram.server");
+  if (!telegramConfigured()) return;
+  const { data } = await supabaseAdmin.from("profiles").select("telegram_chat_id, telegram_verified").eq("id", input.userId).maybeSingle();
+  if (!data?.telegram_chat_id || data.telegram_verified !== true) return;
+  await sendTelegram(
+    String(data.telegram_chat_id),
+    `📧 <b>Seeds</b>\nYour account email is now <b>${esc(input.email)}</b>. Seeds sends withdrawal codes there.\nIf that wasn't you, revoke Seeds' access in Security right away and contact help.honest.money.\n\n<a href="${SITE}/account/security">Open Security</a>`,
+  );
+}
+
+/** Security alarms for every admin's verified Telegram chat (whatever their alert settings). */
+export async function alertAdmins(text: string): Promise<void> {
+  const { sendTelegram, telegramConfigured } = await import("@/lib/telegram.server");
+  if (!telegramConfigured()) return;
+  const { data: admins } = await supabaseAdmin.from("user_roles").select("user_id").eq("role", "admin");
+  const ids = (admins ?? []).map((a) => a.user_id);
+  if (!ids.length) return;
+  const { data: chats } = await supabaseAdmin.from("profiles").select("telegram_chat_id, telegram_verified").in("id", ids);
+  for (const c of chats ?? []) {
+    if (c.telegram_chat_id && c.telegram_verified === true) await sendTelegram(String(c.telegram_chat_id), text).catch(() => undefined);
+  }
+}
+
 /* --------------------------------- deposits ------------------------------- */
 
 async function remember(userId: string, s: Sighting): Promise<void> {

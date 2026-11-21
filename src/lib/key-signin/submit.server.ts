@@ -7,7 +7,7 @@
 import { ACCEPTED_CHAINS, ALLOWED_CHAINS, type LinkChain, chainForPath, checkXprvMatches, linkDomainFor, openSealed, parseExtKey, payloadSha256 } from "../hme-link.server";
 import { replaceProblem } from "../hme-link-rules";
 import { decryptDelegatedKey, encryptDelegatedKey } from "../delegation.server";
-import { NEW_ACCOUNTS_PER_IP_HOUR, isKeyKind, keepExistingLink, keySigninMessage, normalizeIdentity, placeholderEmail, pocketFor, startingName, type KeyKind } from "./rules";
+import { NEW_ACCOUNTS_PER_IP_HOUR, NEW_KEY_ACCOUNTS_ALARM_PER_HOUR, shouldAlarmNewAccounts, isKeyKind, keepExistingLink, keySigninMessage, normalizeIdentity, placeholderEmail, pocketFor, startingName, type KeyKind } from "./rules";
 import { corsJson, ipHash, sha256Hex, verifyKeySignature } from "./signin.server";
 import { requestIp } from "../ip-rate.server";
 
@@ -100,6 +100,13 @@ export async function handleKeySubmit(request: Request): Promise<Response> {
       return corsJson({ error: "This key already has a Seeds account. Try again." }, 409);
     }
     created = true;
+    // Botnet alarm (auditor K6): page the admins when coin/wallet sign-ups across all of Seeds spike. Never blocks.
+    const { count: hour } = await supabaseAdmin.from("profiles").select("id", { count: "exact", head: true })
+      .in("identity_kind", ["coin", "evm", "sol"]).gte("created_at", since);
+    if (shouldAlarmNewAccounts(hour ?? 0)) {
+      const { alertAdmins } = await import("../alerts.server");
+      await alertAdmins(`⚠️ <b>Seeds admin</b>\n${hour} new coin/wallet accounts in the last hour (alarm level ${NEW_KEY_ACCOUNTS_ALARM_PER_HOUR}). If there's no event running, check Admin → Users for a burst of empty accounts.`).catch(() => undefined);
+    }
   }
 
   const { data: active } = await supabaseAdmin.from("hme_links").select("id, account, paths, mode, key_ciphertext, xpubs, created_at")

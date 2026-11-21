@@ -7,6 +7,8 @@
  * the Seeds Key page reduces it, on the device, to a sign-in signature plus
  * the keys to one trading pocket, in the same sealed format HME Wallet uses.
  */
+import { sha256 } from "@noble/hashes/sha2.js";
+import { keccak_256 } from "@noble/hashes/sha3.js";
 import { FIRST_POCKET, LAST_POCKET } from "../pockets/coins";
 
 export type KeyKind = "coin" | "evm" | "sol";
@@ -54,22 +56,82 @@ export function keySigninMessage(p: {
   ].join("\n");
 }
 
+/** EIP-55 mixed-case address (Sign-In with Ethereum requires it). */
+export function checksumEvmAddress(address: string): string | null {
+  if (!/^0x[0-9a-fA-F]{40}$/.test(address)) return null;
+  const lower = address.slice(2).toLowerCase();
+  const h = keccak_256(new TextEncoder().encode(lower));
+  let out = "0x";
+  for (let i = 0; i < 40; i++) {
+    const nib = (h[i >> 1]! >> (i % 2 === 0 ? 4 : 0)) & 0xf;
+    out += nib >= 8 ? lower[i]!.toUpperCase() : lower[i]!;
+  }
+  return out;
+}
+
 /**
- * The fixed text an outside wallet signs to rebuild its Seeds pocket (outside-wallet path only).
- * It never changes for a given Seeds Key site, so the same wallet always gets the same pocket.
- * Bound to the Seeds Key host so a look-alike site's request reads differently.
+ * Fixed fields of the wallet-pocket message. NEVER change any of these once a
+ * member has signed in with an outside wallet: the pocket is rebuilt from this
+ * exact signature, so any change hands them a different, empty pocket.
  */
-export function walletPocketMessage(keyHost: string): string {
+export const WALLET_POCKET_NONCE = "SeedsPocket2";
+export const WALLET_POCKET_ISSUED_AT = "2026-11-21T00:00:00.000Z";
+
+/**
+ * The fixed text an outside wallet signs to rebuild its Seeds pocket (outside-wallet path only),
+ * in the standard Sign-In with Ethereum (EIP-4361) / Sign-In with Solana layout. Wallets that
+ * understand that layout (MetaMask, Rabby, Phantom, …) warn when the site asking for it isn't
+ * `keyHost` — free-form text gets no such check (auditor finding K1). Every field is fixed (no fresh
+ * nonce or time), so the same wallet always produces the same signature and the same pocket.
+ */
+export function walletPocketMessage(keyHost: string, kind: "evm" | "sol", address: string): string {
+  const addr = kind === "evm" ? checksumEvmAddress(address) : normalizeIdentity("sol", address);
+  if (!addr) throw new Error("bad wallet address");
   return [
-    "Seeds Key - unlock my Seeds trading pocket",
+    `${keyHost} wants you to sign in with your ${kind === "evm" ? "Ethereum" : "Solana"} account:`,
+    addr,
     "",
-    `Site: ${keyHost}`,
+    `Open my Seeds trading pocket. Only sign this on ${keyHost}: anyone with this signature can open that pocket. It moves no coins from this wallet.`,
+    "",
+    `URI: https://${keyHost}`,
     "Version: 1",
-    "",
-    "Only sign this on the Seeds Key site above. Anyone with this signature can open your Seeds trading pocket.",
-    "It does not move coins from this wallet.",
+    `Chain ID: ${kind === "evm" ? "1" : "mainnet"}`,
+    `Nonce: ${WALLET_POCKET_NONCE}`,
+    `Issued At: ${WALLET_POCKET_ISSUED_AT}`,
   ].join("\n");
 }
+
+/**
+ * Three-digit match code for one sign-in request (auditor finding K2). The Seeds tab and the
+ * Seeds Key page both show it; the member continues only when they match, so a QR seen over
+ * someone's shoulder (or handed out by a stranger) can't join the wrong coin to the wrong screen.
+ */
+export function pairingCode(challenge: string): string {
+  const h = sha256(new TextEncoder().encode(`seeds-key pairing v1\n${challenge}`));
+  const n = ((h[0]! << 24) | (h[1]! << 16) | (h[2]! << 8) | h[3]!) >>> 0;
+  return String(n % 1000).padStart(3, "0");
+}
+
+/** Short name for the key that signed in, shown on both screens ("Coin TZZC…xsVd"). */
+export function shortKeyName(kind: KeyKind, identity: string): string {
+  return startingName(kind, kind === "evm" ? (checksumEvmAddress(identity) ?? identity) : identity);
+}
+
+/** Adding an email to a coin / wallet account (it becomes a withdrawal factor): needs a fresh code when two-factor is on. */
+export const ACCOUNT_EMAIL_CODE_NEEDED = "Enter the 6-digit code from your authenticator app to add an email.";
+export function accountEmailProblem(input: { twoFactorOn: boolean; fresh: boolean }): string | null {
+  return input.twoFactorOn && !input.fresh ? ACCOUNT_EMAIL_CODE_NEEDED : null;
+}
+
+/** New coin / wallet accounts per hour, across all of Seeds, that pages the admins (auditor K6). An alarm, never a block. */
+export const NEW_KEY_ACCOUNTS_ALARM_PER_HOUR = 500;
+/** Alarm once at the threshold and again at every further multiple, so a burst sends a few alerts, not thousands. */
+export function shouldAlarmNewAccounts(countLastHour: number): boolean {
+  return countLastHour >= NEW_KEY_ACCOUNTS_ALARM_PER_HOUR && countLastHour % NEW_KEY_ACCOUNTS_ALARM_PER_HOUR === 0;
+}
+
+/** Old sign-in requests are deleted after this (the per-network new-account cap looks back one hour). */
+export const KEY_REQUEST_KEEP_MS = 24 * 3600_000;
 
 /**
  * Pocket number a sign-in must use. Same pocket while a link is active;

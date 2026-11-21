@@ -5,6 +5,8 @@ import { confirmAccountEmail, getMyIdentity, requestAccountEmail } from "@/lib/k
 import { IDENTITY_LABEL } from "@/lib/key-signin/rules";
 import { Button } from "@/components/ui/button";
 import { Card, Note, fieldLabel, inputCls } from "@/components/account/ui";
+import { useMyTwoFactor } from "@/components/account/TwoFactorCard";
+import { proveTwoFactor } from "@/components/account/two-factor";
 
 /** Coin / outside-wallet accounts: how they sign in, add an email, join Honest.Money. */
 export function KeyIdentityCard() {
@@ -16,10 +18,20 @@ export function KeyIdentityCard() {
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [sentTo, setSentTo] = useState<string | null>(null);
+  // The email becomes a withdrawal factor, so with two-factor on, adding it needs a fresh code.
+  const twoFactorOn = Boolean(useMyTwoFactor().data);
+  const [tfa, setTfa] = useState("");
   const listener = useRef<((ev: MessageEvent) => void) | null>(null);
   useEffect(() => () => { if (listener.current) window.removeEventListener("message", listener.current); }, []);
 
-  const send = useMutation({ mutationFn: () => ask({ data: { email } }), onSuccess: (r) => setSentTo(r.sentTo) });
+  const send = useMutation({
+    mutationFn: async () => {
+      if (twoFactorOn) await proveTwoFactor(tfa);
+      return ask({ data: { email } });
+    },
+    onSuccess: (r) => setSentTo(r.sentTo),
+    onSettled: () => setTfa(""),
+  });
   const done = useMutation({
     mutationFn: () => confirm({ data: { code } }),
     onSuccess: () => { setSentTo(null); setCode(""); qc.invalidateQueries({ queryKey: ["my-identity"] }); },
@@ -53,14 +65,20 @@ export function KeyIdentityCard() {
 
       {!d.email ? (
         <div className="mt-5 space-y-3 border-t border-border pt-4">
-          <p className="text-sm text-muted-foreground">Add an email to unlock withdrawals. Seeds emails a code for every withdrawal and tells you about account changes.</p>
+          <p className="text-sm text-muted-foreground">Add an email to unlock withdrawals. Seeds emails a code for every withdrawal and tells you about account changes. Your Telegram is told too.</p>
           {!sentTo ? (
             <form className="flex flex-wrap items-end gap-3" onSubmit={(e) => { e.preventDefault(); send.mutate(); }}>
               <label className="block min-w-0 flex-1 sm:max-w-sm">
                 <span className={fieldLabel}>Email</span>
                 <input type="email" required className={`${inputCls} mt-1`} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
               </label>
-              <Button type="submit" disabled={send.isPending}>{send.isPending ? "Sending…" : "Send code"}</Button>
+              {twoFactorOn ? (
+                <label className="block">
+                  <span className={fieldLabel}>Authenticator code</span>
+                  <input inputMode="numeric" maxLength={6} required className={`${inputCls} mt-1 w-36 font-mono`} value={tfa} onChange={(e) => setTfa(e.target.value.replace(/\D/g, ""))} placeholder="123456" />
+                </label>
+              ) : null}
+              <Button type="submit" disabled={send.isPending || (twoFactorOn && tfa.length !== 6)}>{send.isPending ? "Sending…" : "Send code"}</Button>
             </form>
           ) : (
             <form className="flex flex-wrap items-end gap-3" onSubmit={(e) => { e.preventDefault(); done.mutate(); }}>

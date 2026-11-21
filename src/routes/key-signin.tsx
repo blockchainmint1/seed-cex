@@ -28,7 +28,11 @@ export const Route = createFileRoute("/key-signin")({
   component: KeySignin,
 });
 
-type Req = { id: string; secret: string; keyPageUrl: string | null; expiresAt: string };
+type Req = { id: string; secret: string; keyPageUrl: string | null; expiresAt: string; pairCode?: string };
+type Ready = { tokenHash: string; isNew: boolean; who: string };
+
+/** The one real Seeds Key address, shown so members can spot a fake (auditor K4). Never changes. */
+const KEY_HOST = "key.seeds.honest.money";
 
 function KeySignin() {
   const { kind } = Route.useSearch();
@@ -37,7 +41,8 @@ function KeySignin() {
   const navigate = useNavigate();
   const [req, setReq] = useState<Req | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [state, setState] = useState<"starting" | "waiting" | "signing" | "expired">("starting");
+  const [state, setState] = useState<"starting" | "waiting" | "confirm" | "signing" | "expired" | "refused">("starting");
+  const [ready, setReady] = useState<Ready | null>(null);
   const started = useRef<string | null>(null);
 
   async function begin() {
@@ -59,7 +64,7 @@ function KeySignin() {
     started.current = kind;
     try {
       const saved = JSON.parse(sessionStorage.getItem("seeds-key-req") ?? "null") as (Req & { kind: Kind }) | null;
-      if (saved && saved.kind === kind && new Date(saved.expiresAt) > new Date()) { setReq(saved); setState("waiting"); return; }
+      if (saved && saved.kind === kind && saved.pairCode && new Date(saved.expiresAt) > new Date()) { setReq(saved); setState("waiting"); return; }
     } catch { /* start fresh */ }
     void begin();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -73,12 +78,11 @@ function KeySignin() {
       try {
         const r = await claim({ data: { id: req.id, secret: req.secret } });
         if (r.status === "ready") {
+          // Don't open the account yet: show who signed in and let the member say it's them (auditor K2).
           stop = true;
-          setState("signing");
           sessionStorage.removeItem("seeds-key-req");
-          const { error: err } = await supabase.auth.verifyOtp({ type: "magiclink", token_hash: r.tokenHash });
-          if (err) throw err;
-          navigate({ href: r.isNew ? "/welcome" : takeReturnPath(), replace: true });
+          setReady({ tokenHash: r.tokenHash, isNew: r.isNew, who: r.who });
+          setState("confirm");
           return;
         }
         if (r.status === "expired" || r.status === "used") { stop = true; sessionStorage.removeItem("seeds-key-req"); setState("expired"); return; }
@@ -90,6 +94,25 @@ function KeySignin() {
     const t = setTimeout(tick, 1500);
     return () => { stop = true; clearTimeout(t); };
   }, [req, state, claim, navigate]);
+
+  async function openAccount() {
+    if (!ready) return;
+    setState("signing");
+    setError(null);
+    try {
+      const { error: err } = await supabase.auth.verifyOtp({ type: "magiclink", token_hash: ready.tokenHash });
+      if (err) throw err;
+      navigate({ href: ready.isNew ? "/welcome" : takeReturnPath(), replace: true });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Sign-in failed");
+      setState("expired");
+    }
+  }
+
+  function refuse() {
+    setReady(null);
+    setState("refused");
+  }
 
   const coin = kind === "coin";
   return (
@@ -110,7 +133,28 @@ function KeySignin() {
 
         <section className="mt-6 rounded-md border border-border bg-surface p-5">
           {state === "starting" ? <p className="text-sm text-muted-foreground">Getting a one-time sign-in ready…</p> : null}
-          {state === "signing" ? <p className="text-sm text-primary">Signed in. Opening your account…</p> : null}
+          {state === "signing" ? <p className="text-sm text-primary">Opening your account…</p> : null}
+          {state === "confirm" && ready ? (
+            <div className="space-y-4">
+              <p className="text-sm">
+                The Seeds Key page signed in as <b className="font-mono">{ready.who}</b>{ready.isNew ? " — a brand-new Seeds account" : ""}.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Is that the {coin ? "coin you just scanned" : "wallet you just used"}? The Seeds Key page shows the same name. If you didn't just do this yourself, or the name is different, someone else may have used your code — don't continue.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={() => void openAccount()}>Yes, that's mine — open it</Button>
+                <Button variant="outline" onClick={refuse}>No, that's not mine</Button>
+              </div>
+            </div>
+          ) : null}
+          {state === "refused" ? (
+            <div className="space-y-3">
+              <p className="text-sm">Nothing was opened, and nothing was signed into on this screen.</p>
+              <p className="text-sm text-muted-foreground">Start again, and keep the QR code to yourself until you've scanned it.</p>
+              <Button onClick={() => void begin()}>Start again</Button>
+            </div>
+          ) : null}
           {state === "expired" ? (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">That sign-in request ran out or was already used.</p>
@@ -124,10 +168,16 @@ function KeySignin() {
                   <QRCodeSVG value={req.keyPageUrl} size={168} bgColor="transparent" fgColor="currentColor" />
                 </div>
                 <div className="min-w-0 space-y-3 text-sm">
+                  {req.pairCode ? (
+                    <p className="rounded-md border border-primary/40 bg-primary/5 px-3 py-2">
+                      Match code <b className="font-mono text-lg tracking-[0.3em] text-primary">{req.pairCode}</b>
+                      <span className="block text-xs text-muted-foreground">The Seeds Key page shows the same three digits. Only continue there if they match.</span>
+                    </p>
+                  ) : null}
                   <p><b>On a computer?</b> Scan this with your phone's camera to open the Seeds Key page{coin ? ", then scan your coin." : "."}</p>
                   <p><b>On your phone?</b> Open it right here.</p>
                   <Button asChild><a href={req.keyPageUrl}><ExternalLink /> Open Seeds Key</a></Button>
-                  <p className="font-mono text-[11px] text-muted-foreground">Waiting for the Seeds Key page… this works once, for 10 minutes.</p>
+                  <p className="font-mono text-[11px] text-muted-foreground">Waiting for the Seeds Key page… this works once, for 10 minutes. Don't share or show this QR.</p>
                 </div>
               </div>
             ) : (
@@ -136,6 +186,12 @@ function KeySignin() {
           ) : null}
           {error ? <p className="mt-3 rounded-sm border border-destructive/40 bg-destructive/10 px-3 py-2 font-mono text-xs text-destructive">{error}</p> : null}
         </section>
+
+        <p className="mt-6 rounded-md border border-border bg-surface px-4 py-3 text-sm">
+          The real Seeds Key page is only ever <b className="font-mono">{KEY_HOST}</b>, and Seeds always opens it for you from this screen.
+          Never type it in yourself, and never scan a Seeds Key QR or link that someone else gives you.{" "}
+          <Link to="/help/$slug" params={{ slug: "start-with-coin" }} className="text-primary underline-offset-4 hover:underline">How it works</Link>
+        </p>
 
         <ul className="mt-6 space-y-2 text-sm text-muted-foreground">
           <li className="flex gap-2"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />Seeds only gets the keys to your trading pocket, the same as an HME Wallet link. You can revoke them any time in Account → Security.</li>

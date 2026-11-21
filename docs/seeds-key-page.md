@@ -30,7 +30,30 @@ covers the other side.
   The manifest's `submit_url` must have the same origin as the manifest URL. Without this, a
   look-alike site could hand the page its own manifest and collect pocket keys.
 - Show the site name from the manifest (`app_name`, `origin`) before anything is signed.
+- **Show the match code first.** Before scanning or signing, show `pairingCode(manifest.challenge)`
+  (also sent as `manifest.pairing_code`; they must agree) in large digits with: *"Your Seeds screen
+  shows a match code. Only continue if it's the same three digits. If you didn't start this on your
+  own Seeds screen, stop."* — and a **Continue** button. This stops a stranger's QR (or a QR seen over
+  someone's shoulder) joining the wrong coin to the wrong screen.
+- **Show who is signing in** after the scan / wallet connect: `shortKeyName(kind, identity)` (for
+  example `Coin TZZC…xsVd`). The Seeds tab shows the same name and asks the member to confirm it.
+- If submit answers `409 already used` or `410 expired`, say: *"This sign-in was already used or ran
+  out. If you didn't finish it yourself, someone else may have used your code — on Seeds, tap
+  "No, that's not mine" and start again."*
 - Keep it tiny: two screens (coin, wallet), one success screen.
+
+## Make the page checkable (auditor finding K4)
+
+Members are trusting this page with a whole recovery phrase, so "Seeds never sees the phrase" must
+be checkable, not just promised:
+
+- Static site only (no server code), built reproducibly from a public repository.
+- Publish the SHA-256 of every built file (and the git commit) on the page's own "About" screen and
+  in the repository's README. Anyone can rebuild and compare.
+- Subresource Integrity (`integrity="sha384-…"`) on every script and stylesheet tag.
+- Never offer to *generate* a new phrase for people without a coin — that would be a new custody
+  product and needs its own review.
+- Seeds always opens this page itself (button or QR); members are told never to type the address.
 
 ## Entry point
 
@@ -75,7 +98,9 @@ updates copy straight across.
 | --- | --- |
 | `coinIdentityKey(words)` | private key of TXC `m/44'/696969'/0'/0/0` (the coin's sign-in key — the same address HME Wallet signs links with) |
 | `signTxcMessage(key, message)` | Bitcoin-style signed message → `{ address, signature }` (base64) |
-| `walletPocketWords(signature, host)` | turns a wallet's signature over `walletPocketMessage(host)` into a 24-word pocket phrase |
+| `walletPocketWords(signature, host)` | turns a wallet's signature over `walletPocketMessage(host, kind, address)` into a 24-word pocket phrase |
+| `pairingCode(challenge)` (rules.ts) | the three-digit match code the Seeds tab also shows |
+| `shortKeyName(kind, identity)` (rules.ts) | the short name both screens show, e.g. `Coin TZZC…xsVd` |
 | `buildHandoff({ manifest, words, kind, identity, account? })` | derives every pocket key, seals them, and returns `{ message, body }` ready to sign and POST |
 
 ## Coin flow (`kind=coin`)
@@ -100,13 +125,20 @@ before wiping. The Seeds side doesn't need any change for that.)*
 
 1. Connect: EIP-1193 (`window.ethereum`) for browser wallets including Ledger/Trezor inside
    MetaMask, WalletConnect v2 for phone wallets, `window.phantom.solana` for Phantom.
-2. Ask for **two** signatures of `walletPocketMessage(location.host)`. EVM uses `personal_sign`;
-   Solana uses `signMessage` (UTF-8 bytes). **If the two signatures differ, stop**: smart-contract
-   and passkey wallets can't rebuild the same pocket, so explain that and offer the coin route or
-   HME Wallet instead.
+2. `identity` = the wallet address (EVM `0x…`, Solana base58). `kind` = `"evm"` or `"sol"`.
+   Ask for **two** signatures of `walletPocketMessage(location.host, kind, identity)`. EVM uses
+   `personal_sign`; Solana uses `signMessage` (UTF-8 bytes) — not `signIn`, which lets the wallet
+   add its own fields. **If the two signatures differ, stop**: smart-contract and passkey wallets
+   can't rebuild the same pocket, so explain that and offer the coin route or HME Wallet instead.
+   The message is in the standard **Sign-In with Ethereum (EIP-4361) / Sign-In with Solana**
+   layout with every field fixed (fixed nonce, fixed issued-at), so it never changes for a wallet.
+   Wallets that understand the layout warn the member when the site asking isn't
+   `key.seeds.honest.money` — that warning is the protection against look-alike sites (auditor K1).
+   **Before launch, confirm in MetaMask, Rabby, Coinbase Wallet and Phantom that the real page
+   shows a normal sign-in request and a page on another host shows the mismatch warning.**
 3. `words = walletPocketWords(signatureBytes, location.host)`. EVM: the 65 signature bytes. Solana:
    the 64 bytes.
-4. `identity` = the wallet address (EVM `0x…`, Solana base58). `kind` = `"evm"` or `"sol"`.
+4. Show `shortKeyName(kind, identity)` so the member can compare it with the Seeds tab.
 5. `h = await buildHandoff({ manifest, words, kind, identity })`. Then sign `h.message` with the
    wallet (third prompt): EVM → `personal_sign`, hex signature; Solana → `signMessage`, hex or
    base58 signature.
@@ -142,11 +174,30 @@ Phrase: `abandon abandon abandon abandon abandon abandon abandon abandon abandon
 | Pocket 1106 EVM receive | `0x7231a79714ffD1b9f51216f79762fA38A40b4544` |
 | Pocket 1106 SOL | `DXTivYcF78Vznitg6f8JGXouZwsm3xioik1LGWj2H1jV` |
 
-Outside wallet. EVM private key `4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318`,
-`personal_sign(walletPocketMessage("key.example"))` =
-`0x974236d70f173f89e79c18ef8695f55923b95377e4831b0ce902e8f28b407fb144a55c70ecd32f4c9945c7759e04da2d89f538d317efbc49386abbde0d02c5591c`
+Outside wallet. EVM private key `4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318`
+(address `0x2c7536E3605D9C16a7a3D7b1898e529396a65c23`),
+`personal_sign(walletPocketMessage("key.example", "evm", address))` =
+`0xfb124074c5b142a7fd343341e1b7b0daab2d21761635b82c52e43dbaf9d6d88709a5754319c0595ec99cf2d791c3ee3e02786934a05147f1c79866f3cde4a4511c`
 → `walletPocketWords(…, "key.example")` =
-`recall oil illness fancy announce curtain kiwi body certain blouse drill shock diary purchase fortune arrest police neutral define trash degree tourist adapt scissors`.
+`educate unveil nation talent turtle mother satisfy diesel nerve huge riot disorder video belt romance caught morning escape canoe top crystal various real same`.
+
+The real message for that wallet on the live host reads exactly:
+
+```text
+key.seeds.honest.money wants you to sign in with your Ethereum account:
+0x2c7536E3605D9C16a7a3D7b1898e529396a65c23
+
+Open my Seeds trading pocket. Only sign this on key.seeds.honest.money: anyone with this signature can open that pocket. It moves no coins from this wallet.
+
+URI: https://key.seeds.honest.money
+Version: 1
+Chain ID: 1
+Nonce: SeedsPocket2
+Issued At: 2026-11-21T00:00:00.000Z
+```
+
+(Checked with the official `siwe` parser: it parses, round-trips byte-for-byte and verifies.)
+Match code: `pairingCode("c".repeat(48))` = `673`.
 
 Seeds' own tests (`src/lib/key-signin/handoff.test.ts`) check these values and that Seeds' server
 opens what `buildHandoff` seals.
@@ -159,3 +210,7 @@ signature of a message naming this host, so moving the page would strand their c
 secret `SEEDS_KEY_URL` is already set to it. The "Start with a coin" page links there as soon as the
 secret is present; until the page itself is deployed at that address, the link leads nowhere, so
 deploy the page before announcing the feature.
+
+The wallet message's fixed fields (`WALLET_POCKET_NONCE`, `WALLET_POCKET_ISSUED_AT`, the statement,
+the HKDF label `seeds-key wallet pocket v2`) are permanent for the same reason. Version 1 of the
+message was never used by any member.

@@ -5,7 +5,7 @@
  */
 import type { HelpArticle, HelpCategory, HelpCategoryId, HelpFaq, HelpLink } from "./types";
 
-export const HELP_REVIEWED = "November 20, 2026";
+export const HELP_REVIEWED = "November 21, 2026";
 
 export const HELP_CATEGORIES: HelpCategory[] = [
   { id: "start", title: "Getting started", blurb: "What Seeds is, signing in and the setup guide." },
@@ -86,6 +86,33 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     links: [{ label: "Sign in", to: "/auth" }, { label: "Join Honest.Money", to: "https://honest.money" }],
     related: ["setup-guide", "older-account", "two-factor"],
+  },
+  {
+    slug: "start-with-coin",
+    title: "Start with a coin or your own wallet",
+    summary: "Open Seeds with a Cold Storage Coin or a wallet like MetaMask or Phantom. Seeds never sees your recovery phrase.",
+    category: "start",
+    keywords: ["coin", "cold storage", "qr", "recovery phrase", "seed phrase", "metamask", "phantom", "ledger", "trezor", "wallet", "seeds key", "phishing", "match code"],
+    blocks: [
+      { p: "On the sign-in page, choose **Start with a coin** or **Use another wallet**. Seeds shows a QR code and a three-digit **match code**, then opens the **Seeds Key page** for you." },
+      { note: "The real Seeds Key page is only ever **key.seeds.honest.money**, and Seeds always opens it for you. Never type the address yourself, and never use a Seeds Key QR or link someone else gives you. A fake copy could steal your coin's whole recovery phrase.", tone: "warn" },
+      { steps: [
+        "On Seeds, tap **Start with a coin** (or **Use another wallet**).",
+        "Scan the QR with your phone, or tap **Open Seeds Key** if you're already on your phone.",
+        "Check the Seeds Key page shows the **same three digits** as your Seeds screen. If it doesn't, stop.",
+        "Scan your coin, or sign with your wallet. Your wallet shows a **Sign in** request for key.seeds.honest.money. If your wallet warns that the site doesn't match, stop.",
+        "Back on Seeds, check the name it shows (like Coin TZZC…xsVd) matches the one on the Seeds Key page, then tap **Yes, that's mine**.",
+      ] },
+      { h: "Keep it safe" },
+      { list: [
+        "Treat the coin like cash. Anyone holding it, or a photo of its QR, can open your account.",
+        "Only sign the Seeds message on key.seeds.honest.money. That signature opens your Seeds trading pocket.",
+        "Withdrawals unlock after you add an email in Account → Profile, with two-factor and Telegram like everyone else.",
+      ] },
+      { note: "The Seeds Key page is still being finished. Until it's switched on, sign in with Honest.Money.", tone: "info" },
+    ],
+    links: [{ label: "Start with a coin", to: "/key-signin" }, { label: "Sign in with Honest.Money", to: "/auth" }],
+    related: ["sign-in", "account-safety", "two-factor"],
   },
   {
     slug: "setup-guide",
@@ -291,6 +318,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       { list: [
         "Keep savings in your main HME Wallet. Only keep what you're trading in the trading pocket.",
         "Nobody from Seeds or Honest.Money will ever ask for your recovery phrase, password or an authenticator code.",
+        "The only place to scan a coin for Seeds is key.seeds.honest.money, opened from Seeds' own sign-in page.",
         "Only approve Telegram sends you started yourself.",
       ] },
       { h: "If something looks wrong" },

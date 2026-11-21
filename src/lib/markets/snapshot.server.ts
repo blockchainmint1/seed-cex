@@ -118,6 +118,12 @@ export async function recordMarketSnapshot(): Promise<SnapshotResult> {
     // Week-old shared display copies (mostly balances of members who stopped visiting).
     const { error: cacheErr } = await supabaseAdmin.rpc("shared_cache_prune");
     if (cacheErr) notes.push(`cache prune: ${cacheErr.message}`.slice(0, 200));
+
+    // Day-old coin/wallet sign-in requests (each holds a sealed one-time key; auditor K5).
+    const { KEY_REQUEST_KEEP_MS } = await import("@/lib/key-signin/rules");
+    const { error: keyErr } = await supabaseAdmin.from("key_signin_requests").delete()
+      .lt("expires_at", new Date(Date.now() - KEY_REQUEST_KEEP_MS).toISOString());
+    if (keyErr) notes.push(`key request prune: ${keyErr.message}`.slice(0, 200));
   }
 
   return { bucket, markets, chains, network, rolledUp, prunedRaw, prunedHourly, notes };

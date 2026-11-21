@@ -80,12 +80,13 @@ export function coinIdentityKey(words: string): Uint8Array {
 }
 
 /**
- * Outside wallets: their signature over walletPocketMessage(host) becomes a
+ * Outside wallets: their signature over walletPocketMessage(host, kind, address) becomes a
  * 24-word phrase on the device, and the pocket comes from that phrase.
- * Same wallet + same message → same signature (RFC 6979) → same pocket.
+ * Same wallet + same message → same signature (RFC 6979 / ed25519) → same pocket.
+ * v2 = the Sign-In with Ethereum/Solana message layout (v1 was never used by members).
  */
 export function walletPocketWords(signature: Uint8Array, keyHost: string): string {
-  const entropy = hkdf(sha256, signature, enc.encode("seeds-key wallet pocket v1"), enc.encode(keyHost), 32);
+  const entropy = hkdf(sha256, signature, enc.encode("seeds-key wallet pocket v2"), enc.encode(keyHost), 32);
   try { return entropyToMnemonic(entropy, wordlist); } finally { entropy.fill(0); }
 }
 

@@ -46,13 +46,17 @@ describe("coin hand-off (test vectors for the Seeds Key page)", () => {
 describe("outside-wallet hand-off", () => {
   const priv = hex.decode("4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318");
 
-  test("the same wallet always rebuilds the same pocket", () => {
-    const sig = hex.decode(personalSign(priv, walletPocketMessage("key.example")).slice(2));
-    expect(walletPocketWords(sig, "key.example")).toBe("recall oil illness fancy announce curtain kiwi body certain blouse drill shock diary purchase fortune arrest police neutral define trash degree tourist adapt scissors");
+  const addr = evmAddressFromPubkey(secp256k1.getPublicKey(priv, false));
+  const pocketSig = () => personalSign(priv, walletPocketMessage("key.example", "evm", addr));
+
+  test("the same wallet always rebuilds the same pocket (test vector for the Seeds Key page)", () => {
+    expect(pocketSig()).toBe("0xfb124074c5b142a7fd343341e1b7b0daab2d21761635b82c52e43dbaf9d6d88709a5754319c0595ec99cf2d791c3ee3e02786934a05147f1c79866f3cde4a4511c");
+    expect(pocketSig()).toBe(pocketSig());
+    expect(walletPocketWords(hex.decode(pocketSig().slice(2)), "key.example")).toBe("educate unveil nation talent turtle mother satisfy diesel nerve huge riot disorder video belt romance caught morning escape canoe top crystal various real same");
   });
 
   test("a different Seeds Key site gives a different pocket", () => {
-    const sig = hex.decode(personalSign(priv, walletPocketMessage("key.example")).slice(2));
+    const sig = hex.decode(pocketSig().slice(2));
     expect(walletPocketWords(sig, "other.example")).not.toBe(walletPocketWords(sig, "key.example"));
   });
 

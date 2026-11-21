@@ -11,6 +11,7 @@ export const Route = createFileRoute("/api/public/key-signin/manifest/$id")({
         const { ALLOWED_CHAINS, OPTIONAL_CHAINS, KEY_FORMATS, linkDomainFor } = await import("@/lib/hme-link.server");
         const { POCKET_SPECS, accountPath, FIRST_POCKET } = await import("@/lib/pockets/coins");
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { pairingCode } = await import("@/lib/key-signin/rules");
         if (!/^[A-Za-z0-9_-]{8,64}$/.test(params.id)) return corsJson({ error: "expired" }, 404);
         const { data: r } = await supabaseAdmin.from("key_signin_requests")
           .select("challenge_id, challenge, recipient_pubkey, expires_at, consumed_at").eq("challenge_id", params.id).maybeSingle();
@@ -28,6 +29,8 @@ export const Route = createFileRoute("/api/public/key-signin/manifest/$id")({
           domain: linkDomainFor(request),
           challenge_id: r.challenge_id,
           challenge: r.challenge,
+          // The Seeds tab shows the same three digits; continue only when they match.
+          pairing_code: pairingCode(r.challenge),
           recipient_pubkey: r.recipient_pubkey,
           expires_at: r.expires_at,
           submit_url: `${origin}/api/public/key-signin/submit`,
