@@ -10,6 +10,8 @@
  *  - Then the member's withdrawal level applies: dollar caps and a hold they can cancel.
  */
 
+import { isKeyKind, keyThing, relinkStep, type KeyKind, type SignInKind } from "@/lib/account/sign-in-kind";
+
 /** An emailed code lasts 10 minutes, allows 5 wrong tries, and at most 5 are sent per hour. */
 export const EMAIL_CODE_TTL_MS = 10 * 60_000;
 export const EMAIL_CODE_MAX_TRIES = 5;
@@ -40,7 +42,7 @@ export function withdrawReadiness(i: {
   return "ready";
 }
 
-export const READINESS_TEXT: Record<Exclude<WithdrawReadiness, "ready">, string> = {
+const READINESS_TEXT_HME: Record<Exclude<WithdrawReadiness, "ready">, string> = {
   needs_2fa:
     "Withdrawals need two-factor sign-in. Turn it on in Account → Security, connect Telegram in Account → Alerts, then re-link your HME Wallet. Same pocket, same coins, nothing moves.",
   needs_telegram:
@@ -48,18 +50,36 @@ export const READINESS_TEXT: Record<Exclude<WithdrawReadiness, "ready">, string>
   needs_relink:
     "Your HME Wallet was linked before two-factor and Telegram were both set up, so Seeds won't send withdrawals from it. Re-link it in Account → Security. Same pocket, same coins, nothing moves.",
 };
+export const READINESS_TEXT = READINESS_TEXT_HME;
 
-export function readinessProblem(r: WithdrawReadiness): string | null {
-  return r === "ready" ? null : READINESS_TEXT[r];
+/** Coin / outside-wallet members refresh their pocket link by signing in again with that key. */
+function keyReadinessText(r: Exclude<WithdrawReadiness, "ready">, kind: KeyKind): string {
+  const again = relinkStep(kind);
+  if (r === "needs_2fa") return `Withdrawals need two-factor sign-in. Turn it on in Account → Security, connect Telegram in Account → Alerts, then ${again}. Same pocket, same coins, nothing moves.`;
+  if (r === "needs_telegram") return `Withdrawals need Telegram: every one waits for your tap there. Connect it in Account → Alerts, then ${again}. Same pocket, same coins, nothing moves.`;
+  return `Your trading pocket was set up before two-factor and Telegram were both on, so Seeds won't send withdrawals from it yet. To fix it, ${again}. Same pocket, same coins, nothing moves.`;
 }
+
+export function readinessProblem(r: WithdrawReadiness, kind: SignInKind = "hme"): string | null {
+  if (r === "ready") return null;
+  return isKeyKind(kind) ? keyReadinessText(r, kind) : READINESS_TEXT_HME[r];
+}
+
+/** Coin / wallet accounts start with no real email; Seeds emails a code for every withdrawal. */
+export const NEEDS_EMAIL_TO_WITHDRAW =
+  "Add and confirm an email address in Account → Profile before withdrawing. Seeds emails a code for every withdrawal. (Joining Honest.Money also brings your email.)";
 
 export type LinkLike = { mode: string; hasKey: boolean; address: string | null } | null;
 
 /** First reason Seeds can't send this coin for this member at all (before readiness), or null. */
-export function sendBlocker(p: { link: LinkLike; tester: boolean; frozen: boolean; symbol: string; networkLabel: string }): string | null {
+export function sendBlocker(p: { link: LinkLike; tester: boolean; frozen: boolean; symbol: string; networkLabel: string; kind?: SignInKind }): string | null {
   if (WITHDRAW_PILOT_TESTERS_ONLY && !p.tester) return "Withdrawals from Seeds are open to beta testers first. They open to members after that.";
   if (p.frozen) return "Withdrawals are paused on your account while the Seeds team takes a look. Contact support@honest.money if you didn't expect this.";
-  if (!p.link) return "Link your HME Wallet trading pocket first (Account → Security).";
+  if (!p.link) {
+    return p.kind && isKeyKind(p.kind)
+      ? `You have no active trading pocket. Sign in again with ${keyThing(p.kind)} (Account → Security) to set up a new one.`
+      : "Link your HME Wallet trading pocket first (Account → Security).";
+  }
   if (p.link.mode !== "access" || !p.link.hasKey) return "Your pocket is linked in approve-every-trade mode. Seeds needs instant access to send for you — re-link with instant access.";
   if (!p.link.address) return `Your linked pocket doesn't include ${p.symbol} on ${p.networkLabel}.`;
   return null;

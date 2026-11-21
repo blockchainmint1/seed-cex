@@ -18,7 +18,7 @@ const amt = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 8 
  * Wallet can't hold are still in the pocket we show them and ask for an
  * explicit acknowledgement first.
  */
-export function RevokeSeedsDialog({ extraCoins, pending, onConfirm }: { extraCoins: string[]; pending: boolean; onConfirm: () => void }) {
+export function RevokeSeedsDialog({ extraCoins, pending, onConfirm, keyAccount = false }: { extraCoins: string[]; pending: boolean; onConfirm: () => void; keyAccount?: boolean }) {
   const [open, setOpen] = useState(false);
   const [ack, setAck] = useState(false);
   const read = useServerFn(getMyExtraPocketBalances);
@@ -43,11 +43,19 @@ export function RevokeSeedsDialog({ extraCoins, pending, onConfirm }: { extraCoi
       <AlertDialogContent className="w-[calc(100%-2rem)] max-w-md">
         <AlertDialogHeader>
           <AlertDialogTitle>Revoke Seeds access?</AlertDialogTitle>
-          <AlertDialogDescription>
-            This deletes Seeds’ trading key. It doesn’t move your funds — use Revoke in HME Wallet to move TXC, ISK, BTC, LTC
-            and ETH back and retire this pocket. Withdraw any PLS or pHEX on Seeds first: HME Wallet can’t send on PulseChain,
-            so after a revoke only your recovery phrase in a PulseChain wallet can move them.
-          </AlertDialogDescription>
+          {keyAccount ? (
+            <AlertDialogDescription>
+              This deletes Seeds’ trading key for this pocket. It doesn’t move your funds, but afterwards Seeds can’t trade, swap or
+              withdraw from this pocket for you. Withdraw first if you want your coins somewhere else. Signing in again later sets up
+              a new pocket with a new number; coins left in this one stay under your own key.
+            </AlertDialogDescription>
+          ) : (
+            <AlertDialogDescription>
+              This deletes Seeds’ trading key. It doesn’t move your funds — use Revoke in HME Wallet to move TXC, ISK, BTC, LTC
+              and ETH back and retire this pocket. Withdraw any PLS or pHEX on Seeds first: HME Wallet can’t send on PulseChain,
+              so after a revoke only your recovery phrase in a PulseChain wallet can move them.
+            </AlertDialogDescription>
+          )}
         </AlertDialogHeader>
 
         {extraCoins.length > 0 ? (

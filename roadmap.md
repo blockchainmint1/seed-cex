@@ -281,5 +281,6 @@
 - [ ] One real TXC send and one real TSD send with the new coin double-check before launch (needs a member's Telegram tap)
 
 ## Coin / wallet accounts (Bobby, Nov 21)
-- [ ] Decide when coin/wallet members must join Honest.Money (waiting on Bobby)
-- [ ] Security page wording for coin/wallet accounts: no "Sign-in through Honest.Money" check, "sign in again with your coin" instead of "re-link HME Wallet", show the email step (after Bobby's answer)
+- [x] Coin/wallet members never forced to join Honest.Money; optional reminders on Overview, Security and Profile (Bobby, Nov 21)
+- [x] Coin/wallet account pages: own sign-in check, email step, "Turn on withdrawals" steps, "Sign in again with your coin" instead of HME Wallet re-link (Security, Overview, Withdraw, setup guide, withdrawal messages) (Nov 21)
+- [ ] First real coin member walks the withdrawal steps end to end (blocked: Seeds Key page catch-up + auditor + publish)

@@ -11,6 +11,7 @@ import { fmtCoin } from "@/components/account/use-pocket";
 import { cancelWithdrawalFn, getWithdrawals, requestWithdrawalFn, sendWithdrawalCodeFn } from "@/lib/withdraw/withdraw.functions";
 import { WITHDRAW_STATUS } from "@/lib/withdraw/rules";
 import type { WithdrawCoin } from "@/lib/withdraw/catalog";
+import { isKeyKind, keyThing } from "@/lib/account/sign-in-kind";
 
 /** Shared cache: whether Seeds can send this coin for the member, the rules, and their withdrawals. */
 export function useWithdrawals(key: string | null, enabled: boolean) {
@@ -71,11 +72,17 @@ export function SeedsWithdraw({ coin, from, balance }: { coin: WithdrawCoin; fro
       {d?.blocker ? (
         <div className="space-y-2">
           <Note tone="warn">{d.blocker}</Note>
-          {d.readiness && d.readiness !== "ready" ? (
+          {d.needsEmail ? (
+            <div className="flex flex-wrap gap-2">
+              <Button asChild size="sm" variant="outline"><Link to="/account/profile">Add an email</Link></Button>
+            </div>
+          ) : d.readiness && d.readiness !== "ready" ? (
             <div className="flex flex-wrap gap-2">
               {d.readiness === "needs_2fa" ? <Button asChild size="sm" variant="outline"><Link to="/account/security">Turn on two-factor</Link></Button> : null}
               {d.readiness === "needs_telegram" || d.readiness === "needs_2fa" ? <Button asChild size="sm" variant="outline"><Link to="/account/alerts">Connect Telegram</Link></Button> : null}
-              <Button asChild size="sm" variant="outline"><Link to="/account/security">Re-link HME Wallet</Link></Button>
+              <Button asChild size="sm" variant="outline">
+                <Link to="/account/security">{isKeyKind(d.signIn) ? `Sign in again with ${keyThing(d.signIn)}` : "Re-link HME Wallet"}</Link>
+              </Button>
             </div>
           ) : null}
         </div>

@@ -7,6 +7,7 @@ import { linkEventTitle, shortWallet, type LinkEvent } from "@/lib/hme-link-hist
 import { Card } from "@/components/account/ui";
 import { Button } from "@/components/ui/button";
 import { usePocketLink } from "@/components/account/use-pocket";
+import { useMyIdentity } from "@/components/account/use-identity";
 
 const PAGE = 10;
 const when = (iso: string) =>
@@ -42,17 +43,21 @@ export function LinkHistoryCard() {
   const key = link.data ? `${link.data.id}` : "none";
   const history = useQuery({ queryKey: ["hme-link-history", key], queryFn: () => load(), enabled: !link.isPending });
   const [showAll, setShowAll] = useState(false);
+  const keyKind = useMyIdentity().keyKind;
   const rows = history.data ?? [];
   const shown = showAll ? rows : rows.slice(0, PAGE);
 
   return (
-    <Card title="Wallet link history" desc="Every time your HME Wallet was linked, updated or revoked. Kept permanently, and it can't be edited.">
+    <Card
+      title={keyKind ? "Pocket link history" : "Wallet link history"}
+      desc={keyKind ? "Every time your trading pocket was set up, refreshed by signing in again, or revoked. Kept permanently, and it can't be edited." : "Every time your HME Wallet was linked, updated or revoked. Kept permanently, and it can't be edited."}
+    >
       {history.isPending || link.isPending ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : history.isError ? (
         <p role="alert" className="text-sm text-muted-foreground">Couldn&rsquo;t load your link history. Try again in a minute.</p>
       ) : rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No wallet links yet. When you link your HME Wallet, it shows up here.</p>
+        <p className="text-sm text-muted-foreground">{keyKind ? "No pocket links yet. Each sign-in that sets up your pocket shows up here." : "No wallet links yet. When you link your HME Wallet, it shows up here."}</p>
       ) : (
         <>
           <ol className="divide-y divide-border">

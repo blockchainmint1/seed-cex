@@ -10,6 +10,8 @@ import { CodeField } from "@/components/account/CodeField";
 import { myAuthenticator, proveTwoFactor } from "@/components/account/two-factor";
 import { syncMyTwoFactor } from "@/lib/two-factor.functions";
 import { cleanCode } from "@/lib/two-factor";
+import { useMyIdentity } from "@/components/account/use-identity";
+import { keyThing } from "@/lib/account/sign-in-kind";
 
 export const TWO_FACTOR_QUERY = ["my-two-factor"] as const;
 
@@ -25,6 +27,9 @@ export function TwoFactorCard() {
   const qc = useQueryClient();
   const sync = useServerFn(syncMyTwoFactor);
   const status = useMyTwoFactor();
+  const keyKind = useMyIdentity().keyKind;
+  // HME members re-link HME Wallet; coin / wallet members refresh the link by signing in again with their key.
+  const relink = keyKind ? `sign in again with ${keyThing(keyKind)}` : "re-link your HME Wallet";
   const [setup, setSetup] = useState<Setup | null>(null);
   const [turningOff, setTurningOff] = useState(false);
   const [code, setCode] = useState("");
@@ -66,7 +71,9 @@ export function TwoFactorCard() {
     try {
       const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: setup.factorId, code: c });
       if (error) throw new Error("That code didn't work. Use the newest code in your app and check your phone's clock is set automatically.");
-      await after("Two-factor is on. Now re-link your HME Wallet on this page to allow withdrawals. Every withdrawal will ask for a code.");
+      await after(keyKind
+        ? `Two-factor is on. Next: connect Telegram (Account → Alerts), then ${relink} using the button on this page to allow withdrawals. Every withdrawal will ask for a code.`
+        : "Two-factor is on. Now re-link your HME Wallet on this page to allow withdrawals. Every withdrawal will ask for a code.");
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Couldn't turn it on.");
     } finally { setBusy(false); }
@@ -86,7 +93,7 @@ export function TwoFactorCard() {
       const { error } = await supabase.auth.mfa.unenroll({ factorId: f.id });
       if (error) throw new Error("Couldn't turn it off. Try again with a new code.");
       await supabase.auth.refreshSession().catch(() => null);
-      await after("Two-factor is off. Withdrawals are off until you turn it back on and re-link your HME Wallet.");
+      await after(`Two-factor is off. Withdrawals are off until you turn it back on and ${relink}.`);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Couldn't turn it off.");
     } finally { setBusy(false); }
@@ -96,7 +103,7 @@ export function TwoFactorCard() {
   return (
     <Card
       title="Two-factor sign-in"
-      desc="A 6-digit code from an app on your phone, on top of your Honest.Money sign-in."
+      desc={keyKind ? `A 6-digit code from an app on your phone, on top of signing in with ${keyThing(keyKind)}.` : "A 6-digit code from an app on your phone, on top of your Honest.Money sign-in."}
       right={status.isPending ? null : on
         ? <span className="inline-flex items-center gap-1 font-mono text-xs text-primary uppercase"><ShieldCheck className="h-3.5 w-3.5" /> On</span>
         : <span className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground uppercase"><ShieldOff className="h-3.5 w-3.5" /> Off</span>}
@@ -143,7 +150,7 @@ export function TwoFactorCard() {
           </p>
           {turningOff ? (
             <div className="space-y-3 rounded-sm border border-border p-3">
-              <Note tone="warn">Turning it off stops withdrawals until you turn it back on and re-link your HME Wallet.</Note>
+              <Note tone="warn">Turning it off stops withdrawals until you turn it back on and {relink}.</Note>
               <CodeField id="tf-off-code" value={code} onChange={setCode} />
               {err ? <Note tone="error">{err}</Note> : null}
               <div className="flex flex-wrap gap-2">
@@ -159,7 +166,9 @@ export function TwoFactorCard() {
       ) : (
         <div className="space-y-3">
           <p className="text-sm">
-            Needed for <b>every withdrawal</b>. Turn it on first, then link (or re-link) your HME Wallet. Then someone who gets into your Honest.Money account can't withdraw without your phone and your wallet.
+            {keyKind
+              ? <>Needed for <b>every withdrawal</b>. Turn it on, connect Telegram, then {relink} once. Then someone who gets hold of a Seeds sign-in can't withdraw without your phone and your Telegram.</>
+              : <>Needed for <b>every withdrawal</b>. Turn it on first, then link (or re-link) your HME Wallet. Then someone who gets into your Honest.Money account can't withdraw without your phone and your wallet.</>}
           </p>
           {err ? <Note tone="error">{err}</Note> : null}
           {done ? <Note tone="ok">{done}</Note> : null}

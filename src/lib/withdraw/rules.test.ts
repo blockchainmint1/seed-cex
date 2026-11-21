@@ -119,3 +119,22 @@ describe("every coin Seeds can send", () => {
     expect(withdrawCoin("pHEX", "pulsechain")?.feeCoin).toBe("PLS");
   });
 });
+
+describe("coin and wallet members: withdrawal messages say sign in again (Bobby, Nov 21)", () => {
+  test("coin member is told to sign in again with the coin, never to re-link HME Wallet", () => {
+    for (const r of ["needs_2fa", "needs_telegram", "needs_relink"] as const) {
+      const t = readinessProblem(r, "coin") ?? "";
+      expect(t).toContain("sign in again with your coin");
+      expect(t).not.toContain("HME Wallet");
+    }
+  });
+  test("Ethereum wallet member is told to sign in again with that wallet", () => {
+    expect(readinessProblem("needs_relink", "evm")).toContain("sign in again with your Ethereum wallet");
+  });
+  test("HME members keep the HME Wallet re-link wording", () => {
+    expect(readinessProblem("needs_relink", "hme")).toContain("Re-link it in Account → Security");
+  });
+  test("ready means no message for anyone", () => {
+    expect(readinessProblem("ready", "coin")).toBeNull();
+  });
+});

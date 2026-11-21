@@ -20,9 +20,10 @@ import { freshTwoFactor, type SessionClaims } from "@/lib/two-factor";
 import { WITHDRAW_COINS, withdrawCoin, withdrawCoinByKey, type WithdrawCoin } from "./catalog";
 import {
   amountProblem, codeDigest, detailsDigest, detailsText, EMAIL_CODE_TTL_MS, EMAIL_CODES_PER_HOUR, emailCodeProblem, maskEmail,
-  MAX_WAITING, maybeBroadcast, newEmailCode, parseDestinationTag, parseUnits, readinessProblem, sendBlocker, unitsToNumber, unitsToText,
-  withdrawReadiness, WITHDRAW_PILOT_TESTERS_ONLY,
+  MAX_WAITING, maybeBroadcast, newEmailCode, NEEDS_EMAIL_TO_WITHDRAW, parseDestinationTag, parseUnits, readinessProblem, sendBlocker,
+  unitsToNumber, unitsToText, withdrawReadiness, WITHDRAW_PILOT_TESTERS_ONLY,
 } from "./rules";
+import { isKeyKind, type SignInKind } from "@/lib/account/sign-in-kind";
 
 const SITE = "https://seeds.honest.money";
 const withdrawUrl = (c: WithdrawCoin) => `${SITE}/account/balances/withdraw?coin=${encodeURIComponent(c.symbol)}&network=${c.network}`;
@@ -47,6 +48,18 @@ async function loadLinkSafe(userId: string) {
 async function isTester(userId: string): Promise<boolean> {
   const { data } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", userId).in("role", ["admin", "beta"]).limit(1);
   return Boolean(data?.length);
+}
+
+/** How the member signs in, and (coin / wallet accounts only) whether they have a real email yet. */
+async function signInFor(userId: string): Promise<{ kind: SignInKind; hasEmail: boolean }> {
+  const { data } = await supabaseAdmin.from("profiles").select("identity_kind").eq("id", userId).maybeSingle();
+  const k = data?.identity_kind ?? null;
+  const kind: SignInKind = isKeyKind(k) ? k : "hme";
+  if (!isKeyKind(kind)) return { kind, hasEmail: true };
+  const { isPlaceholderEmail } = await import("@/lib/key-signin/rules");
+  const u = await supabaseAdmin.auth.admin.getUserById(userId);
+  const email = u.data.user?.email ?? null;
+  return { kind, hasEmail: Boolean(email) && !isPlaceholderEmail(email) };
 }
 
 /** Is this link allowed to withdraw (two-factor and Telegram both set up before it was made)? */
@@ -91,18 +104,22 @@ async function tell(userId: string, telegram: string, thing: string, lines: stri
 /** What the withdraw screen needs for one coin (or just the rules when `key` is unknown). */
 export async function withdrawContext(userId: string, tester: boolean, key: string | null) {
   const coin = key ? withdrawCoinByKey(key) : null;
-  const [link, lim, { data }] = await Promise.all([
+  const [link, lim, { data }, who] = await Promise.all([
     loadLinkSafe(userId),
     limitsFor(userId),
     supabaseAdmin.from("pocket_withdrawals").select(ROW_FIELDS).eq("user_id", userId).order("created_at", { ascending: false }).limit(30),
+    signInFor(userId),
   ]);
   const readiness = link ? await readinessFor(userId, link.id) : null;
   const address = coin && link ? link.addresses[coin.pocket] ?? null : null;
-  const blocker = sendBlocker({ link: link ? { mode: link.mode, hasKey: link.hasKey, address: coin ? address : "-" } : null, tester, frozen: lim.frozen, symbol: coin?.symbol ?? "", networkLabel: coin?.networkLabel ?? "" })
-    ?? (readiness ? readinessProblem(readiness) : null);
+  const blocker = sendBlocker({ link: link ? { mode: link.mode, hasKey: link.hasKey, address: coin ? address : "-" } : null, tester, frozen: lim.frozen, symbol: coin?.symbol ?? "", networkLabel: coin?.networkLabel ?? "", kind: who.kind })
+    ?? (!who.hasEmail ? NEEDS_EMAIL_TO_WITHDRAW : null)
+    ?? (readiness ? readinessProblem(readiness, who.kind) : null);
   return {
     blocker,
     readiness,
+    signIn: who.kind,
+    needsEmail: !who.hasEmail,
     pilotTestersOnly: WITHDRAW_PILOT_TESTERS_ONLY,
     limits: { perWithdrawalUsd: lim.perWithdrawalUsd, dailyUsd: lim.dailyUsd, maxWaiting: MAX_WAITING },
     level: { name: lim.tier.name, number: lim.tier.level, setByAdmin: lim.source === "admin", next: nextLevelText(lim) },
@@ -118,11 +135,12 @@ export type WithdrawInput = { symbol: string; network: string; amount: string; t
 async function prepare(userId: string, tester: boolean, input: WithdrawInput) {
   const coin = withdrawCoin(input.symbol, input.network);
   if (!coin) throw new Error("Seeds can't send that coin on that network yet.");
-  const [link, lim] = await Promise.all([loadLinkSafe(userId), limitsFor(userId)]);
+  const [link, lim, who] = await Promise.all([loadLinkSafe(userId), limitsFor(userId), signInFor(userId)]);
   const from = link?.addresses[coin.pocket] ?? null;
-  const block = sendBlocker({ link: link ? { mode: link.mode, hasKey: link.hasKey, address: from } : null, tester, frozen: lim.frozen, symbol: coin.symbol, networkLabel: coin.networkLabel });
+  const block = sendBlocker({ link: link ? { mode: link.mode, hasKey: link.hasKey, address: from } : null, tester, frozen: lim.frozen, symbol: coin.symbol, networkLabel: coin.networkLabel, kind: who.kind });
   if (block) throw new Error(block);
-  const ready = readinessProblem(await readinessFor(userId, link!.id));
+  if (!who.hasEmail) throw new Error(NEEDS_EMAIL_TO_WITHDRAW);
+  const ready = readinessProblem(await readinessFor(userId, link!.id), who.kind);
   if (ready) throw new Error(ready);
   const to = input.to.trim();
   const { destinationProblem, readBalance } = await import("./send.server");

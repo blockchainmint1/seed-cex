@@ -7,6 +7,8 @@ import { fmtCoin, usePocketBalances, usePocketLink } from "@/components/account/
 import { findAsset, findNetwork, withdrawRoute, type DepositNetwork } from "@/lib/account/deposit-options";
 import { SeedsWithdraw } from "@/components/account/SeedsWithdraw";
 import { withdrawCoin } from "@/lib/withdraw/catalog";
+import { useMyIdentity } from "@/components/account/use-identity";
+import { keyThing } from "@/lib/account/sign-in-kind";
 
 type Search = { coin?: string; network?: string };
 
@@ -42,15 +44,20 @@ function Withdraw() {
   const linked = new Set(Object.keys(l?.addresses ?? {}));
   const row = net ? rows.find((r) => r.asset.symbol === asset?.symbol && r.net.id === net.id) : undefined;
   const coin = withdrawCoin(asset?.symbol, net?.id);
+  // Coin / outside-wallet members have no HME Wallet: Seeds is the only way to send, and "re-link" = sign in again.
+  const keyKind = useMyIdentity().keyKind;
 
   return (
     <div className="space-y-5">
       <TabTitle
         title="Withdraw"
-        desc="Seeds can send any coin in your trading pocket to an outside address. Every withdrawal needs a code we email you, your authenticator code and your tap in Telegram, then your level's wait. Coins HME Wallet supports can also be sent from HME Wallet yourself."
+        desc={`Seeds can send any coin in your trading pocket to an outside address. Every withdrawal needs a code we email you, your authenticator code and your tap in Telegram, then your level's wait.${keyKind ? "" : " Coins HME Wallet supports can also be sent from HME Wallet yourself."}`}
       />
       {!link.isPending && !l ? (
-        <Note tone="warn">Link your HME Wallet trading pocket first — <Link to="/account/security" className="text-primary underline">go to Security</Link>.</Note>
+        <Note tone="warn">
+          {keyKind ? `You have no active trading pocket. Sign in again with ${keyThing(keyKind)} to set one up — ` : "Link your HME Wallet trading pocket first — "}
+          <Link to="/account/security" className="text-primary underline">go to Security</Link>.
+        </Note>
       ) : null}
       <div className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-[minmax(0,1fr)_18rem]">
         <Card>
@@ -81,13 +88,15 @@ function Withdraw() {
                   {coin ? (
                     <>
                       <SeedsWithdraw coin={coin} from={row.address} balance={row.balance} />
-                      {withdrawRoute(net) === "hme" ? (
+                      {withdrawRoute(net) === "hme" && !keyKind ? (
                         <details className="rounded-sm border border-border px-3 py-2 text-sm">
                           <summary className="cursor-pointer font-semibold">Or send it yourself from HME Wallet</summary>
                           <div className="mt-3"><Steps net={net} symbol={asset.symbol} account={l.account} /></div>
                         </details>
                       ) : null}
                     </>
+                  ) : keyKind ? (
+                    <Note tone="warn">Seeds can't send {asset.symbol} on {net.label} for you yet. It stays safely in your pocket under your own key.</Note>
                   ) : (
                     <Steps net={net} symbol={asset.symbol} account={l.account} />
                   )}
@@ -99,17 +108,27 @@ function Withdraw() {
         <aside className="space-y-4 text-sm">
           <Card title="How Seeds keeps withdrawals safe">
             <ul className="list-disc space-y-1.5 pl-4 text-muted-foreground">
-              <li>Turn on two-factor and connect Telegram first, then link your HME Wallet. A link made before both can't withdraw — so someone who gets into your sign-in can't add their own phone and take your coins.</li>
+              <li>
+                {keyKind
+                  ? `Add an email, turn on two-factor and connect Telegram, then sign in again with ${keyThing(keyKind)}. A pocket link made before two-factor and Telegram can't withdraw — so someone who gets into your sign-in can't add their own phone and take your coins.`
+                  : "Turn on two-factor and connect Telegram first, then link your HME Wallet. A link made before both can't withdraw — so someone who gets into your sign-in can't add their own phone and take your coins."}
+              </li>
               <li>Every withdrawal: an email code for that exact amount and address, your authenticator code, and your Approve tap in Telegram.</li>
               <li>Then your level's wait (at least 24 hours for members). You get an email straight away and can cancel until it goes out.</li>
               <li>API keys and AI assistants can never withdraw.</li>
             </ul>
           </Card>
           <Card title="Before you revoke">
-            <p className="text-muted-foreground">
-              Withdraw (or swap back to TSD) any DOGE, BCH, XRP, TRX, SOL, PLS or pHEX first. HME Wallet can't send those coins, and after a
-              revoke Seeds deletes its key, so you'd need your recovery phrase in another wallet to move them.
-            </p>
+            {keyKind ? (
+              <p className="text-muted-foreground">
+                Withdraw first. After a revoke Seeds deletes its key for this pocket, so it can't trade, swap or send from it for you any more.
+              </p>
+            ) : (
+              <p className="text-muted-foreground">
+                Withdraw (or swap back to TSD) any DOGE, BCH, XRP, TRX, SOL, PLS or pHEX first. HME Wallet can't send those coins, and after a
+                revoke Seeds deletes its key, so you'd need your recovery phrase in another wallet to move them.
+              </p>
+            )}
           </Card>
         </aside>
       </div>

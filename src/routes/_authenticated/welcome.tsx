@@ -16,6 +16,10 @@ import { useSession } from "@/hooks/use-session";
 import { Button } from "@/components/ui/button";
 import { Card, fieldLabel, inputCls, Note } from "@/components/account/ui";
 import { HmeWalletLinkCard } from "@/components/wallet/HmeWalletLinkCard";
+import { KeyIdentityCard } from "@/components/account/KeyIdentityCard";
+import { SignInAgainButton } from "@/components/account/KeyWithdrawSteps";
+import { useMyIdentity } from "@/components/account/use-identity";
+import { keyThing } from "@/lib/account/sign-in-kind";
 import { usePocketLink } from "@/components/account/use-pocket";
 import { TelegramCard } from "@/components/account/TelegramCard";
 import { TwoFactorCard, useMyTwoFactor } from "@/components/account/TwoFactorCard";
@@ -141,15 +145,17 @@ function Welcome() {
 function Progress({ step, n, of }: { step: OnboardingStep; n: number; of: number }) {
   const steps = ONBOARDING_STEPS.filter((s) => s !== "done");
   const at = ONBOARDING_STEPS.indexOf(step);
+  const keyKind = useMyIdentity().keyKind;
+  const label = (x: OnboardingStep) => (x === "wallet" && keyKind ? "Your pocket" : STEP_LABELS[x]);
   return (
     <div className="mt-4">
-      <p className="text-xs text-muted-foreground"><span className="font-semibold text-foreground">Step {n} of {of}</span> · {STEP_LABELS[step]}</p>
+      <p className="text-xs text-muted-foreground"><span className="font-semibold text-foreground">Step {n} of {of}</span> · {label(step)}</p>
       <ol className="mt-2 grid gap-1.5" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }} aria-label="Setup progress">
         {steps.map((s, i) => (
           <li key={s} className="min-w-0">
             <span aria-hidden className={`block h-1.5 rounded-full ${i <= at ? "bg-primary" : "bg-muted"}`} />
-            <span className={`mt-1.5 hidden truncate text-[11px] md:block ${i === at ? "font-semibold text-foreground" : "text-muted-foreground"}`}>{STEP_LABELS[s]}</span>
-            <span className="sr-only">{STEP_LABELS[s]}{i < at ? " (done)" : i === at ? " (current)" : ""}</span>
+            <span className={`mt-1.5 hidden truncate text-[11px] md:block ${i === at ? "font-semibold text-foreground" : "text-muted-foreground"}`}>{label(s)}</span>
+            <span className="sr-only">{label(s)}{i < at ? " (done)" : i === at ? " (current)" : ""}</span>
           </li>
         ))}
       </ol>
@@ -260,6 +266,26 @@ function StepName({ onNext }: { onNext: () => void }) {
 function StepWallet() {
   const link = usePocketLink();
   const tf = useMyTwoFactor();
+  const keyKind = useMyIdentity().keyKind;
+  if (keyKind) {
+    return (
+      <>
+        <Heading title={link.data || link.isPending ? "Your trading pocket is ready" : "Your trading pocket"}>
+          {link.data || link.isPending
+            ? <>Signing in with {keyThing(keyKind)} already set up your own <b className="text-foreground">trading pocket</b>. Seeds never saw your recovery phrase, and no coins moved.</>
+            : <>Your <b className="text-foreground">trading pocket</b> comes from {keyThing(keyKind)}. Seeds never sees your recovery phrase, and setting it up moves no coins.</>} You can add an email now (withdrawals need one) or join Honest.Money; both are optional for trading.
+        </Heading>
+        {link.data ? <div className="mb-4"><Note tone="ok">Trading pocket #{link.data.account} is set up. You're good to continue.</Note></div> : null}
+        {!link.data && !link.isPending ? (
+          <div className="mb-4 space-y-3">
+            <Note tone="warn">No active trading pocket right now. Sign in again with {keyThing(keyKind)} to set up a new one.</Note>
+            <SignInAgainButton kind={keyKind} />
+          </div>
+        ) : null}
+        <KeyIdentityCard />
+      </>
+    );
+  }
   return (
     <>
       <Heading title="Link your HME Wallet">
@@ -409,10 +435,13 @@ function StepAlerts() {
 
 function StepSecurity() {
   const tf = useMyTwoFactor();
+  const keyKind = useMyIdentity().keyKind;
   return (
     <>
       <Heading title="Protect withdrawals with two-factor">
-        A 6-digit code from an app on your phone. You need it for any withdrawal, and Seeds only sends withdrawals from a wallet link made <b className="text-foreground">after</b> it's on, so do this before linking your wallet. If your wallet is already linked, re-link it afterwards (Account → Security).
+        {keyKind
+          ? <>A 6-digit code from an app on your phone. You need it for any withdrawal. Seeds only sends withdrawals from a pocket link made <b className="text-foreground">after</b> two-factor and Telegram are both on, so once they are, sign in again with {keyThing(keyKind)} (Account → Security has the button). Same pocket, same coins.</>
+          : <>A 6-digit code from an app on your phone. You need it for any withdrawal, and Seeds only sends withdrawals from a wallet link made <b className="text-foreground">after</b> it's on, so do this before linking your wallet. If your wallet is already linked, re-link it afterwards (Account → Security).</>}
       </Heading>
       {tf.data ? <div className="mb-4"><Note tone="ok">Two-factor is on.</Note></div> : null}
       <TwoFactorCard />
@@ -463,6 +492,8 @@ function StepDone({ onFinish }: { onFinish: () => void }) {
   const profile = useQuery({ queryKey: ["my-profile"], queryFn: () => load() });
   const link = usePocketLink();
   const tf = useMyTwoFactor();
+  const identity = useMyIdentity();
+  const keyKind = identity.keyKind;
   const fetchMine = useServerFn(getMyIgnite);
   const open = Date.now() < new Date(SCHEDULE_START_UTC).getTime();
   const mine = useQuery({ queryKey: ["ignite", user?.id], queryFn: () => fetchMine(), enabled: !!user && open });
@@ -470,7 +501,8 @@ function StepDone({ onFinish }: { onFinish: () => void }) {
   const fees = useFeePrep();
   const rows: { done: boolean; label: string; to: "/account/profile" | "/account/security" | "/account/alerts" | "/account/balances/deposit" | "/ignite" }[] = [
     { done: Boolean(p?.display_name), label: "Display name", to: "/account/profile" },
-    { done: Boolean(link.data), label: "HME Wallet trading pocket linked", to: "/account/security" },
+    { done: Boolean(link.data), label: keyKind ? "Trading pocket set up" : "HME Wallet trading pocket linked", to: "/account/security" },
+    ...(keyKind ? [{ done: Boolean(identity.data?.email), label: "Email added (needed for withdrawals)", to: "/account/profile" as const }] : []),
     { done: fees.data?.ethereum.level === "enough" && fees.data?.base.level === "enough", label: "ETH for network fees (Ethereum and Base)", to: "/account/balances/deposit" },
     { done: Boolean(p?.telegram_verified), label: "Telegram alerts", to: "/account/alerts" },
     { done: Boolean(tf.data), label: "Two-factor sign-in", to: "/account/security" },

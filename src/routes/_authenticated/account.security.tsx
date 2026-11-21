@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { CheckCircle2, LogOut, XCircle } from "lucide-react";
+import { CheckCircle2, Circle, LogOut, XCircle } from "lucide-react";
 import { getMyProfile } from "@/lib/profile.functions";
 import { listApiKeys } from "@/lib/api-keys.functions";
 import { signOutOfSeeds } from "@/lib/sign-out";
@@ -12,6 +12,12 @@ import { usePocketLink } from "@/components/account/use-pocket";
 import { TwoFactorCard, useMyTwoFactor } from "@/components/account/TwoFactorCard";
 import { LinkHistoryCard } from "@/components/account/LinkHistoryCard";
 import { ConnectedAppsCard } from "@/components/account/ConnectedAppsCard";
+import { KeyWithdrawSteps } from "@/components/account/KeyWithdrawSteps";
+import { useMyIdentity } from "@/components/account/use-identity";
+import { keyThing, relinkStep } from "@/lib/account/sign-in-kind";
+import { IDENTITY_LABEL } from "@/lib/key-signin/rules";
+
+type Check = { ok: boolean | "optional"; label: string; hint: string };
 
 export const Route = createFileRoute("/_authenticated/account/security")({
   staticData: { sitemap: false },
@@ -40,12 +46,30 @@ function SecurityTab() {
   const l = link.data;
   const tradeKeys = (keys.data ?? []).filter((k) => k.enabled && (k.scopes ?? []).includes("trade")).length;
 
-  const checks = [
-    { ok: true, label: "Sign-in through Honest.Money", hint: "Seeds stores no password. Use a strong one and two-step sign-in on Honest.Money." },
+  const id = useMyIdentity();
+  const kind = id.keyKind;
+  const d = id.data;
+  const relink = relinkStep(kind ?? "hme");
+  const relinkHint = l?.mode === "access" && l.withdrawals === "needs_relink"
+    ? ` To allow withdrawals, ${relink}.`
+    : l?.mode === "access" && l.withdrawals === "needs_2fa" ? ` Withdrawals need two-factor, then ${kind ? `signing in again with ${keyThing(kind)}` : "a re-link"}.` : "";
+
+  const checks: Check[] = [
+    kind
+      ? { ok: true, label: `Sign-in with ${keyThing(kind)}`, hint: `${IDENTITY_LABEL[kind]} through the Seeds Key page. Seeds never saw your recovery phrase. Only ever use key.seeds.honest.money.` }
+      : { ok: true, label: "Sign-in through Honest.Money", hint: "Seeds stores no password. Use a strong one and two-step sign-in on Honest.Money." },
+    ...(kind ? [{ ok: Boolean(d?.email), label: "Email on your account", hint: d?.email ? `${d.email}. Withdrawal codes and security notices go here.` : "Add one in Profile. Needed for every withdrawal." }] : []),
     { ok: Boolean(twoFactor.data), label: "Two-factor sign-in on Seeds", hint: twoFactor.data ? "Withdrawals ask for a code from your phone." : "Set it up below. Needed for every withdrawal." },
-    { ok: Boolean(l), label: "HME Wallet trading pocket linked", hint: l ? `Pocket #${l.account}, ${l.mode === "access" ? "instant trades" : "you approve every trade"}.${l.mode === "access" && l.withdrawals === "needs_relink" ? " Re-link it below to allow withdrawals." : l.mode === "access" && l.withdrawals === "needs_2fa" ? " Withdrawals need two-factor, then a re-link." : ""}` : "Link it below, after turning on two-factor." },
+    {
+      ok: Boolean(l),
+      label: kind ? "Trading pocket set up" : "HME Wallet trading pocket linked",
+      hint: l
+        ? `Pocket #${l.account}, ${l.mode === "access" ? "instant trades" : "you approve every trade"}.${relinkHint}`
+        : kind ? `Sign in again with ${keyThing(kind)} to set up a new pocket.` : "Link it below, after turning on two-factor.",
+    },
     { ok: Boolean(p?.telegram_verified && p?.notify_login), label: "Sign-in alerts on Telegram", hint: p?.telegram_verified ? (p.notify_login ? "You'll hear about every new sign-in." : "Turn on “New sign-in” in Alerts.") : "Connect Telegram in Alerts." },
     { ok: tradeKeys === 0 || (keys.data ?? []).every((k) => !k.enabled || (k.ip_allowlist ?? []).length > 0), label: "Trading API keys locked to IP addresses", hint: tradeKeys ? `${tradeKeys} key(s) can trade. Add an IP allowlist to each.` : "No trading keys." },
+    ...(kind && d && !d.hmeMember ? [{ ok: "optional" as const, label: "Honest.Money membership (optional)", hint: "Not required. Join in Profile for Ignite, referrals and one login across the ecosystem; your pocket and coins stay put." }] : []),
   ];
 
   return (
@@ -56,16 +80,19 @@ function SecurityTab() {
         <ul className="space-y-3">
           {checks.map((c) => (
             <li key={c.label} className="flex gap-3">
-              {c.ok ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> : <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-warn" />}
+              {c.ok === "optional" ? <Circle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" /> : c.ok ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> : <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-warn" />}
               <span><span className="block text-sm">{c.label}</span><span className="block text-xs text-muted-foreground">{c.hint}</span></span>
             </li>
           ))}
         </ul>
         <div className="mt-4 flex flex-wrap gap-2">
+          {kind ? <Button asChild variant="outline" size="sm"><Link to="/account/profile">Profile</Link></Button> : null}
           <Button asChild variant="outline" size="sm"><Link to="/account/alerts">Alerts</Link></Button>
           <Button asChild variant="outline" size="sm"><Link to="/account/api-keys">API keys</Link></Button>
         </div>
       </Card>
+
+      <KeyWithdrawSteps />
 
       <TwoFactorCard />
 
@@ -80,13 +107,13 @@ function SecurityTab() {
       <Card title="Security emails" desc="Always on.">
         <p className="text-sm text-muted-foreground">
           We email you whenever a setting, API key or wallet link changes, even if you've switched other emails off. If you get one you didn't
-          expect, revoke the wallet link above, delete your API keys and sign out of Honest.Money everywhere.
+          expect, revoke the {kind ? "trading pocket" : "wallet link"} above, delete your API keys and {kind ? "sign out" : "sign out of Honest.Money everywhere"}.
         </p>
       </Card>
 
       <Card title="Session">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-muted-foreground">Signs you out of Seeds and Honest.Money on this device.</p>
+          <p className="text-sm text-muted-foreground">{kind && !d?.hmeMember ? "Signs you out of Seeds on this device." : "Signs you out of Seeds and Honest.Money on this device."}</p>
           <Button variant="outline" onClick={() => signOutOfSeeds(qc)}><LogOut /> Sign out</Button>
         </div>
       </Card>

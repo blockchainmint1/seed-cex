@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { confirmAccountEmail, getMyIdentity, requestAccountEmail } from "@/lib/key-signin/key-signin.functions";
+import { confirmAccountEmail, requestAccountEmail } from "@/lib/key-signin/key-signin.functions";
+import { useJoinHonestMoney, useMyIdentity } from "@/components/account/use-identity";
 import { IDENTITY_LABEL } from "@/lib/key-signin/rules";
 import { Button } from "@/components/ui/button";
 import { Card, Note, fieldLabel, inputCls } from "@/components/account/ui";
@@ -11,18 +12,16 @@ import { proveTwoFactor } from "@/components/account/two-factor";
 /** Coin / outside-wallet accounts: how they sign in, add an email, join Honest.Money. */
 export function KeyIdentityCard() {
   const qc = useQueryClient();
-  const load = useServerFn(getMyIdentity);
   const ask = useServerFn(requestAccountEmail);
   const confirm = useServerFn(confirmAccountEmail);
-  const id = useQuery({ queryKey: ["my-identity"], queryFn: () => load() });
+  const id = useMyIdentity();
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [sentTo, setSentTo] = useState<string | null>(null);
   // The email becomes a withdrawal factor, so with two-factor on, adding it needs a fresh code.
   const twoFactorOn = Boolean(useMyTwoFactor().data);
   const [tfa, setTfa] = useState("");
-  const listener = useRef<((ev: MessageEvent) => void) | null>(null);
-  useEffect(() => () => { if (listener.current) window.removeEventListener("message", listener.current); }, []);
+  const joinHonestMoney = useJoinHonestMoney();
 
   const send = useMutation({
     mutationFn: async () => {
@@ -34,25 +33,11 @@ export function KeyIdentityCard() {
   });
   const done = useMutation({
     mutationFn: () => confirm({ data: { code } }),
-    onSuccess: () => { setSentTo(null); setCode(""); qc.invalidateQueries({ queryKey: ["my-identity"] }); },
+    onSuccess: () => { setSentTo(null); setCode(""); qc.invalidateQueries({ queryKey: ["my-identity"] }); qc.invalidateQueries({ queryKey: ["withdrawals"] }); },
   });
 
   const d = id.data;
   if (!d || d.kind === "hme") return null;
-
-  function joinHonestMoney() {
-    try { localStorage.setItem("seeds-sso-attach", String(Date.now())); } catch { /* ignore */ }
-    const url = `https://honest.money/sso-login?popup=1&return_to=${encodeURIComponent(`${window.location.origin}/sso`)}`;
-    const w = window.open(url, "hm-sso", "width=440,height=720");
-    if (!w) { window.location.href = url.replace("popup=1&", ""); return; }
-    const onMsg = (ev: MessageEvent) => {
-      if (ev.origin !== window.location.origin || ev.data?.type !== "seeds-sso-done") return;
-      qc.invalidateQueries();
-    };
-    if (listener.current) window.removeEventListener("message", listener.current);
-    listener.current = onMsg;
-    window.addEventListener("message", onMsg);
-  }
 
   return (
     <Card title="How you sign in" desc="You started on Seeds with your own key. Seeds never saw your recovery phrase.">
@@ -97,7 +82,7 @@ export function KeyIdentityCard() {
 
       {!d.hmeMember ? (
         <div className="mt-5 space-y-3 border-t border-border pt-4">
-          <p className="text-sm text-muted-foreground">Already an Honest.Money member? Join your membership to this account to get Ignite, referrals and one login across the ecosystem. Your coins, pocket and history stay exactly where they are.</p>
+          <p className="text-sm text-foreground"><b>Join Honest.Money (optional).</b> You get Ignite, referrals and one login across the Honest.Money ecosystem, and your membership email comes with it, which withdrawals need. Your coins, pocket number and history stay exactly where they are, and you can still sign in with your coin.</p>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={joinHonestMoney}>Join with Honest.Money</Button>
             <Button asChild variant="ghost"><a href="https://honest.money" target="_blank" rel="noreferrer">Become a member</a></Button>
