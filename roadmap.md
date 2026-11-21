@@ -257,4 +257,12 @@
 - [x] Admin → Users shows how each person signed up
 - [x] Build guide + test vectors for the separate Seeds Key page; auditor note
 - [ ] Build the Seeds Key page itself (blocked: separate project + its web address; guide provided)
-- [ ] Set SEEDS_KEY_URL on Seeds once that address exists (blocked: address)
+- [x] Seeds Key address = key.seeds.honest.money (Bobby, Nov 21); point the subdomain at the Key page host once built
+
+## Key sign-in auditor review (Nov 21) — waiting on Bobby's go-ahead
+- [ ] K1 standard Sign-In-with-Ethereum/Solana format for the wallet-pocket message (before anyone uses it)
+- [ ] K2 match code on both screens + "is this your coin?" confirm
+- [ ] K3 2FA code + Telegram notice when adding an email
+- [ ] K4 one-true-address wording on sign-in + Help center; verifiable-build rules in the Key page guide
+- [ ] K5 daily clean-up of old sign-in requests; K6 admin alarm on account bursts; K7 unbiased email code
+- [ ] K8 revoke + block the two test accounts
