@@ -1,90 +1,59 @@
-# Seeds — P2P Escrow Exchange (USDC / TXC)
+# Two new ways into Seeds: start from a coin, or bring your own wallet
 
-## First: the honest verdict on the original idea
+## The idea in one line
+Today the only way in is HME sign-in plus an HME Wallet link. Both new paths give Seeds what it gets today, and nothing more: a sign-in proof and the keys to one small trading pocket. Seeds still never sees a recovery phrase.
 
-Uploading a seed phrase to a server is the opposite of non-custodial. One server breach = every user drained, permanently, with no recourse. It also makes Seeds a money transmitter in most jurisdictions, and it trains users into the exact behavior every crypto phishing scam relies on. We are not doing that.
-
-The *goal* behind it — "log in, your crypto is just there, no deposit dance" — is completely achievable. That's what this plan builds.
-
-## The key model: browser-encrypted wallet
-
-1. Seeds generates a BIP-39 seed phrase **in the user's browser**.
-2. It's encrypted there with the user's password (PBKDF2 → AES-GCM).
-3. Only the **ciphertext** is stored in Lovable Cloud. The server never sees the seed, the password, or any private key.
-4. On login, the ciphertext is pulled down and decrypted in the browser. Feels like an account. Isn't custody.
-5. The user is shown their phrase once, at creation, with a forced "I've written this down" step. That's their escape hatch — Seeds cannot reset a lost password, and the UI says so bluntly.
-
-This is the same shape as MetaMask's vault, just synced.
-
-## How USDC ↔ TXC actually settles
-
-I read texitcoin.org/build. Relevant facts: TXC is a Scrypt UTXO chain (Bitcoin/Litecoin lineage), 3-minute blocks, sub-cent fees, with a public mempool.space-compatible REST API at `mempool.texitcoin.org` (free, no key) including `POST /api/tx` for broadcasting signed raw transactions. Omni Layer handles tokens on TXC. USDC lives on a completely different chain (Ethereum/Base/Solana).
-
-There is **no shared ledger**, so there is no such thing as a single atomic USDC↔TXC swap. The three real options:
-
-| Mechanism | How it works | Verdict |
-|---|---|---|
-| Bridge / wrapped TXC | Lock TXC, mint wTXC on an EVM chain, trade in a normal AMM | Powerful, but bridges are the single most-hacked thing in crypto and it's a huge build |
-| Order book + escrow | Both sides deposit to an escrow the exchange arbitrates, released on confirmation | Practical, well-understood, ships now |
-| Atomic swap (HTLC) | Hash-timelock contracts on both chains, trustless | Genuinely trustless, but needs TXC script support + long timelocks; bad UX at 3-min blocks |
-
-**Recommendation: P2P order book with escrow**, structured as 2-of-3 multisig so Seeds is an *arbitrator*, not a custodian:
-
-- Keys: maker, taker, Seeds. Any two can release. Happy path = maker + taker sign, Seeds never touches it. Dispute path = Seeds signs with the honest party.
-- This is how Bisq and (pre-shutdown) LocalBitcoins worked. It's the credible answer.
-
-Trade lifecycle (the core state machine):
+## Path 1: start from a Cold Storage Coin (the important one)
 
 ```text
-OPEN → MATCHED → BOTH_FUNDED → RELEASED → SETTLED
-                      │
-                      └─→ DISPUTED → ARBITRATED
-                      └─→ TIMED_OUT → REFUNDED
+Event attendee            "Seeds Key" page (separate site)              Seeds
+--------------            --------------------------------              -----
+taps "Start with a coin" ---------------------------------------------> shows a one-time request
+                          opens, phone camera scans the coin's QR
+                          works out, on the phone only:
+                            - a sign-in signature from the coin
+                            - trading-pocket keys (same pocket number
+                              HME Wallet would use for that phrase)
+                          forgets the phrase, sends only those two ---> checks signature, creates or
+                                                                         opens the account, saves the
+                                                                         pocket keys (same as HME today)
+lands in /account, ready to deposit and trade <------------------------
 ```
 
-## Phasing (important)
+- **The phrase never reaches Seeds.** Scanning happens on a separate, single-purpose page on its own address. It has no ads, no outside scripts and no saved data, and it can be audited on its own. Seeds receives exactly what HME Wallet sends today.
+- **The coin is the key.** You need the coin to open the account, and again on any new device or after you sign out. On a device you already used, you stay signed in like you do now.
+- **Same pocket rules.** The trading pocket is the same one HME Wallet would use if that phrase were imported later. If someone moves to HME Wallet one day, their coins and history carry over.
+- **Joining Honest.Money later.** A coin account works without an HME membership. If the person signs in with Honest.Money later, while signed in with their coin, the membership attaches to the same account. It never matches by email alone, the same rule as today.
+- **Coins already loaded with TXC.** The Seeds Key page can offer to move some coins from the coin into the trading pocket. That move happens on the phone, before the phrase is forgotten.
 
-Signing real value on two chains is not a first-build. So:
+### What a coin account can and can't do at first
+- Deposit, trade, swap, P2P and AI plans work the same way. Every send still needs a Telegram tap.
+- Withdrawals to outside addresses stay locked until the person adds and confirms an email address in Profile. The withdrawal rules need an email code, plus 2FA and Telegram, and nothing about those rules changes.
+- Ignite seats, referrals and other HME-only features still need an Honest.Money membership.
 
-**Phase 1 (this plan)** — the entire product, real except for broadcast:
-- Real BIP-39 wallet generation + browser encryption, real TXC address derivation
-- Real TXC chain data via `mempool.texitcoin.org` (live balances, confirmations, fees, block height)
-- Full order book, matching, escrow state machine, trade history in Cloud
-- USDC side and final broadcast run in a clearly-labeled **simulation mode** — banner in the UI, no real funds at risk
+### Risk to accept
+Anyone holding the coin, or a photo of its QR, can open the account. That's already true of the money on the coin. The welcome screen will say: treat the coin like cash, and move funds before you give it away.
 
-**Phase 2 (later)** — real multisig escrow addresses, real signing, real broadcast, dispute arbitration, KYC/legal review.
+## Path 2: other wallets (MetaMask, Ledger, Trezor, Phantom, phone wallets)
 
-Shipping Phase 1 in sim mode is the responsible way to prove the mechanism before touching anyone's money.
+Outside wallets will never hand over keys, so there are three possible levels:
 
-## What gets built
+1. **Sign in with your wallet.** The wallet signs a one-time message and that's the whole login. Seeds already has an unused version of this for MetaMask that can be reused. This is identity only.
+2. **Full Seeds account, made from a signature (recommended).** On the same Seeds Key page, the wallet signs one fixed Seeds message. That signature is turned into the trading-pocket keys on the device, and the rest of the flow matches Path 1. The same wallet can rebuild the pocket any time by signing again. dYdX used this pattern for years. It works with MetaMask, Rabby, Coinbase Wallet, Ledger and Trezor (through MetaMask or directly), Phantom, and phone wallets through WalletConnect. Some smart-contract wallets give a different signature every time. The page checks for that by asking for two signatures and turns those wallets away.
+3. **Swap straight from your own wallet.** Each trade gets approved in MetaMask or on the Ledger, so Seeds never holds a pocket key. It covers Uniswap-style and THORChain swaps only. The order book, P2P and AI plans need Seeds to sign quickly, so they can't work this way.
 
-**Pages**
-- `/` — Seeds landing: the pitch, the non-custodial explainer, "why we will never ask for your seed"
-- `/trade/usdc-txc` — the exchange: chart, order book (bids/asks), buy/sell form, open orders, trade history
-- `/wallet` — balances, TXC address + QR, receive/send, encrypted-vault status
-- `/auth` — sign up / sign in, wallet creation + seed backup flow
-- `/orders` — a user's open orders and escrow trades with live state
-- `/terms`, `/privacy`, `/manifesto` — drafted fresh, honest.money tone
-- Global footer: "Part of the [honest.money](https://honest.money) ecosystem" + Terms / Privacy / Manifesto
+Recommendation: build level 2, which includes level 1. Level 3 can come later as a "quick swap" button.
 
-**Backend (Lovable Cloud)**
-- Email/password + Google auth
-- Tables: `profiles`, `wallets` (ciphertext + public addresses only — never plaintext), `orders`, `trades`, `escrows`, `trade_events`, `user_roles` (separate table, for arbitrators)
-- RLS everywhere; order book is publicly readable, orders/wallets are owner-scoped
-- Server functions: place/cancel order, matching engine, escrow state transitions, TXC chain polling
+## What gets built where
 
-**Design direction**
-Not another purple-gradient DeFi dashboard. Seeds should read as: terminal-adjacent, high-density, monospace numerics, dark by default, green/amber for market state — an instrument, not a brochure. Texas-grit rather than Silicon Valley pastel.
+- **Seeds (this project):** "Start with a coin" and "Use another wallet" choices on the sign-in page. One-time sign-in requests. Signature checks for coins (TXC-style) and wallets (Ethereum, Solana). Accounts that carry a coin or wallet identity instead of an HME member id. The pocket-key intake reuses the existing link format. "Join Honest.Money" attaches a membership later. The email-before-withdrawal gate. Admin → Users shows how each person signed up. Tests for every rule.
+- **Seeds Key page (separate project):** camera scan, on-device key work, wallet signing, and optionally moving coins into the pocket. I'll write a complete build guide plus test vectors that you paste into that project, like the HME Wallet handoffs.
+- **Auditor:** a review note, because this adds a new way to create accounts and a new source of pocket keys.
 
-## Technical notes
-
-- Crypto in-browser: `@scure/bip39` + `@scure/bip32` + `@noble/hashes` (audited, tiny, no Node polyfills — important because the server runtime is a Cloudflare Worker and can't run native crypto addons)
-- Vault: PBKDF2-SHA256 (600k iterations) → AES-256-GCM via WebCrypto. Encrypt/decrypt only in the browser.
-- TXC address derivation: BIP-44 path with TXC's coin type / address version bytes — I'll confirm the exact params against the open-source `texitcoin` repo's chainparams before implementing.
-- Chain reads go through a server function (caches responses, avoids hammering the public API from every browser).
-- Wallet/vault code is client-only and must not be statically imported by SSR routes.
-- Never `dangerouslySetInnerHTML`; all order input validated with Zod client- and server-side.
-
-## Explicitly out of scope for now
-
-Real fund movement, real USDC integration, KYC/AML, fiat on-ramp, bridge/wrapped TXC, atomic swaps. Each needs its own conversation — the legal one especially.
+## Technical details
+- Profiles gain `identity_kind` (hme | coin | wallet) and a uniquely indexed `identity_address`. `hm_member_id` stays the HME key and is attached later only through a proven sign-in on both sides (the same pattern as legacy-claim).
+- Sign-in uses a server-issued single-use nonce with a 5-minute expiry. The key page returns `{signature, identity address, sealed pocket payload}` in the existing hm-link-delegate access-mode format (X25519 + HKDF + AES-GCM), with a domain-bound message. Sessions are minted the same way as `/sso`.
+- Coin identity uses a fixed non-spending address from the phrase, so pocket rotation (1106→2105) never changes who the person is. Seeds tells the key page which pocket number to use, so a revoked pocket is never reused.
+- Pocket seed for the wallet path = HKDF of a deterministic signature over a fixed, domain-bound Seeds message. The two-signature determinism check runs before anything is sent. Phantom uses its ed25519 signMessage.
+- Account creation is rate-limited per IP and per day, because anyone can make a phrase. "Genuine coins only" mode (if chosen) checks the coin against the Cold Storage Coins registry.
+- The core memory that HME is required changes to: an HME membership or a coin/wallet identity.
