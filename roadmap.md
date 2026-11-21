@@ -276,3 +276,6 @@
 - [x] Hard fee cap per send: 0.0001 TXC, 0.0001 ISK, 0.002 LTC (Bobby, Nov 21)
 - [x] Fast list comes up short → recheck the slow way before "not enough coins"
 - [x] TSD sends use the fast checked coin list for their TXC fee coin
+- [ ] Auditor follow-up (Nov 21): TXC/ISK fee limit 0.0001 → 0.01? (waiting on Bobby)
+- [ ] Auditor follow-up: slow-check coins through the same double-check + tidier batch-reply check (waiting on Bobby)
+- [ ] One real TXC send and one real TSD send with the new coin double-check before launch (needs a member's Telegram tap)
