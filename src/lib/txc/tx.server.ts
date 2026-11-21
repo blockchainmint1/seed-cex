@@ -10,6 +10,7 @@ import { sha256 } from "@noble/hashes/sha2.js";
 import { ripemd160 } from "@noble/hashes/legacy.js";
 import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
 import { base58check } from "@scure/base";
+import { feeCapChainForVersion, feeCapProblem } from "@/lib/utxo/fee-cap";
 
 const b58check = base58check(sha256);
 
@@ -248,6 +249,10 @@ export function buildAndSignTransfer(params: BuildParams): BuiltTx {
     if (fee < minFee) throw new Error("Insufficient balance to cover the network fee");
   }
   if (memoOut) outputs.push(memoOut);
+
+  // Hard fee ceiling, checked before anything is signed (src/lib/utxo/fee-cap.ts).
+  const capProblem = feeCapProblem(feeCapChainForVersion(version), Number(fee));
+  if (capProblem) throw new Error(capProblem);
 
   // Sign every input with SIGHASH_ALL over the tx with only that input scripted.
   const scripts: Uint8Array[] = chosen.map(() => new Uint8Array(0));

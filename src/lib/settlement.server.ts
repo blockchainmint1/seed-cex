@@ -195,7 +195,7 @@ export async function settleUtxoLeg(
     txid = await spendWithin(seller, chain, symbol, amount, async () => {
       auth = await openAuthorization(seller, chain, amount);
       const [utxos, feeRate] = await Promise.all([
-        loadUtxosFor(chain, auth.address),
+        loadUtxosFor(chain, auth.address, { atLeast: amount }),
         feeRateFor(chain),
       ]);
       built = buildAndSignTransfer({
@@ -437,7 +437,7 @@ export async function previewUtxoSettlement(
 
   let balance: number | null = null;
   try {
-    const utxos = await loadUtxosFor(chain, fromAddress as string);
+    const utxos = await loadUtxosFor(chain, fromAddress as string, { atLeast: amount });
     balance = utxos.reduce((sum, u) => sum + u.amount, 0);
   } catch {
     return { ...base, amount, fromAddress, toAddress, reason: "Could not read the branch balance" };

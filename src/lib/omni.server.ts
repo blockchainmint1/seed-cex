@@ -9,14 +9,15 @@
  * are assembled by the node and signed here, so key material never leaves the
  * worker.
  */
-import { rpc, rpcConfigured, scanAddressUtxos, tryRpc } from "./rpc.server";
+import { rpc, rpcConfigured, tryRpc } from "./rpc.server";
+import { feeCapProblem, omniCarrierFeeSats } from "./utxo/fee-cap";
 import { isValidTxcAddress, signRawTxWithKey, type Utxo } from "./txc/tx.server";
 
 /** Texas Stable Dollar — Omni property id on the TEXITcoin Omni Layer. */
 export const TSD_PROPERTY_ID = 39;
 
-/** Miner fee (whole TXC) handed to `omni_createrawtx_change`. */
-const OMNI_TX_FEE = 0.001;
+/** Change kept above the fee so the carrier always has a spendable change output. */
+const CARRIER_MARGIN_TXC = 0.0001;
 
 export type OmniProperty = {
   propertyId: number;
@@ -180,19 +181,15 @@ export type OmniSendResult = {
   hex: string;
 };
 
-/** Confirmed UTXOs at an address, used to pay the carrier transaction's fee. */
+/**
+ * Confirmed TXC coins at an address, used to pay the carrier transaction's fee.
+ * Same path as every TXC send: Seeds' own indexer with each coin double-checked
+ * against our node, else our node's scan.
+ */
 async function carrierUtxos(address: string): Promise<Utxo[]> {
-  const scan = await scanAddressUtxos("txc", [address]);
-  if (!scan) throw new Error("Could not read the funding UTXOs for the Omni carrier transaction");
-  return scan.utxos
-    .map((u) => ({
-      txid: u.txid,
-      vout: u.vout,
-      scriptPubKey: u.scriptPubKey,
-      amount: u.amount,
-      height: u.height,
-    }))
-    .sort((a, b) => b.amount - a.amount);
+  const { loadUtxosFor } = await import("@/lib/utxo/io.server");
+  const coins = await loadUtxosFor("txc", address, { atLeast: CARRIER_MARGIN_TXC * 2 });
+  return [...coins].sort((a, b) => b.amount - a.amount);
 }
 
 /**
@@ -214,19 +211,27 @@ export async function omniSimpleSend(params: OmniSendParams): Promise<OmniSendRe
     );
   }
 
-  // Take just enough inputs to cover the fee; Omni carriers are tiny.
+  // Take just enough inputs to cover the fee; Omni carriers are tiny. The fee follows
+  // the network's going rate and never passes Seeds' limit (src/lib/utxo/fee-cap.ts).
+  const { feeRateFor } = await import("@/lib/utxo/io.server");
+  const feeRate = await feeRateFor("txc");
   const chosen: Utxo[] = [];
-  let total = 0;
+  let totalSats = 0;
+  let feeSats = 0;
   for (const u of utxos) {
     chosen.push(u);
-    total += u.amount;
-    if (total >= OMNI_TX_FEE + 0.0001) break;
+    totalSats += Math.round(u.amount * 1e8);
+    feeSats = omniCarrierFeeSats(chosen.length, feeRate);
+    if (totalSats >= feeSats + Math.round(CARRIER_MARGIN_TXC * 1e8)) break;
   }
-  if (total < OMNI_TX_FEE) {
+  if (totalSats < feeSats + Math.round(CARRIER_MARGIN_TXC * 1e8)) {
     throw new Error(
-      `Insufficient TXC for the Omni miner fee: have ${total.toFixed(8)}, need ${OMNI_TX_FEE}`,
+      `Insufficient TXC for the Omni miner fee: have ${(totalSats / 1e8).toFixed(8)}, need ${((feeSats / 1e8) + CARRIER_MARGIN_TXC).toFixed(8)}`,
     );
   }
+  const capProblem = feeCapProblem("txc", feeSats);
+  if (capProblem) throw new Error(capProblem);
+  const feeTxc = Number((feeSats / 1e8).toFixed(8));
 
   const amountStr = params.amount.toFixed(8);
   const payload = await rpc<string>("txc", "omni_createpayload_simplesend", [
@@ -249,8 +254,15 @@ export async function omniSimpleSend(params: OmniSendParams): Promise<OmniSendRe
       value: u.amount,
     })),
     params.fromAddress,
-    OMNI_TX_FEE,
+    feeTxc,
   ]);
+
+  // Fee the node actually built (inputs minus outputs) — a dust change it drops would
+  // raise it — must stay within Seeds' limit before anything is signed.
+  const decoded = await rpc<{ vout: Array<{ value: number }> }>("txc", "decoderawtransaction", [raw]);
+  const builtFeeSats = totalSats - decoded.vout.reduce((sum, o) => sum + Math.round(o.value * 1e8), 0);
+  const builtProblem = feeCapProblem("txc", builtFeeSats);
+  if (builtProblem) throw new Error(builtProblem);
 
   const prevScripts: Record<string, string> = {};
   for (const u of chosen) prevScripts[`${u.txid}:${u.vout}`] = u.scriptPubKey;

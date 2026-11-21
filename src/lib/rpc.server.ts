@@ -76,6 +76,37 @@ export async function rpc<T = unknown>(
   }
 }
 
+/**
+ * Several calls in one JSON-RPC batch (one round trip). Each answer is the call's
+ * result, or an RpcError for that call; the whole batch throws when the node can't
+ * be reached or replies with something other than a matching list.
+ */
+export async function rpcBatch<T = unknown>(
+  chain: RpcChain,
+  calls: Array<{ method: string; params: unknown[] }>,
+  timeoutMs = 8_000,
+): Promise<Array<T | RpcError>> {
+  if (!calls.length) return [];
+  const c = creds(chain);
+  if (!c) throw new RpcError(`${chain.toUpperCase()} RPC is not configured`);
+  const res = await fetch(c.url, {
+    method: "POST",
+    signal: AbortSignal.timeout(timeoutMs),
+    headers: { "content-type": "application/json", authorization: `Basic ${btoa(`${c.user}:${c.pass}`)}` },
+    body: JSON.stringify(calls.map((k, i) => ({ jsonrpc: "1.0", id: i, method: k.method, params: k.params }))),
+  }).catch((e: Error) => { throw new RpcError(`batch: ${e.message}`); });
+  const body = (await res.json().catch(() => null)) as Array<{ id?: unknown; result?: T; error?: { code: number; message: string } | null }> | null;
+  if (!Array.isArray(body) || body.length !== calls.length) throw new RpcError(`batch: unexpected reply [${res.status}]`);
+  const out: Array<T | RpcError> = new Array(calls.length);
+  for (const r of body) {
+    if (!Number.isInteger(r?.id) || (r.id as number) < 0 || (r.id as number) >= calls.length || out[r.id as number] !== undefined) {
+      throw new RpcError("batch: reply ids don't match the calls");
+    }
+    out[r.id as number] = r.error ? new RpcError(`${calls[r.id as number]!.method}: ${r.error.message}`, r.error.code) : (r.result as T);
+  }
+  return out;
+}
+
 /** Never throws — returns null when the node is unreachable. */
 export async function tryRpc<T = unknown>(
   chain: RpcChain,

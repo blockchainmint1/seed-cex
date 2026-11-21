@@ -130,7 +130,7 @@ export async function pocketLegBalance(address: string, leg: LegId, need = 0, op
     }
     if (def.kind === "utxo") {
       const { loadUtxosFor, loadDisplayUtxosFor } = await import("@/lib/utxo/io.server");
-      const utxos = await (opts.display ? loadDisplayUtxosFor : loadUtxosFor)(def.chain as UtxoChainId, address);
+      const utxos = opts.display ? await loadDisplayUtxosFor(def.chain as UtxoChainId, address) : await loadUtxosFor(def.chain as UtxoChainId, address, { atLeast: need });
       const bal = utxos.reduce((s, u) => s + u.amount, 0);
       return { balance: bal, feeBalance: bal, chain: null, reason: null };
     }
@@ -203,7 +203,7 @@ export async function sendFromPocket(p: {
     const chain = def.chain as UtxoChainId;
     const { loadUtxosFor, feeRateFor, broadcastFor, p2pkhVersionOf } = await import("@/lib/utxo/io.server");
     const { buildAndSignTransfer } = await import("@/lib/txc/tx.server");
-    const [utxos, feeRate] = await Promise.all([loadUtxosFor(chain, p.from), feeRateFor(chain)]);
+    const [utxos, feeRate] = await Promise.all([loadUtxosFor(chain, p.from, { atLeast: p.amount }), feeRateFor(chain)]);
     const built = await withPocketKey(p.link.ciphertext, pocket, p.from, async (priv) =>
       buildAndSignTransfer({
         privateKeyHex: bytesToHex(priv), fromAddress: p.from, toAddress: p.to, amount: p.amount,

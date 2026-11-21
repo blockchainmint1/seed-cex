@@ -270,3 +270,9 @@
 - [x] Auditor follow-up (key sign-in): Fix A standard wallet sign-in message, Fix B held key change (auditor's version), burst alarm, Solana sign-in note
 - [ ] Real-wallet test: MetaMask shows its look-alike-site warning on both Seeds Key messages (blocked: Key page built + a person with a real wallet)
 - [x] TXC sends/settlement read Seeds' own TXC indexer (mempool.texitcoin.org) first when it has caught up with our node; node scan as fallback (no addressindex reindex needed)
+
+## TXC coin-lookup auditor notes (Nov 21) — Bobby: do all four
+- [x] Double-check every indexer coin with our own TXC server before it can be spent (size + owner); mismatch → slow full check
+- [x] Hard fee cap per send: 0.0001 TXC, 0.0001 ISK, 0.002 LTC (Bobby, Nov 21)
+- [x] Fast list comes up short → recheck the slow way before "not enough coins"
+- [x] TSD sends use the fast checked coin list for their TXC fee coin

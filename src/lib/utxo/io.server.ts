@@ -2,7 +2,8 @@
  * UTXO chain I/O for the settlement engine.
  *
  * TXC sends read Seeds' own TXC indexer (mempool.texitcoin.org) first when it has
- * caught up with our node, else our node's scan; ISK sends use our node first.
+ * caught up with our node and every coin checks out against our node (gettxout),
+ * else our node's scan; ISK sends use our node first.
  * Explorers are the fallback when a node is down; displays read them first.
  * Litecoin has no private node, so it goes through NowNodes' Blockbook
  * indexer. Server-only: every credential is read from the environment inside
@@ -10,9 +11,9 @@
  */
 import { bytesToHex } from "@noble/hashes/utils.js";
 import { getChain, type UtxoChainId } from "@/lib/chains";
-import { broadcastRawTx, fetchTxConfirmations, rpc, rpcConfigured, scanAddressUtxos } from "@/lib/rpc.server";
+import { broadcastRawTx, fetchTxConfirmations, rpc, rpcBatch, rpcConfigured, scanAddressUtxos } from "@/lib/rpc.server";
 import { addressToScriptFor, type Utxo } from "@/lib/txc/tx.server";
-import { EXPLORER_BASE, EXPLORER_UTXO_LIMIT, indexerUsableForSend, parseExplorerUtxos, parseIndexedTip, type ExplorerChain } from "@/lib/utxo/explorer-rules";
+import { EXPLORER_BASE, EXPLORER_UTXO_LIMIT, MAX_COINS_TO_VERIFY, checkCoinsAgainstNode, fastListShort, indexerUsableForSend, parseExplorerUtxos, parseIndexedTip, type ExplorerChain, type NodeCoin } from "@/lib/utxo/explorer-rules";
 
 const LTC_BOOK = "https://ltcbook.nownodes.io/api/v2";
 const DEFAULT_FEE_RATE: Record<UtxoChainId, number> = { txc: 10, ltc: 8, isk: 10 };
@@ -61,8 +62,12 @@ export function isValidUtxoAddress(chain: UtxoChainId, address: string): boolean
   }
 }
 
-/** Spendable outputs at an address. Throws when the chain is unreachable. */
-export async function loadUtxosFor(chain: UtxoChainId, address: string): Promise<Utxo[]> {
+/**
+ * Spendable outputs at an address. Throws when the chain is unreachable.
+ * `atLeast` (whole coins): when the fast TXC list holds less than this, recheck with
+ * our node's full scan before anyone is told "not enough coins".
+ */
+export async function loadUtxosFor(chain: UtxoChainId, address: string, opts: { atLeast?: number } = {}): Promise<Utxo[]> {
   if (chain === "ltc") {
     const rows = await book<Array<{ txid: string; vout: number; value: string; height?: number }>>(
       `/utxo/${encodeURIComponent(address)}?confirmed=true`,
@@ -80,10 +85,11 @@ export async function loadUtxosFor(chain: UtxoChainId, address: string): Promise
 
   // TXC: Seeds' own indexer (the TXC mempool stack) answers in ~150 ms; the node's
   // scantxoutset walks the whole coin set (~10 s, one at a time). Used only when it
-  // has caught up with our node and the list is complete (indexerUsableForSend).
+  // has caught up with our node, the list is complete (indexerUsableForSend) and our
+  // node confirms every coin's size and owner (checkCoinsAgainstNode).
   if (chain === "txc" && rpcConfigured("txc")) {
     const fast = await loadIndexerUtxosForSend(address);
-    if (fast) return fast;
+    if (fast && !fastListShort(fast, opts.atLeast)) return fast;
   }
 
   if (rpcConfigured(chain)) {
@@ -144,7 +150,23 @@ async function loadIndexerUtxosForSend(address: string): Promise<Utxo[] | null> 
   ]);
   if (!coins.c) return null;
   if (!indexerUsableForSend({ indexedTip, nodeTip, truncated: coins.truncated })) return null;
-  return coins.c;
+  if (coins.c.length > MAX_COINS_TO_VERIFY) return null;
+  // Our node is the source of truth for everything that gets signed: one batched
+  // gettxout per coin (indexed lookup, not a scan), include_mempool so a coin already
+  // being spent is dropped.
+  let replies: Array<NodeCoin | Error>;
+  try {
+    replies = await rpcBatch<NodeCoin>("txc", coins.c.map((u) => ({ method: "gettxout", params: [u.txid, u.vout, true] })), 6_000);
+  } catch (e) {
+    console.error("[txc] coin double-check failed, using node scan", (e as Error).message);
+    return null;
+  }
+  const check = checkCoinsAgainstNode(coins.c, replies);
+  if (check.kind === "mismatch") {
+    console.error(`[txc] INDEXER DISAGREES WITH OUR NODE for ${address}: ${check.reason} — using node scan`);
+    return null;
+  }
+  return check.kind === "ok" ? check.coins : null;
 }
 
 /**

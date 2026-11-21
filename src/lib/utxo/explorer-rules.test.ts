@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { EXPLORER_BASE, indexerUsableForSend, parseExplorerUtxos, parseIndexedTip } from "./explorer-rules";
+import { EXPLORER_BASE, MAX_COINS_TO_VERIFY, checkCoinsAgainstNode, fastListShort, indexerUsableForSend, parseExplorerUtxos, parseIndexedTip } from "./explorer-rules";
 
 const tx = "a".repeat(64);
 const conf = (value: number, vout = 0) => ({ txid: tx, vout, value, status: { confirmed: true, block_height: 133096 } });
@@ -45,5 +45,48 @@ describe("TXC indexer for sends", () => {
     expect(parseIndexedTip({ ok: false, indexed_tip: 386226 })).toBe(null);
     expect(parseIndexedTip({ ok: true, indexed_tip: "386226" })).toBe(null);
     expect(parseIndexedTip(null)).toBe(null);
+  });
+});
+
+describe("double-checking indexer coins with our node (auditor, Nov 21)", () => {
+  const coin = (amount: number, vout = 0) => ({ txid: tx, vout, scriptPubKey: "76a9aa88ac", amount, height: 1 });
+  const node = (value: number, hex = "76a9aa88ac", confirmations = 3) => ({ value, confirmations, scriptPubKey: { hex } });
+
+  test("coins that match our node exactly are kept", () => {
+    const r = checkCoinsAgainstNode([coin(100), coin(2.5, 1)], [node(100), node(2.5)]);
+    expect(r).toEqual({ kind: "ok", coins: [coin(100), coin(2.5, 1)] });
+  });
+  test("indexer says 1 TXC, our node says 100 TXC: the whole list is refused", () => {
+    expect(checkCoinsAgainstNode([coin(1)], [node(100)]).kind).toBe("mismatch");
+  });
+  test("a one-satoshi difference is a mismatch", () => {
+    expect(checkCoinsAgainstNode([coin(1)], [node(1.00000001)]).kind).toBe("mismatch");
+  });
+  test("a coin belonging to another address on our node is a mismatch", () => {
+    expect(checkCoinsAgainstNode([coin(5)], [node(5, "76a9bb88ac")]).kind).toBe("mismatch");
+  });
+  test("spent, unknown or unconfirmed coins are dropped, lowering the balance only", () => {
+    const r = checkCoinsAgainstNode([coin(5), coin(7, 1), coin(9, 2)], [null, node(7, undefined, 0), node(9)]);
+    expect(r).toEqual({ kind: "ok", coins: [coin(9, 2)] });
+  });
+  test("our node failing on any coin means use the slow full check", () => {
+    expect(checkCoinsAgainstNode([coin(5)], [new Error("timeout")]).kind).toBe("unknown");
+    expect(checkCoinsAgainstNode([coin(5), coin(6, 1)], [node(5)]).kind).toBe("unknown");
+  });
+  test("pockets with more than 500 coins go straight to the slow full check", () => {
+    expect(MAX_COINS_TO_VERIFY).toBe(500);
+  });
+});
+
+describe("rechecking before 'not enough coins'", () => {
+  test("fast list holds 9.99 but the send needs 10: recheck the slow way", () => {
+    expect(fastListShort([{ amount: 9.99 }], 10)).toBe(true);
+  });
+  test("fast list covers the send: no recheck", () => {
+    expect(fastListShort([{ amount: 6 }, { amount: 4 }], 10)).toBe(false);
+  });
+  test("no amount given (a plain balance read): no recheck", () => {
+    expect(fastListShort([], undefined)).toBe(false);
+    expect(fastListShort([], 0)).toBe(false);
   });
 });

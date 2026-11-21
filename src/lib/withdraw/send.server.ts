@@ -172,7 +172,7 @@ export async function sendWithdrawal(c: WithdrawCoin, link: Link, from: string, 
       const chain = c.utxoChain!;
       const { loadUtxosFor, feeRateFor, broadcastFor, p2pkhVersionOf } = await import("@/lib/utxo/io.server");
       const { buildAndSignTransfer } = await import("@/lib/txc/tx.server");
-      const [utxos, feeRate] = await Promise.all([loadUtxosFor(chain, from), feeRateFor(chain)]);
+      const [utxos, feeRate] = await Promise.all([loadUtxosFor(chain, from, { atLeast: coins }), feeRateFor(chain)]);
       const tx = await withPocketKey(link.ciphertext, c.pocket, from, async (priv) => buildAndSignTransfer({
         privateKeyHex: bytesToHex(priv), fromAddress: from, toAddress: to, toScript: chain === "ltc" ? ltcScript(to) : undefined,
         amount: coins, utxos, feeRate, p2pkhVersion: p2pkhVersionOf(chain), symbol: c.symbol,
