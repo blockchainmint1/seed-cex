@@ -67,11 +67,6 @@ export function seedsSymbols(): Set<string> {
   return s;
 }
 
-/** How many different coins Seeds can trade today (order book + swaps). */
-export function coinsTradableNow(): number {
-  return seedsSymbols().size;
-}
-
 type ListingQuery = { kind: "new" | "midsize"; minVolume: number };
 
 /** One page of CoinMarketCap's coin list (200 per page). */

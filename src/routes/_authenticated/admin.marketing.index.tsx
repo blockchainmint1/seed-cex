@@ -44,7 +44,7 @@ function Recruiting() {
 
   return (
     <div className="space-y-5">
-      <TabTitle title="Coin recruiting" desc="Goal: 10,000,000 trade pairs. Find coin teams, see how good a fit each one is, and send them a personal invite to list. The AI writes first drafts; a person reads, edits and sends every message." />
+      <TabTitle title="Coin recruiting" desc="Goal: 1,000 paid listings. Find coin teams, see how good a fit each one is, and send them a personal invite to list. The AI writes first drafts; a person reads, edits and sends every message." />
       {ov.isPending ? <Loading /> : ov.error ? <Note tone="error">Couldn't load recruiting. Refresh to retry.</Note> : ov.data ? <Goal o={ov.data} onStage={(s) => set({ stage: s })} active={filter.stage} /> : null}
       <Finder exchanges={ov.data?.exchanges ?? []} />
       <Leads filter={filter} set={set} page={page} setPage={setPage} size={size} setSize={(s) => { setSize(s); setPage(0); }} onOpen={setOpen} />
@@ -54,19 +54,21 @@ function Recruiting() {
 }
 
 function Goal({ o, onStage, active }: { o: Awaited<ReturnType<typeof getRecruitOverview>>; onStage: (s: Stage) => void; active: string }) {
-  const pct = Math.min(100, (o.goal.coinsNow / o.goal.coinsNeeded) * 100);
+  const g = o.goal;
+  const usd = (v: number) => `$${n(v)}`;
   return (
-    <Card title="Goal: 10,000,000 trade pairs" desc={`Every coin on Seeds can be swapped for every other through TSD, so ${n(o.goal.coinsNeeded)} coins make ${n(o.goal.pairs)} pairs.`}>
+    <Card title={`Goal: ${n(g.goal)} paid listings`} desc={`${n(g.goal)} listings bring in ${usd(g.goalLowUsd)} if every team picks the Seed package, up to ${usd(g.goalHighUsd)} if every team picks Grove.`}>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label="Coins Seeds trades" value={n(o.goal.coinsNow)} />
-        <Stat label="Pairs today" value={n(o.goal.pairsNow)} />
-        <Stat label="Coins still needed" value={n(Math.max(0, o.goal.coinsNeeded - o.goal.coinsNow))} tone="warn" />
-        <Stat label="Listing applications" value={`${n(o.applications)} · ${n(o.listingsLive)} live`} tone={o.listingsLive ? "good" : undefined} />
+        <Stat label="Paid listings" value={n(g.paid)} tone={g.paid ? "good" : undefined} />
+        <Stat label="Still to go" value={n(g.remaining)} tone="warn" />
+        <Stat label="Accepted, awaiting payment" value={n(o.approvedWaiting)} />
+        <Stat label="Listing money so far" value={usd(o.earnedUsd)} tone={o.earnedUsd ? "good" : undefined} />
       </div>
-      <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100} aria-label="Coins toward the goal">
-        <div className="h-full bg-action" style={{ width: `${Math.max(pct, 0.5)}%` }} />
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={Math.round(g.pct)} aria-valuemin={0} aria-valuemax={100} aria-label="Paid listings toward the goal">
+        <div className="h-full bg-action" style={{ width: `${Math.max(g.pct, 0.5)}%` }} />
       </div>
-      <p className="mt-1 font-mono text-[11px] text-muted-foreground">{pct.toFixed(1)}% of the coins needed · {n(o.total)} leads · {n(o.gradeA)} grade A still open · {n(o.messagesSent)} messages sent · {n(o.aiDraftsLeft)} AI drafts left today</p>
+      <p className="mt-1 font-mono text-[11px] text-muted-foreground">{g.pct.toFixed(1)}% of the goal · {n(o.applications)} applications · {n(o.total)} leads · {n(o.gradeA)} grade A still open · {n(o.messagesSent)} messages sent · {n(o.aiDraftsLeft)} AI drafts left today</p>
+      <p className="mt-1 text-[11px] text-muted-foreground">Paid counts coins live on Seeds plus leads you've moved to Paid. Money so far counts only live listings.</p>
       <div className="mt-4 flex flex-wrap gap-1.5">
         {STAGES.map((s) => (
           <button key={s} type="button" onClick={() => onStage(s)} title={STAGE_INFO[s].hint}

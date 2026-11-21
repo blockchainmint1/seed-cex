@@ -1,7 +1,7 @@
 /**
  * Coin recruiting (pure, tested): pipeline stages, the lead score, which coins
  * count as a coin team worth inviting, duplicate detection, pasted-list parsing,
- * the 10-million-pairs goal math and the outreach safety check.
+ * the paid-listings goal math and the outreach safety check.
  *
  * Every number shown on Admin → Recruiting comes from here or from CoinMarketCap;
  * the AI only writes the message, never the facts or the score.
@@ -9,22 +9,31 @@
 
 /* ---------------------------------- goal ---------------------------------- */
 
-/** Bobby's goal (Nov 21 2026): 10,000,000 trade pairs. */
-export const PAIR_GOAL = 10_000_000;
+/** Bobby's goal (Nov 21 2026): 1,000 paid listings. */
+export const LISTING_GOAL = 1000;
 
-/** Every coin Seeds trades can be swapped for every other (through TSD), so n coins make n·(n−1)/2 pairs. */
-export function pairsFor(coins: number): number {
-  const n = Math.max(0, Math.floor(coins));
-  return (n * (n - 1)) / 2;
+/** Where the team stands against the goal. Package prices come from listing.ts. */
+export function listingGoal(paid: number, prices: readonly number[], goal = LISTING_GOAL) {
+  const done = Math.max(0, Math.floor(paid));
+  const low = Math.min(...prices), high = Math.max(...prices);
+  return {
+    goal,
+    paid: done,
+    remaining: Math.max(0, goal - done),
+    pct: goal > 0 ? Math.min(100, (done / goal) * 100) : 100,
+    /** What the whole goal brings in if every listing is the cheapest / dearest package. */
+    goalLowUsd: goal * low,
+    goalHighUsd: goal * high,
+  };
 }
 
-/** Fewest coins whose all-to-all pairs reach the target. */
-export function coinsForPairs(target: number): number {
-  if (target <= 0) return 0;
-  let n = Math.ceil((1 + Math.sqrt(1 + 8 * target)) / 2);
-  while (n > 2 && pairsFor(n - 1) >= target) n--;
-  while (pairsFor(n) < target) n++;
-  return n;
+/** Listings needed each month to reach the goal by a date (rounded up), or null with no date. */
+export function perMonthToGoal(remaining: number, nowMs: number, byIso: string | null): number | null {
+  if (!byIso) return null;
+  const months = (Date.parse(byIso) - nowMs) / (30.44 * 86_400_000);
+  if (!Number.isFinite(months)) return null;
+  if (months <= 0) return remaining;
+  return Math.ceil(remaining / months);
 }
 
 /* --------------------------------- stages --------------------------------- */

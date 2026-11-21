@@ -2,9 +2,10 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireAdmin } from "@/lib/admin-guard";
+import { LISTING_PACKAGES, packageById } from "@/lib/listing";
 import {
-  AI_DRAFTS_PER_DAY, CHANNELS, LEAD_EXCHANGES, PAIR_GOAL, STAGES, canMoveStage, coinsForPairs, dedupeKey,
-  outreachProblems, pairsFor, parsePastedLeads, scoreLead, stageAfterSend, type Channel, type ScoreReason, type Source, type Stage,
+  AI_DRAFTS_PER_DAY, CHANNELS, LEAD_EXCHANGES, STAGES, canMoveStage, dedupeKey, listingGoal,
+  outreachProblems, parsePastedLeads, scoreLead, stageAfterSend, type Channel, type ScoreReason, type Source, type Stage,
 } from "./recruit-rules";
 
 /*
@@ -45,10 +46,13 @@ export const getRecruitOverview = createServerFn({ method: "GET" })
       db.from("recruit_messages").select("id", head).eq("ai_written", true).gte("created_at", since),
       db.from("recruit_messages").select("id", head).eq("status", "sent"),
       db.from("listing_applications").select("id", head),
-      db.from("listing_applications").select("id", head).eq("status", "live"),
+      db.from("listing_applications").select("package").eq("status", "live").limit(10_000),
     ]);
-    const { coinsTradableNow } = await import("./recruit.server");
-    const coinsNow = coinsTradableNow() + (live.count ?? 0);
+    const approved = await db.from("listing_applications").select("id", head).eq("status", "approved");
+    const liveRows = live.data ?? [];
+    // Paid = live on Seeds, plus leads an admin moved to Paid that aren't live yet.
+    const paidCount = liveRows.length + (Object.fromEntries(stageCounts).paid ?? 0);
+    const earnedUsd = liveRows.reduce((s, r) => s + (packageById(r.package)?.priceUsd ?? 0), 0);
     return {
       stages: Object.fromEntries(stageCounts) as Record<Stage, number>,
       total: total.count ?? 0,
@@ -56,8 +60,10 @@ export const getRecruitOverview = createServerFn({ method: "GET" })
       messagesSent: sent.count ?? 0,
       aiDraftsLeft: Math.max(0, AI_DRAFTS_PER_DAY - (drafts.count ?? 0)),
       applications: apps.count ?? 0,
-      listingsLive: live.count ?? 0,
-      goal: { pairs: PAIR_GOAL, coinsNeeded: coinsForPairs(PAIR_GOAL), coinsNow, pairsNow: pairsFor(coinsNow) },
+      listingsLive: liveRows.length,
+      approvedWaiting: approved.count ?? 0,
+      earnedUsd,
+      goal: listingGoal(paidCount, LISTING_PACKAGES.map((p) => p.priceUsd)),
       exchanges: LEAD_EXCHANGES.map((e) => ({ ...e })),
     };
   });

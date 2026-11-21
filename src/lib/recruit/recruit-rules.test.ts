@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import {
-  canMoveStage, coinsForPairs, dedupeKey, gradeOf, isCoinTeam, outreachProblems, pairsFor, parsePastedLeads, scoreLead, stageAfterSend, type LeadFacts,
+  canMoveStage, dedupeKey, gradeOf, isCoinTeam, listingGoal, outreachProblems, parsePastedLeads, perMonthToGoal, scoreLead, stageAfterSend, type LeadFacts,
 } from "./recruit-rules";
 
 const NOW = Date.parse("2026-11-21T00:00:00Z");
@@ -9,11 +9,18 @@ const base: LeadFacts = {
   website: null, twitter: null, telegram: null, email: null, sourceDetail: null,
 };
 
-describe("the 10 million pairs goal", () => {
-  it("100 coins make 4,950 pairs", () => expect(pairsFor(100)).toBe(4950));
-  it("1,000 coins make 499,500 pairs", () => expect(pairsFor(1000)).toBe(499_500));
-  it("10 million pairs needs 4,473 coins", () => expect(coinsForPairs(10_000_000)).toBe(4473));
-  it("4,472 coins fall short of 10 million", () => expect(pairsFor(4472)).toBeLessThan(10_000_000));
+describe("the 1,000 paid listings goal", () => {
+  const prices = [1000, 2500, 5000];
+  it("1,000 listings bring $1,000,000 if all are Seed packages", () => expect(listingGoal(0, prices).goalLowUsd).toBe(1_000_000));
+  it("1,000 listings bring $5,000,000 if all are Grove packages", () => expect(listingGoal(0, prices).goalHighUsd).toBe(5_000_000));
+  it("25 paid leaves 975 to go, 2.5% of the way", () => {
+    const g = listingGoal(25, prices);
+    expect(g.remaining).toBe(975);
+    expect(g.pct).toBe(2.5);
+  });
+  it("975 to go by about a year out is 82 a month", () =>
+    expect(perMonthToGoal(975, Date.parse("2026-11-21T00:00:00Z"), "2027-11-21T00:00:00Z")).toBe(82));
+  it("no date, no monthly pace", () => expect(perMonthToGoal(975, 0, null)).toBeNull());
 });
 
 describe("pipeline stages", () => {
