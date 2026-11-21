@@ -150,7 +150,7 @@ export function pairingCode(challenge: string): string {
   return String(n % 1000).padStart(3, "0");
 }
 
-/** Short name for the key that signed in, shown on both screens ("Coin TZZC…xsVd"). */
+/** Short name for the key that signed in, shown on both screens ("Coin ZZCuca"). */
 export function shortKeyName(kind: KeyKind, identity: string): string {
   return startingName(kind, kind === "evm" ? (checksumEvmAddress(identity) ?? identity) : identity);
 }
@@ -244,8 +244,11 @@ export function keepExistingLink(p: {
 
 /** Friendly starting name for a coin / wallet account (they can change it in the setup guide). */
 export function startingName(kind: KeyKind, identity: string): string {
+  // Coins are named by their 6-digit CoinID: the 2nd through 7th characters of the coin address
+  // (the leading "T" is the same on every TEXITcoin address, so it carries no information).
+  if (kind === "coin") return `Coin ${identity.slice(1, 7)}`;
   const short = `${identity.slice(0, 4)}…${identity.slice(-4)}`;
-  return kind === "coin" ? `Coin ${short}` : `Wallet ${short}`;
+  return `Wallet ${short}`;
 }
 
 /** The email to show a member, or null for a coin / wallet account that hasn't added one. */

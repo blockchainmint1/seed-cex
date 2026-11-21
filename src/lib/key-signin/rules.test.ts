@@ -183,6 +183,7 @@ describe("signing in again with the same key", () => {
     expect(keepExistingLink({ active, incoming: { account: 1106, xpubs: { TXC: "a", BTC: "b", SOL: "s" } }, twoFactorSinceMs: null, telegramSinceMs: null })).toBe(false);
   });
   test("starting names never show the hidden email", () => {
-    expect(startingName("coin", "TZZCuca5ntPVCJL5ryTjh465Jvw5vHxsVd")).toBe("Coin TZZC…xsVd");
+    expect(startingName("coin", "TZZCuca5ntPVCJL5ryTjh465Jvw5vHxsVd")).toBe("Coin ZZCuca");
+    expect(startingName("evm", "0xAbCdEf0123456789aBcDeF0123456789AbCdEf01")).toBe("Wallet 0xAb…Ef01");
   });
 });
