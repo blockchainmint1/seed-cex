@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import {
-  canMoveStage, dedupeKey, gradeOf, isCoinTeam, listingGoal, outreachProblems, parsePastedLeads, perMonthToGoal, scoreLead, stageAfterSend, type LeadFacts,
+  canMoveStage, dedupeKey, GOAL_BY, gradeOf, isCoinTeam, listingGoal, outreachProblems, parsePastedLeads, perMonthToGoal, scoreLead, stageAfterSend, type LeadFacts,
 } from "./recruit-rules";
 
 const NOW = Date.parse("2026-11-21T00:00:00Z");
@@ -21,6 +21,8 @@ describe("the 1,000 paid listings goal", () => {
   it("975 to go by about a year out is 82 a month", () =>
     expect(perMonthToGoal(975, Date.parse("2026-11-21T00:00:00Z"), "2027-11-21T00:00:00Z")).toBe(82));
   it("no date, no monthly pace", () => expect(perMonthToGoal(975, 0, null)).toBeNull());
+  it("1,000 to go by end of 2028 from Nov 21 2026 is about 40 a month", () =>
+    expect(perMonthToGoal(1000, Date.parse("2026-11-21T00:00:00Z"), GOAL_BY)).toBe(40));
 });
 
 describe("pipeline stages", () => {

@@ -12,6 +12,9 @@
 /** Bobby's goal (Nov 21 2026): 1,000 paid listings. */
 export const LISTING_GOAL = 1000;
 
+/** Bobby's target date for the goal (Nov 21 2026): end of 2028. */
+export const GOAL_BY = "2028-12-31";
+
 /** Where the team stands against the goal. Package prices come from listing.ts. */
 export function listingGoal(paid: number, prices: readonly number[], goal = LISTING_GOAL) {
   const done = Math.max(0, Math.floor(paid));

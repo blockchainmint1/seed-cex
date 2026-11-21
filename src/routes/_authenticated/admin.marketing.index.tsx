@@ -68,6 +68,9 @@ function Goal({ o, onStage, active }: { o: Awaited<ReturnType<typeof getRecruitO
         <div className="h-full bg-action" style={{ width: `${Math.max(g.pct, 0.5)}%` }} />
       </div>
       <p className="mt-1 font-mono text-[11px] text-muted-foreground">{g.pct.toFixed(1)}% of the goal · {n(o.applications)} applications · {n(o.total)} leads · {n(o.gradeA)} grade A still open · {n(o.messagesSent)} messages sent · {n(o.aiDraftsLeft)} AI drafts left today</p>
+      {g.perMonth != null && g.remaining > 0 ? (
+        <p className="mt-1 text-[11px] text-muted-foreground">To reach {n(g.goal)} by the end of 2028, that's about <b className="text-foreground">{n(g.perMonth)} paid listings a month</b> from now on.</p>
+      ) : null}
       <p className="mt-1 text-[11px] text-muted-foreground">Paid counts coins live on Seeds plus leads you've moved to Paid. Money so far counts only live listings.</p>
       <div className="mt-4 flex flex-wrap gap-1.5">
         {STAGES.map((s) => (

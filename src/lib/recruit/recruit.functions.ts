@@ -4,7 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireAdmin } from "@/lib/admin-guard";
 import { LISTING_PACKAGES, packageById } from "@/lib/listing";
 import {
-  AI_DRAFTS_PER_DAY, CHANNELS, LEAD_EXCHANGES, STAGES, canMoveStage, dedupeKey, listingGoal,
+  AI_DRAFTS_PER_DAY, CHANNELS, GOAL_BY, LEAD_EXCHANGES, STAGES, canMoveStage, dedupeKey, listingGoal, perMonthToGoal,
   outreachProblems, parsePastedLeads, scoreLead, stageAfterSend, type Channel, type ScoreReason, type Source, type Stage,
 } from "./recruit-rules";
 
@@ -63,7 +63,10 @@ export const getRecruitOverview = createServerFn({ method: "GET" })
       listingsLive: liveRows.length,
       approvedWaiting: approved.count ?? 0,
       earnedUsd,
-      goal: listingGoal(paidCount, LISTING_PACKAGES.map((p) => p.priceUsd)),
+      goal: (() => {
+        const g = listingGoal(paidCount, LISTING_PACKAGES.map((p) => p.priceUsd));
+        return { ...g, by: GOAL_BY, perMonth: perMonthToGoal(g.remaining, Date.now(), GOAL_BY) };
+      })(),
       exchanges: LEAD_EXCHANGES.map((e) => ({ ...e })),
     };
   });
