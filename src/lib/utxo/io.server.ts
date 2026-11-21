@@ -95,18 +95,35 @@ export async function loadUtxosFor(chain: UtxoChainId, address: string, opts: { 
   if (rpcConfigured(chain)) {
     const scan = await scanAddressUtxos(chain, [address]);
     if (scan) {
-      return scan.utxos.map((u) => ({
+      return dropSpentInMempool(chain, scan.utxos.map((u) => ({
         txid: u.txid,
         vout: u.vout,
         scriptPubKey: u.scriptPubKey,
         amount: u.amount,
         height: u.height,
-      }));
+      })));
     }
   }
 
   // Public explorer is the TXC/ISK fallback when our node is down.
   return loadExplorerUtxos(chain, address);
+}
+
+/**
+ * scantxoutset reads confirmed chainstate only, so a coin Seeds just spent in a send
+ * still waiting for a block would be picked again. Run the scan's coins through the
+ * same gettxout batch as the fast path (include_mempool) and drop those. If our node
+ * can't answer, or the pocket is too big to check, the scan is used as it was.
+ */
+async function dropSpentInMempool(chain: "txc" | "isk", coins: Utxo[]): Promise<Utxo[]> {
+  if (!coins.length || coins.length > MAX_COINS_TO_VERIFY) return coins;
+  try {
+    const replies = await rpcBatch<NodeCoin>(chain, coins.map((u) => ({ method: "gettxout", params: [u.txid, u.vout, true] })), 6_000);
+    const check = checkCoinsAgainstNode(coins, replies);
+    return check.kind === "ok" ? check.coins : coins;
+  } catch {
+    return coins;
+  }
 }
 
 /** Confirmed coins from the chain's explorer (address index). TXC and ISK only. A cut-off list throws. */

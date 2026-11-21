@@ -1,12 +1,13 @@
 /**
  * Hard ceiling on the network fee of any TXC / ISK / LTC send Seeds signs. Pure: no I/O.
  *
- * The values are Bobby's (Nov 21, 2026). The builder refuses, before signing, any send
+ * The values are Bobby's (Nov 21, 2026; TXC/ISK raised from 0.0001 to 0.01 on the auditor's advice so
+ * pockets with many small coins can still send). The builder refuses, before signing, any send
  * whose fee would be higher, so a wrong coin value or a wild fee-rate reading can never
  * hand a member's coins to miners. The node's own limit (0.10 per 1,000 bytes) stays as
  * a second net.
  */
-export const MAX_SEND_FEE = { txc: 0.0001, isk: 0.0001, ltc: 0.002 } as const;
+export const MAX_SEND_FEE = { txc: 0.01, isk: 0.01, ltc: 0.002 } as const;
 export type FeeCapChain = keyof typeof MAX_SEND_FEE;
 
 const SYMBOL: Record<FeeCapChain, string> = { txc: "TXC", isk: "ISK", ltc: "LTC" };

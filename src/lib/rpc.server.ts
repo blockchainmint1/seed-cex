@@ -98,11 +98,17 @@ export async function rpcBatch<T = unknown>(
   const body = (await res.json().catch(() => null)) as Array<{ id?: unknown; result?: T; error?: { code: number; message: string } | null }> | null;
   if (!Array.isArray(body) || body.length !== calls.length) throw new RpcError(`batch: unexpected reply [${res.status}]`);
   const out: Array<T | RpcError> = new Array(calls.length);
+  const seen = new Array<boolean>(calls.length).fill(false);
   for (const r of body) {
-    if (!Number.isInteger(r?.id) || (r.id as number) < 0 || (r.id as number) >= calls.length || out[r.id as number] !== undefined) {
+    const id = r?.id;
+    if (!Number.isInteger(id) || (id as number) < 0 || (id as number) >= calls.length || seen[id as number]) {
       throw new RpcError("batch: reply ids don't match the calls");
     }
-    out[r.id as number] = r.error ? new RpcError(`${calls[r.id as number]!.method}: ${r.error.message}`, r.error.code) : (r.result as T);
+    seen[id as number] = true;
+    const method = calls[id as number]!.method;
+    if (r.error) out[id as number] = new RpcError(`${method}: ${r.error.message}`, r.error.code);
+    else if (!("result" in r)) out[id as number] = new RpcError(`${method}: reply had no result`);
+    else out[id as number] = r.result as T;
   }
   return out;
 }
