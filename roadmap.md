@@ -286,3 +286,4 @@
 - [ ] First real coin member walks the withdrawal steps end to end (blocked: Seeds Key page catch-up + auditor + publish)
 - [ ] Always pocket 1106: HME Wallet links refuse other numbers; coin/wallet sign-ins reuse 1106 after a revoke; wording + Seeds Key rules copy (waiting on Bobby's confirm)
 - [ ] Setup guide asks for withdrawal checks (email / two-factor / Telegram) before the wallet step so nobody has to re-link (waiting on Bobby: how many checks, coin re-link approach)
+- [ ] Same phrase in HME Wallet and on a coin: decide where a coin sign-in lands once the HME Wallet link is revoked (today it makes a second account) (waiting on Bobby)
