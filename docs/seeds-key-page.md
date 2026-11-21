@@ -37,7 +37,7 @@ covers the other side.
 Seeds opens (or shows as a QR) a link like this:
 
 ```text
-https://<seeds-key-host>/?kind=coin&r=https%3A%2F%2Fseeds.honest.money%2Fapi%2Fpublic%2Fkey-signin%2Fmanifest%2F<id>
+https://key.seeds.honest.money/?kind=coin&r=https%3A%2F%2Fseeds.honest.money%2Fapi%2Fpublic%2Fkey-signin%2Fmanifest%2F<id>
 ```
 
 - `kind` is `coin` or `wallet`.
@@ -153,6 +153,9 @@ opens what `buildHandoff` seals.
 
 ## Switching it on in Seeds
 
-Once the page is live, set the server secret `SEEDS_KEY_URL` on Seeds to its address (for example
-`https://<seeds-key-host>`). Until then, Seeds' "Start with a coin" page says the Seeds Key page
-isn't switched on yet.
+The Seeds Key page's permanent home is **`https://key.seeds.honest.money`** — chosen November 21,
+2026. This address can never change once members use it: outside-wallet pockets are rebuilt from a
+signature of a message naming this host, so moving the page would strand their coins. Seeds' server
+secret `SEEDS_KEY_URL` is already set to it. The "Start with a coin" page links there as soon as the
+secret is present; until the page itself is deployed at that address, the link leads nowhere, so
+deploy the page before announcing the feature.
