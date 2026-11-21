@@ -44,3 +44,20 @@ export const getPriceSeries = createServerFn({ method: "GET" })
     const { fetchSeries } = await import("./market.server");
     return sharedRead("series", data.pair, () => fetchSeries(data.pair));
   });
+
+/** Public: TXC/TSD, ISK/TSD and ZCU/TSD rows for Primary markets, from Seeds' own books (one shared copy). */
+export const getHomeCoinMarkets = createServerFn({ method: "GET" }).handler(async () => {
+  const { shared } = await import("./cache/shared-cache.server");
+  const { CACHE_TIMES } = await import("./cache/shared-cache-rules");
+  return shared("market:home-coin-rows", CACHE_TIMES.summary, async () => {
+    const { fetchOrderBook, fetchTape } = await import("./market.server");
+    const { HOME_COIN_MARKETS, bookRow } = await import("./markets/primary-rows");
+    const now = Date.now();
+    return Promise.all(
+      HOME_COIN_MARKETS.map(async (h) => {
+        const [book, tape] = await Promise.all([fetchOrderBook(h.pairId), fetchTape(h.pairId, 500)]);
+        return bookRow(h, tape, book, now);
+      }),
+    );
+  });
+});

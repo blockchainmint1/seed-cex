@@ -1,18 +1,46 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useWebMCP } from "use-webmcp-tool";
 import { runWebMCPTool } from "@/lib/webmcp-telemetry";
-import { ArrowRight } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ArrowDown, ArrowRight, ArrowUp, ArrowUpDown } from "lucide-react";
 import { PAIRS } from "@/lib/chains";
+import { getHomeCoinMarkets } from "@/lib/market.functions";
+import type { MarketRow } from "@/lib/markets/thor-markets.server";
+import { nextSort, sortRows, type PrimaryRow, type SortKey, type SortState } from "@/lib/markets/primary-rows";
 import { fmtTsdCompact } from "@/lib/markets/thor-markets";
 import { Change, Price, Spark, thorMarketsQuery, marketsErrorText } from "@/components/markets/ThorMarketBits";
 import { MarketsSponsoredRow } from "@/components/ads/AdSpots";
 import { liveAdsQuery } from "@/components/ads/live-ads";
 import { adsForSpot } from "@/lib/ads/ad-rules";
 
-const title = "Crypto Markets in TSD — BTC, ETH, SOL, XRP & more | Seeds";
+const title = "Crypto Markets in TSD — TXC, ISK, ZCU, BTC, ETH & more | Seeds";
 const description =
-  "Live prices, 24-hour change, volume and candlestick charts for Bitcoin, Ether, Solana, XRP, Dogecoin and every major coin on THORChain, priced in TSD (1 TSD = $1).";
+  "Live prices, 24-hour change and volume for TEXITcoin, Iskandercoin and ZeroChill on Seeds' own order books, plus Bitcoin, Ether, Solana, XRP and every major coin on THORChain, priced in TSD (1 TSD = $1).";
+
+const homeCoinMarketsQuery = queryOptions({
+  queryKey: ["home-coin-markets"],
+  queryFn: () => getHomeCoinMarkets(),
+  refetchInterval: 30_000,
+  staleTime: 15_000,
+});
+
+const fromThor = (m: MarketRow): PrimaryRow => ({
+  key: `thor:${m.slug}`,
+  base: m.base,
+  name: m.name,
+  source: "thor",
+  slug: m.slug,
+  price: m.price,
+  priceIsMid: false,
+  changePct: m.day.changePct,
+  high: m.day.high,
+  low: m.day.low,
+  volume: m.day.volume,
+  liquidity: m.liquidity,
+  live: m.live,
+  spark: m.spark,
+});
 
 export const Route = createFileRoute("/markets/")({
   staticData: { sitemap: true },
@@ -31,6 +59,7 @@ export const Route = createFileRoute("/markets/")({
   loader: async ({ context }) => ({
     markets: await context.queryClient.ensureQueryData(thorMarketsQuery).catch(() => null),
     ads: await context.queryClient.ensureQueryData(liveAdsQuery).catch(() => null),
+    home: await context.queryClient.ensureQueryData(homeCoinMarketsQuery).catch(() => null),
   }),
   component: MarketsPage,
 });
@@ -39,9 +68,14 @@ export const Route = createFileRoute("/markets/")({
 const tradeHref = (slug: string): string => `/trade/${slug}`;
 
 function MarketsPage() {
-  const { markets, ads } = Route.useLoaderData();
+  const { markets, ads, home } = Route.useLoaderData();
   const q = useQuery({ ...thorMarketsQuery, initialData: markets ?? undefined });
-  const rows = q.data ?? [];
+  const h = useQuery({ ...homeCoinMarketsQuery, initialData: home ?? undefined });
+  const [sort, setSort] = useState<SortState>(null);
+  const thorRows = q.data ?? [];
+  // Home coins (Seeds' own order books) lead the default order; THORChain's majors follow.
+  const allRows = useMemo(() => [...(h.data ?? []), ...thorRows.map(fromThor)], [h.data, thorRows]);
+  const rows = useMemo(() => sortRows(allRows, sort), [allRows, sort]);
   const live = useQuery({ ...liveAdsQuery, initialData: ads ?? undefined });
   const sponsored = adsForSpot(live.data?.ads ?? [], "markets_row", { nowMs: live.data?.nowMs ?? 0 })[0];
 
@@ -54,7 +88,7 @@ function MarketsPage() {
       runWebMCPTool("list_shown_markets", () => {
         if (!rows.length) return q.error ? "Prices couldn't load; try again shortly." : "Prices are still loading.";
         return rows
-          .map((m) => `${m.base}/TSD: ${m.price ?? "n/a"} TSD, ${m.day.changePct == null ? "n/a" : m.day.changePct.toFixed(2) + "%"} 24h, volume ${fmtTsdCompact(m.day.volume)}${m.live ? "" : " (paused)"}`)
+          .map((m) => `${m.base}/TSD: ${m.price ?? "n/a"} TSD${m.priceIsMid ? " (order-book mid, no trades yet)" : ""}, ${m.changePct == null ? "n/a" : m.changePct.toFixed(2) + "%"} 24h, volume ${fmtTsdCompact(m.volume)}${m.live ? "" : " (paused)"} — ${m.source === "seeds" ? "Seeds order book" : "THORChain"}`)
           .join("\n");
       }),
   });
@@ -63,20 +97,20 @@ function MarketsPage() {
       <p className="font-mono text-[11px] tracking-[0.3em] text-primary uppercase">Markets</p>
       <h1 className="mt-2 font-display text-3xl font-extrabold tracking-tight md:text-4xl">Primary markets</h1>
       <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-        The major coins on THORChain, priced in TSD. One TSD is one dollar, so every price here is THORChain's live
-        dollar price. Tap a market for candlestick charts.
+        Our home coins — TEXITcoin, Iskandercoin and ZeroChill — on Seeds' own order books, plus the major coins on
+        THORChain, all priced in TSD. One TSD is one dollar. Tap a column heading to sort, or a market to open it.
       </p>
 
       <div className="mt-6 overflow-x-auto rounded-sm border border-border">
         <table className="w-full text-left">
           <thead className="bg-surface font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
             <tr>
-              <th className="px-4 py-3">Market</th>
-              <th className="px-4 py-3 text-right">Price (TSD)</th>
-              <th className="px-4 py-3 text-right">24h</th>
-              <th className="hidden px-4 py-3 text-right md:table-cell">24h high / low</th>
-              <th className="hidden px-4 py-3 text-right sm:table-cell">24h volume</th>
-              <th className="hidden px-4 py-3 text-right lg:table-cell">Liquidity</th>
+              <SortTh label="Market" k="market" sort={sort} onSort={setSort} align="left" />
+              <SortTh label="Price (TSD)" k="price" sort={sort} onSort={setSort} />
+              <SortTh label="24h" k="change" sort={sort} onSort={setSort} />
+              <SortTh label="24h high / low" k="high" sort={sort} onSort={setSort} className="hidden md:table-cell" />
+              <SortTh label="24h volume" k="volume" sort={sort} onSort={setSort} className="hidden sm:table-cell" />
+              <SortTh label="Liquidity" k="liquidity" sort={sort} onSort={setSort} className="hidden lg:table-cell" />
               <th className="hidden px-4 py-3 lg:table-cell">Last 24h</th>
               <th className="hidden px-4 py-3 sm:table-cell"></th>
             </tr>
@@ -86,43 +120,26 @@ function MarketsPage() {
             {!rows.length ? (
               <tr>
                 <td colSpan={8} className="px-4 py-10 text-center text-sm text-muted-foreground">
-                  {q.error ? marketsErrorText(q.error) : "Loading THORChain prices…"}
+                  {q.error ? marketsErrorText(q.error) : "Loading prices…"}
                 </td>
               </tr>
             ) : (
-              rows.map((m) => (
-                <tr key={m.slug} className="group hover:bg-surface/60">
-                  <td className="px-4 py-3">
-                    <Link to="/markets/$slug" params={{ slug: m.slug }} className="block">
-                      <span className="font-mono text-sm font-semibold text-foreground group-hover:text-primary">{m.base}<span className="text-muted-foreground">/TSD</span></span>
-                      <span className="block text-xs text-muted-foreground">{m.name}{!m.live ? " · paused" : ""}</span>
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-right text-sm text-foreground"><Price v={m.price} /></td>
-                  <td className="px-4 py-3 text-right font-mono text-sm"><Change pct={m.day.changePct} /></td>
-                  <td className="hidden px-4 py-3 text-right font-mono text-xs text-muted-foreground md:table-cell">
-                    <Price v={m.day.high} /> / <Price v={m.day.low} />
-                  </td>
-                  <td className="hidden px-4 py-3 text-right font-mono text-sm text-muted-foreground sm:table-cell">{fmtTsdCompact(m.day.volume)}</td>
-                  <td className="hidden px-4 py-3 text-right font-mono text-sm text-muted-foreground lg:table-cell">{fmtTsdCompact(m.liquidity)}</td>
-                  <td className="hidden px-4 py-3 lg:table-cell"><Spark points={m.spark} up={(m.day.changePct ?? 0) >= 0} /></td>
-                  <td className="hidden px-4 py-3 text-right sm:table-cell">
-                    <Link
-                      to="/markets/$slug"
-                      params={{ slug: m.slug }}
-                      className="inline-flex items-center gap-1 rounded-sm border border-border px-3 py-1.5 font-mono text-[10px] tracking-wider text-foreground uppercase transition-colors hover:border-primary hover:text-primary"
-                    >
-                      Chart <ArrowRight className="h-3 w-3" />
-                    </Link>
-                  </td>
-                </tr>
-              ))
+              rows.map((m) => <MarketRowView key={m.key} m={m} />)
             )}
+            {rows.length && !thorRows.length ? (
+              <tr>
+                <td colSpan={8} className="px-4 py-4 text-center text-xs text-muted-foreground">
+                  {q.error ? marketsErrorText(q.error) : "Loading THORChain prices…"}
+                </td>
+              </tr>
+            ) : null}
           </tbody>
         </table>
       </div>
       <p className="mt-2 font-mono text-[10px] text-muted-foreground">
-        Prices, volume and liquidity from THORChain's pools. Volume is THORChain's 24-hour swap volume for that coin.
+        TXC, ISK and ZCU figures come from Seeds' own order books: price is the last trade (or the middle of the best
+        buy and sell order before the first trade), and liquidity is the TSD value of open orders. Every other row comes
+        from THORChain's pools, where volume is THORChain's 24-hour swap volume for that coin.
       </p>
 
       <h2 className="mt-12 font-display text-xl font-bold">Seeds order books</h2>
@@ -142,5 +159,83 @@ function MarketsPage() {
         ))}
       </div>
     </div>
+  );
+}
+
+function SortTh({
+  label,
+  k,
+  sort,
+  onSort,
+  align = "right",
+  className = "",
+}: {
+  label: string;
+  k: SortKey;
+  sort: SortState;
+  onSort: (s: SortState) => void;
+  align?: "left" | "right";
+  className?: string;
+}) {
+  const active = sort?.key === k ? sort.dir : null;
+  const Icon = active === "asc" ? ArrowUp : active === "desc" ? ArrowDown : ArrowUpDown;
+  return (
+    <th
+      className={`px-4 py-3 ${align === "right" ? "text-right" : ""} ${className}`}
+      aria-sort={active === "asc" ? "ascending" : active === "desc" ? "descending" : "none"}
+    >
+      <button
+        type="button"
+        onClick={() => onSort(nextSort(sort, k))}
+        className={`inline-flex items-center gap-1 uppercase tracking-[0.18em] transition-colors hover:text-foreground ${active ? "text-foreground" : ""}`}
+        title={`Sort by ${label.toLowerCase()}`}
+      >
+        {label}
+        <Icon className={`h-3 w-3 ${active ? "" : "opacity-40"}`} aria-hidden />
+      </button>
+    </th>
+  );
+}
+
+function MarketRowView({ m }: { m: PrimaryRow }) {
+  const seeds = m.source === "seeds";
+  const name = (
+    <>
+      <span className="font-mono text-sm font-semibold text-foreground group-hover:text-primary">{m.base}<span className="text-muted-foreground">/TSD</span></span>
+      <span className="block text-xs text-muted-foreground">
+        {m.name}
+        {seeds ? " · Seeds order book" : !m.live ? " · paused" : ""}
+      </span>
+    </>
+  );
+  const btn = "inline-flex items-center gap-1 rounded-sm border border-border px-3 py-1.5 font-mono text-[10px] tracking-wider text-foreground uppercase transition-colors hover:border-primary hover:text-primary";
+  return (
+    <tr className="group hover:bg-surface/60">
+      <td className="px-4 py-3">
+        {seeds ? (
+          <Link to={tradeHref(m.slug)} className="block">{name}</Link>
+        ) : (
+          <Link to="/markets/$slug" params={{ slug: m.slug }} className="block">{name}</Link>
+        )}
+      </td>
+      <td className="px-4 py-3 text-right text-sm text-foreground">
+        <Price v={m.price} />
+        {m.priceIsMid ? <span className="block font-mono text-[10px] text-muted-foreground">mid · no trades yet</span> : null}
+      </td>
+      <td className="px-4 py-3 text-right font-mono text-sm"><Change pct={m.changePct} /></td>
+      <td className="hidden px-4 py-3 text-right font-mono text-xs text-muted-foreground md:table-cell">
+        <Price v={m.high} /> / <Price v={m.low} />
+      </td>
+      <td className="hidden px-4 py-3 text-right font-mono text-sm text-muted-foreground sm:table-cell">{fmtTsdCompact(m.volume)}</td>
+      <td className="hidden px-4 py-3 text-right font-mono text-sm text-muted-foreground lg:table-cell">{fmtTsdCompact(m.liquidity)}</td>
+      <td className="hidden px-4 py-3 lg:table-cell"><Spark points={m.spark} up={(m.changePct ?? 0) >= 0} /></td>
+      <td className="hidden px-4 py-3 text-right sm:table-cell">
+        {seeds ? (
+          <Link to={tradeHref(m.slug)} className={btn}>Trade <ArrowRight className="h-3 w-3" /></Link>
+        ) : (
+          <Link to="/markets/$slug" params={{ slug: m.slug }} className={btn}>Chart <ArrowRight className="h-3 w-3" /></Link>
+        )}
+      </td>
+    </tr>
   );
 }
