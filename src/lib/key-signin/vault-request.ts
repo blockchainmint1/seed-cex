@@ -95,6 +95,15 @@ export function vaultRequestFor(m: VaultRequestSource, signer: VaultSigner | nul
 }
 
 /**
+ * Will this sign-in's manifest carry a signed Vault request? Same gates as vaultRequestFor
+ * (live Seeds address, live Seeds Key host, signer configured), so the "Use HME Vault"
+ * screen can say up front when Vault isn't available here instead of failing on the phone.
+ */
+export function vaultAvailable(domain: string, keyHost: string | null, hasSigner: boolean): boolean {
+  return hasSigner && domain === LIVE_SEEDS_DOMAIN && keyHost === LIVE_KEY_HOST;
+}
+
+/**
  * Times stored for a new key sign-in: issued (created_at) and expiry from one clock reading,
  * so the window is exactly the request lifetime and never trips Vault's 10-minute limit.
  */

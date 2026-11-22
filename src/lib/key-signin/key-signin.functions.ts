@@ -2,7 +2,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-const kindSchema = z.enum(["coin", "wallet"]);
+// "vault" = HME Vault: signs as a coin (TXC m/44'/696969'/0'/0/0), so the account kind stays
+// "coin"; it only tells the Seeds Key page to open its Vault scan straight away.
+const kindSchema = z.enum(["coin", "wallet", "vault"]);
 
 /**
  * Start "Start with a coin" / "Use another wallet": a single-use request the
@@ -40,8 +42,12 @@ export const startKeySignin = createServerFn({ method: "POST" })
     const keyPageUrl = /^https:\/\/[a-z0-9.-]+(:\d+)?(\/.*)?$/i.test(base)
       ? `${base}/?kind=${data.kind}&r=${encodeURIComponent(manifestUrl)}`
       : null;
+    const { vaultAvailable } = await import("./vault-request");
+    const { vaultSigner } = await import("./vault-request.server");
+    const { keyHostOf } = await import("./rules");
+    const vaultReady = vaultAvailable(new URL(origin).host, keyHostOf(process.env.SEEDS_KEY_URL), vaultSigner() !== null);
     // Shown here and on the Seeds Key page; the member continues only when they match (auditor K2).
-    return { id, secret, manifestUrl, keyPageUrl, expiresAt, pairCode: pairingCode(challenge) };
+    return { id, secret, manifestUrl, keyPageUrl, expiresAt, pairCode: pairingCode(challenge), vaultReady };
   });
 
 /** The browser that started the request asks whether the Seeds Key page finished; once, it gets a session. */

@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { ed25519, x25519 } from "@noble/curves/ed25519.js";
 import { base64urlnopad } from "@scure/base";
 import {
+  vaultAvailable,
   MAX_VAULT_REQUEST_MS, VAULT_EXAMPLE_SOURCE, VAULT_PATHS, VAULT_SIGNING_KEY_ID, canonicalIso, keyRequestWindow,
   vaultRequestFor, vaultSignerFromSeed, type VaultRequestSource,
 } from "./vault-request";
@@ -122,5 +123,13 @@ describe("Seeds-signed HME Vault requests (v2)", () => {
     const ex = vaultRequestFor(VAULT_EXAMPLE_SOURCE, signer)!;
     expect(readSignedVaultRequest(ex, trust, Date.parse("2026-01-01T00:05:00.000Z"))).toEqual(ex);
     expect(() => readSignedVaultRequest(ex, trust)).toThrow(/expired/);
+  });
+
+  test("the Use HME Vault screen says Vault is on only where the manifest would carry a signed request", () => {
+    expect(vaultAvailable("seeds.honest.money", "key.seeds.honest.money", true)).toBe(true);
+    expect(vaultAvailable("seeds.honest.money", "key.seeds.honest.money", false)).toBe(false);
+    expect(vaultAvailable("id-preview--x.lovable.app", "key.seeds.honest.money", true)).toBe(false);
+    expect(vaultAvailable("seeds.honest.money", "key.evil.com", true)).toBe(false);
+    expect(vaultAvailable("seeds.honest.money", null, true)).toBe(false);
   });
 });

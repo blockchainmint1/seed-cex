@@ -1,5 +1,8 @@
 # Roadmap
 
+- [x] "Use HME Vault" button on the sign-in page next to coin / other wallet, opening straight into the Vault sign-in (Bobby, Nov 22)
+- [ ] Seeds Key page opens its Vault scan directly for ?kind=vault (blocked: paste the prompt into the Seeds Key project)
+
 - [x] Seeds Lend (/loans, unlinked): P2P lending with lockbox-held collateral, offers + requests, back-and-forth terms, loan room, health watch, liquidation/default split; no Seeds cut, fee only on liquidation/default (Bobby, Nov 22)
 - [ ] Limited beta access for /loans (blocked: Bobby sets it up later)
 - [ ] Schedule the 5-minute loan watcher after publishing (blocked: publish + auditor)

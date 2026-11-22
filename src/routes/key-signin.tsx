@@ -2,25 +2,26 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { QRCodeSVG } from "qrcode.react";
-import { ExternalLink, KeyRound, ShieldCheck, Wallet } from "lucide-react";
+import { ExternalLink, KeyRound, ShieldCheck, Vault, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { claimKeySignin, confirmKeyReplace, dropKeyReplace, startKeySignin } from "@/lib/key-signin/key-signin.functions";
 import { takeReturnPath } from "@/lib/return-path";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-type Kind = "coin" | "wallet";
+/** "vault" = HME Vault: signs in as a coin account, but the Seeds Key page opens its Vault scan straight away. */
+type Kind = "coin" | "wallet" | "vault";
 
 export const Route = createFileRoute("/key-signin")({
   staticData: { sitemap: false },
   ssr: false,
-  validateSearch: (s: Record<string, unknown>): { kind: Kind } => ({ kind: s.kind === "wallet" ? "wallet" : "coin" }),
+  validateSearch: (s: Record<string, unknown>): { kind: Kind } => ({ kind: s.kind === "wallet" || s.kind === "vault" ? s.kind : "coin" }),
   head: () => ({
     meta: [
-      { title: "Start with a coin or wallet — Seeds" },
-      { name: "description", content: "Open a Seeds account by scanning your Cold Storage Coin or signing with MetaMask, Ledger, Trezor or Phantom. Your recovery phrase never reaches Seeds." },
-      { property: "og:title", content: "Start with a coin or wallet — Seeds" },
-      { property: "og:description", content: "Scan your coin or sign with your wallet on the Seeds Key page. Seeds never sees your recovery phrase." },
+      { title: "Start with a coin, HME Vault or wallet — Seeds" },
+      { name: "description", content: "Open a Seeds account with your Cold Storage Coin, HME Vault, or MetaMask, Ledger, Trezor or Phantom. Your recovery phrase never reaches Seeds." },
+      { property: "og:title", content: "Start with a coin, HME Vault or wallet — Seeds" },
+      { property: "og:description", content: "Scan your coin, use HME Vault or sign with your wallet on the Seeds Key page. Seeds never sees your recovery phrase." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex,nofollow" },
@@ -29,7 +30,7 @@ export const Route = createFileRoute("/key-signin")({
   component: KeySignin,
 });
 
-type Req = { id: string; secret: string; keyPageUrl: string | null; expiresAt: string; pairCode?: string };
+type Req = { id: string; secret: string; keyPageUrl: string | null; expiresAt: string; pairCode?: string; vaultReady?: boolean };
 type Ready = { tokenHash: string; isNew: boolean; who: string };
 /** A sign-in that would replace the active pocket link with different keys (held until approved here). */
 type Held = { id: string; secret: string; who: string; needsCode: boolean };
@@ -149,20 +150,27 @@ function KeySignin() {
   }
 
   const coin = kind === "coin";
+  const vault = kind === "vault";
+  const wallet = kind === "wallet";
+  const tab = (on: boolean) => `rounded-md border px-3 py-1.5 ${on ? "border-primary text-primary" : "border-border text-muted-foreground"}`;
+  const title = vault ? "Use HME Vault" : coin ? "Start with your coin" : "Use your own wallet";
+  const intro = vault
+    ? "Open the Seeds Key page, then scan back and forth with your HME Vault phone. Vault checks the request really came from Seeds, works out your sign-in and trading pocket offline, and sends Seeds only those two things — never your recovery phrase."
+    : coin
+      ? "Scan the QR on your Cold Storage Coin on the Seeds Key page. It works out your sign-in and a small trading pocket on your phone, forgets the phrase, and sends Seeds only those two things."
+      : "Sign one message with MetaMask, Ledger, Trezor, Phantom or a phone wallet on the Seeds Key page. That signature becomes your Seeds trading pocket on your device. The same wallet can always rebuild it.";
+  const thing = vault ? "Vault" : coin ? "coin" : "wallet";
   return (
     <div className="mx-auto max-w-7xl px-5 py-12">
       <div className="max-w-xl">
         <p className="font-mono text-[11px] tracking-[0.24em] text-primary uppercase">Seeds never sees your recovery phrase</p>
-        <h1 className="mt-3 font-display text-3xl font-bold tracking-tight">{coin ? "Start with your coin" : "Use your own wallet"}</h1>
-        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-          {coin
-            ? "Scan the QR on your Cold Storage Coin on the Seeds Key page. It works out your sign-in and a small trading pocket on your phone, forgets the phrase, and sends Seeds only those two things."
-            : "Sign one message with MetaMask, Ledger, Trezor, Phantom or a phone wallet on the Seeds Key page. That signature becomes your Seeds trading pocket on your device. The same wallet can always rebuild it."}
-        </p>
+        <h1 className="mt-3 font-display text-3xl font-bold tracking-tight">{title}</h1>
+        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{intro}</p>
 
-        <div className="mt-6 flex gap-2 text-sm">
-          <Link to="/key-signin" search={{ kind: "coin" }} className={`rounded-md border px-3 py-1.5 ${coin ? "border-primary text-primary" : "border-border text-muted-foreground"}`}><KeyRound className="mr-1 inline h-4 w-4" />Coin</Link>
-          <Link to="/key-signin" search={{ kind: "wallet" }} className={`rounded-md border px-3 py-1.5 ${!coin ? "border-primary text-primary" : "border-border text-muted-foreground"}`}><Wallet className="mr-1 inline h-4 w-4" />Other wallet</Link>
+        <div className="mt-6 flex flex-wrap gap-2 text-sm">
+          <Link to="/key-signin" search={{ kind: "coin" }} className={tab(coin)}><KeyRound className="mr-1 inline h-4 w-4" />Coin</Link>
+          <Link to="/key-signin" search={{ kind: "vault" }} className={tab(vault)}><Vault className="mr-1 inline h-4 w-4" />HME Vault</Link>
+          <Link to="/key-signin" search={{ kind: "wallet" }} className={tab(wallet)}><Wallet className="mr-1 inline h-4 w-4" />Other wallet</Link>
         </div>
 
         <section className="mt-6 rounded-md border border-border bg-surface p-5">
@@ -174,7 +182,7 @@ function KeySignin() {
                 The Seeds Key page signed in as <b className="font-mono">{ready.who}</b>{ready.isNew ? " — a brand-new Seeds account" : ""}.
               </p>
               <p className="text-sm text-muted-foreground">
-                Is that the {coin ? "coin you just scanned" : "wallet you just used"}? The Seeds Key page shows the same name. If you didn't just do this yourself, or the name is different, someone else may have used your code — don't continue.
+                Is that the {vault ? "Vault you just used" : coin ? "coin you just scanned" : "wallet you just used"}? The Seeds Key page shows the same name. If you didn't just do this yourself, or the name is different, someone else may have used your code — don't continue.
               </p>
               <div className="flex flex-wrap gap-2">
                 <Button onClick={() => void openAccount()}>Yes, that's mine — open it</Button>
@@ -189,7 +197,7 @@ function KeySignin() {
                 <b className="font-mono">{held.who}</b>, but brought different pocket keys than the ones Seeds already has.
               </p>
               <p className="text-sm text-muted-foreground">
-                Your own {coin ? "coin" : "wallet"} always brings the same keys, so this usually means the Seeds Key page you used wasn't the real one
+                Your own {thing} always brings the same keys, so this usually means the Seeds Key page you used wasn't the real one
                 ({KEY_HOST}). Seeds has messaged your Telegram and email. If you didn't just do this yourself, choose "No" — nothing changes.
               </p>
               {held.needsCode ? (
@@ -218,7 +226,13 @@ function KeySignin() {
             </div>
           ) : null}
           {state === "waiting" && req ? (
-            req.keyPageUrl ? (
+            vault && !req.vaultReady ? (
+              <div className="space-y-3 text-sm">
+                <p>HME Vault sign-in only works on the live Seeds site (seeds.honest.money), so it isn't available on this screen.</p>
+                <p className="text-muted-foreground">You can still start with your Cold Storage Coin, sign in with Honest.Money, or use another wallet.</p>
+                <Button asChild variant="outline"><Link to="/key-signin" search={{ kind: "coin" }}><KeyRound /> Start with a coin instead</Link></Button>
+              </div>
+            ) : req.keyPageUrl ? (
               <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
                 <div className="shrink-0 rounded-md border border-border bg-background p-3 text-foreground">
                   <QRCodeSVG value={req.keyPageUrl} size={168} bgColor="transparent" fgColor="currentColor" />
@@ -230,7 +244,7 @@ function KeySignin() {
                       <span className="block text-xs text-muted-foreground">The Seeds Key page shows the same three digits. Only continue there if they match.</span>
                     </p>
                   ) : null}
-                  <p><b>On a computer?</b> Scan this with your phone's camera to open the Seeds Key page{coin ? ", then scan your coin." : "."}</p>
+                  <p><b>On a computer?</b> Scan this with your phone's camera to open the Seeds Key page{vault ? ", then scan back and forth with your HME Vault phone." : coin ? ", then scan your coin." : "."}</p>
                   <p><b>On your phone?</b> Open it right here.</p>
                   <Button asChild><a href={req.keyPageUrl}><ExternalLink /> Open Seeds Key</a></Button>
                   <p className="font-mono text-[11px] text-muted-foreground">Waiting for the Seeds Key page… this works once, for 10 minutes. Don't share or show this QR.</p>
@@ -251,6 +265,7 @@ function KeySignin() {
 
         <ul className="mt-6 space-y-2 text-sm text-muted-foreground">
           <li className="flex gap-2"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />Seeds only gets the keys to your trading pocket, the same as an HME Wallet link. You can revoke them any time in Account → Security.</li>
+          {vault ? <li className="flex gap-2"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />Your HME Vault phone stays offline. It only shows a QR answer after it checks the request really came from Seeds and matches the three digits.</li> : null}
           {coin ? <li className="flex gap-2"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />Treat the coin like cash. Anyone holding it, or a photo of its QR, can open this account. Move your funds before you give it away.</li> : null}
           <li className="flex gap-2"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />Withdrawals to outside addresses unlock once you add an email (or join Honest.Money), with 2FA and Telegram like everyone else.</li>
         </ul>
