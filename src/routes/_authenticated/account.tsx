@@ -53,7 +53,7 @@ const NAV = [
 ] as const;
 
 const ELSEWHERE = [
-  { to: "/trades", label: "Orders & trades" },
+  { to: "/activity", label: "Activity" },
   { to: "/p2p", label: "P2P marketplace" },
   { to: "/swap", label: "Swaps" },
 ] as const;

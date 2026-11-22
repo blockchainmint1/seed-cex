@@ -65,7 +65,7 @@ export function SiteHeader() {
     { label: "P2P", to: "/p2p" },
     { label: "Swap", to: "/swap" },
     { label: "AI", to: "/ai" },
-    ...(user ? [{ label: "Trades", to: "/trades" }, { label: "Profile", to: "/account" }] : []),
+    ...(user ? [{ label: "Activity", to: "/activity" }, { label: "Profile", to: "/account" }] : []),
     { label: "Help", to: "/help" },
     ...about,
     ...proof,
@@ -110,11 +110,11 @@ export function SiteHeader() {
           </Link>
           {user ? (
             <Link
-              to="/trades"
+              to="/activity"
               className="text-muted-foreground transition-colors hover:text-foreground"
               activeProps={{ className: "text-primary" }}
             >
-              Trades
+              Activity
             </Link>
           ) : null}
           <NavMenu label="ABOUT" items={about} />

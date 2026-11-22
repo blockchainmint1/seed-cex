@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] Activity page (/activity, /trades forwards): action-needed strip, tabs for open orders, order history, trades, swaps, P2P, deposits, withdrawals, Seeds AI, plus All activity with filters + CSV (Bobby, Nov 22)
+- [x] Deposit history: record each new deposit from now on + fill in past deposits from TXC, ISK and Ethereum-style networks (Bobby: "Both", Nov 22)
 - [x] One Swap page for every coin: THORChain/Maya, Uniswap/PancakeSwap/PulseX and TSD in one form, Seeds picks the best route; old Any-coin address forwards (Nov 22)
 - [x] Two-step swaps done automatically under one Telegram tap (e.g. PEPE on Ethereum → Bitcoin, Bitcoin → a Base token); stops safely with the in-between coin in the pocket if the price moves (Nov 22)
 - [ ] Auditor review of two-step swaps before publishing (blocked: auditor)

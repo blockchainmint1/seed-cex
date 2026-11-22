@@ -5,7 +5,7 @@
  */
 import type { HelpArticle, HelpCategory, HelpCategoryId, HelpFaq, HelpLink } from "./types";
 
-export const HELP_REVIEWED = "November 21, 2026";
+export const HELP_REVIEWED = "November 22, 2026";
 
 export const HELP_CATEGORIES: HelpCategory[] = [
   { id: "start", title: "Getting started", blurb: "What Seeds is, signing in and the setup guide." },
@@ -597,25 +597,27 @@ export const HELP_ARTICLES: HelpArticle[] = [
         "BTC and ETH trades settle with TEXITcoin-based tokens of BTC and ETH, so each fill doesn't need a Bitcoin or Ethereum transfer.",
       ] },
     ],
-    links: [{ label: "Trades & orders", to: "/trades" }, { label: "Telegram alerts", to: "/account/alerts" }],
+    links: [{ label: "Activity", to: "/activity" }, { label: "Telegram alerts", to: "/account/alerts" }],
     related: ["telegram-alerts", "limit-market-orders"],
   },
   {
     slug: "orders-trades",
-    title: "Track and cancel your orders",
-    summary: "Trades & Orders shows open orders, trade history with settlement progress, and closed orders.",
+    title: "Your activity: orders, trades, swaps, deposits",
+    summary: "Activity shows everything from your trading pocket in one place: open orders, order and trade history, swaps, P2P trades, deposits, withdrawals and Seeds AI moves.",
     category: "trading",
-    keywords: ["trades", "orders", "history", "cancel", "open orders"],
+    keywords: ["activity", "trades", "orders", "history", "cancel", "open orders", "deposits", "withdrawals", "csv", "export"],
     blocks: [
-      { p: "Tap **Trades** in the top bar (when signed in) to open **Trades & Orders**:" },
+      { p: "Tap **Activity** in the top bar (when signed in). The boxes at the top show what **needs your action** (like a Telegram tap or a P2P payment), what is **in progress**, your **open orders** and how many **deposits** Seeds has recorded." },
       { list: [
-        "**Open orders** — waiting or partly filled. Cancel any of them here.",
-        "**Trade history** — each fill and where its settlement stands.",
-        "**Closed orders** — filled or cancelled.",
+        "**All activity** — one list of everything. Filter by type, coin, status and dates, and download it as a spreadsheet (**CSV**).",
+        "**Open orders** — waiting or partly filled. Cancel one, or **Cancel all**.",
+        "**Order history** and **Trade history** — every order, and every fill with where its settlement stands (press **Sends** to see both sides).",
+        "**Swaps**, **P2P**, **Withdrawals** and **Seeds AI** — each in its own table.",
+        "**Deposits** — coins that arrived in your pocket. Past deposits come straight from TEXITcoin (TSD included), Iskandercoin, Ethereum, Base and BNB Chain; other coins are recorded from Nov 22, 2026 on, when Seeds sees your balance go up. Coins delivered by Seeds' own swaps and trades are hidden unless you tick the box.",
       ] },
-      { p: "P2P trades are under Account → P2P trading → Trades. Swaps are under **My swaps** on the Swap page." },
+      { p: "The old **Trades** address opens Activity." },
     ],
-    links: [{ label: "Trades & orders", to: "/trades" }],
+    links: [{ label: "Activity", to: "/activity" }],
     related: ["trade-settlement", "p2p-buy", "swaps"],
   },
 

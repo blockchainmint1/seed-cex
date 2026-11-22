@@ -2354,6 +2354,102 @@ export type Database = {
           },
         ]
       }
+      pocket_deposit_sync: {
+        Row: {
+          backfilled: Json
+          synced_at: string | null
+          user_id: string
+          working_until: string | null
+        }
+        Insert: {
+          backfilled?: Json
+          synced_at?: string | null
+          user_id: string
+          working_until?: string | null
+        }
+        Update: {
+          backfilled?: Json
+          synced_at?: string | null
+          user_id?: string
+          working_until?: string | null
+        }
+        Relationships: []
+      }
+      pocket_deposit_watch: {
+        Row: {
+          address: string
+          amount: number
+          coin_key: string
+          seen_at: string
+          user_id: string
+        }
+        Insert: {
+          address: string
+          amount: number
+          coin_key: string
+          seen_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string
+          amount?: number
+          coin_key?: string
+          seen_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      pocket_deposits: {
+        Row: {
+          address: string
+          amount: number
+          block_time: string | null
+          coin: string
+          from_address: string | null
+          from_seeds: string | null
+          id: string
+          network: string
+          seen_at: string
+          source: string
+          token_address: string | null
+          tx_url: string | null
+          txid: string
+          user_id: string
+        }
+        Insert: {
+          address: string
+          amount: number
+          block_time?: string | null
+          coin: string
+          from_address?: string | null
+          from_seeds?: string | null
+          id?: string
+          network: string
+          seen_at?: string
+          source: string
+          token_address?: string | null
+          tx_url?: string | null
+          txid: string
+          user_id: string
+        }
+        Update: {
+          address?: string
+          amount?: number
+          block_time?: string | null
+          coin?: string
+          from_address?: string | null
+          from_seeds?: string | null
+          id?: string
+          network?: string
+          seen_at?: string
+          source?: string
+          token_address?: string | null
+          tx_url?: string | null
+          txid?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       pocket_withdrawals: {
         Row: {
           amount: number

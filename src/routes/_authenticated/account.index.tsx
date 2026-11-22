@@ -133,7 +133,7 @@ function Overview() {
       </Card>
 
       <div className="flex flex-wrap gap-2 lg:hidden">
-        <Button asChild variant="outline" size="sm"><Link to="/trades">Orders & trades</Link></Button>
+        <Button asChild variant="outline" size="sm"><Link to="/activity">Activity</Link></Button>
         <Button asChild variant="outline" size="sm"><Link to="/p2p">P2P marketplace</Link></Button>
         <Button asChild variant="outline" size="sm"><Link to="/swap">Swaps</Link></Button>
       </div>

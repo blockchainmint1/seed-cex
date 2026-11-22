@@ -177,6 +177,19 @@ export const cancelOrder = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** Cancel every open or partly filled order I have (optionally on one market). */
+export const cancelAllOrders = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ pair: z.string().max(40).optional() }).parse(input ?? {}))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    let q = supabaseAdmin.from("orders").update({ status: "cancelled" }).eq("user_id", context.userId).in("status", ["open", "partial"]);
+    if (data.pair) q = q.eq("pair", data.pair);
+    const { data: rows, error } = await q.select("id");
+    if (error) throw new Error(error.message);
+    return { cancelled: rows?.length ?? 0 };
+  });
+
 /* -------------------------------- escrow ---------------------------------- */
 
 export const getMyTrades = createServerFn({ method: "GET" })
