@@ -95,6 +95,9 @@ export function bookRow(
 export type SortKey = "market" | "price" | "change" | "high" | "volume" | "liquidity";
 export type SortState = { key: SortKey; dir: "asc" | "desc" } | null;
 
+/** The table opens sorted by 24-hour volume, biggest first, so the busiest markets lead. */
+export const DEFAULT_SORT: SortState = { key: "volume", dir: "desc" };
+
 /** Name sorts A→Z first; numbers sort biggest first. A third click goes back to the default order. */
 export function nextSort(current: SortState, key: SortKey): SortState {
   const first = key === "market" ? "asc" : "desc";

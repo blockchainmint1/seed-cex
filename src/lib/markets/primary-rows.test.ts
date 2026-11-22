@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { bookRow, HOME_COIN_MARKETS, nextSort, sortRows, type PrimaryRow } from "./primary-rows";
+import { bookRow, DEFAULT_SORT, HOME_COIN_MARKETS, nextSort, sortRows, type PrimaryRow } from "./primary-rows";
 import { PAIRS } from "@/lib/chains";
 
 const NOW = Date.parse("2026-11-21T12:00:00Z");
@@ -63,6 +63,11 @@ const row = (base: string, price: number | null, volume: number): PrimaryRow => 
 
 describe("sorting", () => {
   const rows = [row("BTC", 60000, 5), row("TXC", null, 0), row("ETH", 1600, 9), row("ATOM", 3, 9)];
+
+  test("the table opens sorted by 24-hour volume, biggest first", () => {
+    expect(DEFAULT_SORT).toEqual({ key: "volume", dir: "desc" });
+    expect(sortRows(rows, DEFAULT_SORT).map((r) => r.base)).toEqual(["ETH", "ATOM", "BTC", "TXC"]);
+  });
 
   test("price biggest first, missing prices last either way", () => {
     expect(sortRows(rows, { key: "price", dir: "desc" }).map((r) => r.base)).toEqual(["BTC", "ETH", "ATOM", "TXC"]);

@@ -7,7 +7,7 @@ import { ArrowDown, ArrowRight, ArrowUp, ArrowUpDown } from "lucide-react";
 import { PAIRS } from "@/lib/chains";
 import { getHomeCoinMarkets } from "@/lib/market.functions";
 import type { MarketRow } from "@/lib/markets/thor-markets.server";
-import { nextSort, sortRows, type PrimaryRow, type SortKey, type SortState } from "@/lib/markets/primary-rows";
+import { DEFAULT_SORT, nextSort, sortRows, type PrimaryRow, type SortKey, type SortState } from "@/lib/markets/primary-rows";
 import { fmtTsdCompact } from "@/lib/markets/thor-markets";
 import { Change, Price, Spark, thorMarketsQuery, marketsErrorText } from "@/components/markets/ThorMarketBits";
 import { MarketsSponsoredRow } from "@/components/ads/AdSpots";
@@ -71,9 +71,9 @@ function MarketsPage() {
   const { markets, ads, home } = Route.useLoaderData();
   const q = useQuery({ ...thorMarketsQuery, initialData: markets ?? undefined });
   const h = useQuery({ ...homeCoinMarketsQuery, initialData: home ?? undefined });
-  const [sort, setSort] = useState<SortState>(null);
+  const [sort, setSort] = useState<SortState>(DEFAULT_SORT);
   const thorRows = q.data ?? [];
-  // Home coins (Seeds' own order books) lead the default order; THORChain's majors follow.
+  // Home coins (Seeds' own order books) come first in the unsorted order; the table opens sorted by 24h volume.
   const allRows = useMemo(() => [...(h.data ?? []), ...thorRows.map(fromThor)], [h.data, thorRows]);
   const rows = useMemo(() => sortRows(allRows, sort), [allRows, sort]);
   const live = useQuery({ ...liveAdsQuery, initialData: ads ?? undefined });
