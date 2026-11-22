@@ -1,0 +1,3 @@
+# src/lib/activity
+
+- Member history = /activity (src/lib/activity/: activity-rules.ts + deposit-rules.ts pure + tested, activity.server.ts reads only the signed-in member's rows, a swap's inner steps never listed twice). Deposits live in pocket_deposits (server-written, owner read, history rows can't be edited/deleted): chain history for TXC (+Omni TSD), ISK, Ethereum, Base, BNB (listed tokens only); other coins only as balance rises from now on, less Seeds' own deliveries; a network that doesn't answer never records anything. /trades forwards to /activity. Why: one exchange-style history that never shows a coin the member didn't really receive.
