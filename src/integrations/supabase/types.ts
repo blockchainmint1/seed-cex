@@ -1616,6 +1616,389 @@ export type Database = {
         }
         Relationships: []
       }
+      loan_events: {
+        Row: {
+          actor_id: string | null
+          body: string
+          created_at: string
+          id: number
+          kind: string
+          loan_id: string
+          txid: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          body: string
+          created_at?: string
+          id?: never
+          kind: string
+          loan_id: string
+          txid?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          body?: string
+          created_at?: string
+          id?: never
+          kind?: string
+          loan_id?: string
+          txid?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loan_events_loan_id_fkey"
+            columns: ["loan_id"]
+            isOneToOne: false
+            referencedRelation: "loans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loan_offers: {
+        Row: {
+          coin: string
+          collateral_coin: string
+          created_at: string
+          days: number
+          id: string
+          max_amount: number
+          max_ltv_pct: number
+          min_amount: number
+          note: string | null
+          rate_pct: number
+          side: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          coin: string
+          collateral_coin?: string
+          created_at?: string
+          days: number
+          id?: string
+          max_amount: number
+          max_ltv_pct: number
+          min_amount: number
+          note?: string | null
+          rate_pct: number
+          side: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          coin?: string
+          collateral_coin?: string
+          created_at?: string
+          days?: number
+          id?: string
+          max_amount?: number
+          max_ltv_pct?: number
+          min_amount?: number
+          note?: string | null
+          rate_pct?: number
+          side?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      loan_price_marks: {
+        Row: {
+          at: string
+          coin: string
+          id: number
+          price: number
+          source: string
+        }
+        Insert: {
+          at?: string
+          coin: string
+          id?: never
+          price: number
+          source: string
+        }
+        Update: {
+          at?: string
+          coin?: string
+          id?: never
+          price?: number
+          source?: string
+        }
+        Relationships: []
+      }
+      loan_proposals: {
+        Row: {
+          amount: number
+          borrower_id: string
+          coin: string
+          collateral_coin: string
+          created_at: string
+          days: number
+          decided_at: string | null
+          expires_at: string
+          id: string
+          lender_id: string
+          note: string | null
+          offer_id: string
+          parent_id: string | null
+          proposer_id: string
+          rate_pct: number
+          round: number
+          start_ltv_pct: number
+          status: string
+        }
+        Insert: {
+          amount: number
+          borrower_id: string
+          coin: string
+          collateral_coin?: string
+          created_at?: string
+          days: number
+          decided_at?: string | null
+          expires_at: string
+          id?: string
+          lender_id: string
+          note?: string | null
+          offer_id: string
+          parent_id?: string | null
+          proposer_id: string
+          rate_pct: number
+          round?: number
+          start_ltv_pct: number
+          status?: string
+        }
+        Update: {
+          amount?: number
+          borrower_id?: string
+          coin?: string
+          collateral_coin?: string
+          created_at?: string
+          days?: number
+          decided_at?: string | null
+          expires_at?: string
+          id?: string
+          lender_id?: string
+          note?: string | null
+          offer_id?: string
+          parent_id?: string | null
+          proposer_id?: string
+          rate_pct?: number
+          round?: number
+          start_ltv_pct?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loan_proposals_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "loan_offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loan_proposals_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "loan_proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loans: {
+        Row: {
+          amount: number
+          borrower_collateral_address: string
+          borrower_id: string
+          borrower_pub: string
+          closed_at: string | null
+          coin: string
+          collateral_amount: number
+          collateral_coin: string
+          collateral_confirmed_at: string | null
+          collateral_deadline: string
+          collateral_seen: number
+          created_at: string
+          days: number
+          due_at: string | null
+          escrow_address: string
+          escrow_claimed_at: string | null
+          escrow_hex: string | null
+          escrow_price: number | null
+          escrow_purpose: string | null
+          escrow_split: Json | null
+          escrow_txid: string | null
+          fee_pct: number
+          funded_at: string | null
+          funding_confirmed_at: string | null
+          funding_deadline: string | null
+          funding_network: string | null
+          funding_started_at: string | null
+          funding_to: string | null
+          funding_txid: string | null
+          id: string
+          last_checked_at: string | null
+          last_ltv_pct: number | null
+          last_price: number | null
+          lender_collateral_address: string
+          lender_id: string
+          lender_pub: string
+          margin_called_at: string | null
+          offer_id: string
+          outcome: string | null
+          owed: number
+          price_at_start: number
+          proposal_id: string
+          rate_pct: number
+          redeem_script: string
+          ref: string
+          repaid_confirmed_at: string | null
+          repay_network: string | null
+          repay_sent_at: string | null
+          repay_started_at: string | null
+          repay_to: string | null
+          repay_txid: string | null
+          seeds_fee_address: string
+          seeds_pub: string
+          start_ltv_pct: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          borrower_collateral_address: string
+          borrower_id: string
+          borrower_pub: string
+          closed_at?: string | null
+          coin: string
+          collateral_amount: number
+          collateral_coin: string
+          collateral_confirmed_at?: string | null
+          collateral_deadline: string
+          collateral_seen?: number
+          created_at?: string
+          days: number
+          due_at?: string | null
+          escrow_address: string
+          escrow_claimed_at?: string | null
+          escrow_hex?: string | null
+          escrow_price?: number | null
+          escrow_purpose?: string | null
+          escrow_split?: Json | null
+          escrow_txid?: string | null
+          fee_pct: number
+          funded_at?: string | null
+          funding_confirmed_at?: string | null
+          funding_deadline?: string | null
+          funding_network?: string | null
+          funding_started_at?: string | null
+          funding_to?: string | null
+          funding_txid?: string | null
+          id?: string
+          last_checked_at?: string | null
+          last_ltv_pct?: number | null
+          last_price?: number | null
+          lender_collateral_address: string
+          lender_id: string
+          lender_pub: string
+          margin_called_at?: string | null
+          offer_id: string
+          outcome?: string | null
+          owed: number
+          price_at_start: number
+          proposal_id: string
+          rate_pct: number
+          redeem_script: string
+          ref: string
+          repaid_confirmed_at?: string | null
+          repay_network?: string | null
+          repay_sent_at?: string | null
+          repay_started_at?: string | null
+          repay_to?: string | null
+          repay_txid?: string | null
+          seeds_fee_address: string
+          seeds_pub: string
+          start_ltv_pct: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          borrower_collateral_address?: string
+          borrower_id?: string
+          borrower_pub?: string
+          closed_at?: string | null
+          coin?: string
+          collateral_amount?: number
+          collateral_coin?: string
+          collateral_confirmed_at?: string | null
+          collateral_deadline?: string
+          collateral_seen?: number
+          created_at?: string
+          days?: number
+          due_at?: string | null
+          escrow_address?: string
+          escrow_claimed_at?: string | null
+          escrow_hex?: string | null
+          escrow_price?: number | null
+          escrow_purpose?: string | null
+          escrow_split?: Json | null
+          escrow_txid?: string | null
+          fee_pct?: number
+          funded_at?: string | null
+          funding_confirmed_at?: string | null
+          funding_deadline?: string | null
+          funding_network?: string | null
+          funding_started_at?: string | null
+          funding_to?: string | null
+          funding_txid?: string | null
+          id?: string
+          last_checked_at?: string | null
+          last_ltv_pct?: number | null
+          last_price?: number | null
+          lender_collateral_address?: string
+          lender_id?: string
+          lender_pub?: string
+          margin_called_at?: string | null
+          offer_id?: string
+          outcome?: string | null
+          owed?: number
+          price_at_start?: number
+          proposal_id?: string
+          rate_pct?: number
+          redeem_script?: string
+          ref?: string
+          repaid_confirmed_at?: string | null
+          repay_network?: string | null
+          repay_sent_at?: string | null
+          repay_started_at?: string | null
+          repay_to?: string | null
+          repay_txid?: string | null
+          seeds_fee_address?: string
+          seeds_pub?: string
+          start_ltv_pct?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loans_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "loan_offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loans_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: true
+            referencedRelation: "loan_proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lock_signed_outpoints: {
         Row: {
           created_at: string

@@ -477,6 +477,13 @@
       "when": 1795369403129,
       "tag": "0067_qa_hide_assignee_client_errors",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1795371231405,
+      "tag": "0068_seeds_lend_loans",
+      "breakpoints": true
     }
   ]
 }

@@ -51,6 +51,7 @@ import { Route as HelpSlugRouteImport } from './routes/help.$slug'
 import { Route as HelpFaqRouteImport } from './routes/help.faq'
 import { Route as IgniteConfirmedRouteImport } from './routes/ignite_.confirmed'
 import { Route as InviteCodeRouteImport } from './routes/invite.$code'
+import { Route as LoansIndexRouteImport } from './routes/loans.index'
 import { Route as MarketsIndexRouteImport } from './routes/markets.index'
 import { Route as MarketsSlugRouteImport } from './routes/markets.$slug'
 import { Route as P2pIndexRouteImport } from './routes/p2p.index'
@@ -90,6 +91,7 @@ import { Route as AuthenticatedAdminPlanRouteImport } from './routes/_authentica
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
 import { Route as AuthenticatedAdminVideosRouteImport } from './routes/_authenticated/admin.videos'
+import { Route as AuthenticatedLoansIdRouteImport } from './routes/_authenticated/loans.$id'
 import { Route as AuthenticatedP2pDashboardRouteImport } from './routes/_authenticated/p2p.dashboard'
 import { Route as AuthenticatedP2pJuryRouteImport } from './routes/_authenticated/p2p.jury'
 import { Route as AiCoinIdRouteImport } from './routes/ai.coin.$id'
@@ -121,6 +123,7 @@ import { Route as ApiPublicHmeLinkRevokeRouteImport } from './routes/api/public/
 import { Route as ApiPublicHmeLinkSubmitRouteImport } from './routes/api/public/hme-link/submit'
 import { Route as ApiPublicHmeLinkTradesRouteImport } from './routes/api/public/hme-link/trades'
 import { Route as ApiPublicJobsAiDailyRouteImport } from './routes/api/public/jobs/ai-daily'
+import { Route as ApiPublicJobsLoansRouteImport } from './routes/api/public/jobs/loans'
 import { Route as ApiPublicJobsMarketSnapshotRouteImport } from './routes/api/public/jobs/market-snapshot'
 import { Route as ApiPublicJobsPulseWithdrawalsRouteImport } from './routes/api/public/jobs/pulse-withdrawals'
 import { Route as ApiPublicJobsSendApprovalsRouteImport } from './routes/api/public/jobs/send-approvals'
@@ -363,6 +366,11 @@ const InviteCodeRoute = InviteCodeRouteImport.update({
   path: '/invite/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LoansIndexRoute = LoansIndexRouteImport.update({
+  id: '/loans/',
+  path: '/loans/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MarketsIndexRoute = MarketsIndexRouteImport.update({
   id: '/markets/',
   path: '/markets/',
@@ -572,6 +580,11 @@ const AuthenticatedAdminVideosRoute =
     path: '/videos',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedLoansIdRoute = AuthenticatedLoansIdRouteImport.update({
+  id: '/loans/$id',
+  path: '/loans/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedP2pDashboardRoute =
   AuthenticatedP2pDashboardRouteImport.update({
     id: '/p2p/dashboard',
@@ -740,6 +753,11 @@ const ApiPublicHmeLinkTradesRoute = ApiPublicHmeLinkTradesRouteImport.update({
 const ApiPublicJobsAiDailyRoute = ApiPublicJobsAiDailyRouteImport.update({
   id: '/api/public/jobs/ai-daily',
   path: '/api/public/jobs/ai-daily',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicJobsLoansRoute = ApiPublicJobsLoansRouteImport.update({
+  id: '/api/public/jobs/loans',
+  path: '/api/public/jobs/loans',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicJobsMarketSnapshotRoute =
@@ -969,6 +987,7 @@ export interface FileRoutesByFullPath {
   '/ai/': typeof AiIndexRoute
   '/api/': typeof ApiIndexRoute
   '/help/': typeof HelpIndexRoute
+  '/loans/': typeof LoansIndexRoute
   '/markets/': typeof MarketsIndexRoute
   '/p2p/': typeof P2pIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -991,6 +1010,7 @@ export interface FileRoutesByFullPath {
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/admin/videos': typeof AuthenticatedAdminVideosRoute
+  '/loans/$id': typeof AuthenticatedLoansIdRoute
   '/p2p/dashboard': typeof AuthenticatedP2pDashboardRoute
   '/p2p/jury': typeof AuthenticatedP2pJuryRoute
   '/ai/coin/$id': typeof AiCoinIdRoute
@@ -1019,6 +1039,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hme-link/submit': typeof ApiPublicHmeLinkSubmitRoute
   '/api/public/hme-link/trades': typeof ApiPublicHmeLinkTradesRouteWithChildren
   '/api/public/jobs/ai-daily': typeof ApiPublicJobsAiDailyRoute
+  '/api/public/jobs/loans': typeof ApiPublicJobsLoansRoute
   '/api/public/jobs/market-snapshot': typeof ApiPublicJobsMarketSnapshotRoute
   '/api/public/jobs/pulse-withdrawals': typeof ApiPublicJobsPulseWithdrawalsRoute
   '/api/public/jobs/send-approvals': typeof ApiPublicJobsSendApprovalsRoute
@@ -1111,6 +1132,7 @@ export interface FileRoutesByTo {
   '/ai': typeof AiIndexRoute
   '/api': typeof ApiIndexRoute
   '/help': typeof HelpIndexRoute
+  '/loans': typeof LoansIndexRoute
   '/markets': typeof MarketsIndexRoute
   '/p2p': typeof P2pIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -1130,6 +1152,7 @@ export interface FileRoutesByTo {
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/admin/videos': typeof AuthenticatedAdminVideosRoute
+  '/loans/$id': typeof AuthenticatedLoansIdRoute
   '/p2p/dashboard': typeof AuthenticatedP2pDashboardRoute
   '/p2p/jury': typeof AuthenticatedP2pJuryRoute
   '/ai/coin/$id': typeof AiCoinIdRoute
@@ -1158,6 +1181,7 @@ export interface FileRoutesByTo {
   '/api/public/hme-link/submit': typeof ApiPublicHmeLinkSubmitRoute
   '/api/public/hme-link/trades': typeof ApiPublicHmeLinkTradesRouteWithChildren
   '/api/public/jobs/ai-daily': typeof ApiPublicJobsAiDailyRoute
+  '/api/public/jobs/loans': typeof ApiPublicJobsLoansRoute
   '/api/public/jobs/market-snapshot': typeof ApiPublicJobsMarketSnapshotRoute
   '/api/public/jobs/pulse-withdrawals': typeof ApiPublicJobsPulseWithdrawalsRoute
   '/api/public/jobs/send-approvals': typeof ApiPublicJobsSendApprovalsRoute
@@ -1254,6 +1278,7 @@ export interface FileRoutesById {
   '/ai/': typeof AiIndexRoute
   '/api/': typeof ApiIndexRoute
   '/help/': typeof HelpIndexRoute
+  '/loans/': typeof LoansIndexRoute
   '/markets/': typeof MarketsIndexRoute
   '/p2p/': typeof P2pIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -1276,6 +1301,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
   '/_authenticated/admin/videos': typeof AuthenticatedAdminVideosRoute
+  '/_authenticated/loans/$id': typeof AuthenticatedLoansIdRoute
   '/_authenticated/p2p/dashboard': typeof AuthenticatedP2pDashboardRoute
   '/_authenticated/p2p/jury': typeof AuthenticatedP2pJuryRoute
   '/ai/coin/$id': typeof AiCoinIdRoute
@@ -1304,6 +1330,7 @@ export interface FileRoutesById {
   '/api/public/hme-link/submit': typeof ApiPublicHmeLinkSubmitRoute
   '/api/public/hme-link/trades': typeof ApiPublicHmeLinkTradesRouteWithChildren
   '/api/public/jobs/ai-daily': typeof ApiPublicJobsAiDailyRoute
+  '/api/public/jobs/loans': typeof ApiPublicJobsLoansRoute
   '/api/public/jobs/market-snapshot': typeof ApiPublicJobsMarketSnapshotRoute
   '/api/public/jobs/pulse-withdrawals': typeof ApiPublicJobsPulseWithdrawalsRoute
   '/api/public/jobs/send-approvals': typeof ApiPublicJobsSendApprovalsRoute
@@ -1400,6 +1427,7 @@ export interface FileRouteTypes {
     | '/ai/'
     | '/api/'
     | '/help/'
+    | '/loans/'
     | '/markets/'
     | '/p2p/'
     | '/.lovable/oauth/consent'
@@ -1422,6 +1450,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/users'
     | '/admin/videos'
+    | '/loans/$id'
     | '/p2p/dashboard'
     | '/p2p/jury'
     | '/ai/coin/$id'
@@ -1450,6 +1479,7 @@ export interface FileRouteTypes {
     | '/api/public/hme-link/submit'
     | '/api/public/hme-link/trades'
     | '/api/public/jobs/ai-daily'
+    | '/api/public/jobs/loans'
     | '/api/public/jobs/market-snapshot'
     | '/api/public/jobs/pulse-withdrawals'
     | '/api/public/jobs/send-approvals'
@@ -1542,6 +1572,7 @@ export interface FileRouteTypes {
     | '/ai'
     | '/api'
     | '/help'
+    | '/loans'
     | '/markets'
     | '/p2p'
     | '/.lovable/oauth/consent'
@@ -1561,6 +1592,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/users'
     | '/admin/videos'
+    | '/loans/$id'
     | '/p2p/dashboard'
     | '/p2p/jury'
     | '/ai/coin/$id'
@@ -1589,6 +1621,7 @@ export interface FileRouteTypes {
     | '/api/public/hme-link/submit'
     | '/api/public/hme-link/trades'
     | '/api/public/jobs/ai-daily'
+    | '/api/public/jobs/loans'
     | '/api/public/jobs/market-snapshot'
     | '/api/public/jobs/pulse-withdrawals'
     | '/api/public/jobs/send-approvals'
@@ -1684,6 +1717,7 @@ export interface FileRouteTypes {
     | '/ai/'
     | '/api/'
     | '/help/'
+    | '/loans/'
     | '/markets/'
     | '/p2p/'
     | '/.lovable/oauth/consent'
@@ -1706,6 +1740,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/settings'
     | '/_authenticated/admin/users'
     | '/_authenticated/admin/videos'
+    | '/_authenticated/loans/$id'
     | '/_authenticated/p2p/dashboard'
     | '/_authenticated/p2p/jury'
     | '/ai/coin/$id'
@@ -1734,6 +1769,7 @@ export interface FileRouteTypes {
     | '/api/public/hme-link/submit'
     | '/api/public/hme-link/trades'
     | '/api/public/jobs/ai-daily'
+    | '/api/public/jobs/loans'
     | '/api/public/jobs/market-snapshot'
     | '/api/public/jobs/pulse-withdrawals'
     | '/api/public/jobs/send-approvals'
@@ -1822,6 +1858,7 @@ export interface RootRouteChildren {
   AiIndexRoute: typeof AiIndexRoute
   ApiIndexRoute: typeof ApiIndexRoute
   HelpIndexRoute: typeof HelpIndexRoute
+  LoansIndexRoute: typeof LoansIndexRoute
   MarketsIndexRoute: typeof MarketsIndexRoute
   P2pIndexRoute: typeof P2pIndexRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
@@ -1839,6 +1876,7 @@ export interface RootRouteChildren {
   ApiPublicHmeLinkSubmitRoute: typeof ApiPublicHmeLinkSubmitRoute
   ApiPublicHmeLinkTradesRoute: typeof ApiPublicHmeLinkTradesRouteWithChildren
   ApiPublicJobsAiDailyRoute: typeof ApiPublicJobsAiDailyRoute
+  ApiPublicJobsLoansRoute: typeof ApiPublicJobsLoansRoute
   ApiPublicJobsMarketSnapshotRoute: typeof ApiPublicJobsMarketSnapshotRoute
   ApiPublicJobsPulseWithdrawalsRoute: typeof ApiPublicJobsPulseWithdrawalsRoute
   ApiPublicJobsSendApprovalsRoute: typeof ApiPublicJobsSendApprovalsRoute
@@ -2168,6 +2206,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InviteCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/loans/': {
+      id: '/loans/'
+      path: '/loans'
+      fullPath: '/loans/'
+      preLoaderRoute: typeof LoansIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/markets/': {
       id: '/markets/'
       path: '/markets'
@@ -2441,6 +2486,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminVideosRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/loans/$id': {
+      id: '/_authenticated/loans/$id'
+      path: '/loans/$id'
+      fullPath: '/loans/$id'
+      preLoaderRoute: typeof AuthenticatedLoansIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/p2p/dashboard': {
       id: '/_authenticated/p2p/dashboard'
       path: '/p2p/dashboard'
@@ -2656,6 +2708,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/jobs/ai-daily'
       fullPath: '/api/public/jobs/ai-daily'
       preLoaderRoute: typeof ApiPublicJobsAiDailyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/jobs/loans': {
+      id: '/api/public/jobs/loans'
+      path: '/api/public/jobs/loans'
+      fullPath: '/api/public/jobs/loans'
+      preLoaderRoute: typeof ApiPublicJobsLoansRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/jobs/market-snapshot': {
@@ -3016,6 +3075,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedTradesRoute: typeof AuthenticatedTradesRoute
   AuthenticatedWalletRoute: typeof AuthenticatedWalletRoute
   AuthenticatedWelcomeRoute: typeof AuthenticatedWelcomeRoute
+  AuthenticatedLoansIdRoute: typeof AuthenticatedLoansIdRoute
   AuthenticatedP2pDashboardRoute: typeof AuthenticatedP2pDashboardRoute
   AuthenticatedP2pJuryRoute: typeof AuthenticatedP2pJuryRoute
   AuthenticatedP2pTradeIdRoute: typeof AuthenticatedP2pTradeIdRoute
@@ -3030,6 +3090,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedTradesRoute: AuthenticatedTradesRoute,
   AuthenticatedWalletRoute: AuthenticatedWalletRoute,
   AuthenticatedWelcomeRoute: AuthenticatedWelcomeRoute,
+  AuthenticatedLoansIdRoute: AuthenticatedLoansIdRoute,
   AuthenticatedP2pDashboardRoute: AuthenticatedP2pDashboardRoute,
   AuthenticatedP2pJuryRoute: AuthenticatedP2pJuryRoute,
   AuthenticatedP2pTradeIdRoute: AuthenticatedP2pTradeIdRoute,
@@ -3103,6 +3164,7 @@ const rootRouteChildren: RootRouteChildren = {
   AiIndexRoute: AiIndexRoute,
   ApiIndexRoute: ApiIndexRoute,
   HelpIndexRoute: HelpIndexRoute,
+  LoansIndexRoute: LoansIndexRoute,
   MarketsIndexRoute: MarketsIndexRoute,
   P2pIndexRoute: P2pIndexRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
@@ -3120,6 +3182,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHmeLinkSubmitRoute: ApiPublicHmeLinkSubmitRoute,
   ApiPublicHmeLinkTradesRoute: ApiPublicHmeLinkTradesRouteWithChildren,
   ApiPublicJobsAiDailyRoute: ApiPublicJobsAiDailyRoute,
+  ApiPublicJobsLoansRoute: ApiPublicJobsLoansRoute,
   ApiPublicJobsMarketSnapshotRoute: ApiPublicJobsMarketSnapshotRoute,
   ApiPublicJobsPulseWithdrawalsRoute: ApiPublicJobsPulseWithdrawalsRoute,
   ApiPublicJobsSendApprovalsRoute: ApiPublicJobsSendApprovalsRoute,

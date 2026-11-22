@@ -1,5 +1,12 @@
 # Roadmap
 
+- [x] Seeds Lend (/loans, unlinked): P2P lending with lockbox-held collateral, offers + requests, back-and-forth terms, loan room, health watch, liquidation/default split; no Seeds cut, fee only on liquidation/default (Bobby, Nov 22)
+- [ ] Limited beta access for /loans (blocked: Bobby sets it up later)
+- [ ] Schedule the 5-minute loan watcher after publishing (blocked: publish + auditor)
+- [ ] Auditor review of Seeds Lend before any real loan (blocked: auditor)
+- [ ] First real loan between two beta testers, small amount (blocked: auditor review + two testers with TXC)
+- [ ] Confirm the 3% liquidation/default fee and the 75% warning / 85% liquidation lines (blocked: Bobby; agent-chosen)
+
 - [x] QA auditor Q1: screenshots auto-black-out codes, QR codes, addresses, balances (Bobby: yes, Nov 22)
 - [x] QA auditor Q1b: no "Screenshot this page" on coin sign-in, Security, Withdraw (Bobby: yes, Nov 22)
 - [x] QA auditor Q2: refuse uploads if the attachments storage ever turns public (Bobby: yes, Nov 22)

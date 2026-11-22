@@ -16,7 +16,7 @@ import { APPROVAL_TTL_MS, approvalMatches, approvalMetaMatches, approvalTapDecis
  * withdrawal: a Seeds-signed withdrawal to an outside address (src/lib/withdraw/); the tap starts its hold.
  * two_step: one tap for both hops of a two-step swap (src/lib/two-step/), own pocket to own pocket.
  */
-export type ApprovalPurpose = "trade_leg" | "p2p_release" | "swap_out" | "dex_swap" | "withdrawal" | "two_step";
+export type ApprovalPurpose = "trade_leg" | "p2p_release" | "swap_out" | "dex_swap" | "withdrawal" | "two_step" | "loan_collateral" | "loan_funding" | "loan_repay";
 
 export type ApprovalRow = {
   id: string;
@@ -270,6 +270,11 @@ async function continueAfter(r: ApprovalRow) {
     if (r.purpose === "dex_swap") {
       const { advanceDexSwap } = await import("@/lib/dex/swap.server");
       await advanceDexSwap(r.ref_id);
+      return;
+    }
+    if (r.purpose === "loan_collateral" || r.purpose === "loan_funding" || r.purpose === "loan_repay") {
+      const { continueLoanSend } = await import("@/lib/loans/loans.server");
+      await continueLoanSend(r);
       return;
     }
     if (r.purpose === "two_step") {
