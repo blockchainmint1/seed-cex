@@ -30,6 +30,13 @@ export async function matchOrder(userId: string, pair: string, input: PlaceOrder
   const { tradingFrozenReason } = await import("@/lib/settle/confirm.server");
   const frozen = await tradingFrozenReason(userId);
   if (frozen) throw new Error(frozen);
+  // Three failed matches on this member's side in a day pause placing orders (audit R2).
+  {
+    const { orderPauseFor } = await import("@/lib/order-pause.server");
+    const { repeatFailureMessage } = await import("@/lib/order-readiness");
+    const pause = await orderPauseFor(userId);
+    if (pause.paused && pause.untilMs) throw new Error(repeatFailureMessage(pause.untilMs));
+  }
   const opposite: Side = input.side === "buy" ? "sell" : "buy";
   // Which asset the quote leg delivers: TSD (Omni #39) or USDC (EVM).
   const { baseLeg, quoteLeg } = getPair(pair);

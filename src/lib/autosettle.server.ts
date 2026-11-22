@@ -91,9 +91,11 @@ type FailedTradeRow = {
 };
 
 /** A match was cancelled before anything moved: take the culprit's order off the book, give the other side its size back. */
-async function settleFailedPreflight(trade: FailedTradeRow, leg: LegId, payer: string | null, fault: PreflightFault) {
+async function settleFailedPreflight(trade: FailedTradeRow, leg: LegId, payer: string | null, fault: PreflightFault): Promise<{ fault: PreflightFault; culprit: string | null }> {
   const shape = trade as unknown as TradeShape;
   const receiver = receiverOf(shape, legRole(trade.pair, leg));
+  const { failureCulprit } = await import("@/lib/order-readiness");
+  const culprit = failureCulprit({ fault, payer, receiver });
   const { cancel, restore } = ordersAfterFailedPreflight(
     { makerId: trade.maker_id, takerId: trade.taker_id, makerOrderId: trade.maker_order_id, takerOrderId: trade.taker_order_id },
     { fault, payer, receiver },
@@ -102,6 +104,38 @@ async function settleFailedPreflight(trade: FailedTradeRow, leg: LegId, payer: s
     await supabaseAdmin.from("orders").update({ status: "cancelled" }).eq("id", id).in("status", ["open", "partial"]);
   }
   await restoreFills(restore, Number(trade.amount));
+  return { fault, culprit };
+}
+
+/**
+ * The terms shown in a trade leg's Telegram tap (audit 2026-11-22 R1): buy/sell, amount,
+ * price, what comes back, and a warning when far from the recent price. The side and
+ * price are also stored on the approval and must match when it is spent.
+ */
+async function tradeTapTerms(trade: { id: string; pair: string | null; side: string; amount: number | string; price: number | string; taker_id: string | null; created_at?: string | null }, payer: string) {
+  const { getPair } = await import("@/lib/chains");
+  const { memberSideOf, priceKey, referencePrice, tradeTerms } = await import("./pocket-send/trade-terms");
+  const pair = getPair(trade.pair ?? "");
+  const memberSide = memberSideOf(trade.side === "sell" ? "sell" : "buy", payer === trade.taker_id);
+  const [{ data: last }, { data: bid }, { data: ask }] = await Promise.all([
+    supabaseAdmin.from("trades").select("price").eq("pair", trade.pair ?? "").neq("id", trade.id)
+      .not("first_sent_at", "is", null).not("status", "in", "(timed_out,refunded)")
+      .order("created_at", { ascending: false }).limit(1).maybeSingle(),
+    supabaseAdmin.from("orders").select("price").eq("pair", trade.pair ?? "").eq("side", "buy").in("status", ["open", "partial"])
+      .order("price", { ascending: false }).limit(1).maybeSingle(),
+    supabaseAdmin.from("orders").select("price").eq("pair", trade.pair ?? "").eq("side", "sell").in("status", ["open", "partial"])
+      .order("price", { ascending: true }).limit(1).maybeSingle(),
+  ]);
+  const reference = referencePrice({
+    lastPrinted: last ? Number(last.price) : null,
+    bestBid: bid ? Number(bid.price) : null,
+    bestAsk: ask ? Number(ask.price) : null,
+  });
+  const t = tradeTerms({
+    memberSide, baseSymbol: getLeg(pair.baseLeg).symbol, quoteSymbol: getLeg(pair.quoteLeg).symbol,
+    amount: Number(trade.amount), price: Number(trade.price), reference,
+  });
+  return { line: t.line, warning: t.warning, meta: { side: memberSide, price: priceKey(trade.price) } };
 }
 
 export async function autoSettleTrade(tradeId: string): Promise<AutoLegResult[]> {
@@ -126,12 +160,13 @@ export async function autoSettleTrade(tradeId: string): Promise<AutoLegResult[]>
   // Taker pays first.
   legs.sort((a, b) => Number(b.payer === trade.taker_id) - Number(a.payer === trade.taker_id));
 
-  const fail = async (event: string, leg: LegId, message: string) => {
+  const fail = async (event: string, leg: LegId, message: string, blame?: { fault: PreflightFault; culprit: string | null }) => {
     await supabaseAdmin.from("trade_events").insert({
       trade_id: tradeId,
       actor_id: null,
       event,
-      detail: { leg, error: message },
+      // culprit: whose side failed (audit R2 counts these per member over 24 hours).
+      detail: { leg, error: message, ...(blame ? { fault: blame.fault, culprit: blame.culprit } : {}) },
     });
     const { alertSettlementFailed } = await import("./alerts.server");
     await alertSettlementFailed({
@@ -152,10 +187,10 @@ export async function autoSettleTrade(tradeId: string): Promise<AutoLegResult[]>
       await supabaseAdmin.from("trades").update({ status: "timed_out" }).eq("id", tradeId);
       // Only the side whose problem it was comes off the book (order-readiness.ts); a network
       // hiccup puts both back. Otherwise a dead order keeps matching and failing forever.
-      await settleFailedPreflight(trade, l.leg, l.payer, p ? (p as { fault?: PreflightFault }).fault ?? "network" : "payer");
+      const blame = await settleFailedPreflight(trade, l.leg, l.payer, p ? (p as { fault?: PreflightFault }).fault ?? "network" : "payer");
       const { cancelApprovals } = await import("./pocket-send/approvals.server");
       await cancelApprovals({ purpose: "trade_leg", refId: tradeId }, `The trade was cancelled: ${reason}`);
-      await fail("cancelled_preflight", l.leg, reason);
+      await fail("cancelled_preflight", l.leg, reason, blame);
       return [{ leg: l.leg, ok: false, error: `Trade cancelled, nothing was sent: ${reason}` }];
     }
     pocketPaid.set(l.leg, (p as { source?: string }).source === "pocket");
@@ -216,18 +251,21 @@ export async function autoSettleTrade(tradeId: string): Promise<AutoLegResult[]>
             fault = "receiver";
             throw new Error("No receiving address");
           }
+          const terms = await tradeTapTerms(trade, l.payer);
           await requestSendApproval({
             userId: l.payer, linkId: s.link.id, purpose: "trade_leg", refId: tradeId, leg: l.leg,
             amount: p.amount, from: s.address, to: p.toAddress,
-            what: `Exchange trade · ${trade.pair ?? ""} · ${l.payer === trade.taker_id ? "your order" : "your resting order matched"}`,
+            what: `${terms.line}\nExchange trade · ${trade.pair ?? ""} · ${l.payer === trade.taker_id ? "your order" : "your resting order matched"}`,
+            ...(terms.warning ? { warning: terms.warning } : {}),
+            meta: terms.meta,
           });
           out.push({ leg: l.leg, ok: false, pending: true, error: "Waiting for approval in Telegram" });
         } catch (e) {
           const reason = e instanceof Error ? e.message : "Couldn't ask for approval";
           await supabaseAdmin.from("trades").update({ status: "timed_out" }).eq("id", tradeId).eq("status", "matched");
-          await settleFailedPreflight(trade, l.leg, l.payer, fault);
+          const blame = await settleFailedPreflight(trade, l.leg, l.payer, fault);
           await cancelApprovals({ purpose: "trade_leg", refId: tradeId }, `The trade was cancelled: ${reason}`);
-          await fail("cancelled_preflight", l.leg, reason);
+          await fail("cancelled_preflight", l.leg, reason, blame);
           return [{ leg: l.leg, ok: false, error: `Trade cancelled, nothing was sent: ${reason}` }];
         }
       }

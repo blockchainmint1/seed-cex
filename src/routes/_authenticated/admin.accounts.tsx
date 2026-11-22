@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { liftTradingFreeze } from "@/lib/admin.functions";
+import { clearOrderPause, liftTradingFreeze } from "@/lib/admin.functions";
 import { createFileRoute } from "@tanstack/react-router";
 import { Search, X } from "lucide-react";
 import { TabTitle, inputCls } from "@/components/account/ui";
@@ -84,6 +84,7 @@ function AccountsPage() {
                     <td className="px-3 py-2 text-foreground">
                       {a.displayName}
                       {a.tradingFrozenAt ? <FrozenBadge userId={a.userId} reason={a.tradingFrozenReason} /> : null}
+                      {a.orderPausedUntil ? <OrderPauseBadge userId={a.userId} until={a.orderPausedUntil} /> : null}
                     </td>
                     <td className="px-3 py-2 text-muted-foreground">{new Date(a.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</td>
                     <td className="px-3 py-2">{a.hasVault ? "yes" : "—"}</td>
@@ -112,6 +113,40 @@ function AccountsPage() {
 }
 
 /** A member whose trade payment vanished can't trade until an admin lifts this. */
+function OrderPauseBadge({ userId, until }: { userId: string; until: string }) {
+  const clear = useServerFn(clearOrderPause);
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const when = new Date(until).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  return (
+    <span className="ml-2 inline-flex items-center gap-1.5">
+      <span className="rounded-sm bg-destructive/15 px-1.5 py-0.5 text-destructive" title={`3 failed matches on their side in 24 hours. Paused until ${when}.`}>Orders paused</span>
+      <button
+        type="button"
+        disabled={busy}
+        className="underline underline-offset-2 hover:text-foreground disabled:opacity-50"
+        onClick={async () => {
+          if (!window.confirm(`Let this member place orders again?\n\nThree of their matched orders failed on their side in the last 24 hours (paused until ${when}).`)) return;
+          setBusy(true);
+          setErr(null);
+          try {
+            await clear({ data: { userId } });
+            await qc.invalidateQueries({ queryKey: ["admin-overview"] });
+          } catch (e) {
+            setErr(e instanceof Error ? e.message : "Couldn't clear it");
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        Clear
+      </button>
+      {err ? <span role="alert" className="text-destructive">{err}</span> : null}
+    </span>
+  );
+}
+
 function FrozenBadge({ userId, reason }: { userId: string; reason: string | null }) {
   const lift = useServerFn(liftTradingFreeze);
   const qc = useQueryClient();

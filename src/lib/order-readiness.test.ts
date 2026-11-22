@@ -1,5 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { committedOnLeg, orderCoverProblem, ordersAfterFailedPreflight, payAmountOf, payLegOf } from "./order-readiness";
+import {
+  committedOnLeg, failureCulprit, orderCoverProblem, ordersAfterFailedPreflight, payAmountOf, payLegOf,
+  placeCheckNeedsLiveRead, REPEAT_FAILURE_LIMIT, repeatFailureMessage, repeatFailurePause,
+} from "./order-readiness";
 
 const T = { makerId: "maker", takerId: "taker", makerOrderId: "mo", takerOrderId: "to" };
 
@@ -51,5 +54,45 @@ describe("after a match is cancelled before anything moved", () => {
   test("a sample order with no owner comes off the book", () => {
     const t = { ...T, makerId: null };
     expect(ordersAfterFailedPreflight(t, { fault: "payer", payer: null, receiver: "taker" })).toEqual({ cancel: ["mo"], restore: ["to"] });
+  });
+});
+
+
+describe("repeat failed matches pause placing orders (audit R2)", () => {
+  const h = 3_600_000;
+  const now = Date.UTC(2026, 10, 22, 12);
+  test("two failures in a day: still allowed", () => {
+    expect(repeatFailurePause({ failedAtMs: [now - 2 * h, now - h], clearedAtMs: null, nowMs: now }).paused).toBe(false);
+  });
+  test("three failures in a day: paused until the oldest is 24 hours old", () => {
+    const r = repeatFailurePause({ failedAtMs: [now - 5 * h, now - 2 * h, now - h], clearedAtMs: null, nowMs: now });
+    expect(REPEAT_FAILURE_LIMIT).toBe(3);
+    expect(r.paused).toBe(true);
+    expect(r.untilMs).toBe(now - 5 * h + 24 * h);
+  });
+  test("four failures: the pause lasts until only two are left in the window", () => {
+    const r = repeatFailurePause({ failedAtMs: [now - 6 * h, now - 5 * h, now - 2 * h, now - h], clearedAtMs: null, nowMs: now });
+    expect(r.untilMs).toBe(now - 5 * h + 24 * h);
+  });
+  test("failures older than 24 hours don't count", () => {
+    expect(repeatFailurePause({ failedAtMs: [now - 30 * h, now - 2 * h, now - h], clearedAtMs: null, nowMs: now }).paused).toBe(false);
+  });
+  test("an admin's clear wipes the failures before it", () => {
+    expect(repeatFailurePause({ failedAtMs: [now - 5 * h, now - 2 * h, now - h], clearedAtMs: now - 90 * 60_000, nowMs: now }).paused).toBe(false);
+  });
+  test("only the side at fault is counted; a network failure counts against nobody", () => {
+    expect(failureCulprit({ fault: "payer", payer: "a", receiver: "b" })).toBe("a");
+    expect(failureCulprit({ fault: "receiver", payer: "a", receiver: "b" })).toBe("b");
+    expect(failureCulprit({ fault: "network", payer: "a", receiver: "b" })).toBeNull();
+  });
+  test("the message says when it ends", () => {
+    expect(repeatFailureMessage(Date.UTC(2026, 10, 23, 7, 0))).toContain("until 2026-11-23 07:00 UTC");
+  });
+});
+
+describe("place-order balance check may reuse a recent read (audit R3)", () => {
+  test("a recent read can let an order through, but a refusal is always re-checked live", () => {
+    expect(placeCheckNeedsLiveRead(null)).toBe(false);
+    expect(placeCheckNeedsLiveRead("This order needs 10 TSD")).toBe(true);
   });
 });

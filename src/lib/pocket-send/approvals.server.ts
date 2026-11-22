@@ -85,6 +85,8 @@ export async function requestSendApproval(p: {
   to: string;
   /** One line describing what this is for, e.g. "Exchange trade · TXC/TSD". */
   what: string;
+  /** Shown in bold above the buttons, e.g. a far-from-market price (audit R1). */
+  warning?: string;
   meta?: Record<string, unknown>;
 }): Promise<ApprovalRow> {
   const { data: live } = await supabaseAdmin
@@ -97,7 +99,11 @@ export async function requestSendApproval(p: {
     .maybeSingle();
   if (live) {
     const row = norm(live);
-    const same = row.user_id === p.userId && row.link_id === p.linkId && Math.abs(row.amount - p.amount) <= 1e-8 && row.from_address === p.from && row.to_address === p.to;
+    const { approvalMetaMatches } = await import("./rules");
+    const wantMeta = p.meta ? Object.fromEntries(Object.entries(p.meta).filter(([, v]) => typeof v === "string")) as Record<string, string> : undefined;
+    const same = row.user_id === p.userId && row.link_id === p.linkId && Math.abs(row.amount - p.amount) <= 1e-8 && row.from_address === p.from && row.to_address === p.to
+      // A trade tap is bound to the side and price it showed (audit R1); other purposes keep their own checks.
+      && (p.purpose !== "trade_leg" || approvalMetaMatches(row.meta, wantMeta));
     if (same && Date.parse(row.expires_at) > Date.now()) return row;
     await supabaseAdmin.from("send_approvals").update({ status: Date.parse(row.expires_at) > Date.now() ? "cancelled" : "expired", decided_at: new Date().toISOString(), error: "Replaced by a new request" })
       .eq("id", row.id).in("status", ["pending", "approved"]);
@@ -137,6 +143,7 @@ export async function requestSendApproval(p: {
     `<b>${fmt(p.amount)} ${esc(symbol)}</b> from your trading pocket\n` +
     `to <code>${esc(p.to)}</code>\n` +
     `${esc(p.what)}\n\n` +
+    (p.warning ? `⚠️ <b>${esc(p.warning)}</b>\n\n` : "") +
     `Nothing moves until you tap Approve. This request ends in ${mins} minutes.\n` +
     `If you didn't start this, tap Decline and check your account.`;
   try {

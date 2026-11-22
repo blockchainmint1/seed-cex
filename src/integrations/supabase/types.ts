@@ -3033,6 +3033,7 @@ export type Database = {
           onboarding_status: string | null
           one_tap_limit_set_at: string | null
           one_tap_limit_usd: number | null
+          order_pause_cleared_at: string | null
           reputation: number
           telegram_chat_id: string | null
           telegram_code: string | null
@@ -3073,6 +3074,7 @@ export type Database = {
           onboarding_status?: string | null
           one_tap_limit_set_at?: string | null
           one_tap_limit_usd?: number | null
+          order_pause_cleared_at?: string | null
           reputation?: number
           telegram_chat_id?: string | null
           telegram_code?: string | null
@@ -3113,6 +3115,7 @@ export type Database = {
           onboarding_status?: string | null
           one_tap_limit_set_at?: string | null
           one_tap_limit_usd?: number | null
+          order_pause_cleared_at?: string | null
           reputation?: number
           telegram_chat_id?: string | null
           telegram_code?: string | null
@@ -3865,6 +3868,7 @@ export type Database = {
           amount: number
           created_at: string
           expires_at: string
+          first_sent_at: string | null
           id: string
           is_demo: boolean
           maker_id: string | null
@@ -3882,6 +3886,7 @@ export type Database = {
           amount: number
           created_at?: string
           expires_at?: string
+          first_sent_at?: string | null
           id?: string
           is_demo?: boolean
           maker_id?: string | null
@@ -3899,6 +3904,7 @@ export type Database = {
           amount?: number
           created_at?: string
           expires_at?: string
+          first_sent_at?: string | null
           id?: string
           is_demo?: boolean
           maker_id?: string | null

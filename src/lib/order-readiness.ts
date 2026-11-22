@@ -83,3 +83,41 @@ export function ordersAfterFailedPreflight(
   if (!culpritOrder) return { cancel: [], restore: all };
   return { cancel: [culpritOrder], restore: all.filter((id) => id !== culpritOrder) };
 }
+
+/**
+ * Audit 2026-11-22 R2: a member whose matched orders keep failing on their own side
+ * (coins moved out after placing, setup broken) stops being able to place orders for
+ * a while. Only failures after an admin's clear count.
+ */
+export const REPEAT_FAILURE_LIMIT = 3;
+export const REPEAT_FAILURE_WINDOW_MS = 24 * 3_600_000;
+
+export function repeatFailurePause(i: { failedAtMs: number[]; clearedAtMs: number | null; nowMs: number }): { paused: boolean; count: number; untilMs: number | null } {
+  const from = Math.max(i.nowMs - REPEAT_FAILURE_WINDOW_MS, i.clearedAtMs ?? -Infinity);
+  const inWindow = i.failedAtMs.filter((t) => t > from && t <= i.nowMs).sort((a, b) => a - b);
+  if (inWindow.length < REPEAT_FAILURE_LIMIT) return { paused: false, count: inWindow.length, untilMs: null };
+  // The pause ends when enough old failures age out to drop below the limit.
+  const untilMs = inWindow[inWindow.length - REPEAT_FAILURE_LIMIT]! + REPEAT_FAILURE_WINDOW_MS;
+  return { paused: true, count: inWindow.length, untilMs };
+}
+
+export function repeatFailureMessage(untilMs: number): string {
+  const until = new Date(untilMs).toISOString().replace("T", " ").slice(0, 16);
+  return `Placing orders is paused on your account until ${until} UTC: ${REPEAT_FAILURE_LIMIT} of your orders matched in the last 24 hours but couldn't be paid from your trading pocket, so those trades were cancelled. Keep the coins for your open orders in your pocket. If this is a mistake, contact support from the Help page.`;
+}
+
+/** Who is to blame for a cancelled match (counted for the pause), or null when nobody is (network) or the side has no owner. */
+export function failureCulprit(f: { fault: PreflightFault; payer: string | null; receiver: string | null }): string | null {
+  if (f.fault === "payer") return f.payer;
+  if (f.fault === "receiver") return f.receiver;
+  return null;
+}
+
+/**
+ * Audit R3: Place order may use a balance read from the last few seconds, but only to
+ * let an order through. Any refusal is re-checked live first, so a fresh deposit is
+ * never refused. The fill re-checks live either way.
+ */
+export function placeCheckNeedsLiveRead(problemWithRecentBalance: string | null): boolean {
+  return problemWithRecentBalance != null;
+}

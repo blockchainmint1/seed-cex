@@ -99,6 +99,9 @@ export async function fetchTape(pair: string, limit = 30): Promise<TapeEntry[]> 
     // A match cancelled before anything moved never traded: it must not show on the
     // tape or set the last price, 24h volume, charts or the API (Nov 22 2026).
     .not("status", "in", "(timed_out,refunded)")
+    // Audit R4: a trade prints only once its first payment is on the way, so a match
+    // cancelled minutes later never moves the last price backwards (API + CMC included).
+    .not("first_sent_at", "is", null)
     .order("created_at", { ascending: false })
     .limit(limit);
 

@@ -18,6 +18,8 @@ export type AdminAccountRow = {
   /** Set when a trade payment this member sent vanished (audit #3 A1); exchange trading is paused. */
   tradingFrozenAt: string | null;
   tradingFrozenReason: string | null;
+  /** Placing orders is paused until then after repeated failed matches on their side (audit R2). */
+  orderPausedUntil: string | null;
 };
 
 export type AdminTradeRow = {
@@ -115,9 +117,12 @@ export const getAdminOverview = createServerFn({ method: "GET" })
 
     const since = new Date(Date.now() - 86_400_000).toISOString();
 
+    const { recentFailuresByMember } = await import("./order-pause.server");
+    const { repeatFailurePause } = await import("./order-readiness");
+    const failures = await recentFailuresByMember().catch(() => new Map<string, { at: number[]; lastTradeId: string }>());
     const [profiles, wallets, delegations, orders, trades, escrows, apiKeys, withdrawals] =
       await Promise.all([
-        supabaseAdmin.from("profiles").select("id, display_name, created_at, trading_frozen_at, trading_frozen_reason"),
+        supabaseAdmin.from("profiles").select("id, display_name, created_at, trading_frozen_at, trading_frozen_reason, order_pause_cleared_at"),
         supabaseAdmin.from("wallets").select("user_id, txc_address, evm_address"),
         supabaseAdmin
           .from("wallet_delegations")
@@ -198,6 +203,12 @@ export const getAdminOverview = createServerFn({ method: "GET" })
           lastActivity: times.length ? times[times.length - 1]! : null,
           tradingFrozenAt: p.trading_frozen_at ?? null,
           tradingFrozenReason: p.trading_frozen_reason ?? null,
+          orderPausedUntil: (() => {
+            const f = failures.get(p.id);
+            if (!f) return null;
+            const r = repeatFailurePause({ failedAtMs: f.at, clearedAtMs: p.order_pause_cleared_at ? Date.parse(p.order_pause_cleared_at) : null, nowMs: now });
+            return r.paused && r.untilMs ? new Date(r.untilMs).toISOString() : null;
+          })(),
         };
       })
       .sort((a, b) => b.tradedQuoteValue - a.tradedQuoteValue);
@@ -260,6 +271,29 @@ export const liftTradingFreeze = createServerFn({ method: "POST" })
       await supabaseAdmin.from("trade_events").insert({
         trade_id: p.trading_frozen_trade, actor_id: context.userId, event: "trading_freeze_lifted",
         detail: { member: data.userId, frozen_at: p.trading_frozen_at },
+      });
+    }
+    return { ok: true, changed: true };
+  });
+
+/** Let a member place orders again after the repeat-failure pause (audit R2). Logged on their newest failed trade. */
+export const clearOrderPause = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { userId: string }) => {
+    if (!d || typeof d.userId !== "string" || !/^[0-9a-f-]{36}$/i.test(d.userId)) throw new Error("Pick a member");
+    return { userId: d.userId };
+  })
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context as never);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { orderPauseFor } = await import("./order-pause.server");
+    const pause = await orderPauseFor(data.userId);
+    if (!pause.paused) return { ok: true, changed: false };
+    await supabaseAdmin.from("profiles").update({ order_pause_cleared_at: new Date().toISOString() }).eq("id", data.userId);
+    if (pause.lastTradeId) {
+      await supabaseAdmin.from("trade_events").insert({
+        trade_id: pause.lastTradeId, actor_id: context.userId, event: "order_pause_cleared",
+        detail: { member: data.userId, failures: pause.count },
       });
     }
     return { ok: true, changed: true };

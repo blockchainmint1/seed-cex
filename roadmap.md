@@ -1,5 +1,15 @@
 # Roadmap
 
+- [x] Auditor order-book review R1: trade Telegram tap shows buy/sell, price, what you get + far-from-market warning; approval locks the price (Bobby, Nov 22)
+- [x] R2: 3 payer-fault failed matches in 24h pauses placing orders; admins can clear (Bobby, Nov 22)
+- [x] R3: short cache on the Place-order balance check; fill-time check stays live (Bobby, Nov 22)
+- [x] R4: trades print on the public price list only once the first payment is sent (Bobby, Nov 22)
+- [x] Save the AWS alarm topic (arn:aws:sns:us-east-1:150646524089:seeds-security-alarms) as SEEDS_ALARM_SNS_TOPIC_ARN so key-unlock alarms reach Telegram (Bobby, Nov 22)
+- [ ] Add the HTTPS subscription to https://seeds.honest.money/api/public/aws-alarm in AWS SNS (blocked: publish first, then Bobby adds it — step in seeds-aws-unlock-alarm-setup.md)
+- [ ] Auditor re-check of R1–R4 (blocked: auditor)
+- [ ] Seeds Lend review by the auditor before publishing (blocked: auditor)
+- [x] No daily dollar limit on trades for members without two-factor (Bobby: "No limit", Nov 22)
+
 - [x] Coins in open orders / trades / P2P sales show as "In trades" (Balances, Withdraw, order ticket) and can't be withdrawn, swapped, lent or promised twice; coins moved out another way auto-cancel the newest uncovered orders with a Telegram + email notice (Bobby, Nov 22)
 - [ ] Auditor review of set-asides + the order watch (blocked: auditor)
 

@@ -8,6 +8,7 @@ import { assertDeliverer, claimLeg } from "@/lib/settle-guard.server";
 import { delivererOf, legAmount, legRole, receiverOf, type TradeShape } from "@/lib/leg-roles";
 import { coverProblem, pocketLegBalance, pocketSender, receiveAddress, sendFromPocket, validDestination } from "./pocket.server";
 import type { PreflightFault } from "@/lib/order-readiness";
+import { memberSideOf, priceKey } from "./trade-terms";
 
 export type PocketLegPreview = {
   ready: boolean;
@@ -36,6 +37,11 @@ async function loadTrade(userId: string, tradeId: string): Promise<TradeShape & 
   const t = data as unknown as TradeShape & { id: string; status: string; settle_started_at: string | null };
   if (t.maker_id !== userId && t.taker_id !== userId) throw new Error("Forbidden: you are not a party to this trade");
   return t;
+}
+
+/** The side and price a trade leg's Telegram tap showed this payer (trade-terms.ts). */
+function tapTermsOf(t: TradeShape & { price?: number | string | null }, payer: string): Record<string, string> {
+  return { side: memberSideOf(t.side === "sell" ? "sell" : "buy", payer === t.taker_id), price: priceKey(t.price ?? 0) };
 }
 
 /** Dry run for a pocket-paid leg: who pays, from where, to where, can they cover it, approval state. */
@@ -120,7 +126,8 @@ export async function reservePocketLeg(userId: string, tradeId: string, leg: Leg
   const want = { purpose: "trade_leg" as const, refId: t.id, leg, userId: sender, linkId: s.link.id, amount, from: s.address, to };
   const already = await reservedApproval(want);
   if (already) return already.id;
-  return (await spendApproval(want)).id;
+  // The tap showed this side and price (audit R1): it can only pay for exactly those terms.
+  return (await spendApproval({ ...want, meta: tapTermsOf(t, sender) })).id;
 }
 
 /** Send one trade leg from the payer's pocket. Requires that payer's approval (live, or reserved when the trade started). */
@@ -133,7 +140,7 @@ export async function settlePocketLeg(userId: string, tradeId: string, leg: LegI
   let sent: Awaited<ReturnType<typeof sendFromPocket>>;
   try {
     const want = { purpose: "trade_leg" as const, refId: t.id, leg, userId: sender, linkId: s.link.id, amount, from: s.address, to };
-    const approval = (await reservedApproval(want)) ?? (await spendApproval(want));
+    const approval = (await reservedApproval(want)) ?? (await spendApproval({ ...want, meta: tapTermsOf(t, sender) }));
     approvalId = approval.id;
     sent = await sendFromPocket({
       link: s.link, leg, from: s.address, to, amount,
@@ -185,12 +192,25 @@ export async function orderPayProblem(userId: string, leg: LegId, need: number):
   const s = await pocketSender(userId, leg, "trade");
   if (!s.ok) return `Before you can place this order: ${s.reason}`;
   // Set aside = other open orders + trades still being paid + live P2P sales (set-asides.ts).
-  const [bal, held] = await Promise.all([pocketLegBalance(s.address, leg, need), setAsideFor(userId, leg).catch(() => null)]);
+  // Audit R3: a balance read from the last few seconds may let an order through (shared
+  // cache, per pocket address + coin); any refusal is re-checked live, and the fill
+  // always re-checks live. This check is advisory only.
+  const { shared } = await import("@/lib/cache/shared-cache.server");
+  const { placeCheckNeedsLiveRead } = await import("@/lib/order-readiness");
+  const [recent, held] = await Promise.all([
+    shared(`place-check:${leg}:${s.address}`, { freshMs: 5_000, maxStaleMs: 15_000, good: (b) => b.balance != null }, () => pocketLegBalance(s.address, leg, need)),
+    setAsideFor(userId, leg).catch(() => null),
+  ]);
   if (!held) return "Couldn't check your open orders right now, so the order wasn't placed. Try again in a minute.";
   const committed = held.total;
-  const short = orderCoverProblem({ symbol, balance: bal.balance, committed, need });
-  if (short) return short;
-  // Fee coins (Omni carrier TXC, EVM gas) — same rule a fill would apply.
-  const fee = coverProblem(leg, bal, need);
-  return fee ? `Before you can place this order: ${fee}` : null;
+  const problemWith = (bal: Awaited<ReturnType<typeof pocketLegBalance>>) => {
+    const short = orderCoverProblem({ symbol, balance: bal.balance, committed, need });
+    if (short) return short;
+    // Fee coins (Omni carrier TXC, EVM gas) — same rule a fill would apply.
+    const fee = coverProblem(leg, bal, need);
+    return fee ? `Before you can place this order: ${fee}` : null;
+  };
+  const quick = problemWith(recent);
+  if (!placeCheckNeedsLiveRead(quick)) return null;
+  return problemWith(await pocketLegBalance(s.address, leg, committed + need));
 }
