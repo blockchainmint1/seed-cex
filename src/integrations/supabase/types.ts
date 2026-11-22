@@ -2651,6 +2651,230 @@ export type Database = {
         }
         Relationships: []
       }
+      qa_attachments: {
+        Row: {
+          created_at: string
+          file_name: string
+          id: string
+          kind: string
+          mime: string
+          redacted: boolean
+          report_id: string
+          size_bytes: number
+          storage_path: string
+          uploaded: boolean
+        }
+        Insert: {
+          created_at?: string
+          file_name?: string
+          id?: string
+          kind: string
+          mime: string
+          redacted?: boolean
+          report_id: string
+          size_bytes: number
+          storage_path: string
+          uploaded?: boolean
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          id?: string
+          kind?: string
+          mime?: string
+          redacted?: boolean
+          report_id?: string
+          size_bytes?: number
+          storage_path?: string
+          uploaded?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qa_attachments_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "qa_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qa_comments: {
+        Row: {
+          author_id: string
+          body: string
+          created_at: string
+          from_team: boolean
+          id: string
+          internal: boolean
+          report_id: string
+        }
+        Insert: {
+          author_id: string
+          body: string
+          created_at?: string
+          from_team?: boolean
+          id?: string
+          internal?: boolean
+          report_id: string
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          created_at?: string
+          from_team?: boolean
+          id?: string
+          internal?: boolean
+          report_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qa_comments_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "qa_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qa_events: {
+        Row: {
+          actor_id: string
+          created_at: string
+          field: string
+          from_value: string | null
+          id: string
+          report_id: string
+          to_value: string | null
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          field: string
+          from_value?: string | null
+          id?: string
+          report_id: string
+          to_value?: string | null
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          field?: string
+          from_value?: string | null
+          id?: string
+          report_id?: string
+          to_value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qa_events_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "qa_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qa_reports: {
+        Row: {
+          actual: string
+          app_version: string
+          assignee_id: string | null
+          browser: string
+          category: string
+          created_at: string
+          description: string
+          duplicate_of: string | null
+          expected: string
+          id: string
+          os: string
+          page_path: string
+          ref_no: number
+          reporter_id: string
+          severity: string | null
+          status: string
+          steps: string
+          title: string
+          updated_at: string
+          viewport: string
+        }
+        Insert: {
+          actual?: string
+          app_version?: string
+          assignee_id?: string | null
+          browser?: string
+          category: string
+          created_at?: string
+          description?: string
+          duplicate_of?: string | null
+          expected?: string
+          id?: string
+          os?: string
+          page_path?: string
+          ref_no?: never
+          reporter_id: string
+          severity?: string | null
+          status?: string
+          steps?: string
+          title: string
+          updated_at?: string
+          viewport?: string
+        }
+        Update: {
+          actual?: string
+          app_version?: string
+          assignee_id?: string | null
+          browser?: string
+          category?: string
+          created_at?: string
+          description?: string
+          duplicate_of?: string | null
+          expected?: string
+          id?: string
+          os?: string
+          page_path?: string
+          ref_no?: never
+          reporter_id?: string
+          severity?: string | null
+          status?: string
+          steps?: string
+          title?: string
+          updated_at?: string
+          viewport?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qa_reports_duplicate_of_fkey"
+            columns: ["duplicate_of"]
+            isOneToOne: false
+            referencedRelation: "qa_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qa_settings: {
+        Row: {
+          enabled: boolean
+          id: number
+          recordings_enabled: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          enabled?: boolean
+          id?: number
+          recordings_enabled?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          enabled?: boolean
+          id?: number
+          recordings_enabled?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       recruit_events: {
         Row: {
           actor: string | null

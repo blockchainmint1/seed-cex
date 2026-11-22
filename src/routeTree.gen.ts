@@ -38,6 +38,7 @@ import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedActivityRouteImport } from './routes/_authenticated/activity'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedApiKeysRouteImport } from './routes/_authenticated/api-keys'
+import { Route as AuthenticatedFeedbackRouteImport } from './routes/_authenticated/feedback'
 import { Route as AuthenticatedTradesRouteImport } from './routes/_authenticated/trades'
 import { Route as AuthenticatedWalletRouteImport } from './routes/_authenticated/wallet'
 import { Route as AuthenticatedWelcomeRouteImport } from './routes/_authenticated/welcome'
@@ -101,6 +102,8 @@ import { Route as AuthenticatedAccountBalancesWithdrawRouteImport } from './rout
 import { Route as AuthenticatedAccountP2pIndexRouteImport } from './routes/_authenticated/account.p2p.index'
 import { Route as AuthenticatedAccountP2pListingsRouteImport } from './routes/_authenticated/account.p2p.listings'
 import { Route as AuthenticatedAccountP2pTradesRouteImport } from './routes/_authenticated/account.p2p.trades'
+import { Route as AuthenticatedAdminBugsIndexRouteImport } from './routes/_authenticated/admin.bugs.index'
+import { Route as AuthenticatedAdminBugsRefRouteImport } from './routes/_authenticated/admin.bugs.$ref'
 import { Route as AuthenticatedAdminMarketingIndexRouteImport } from './routes/_authenticated/admin.marketing.index'
 import { Route as AuthenticatedAdminMarketingAdsRouteImport } from './routes/_authenticated/admin.marketing.ads'
 import { Route as AuthenticatedAdminMarketingVideosRouteImport } from './routes/_authenticated/admin.marketing.videos'
@@ -290,6 +293,11 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
 const AuthenticatedApiKeysRoute = AuthenticatedApiKeysRouteImport.update({
   id: '/api-keys',
   path: '/api-keys',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedFeedbackRoute = AuthenticatedFeedbackRouteImport.update({
+  id: '/feedback',
+  path: '/feedback',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedTradesRoute = AuthenticatedTradesRouteImport.update({
@@ -628,6 +636,18 @@ const AuthenticatedAccountP2pTradesRoute =
     path: '/trades',
     getParentRoute: () => AuthenticatedAccountP2pRoute,
   } as any)
+const AuthenticatedAdminBugsIndexRoute =
+  AuthenticatedAdminBugsIndexRouteImport.update({
+    id: '/bugs/',
+    path: '/bugs/',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminBugsRefRoute =
+  AuthenticatedAdminBugsRefRouteImport.update({
+    id: '/bugs/$ref',
+    path: '/bugs/$ref',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminMarketingIndexRoute =
   AuthenticatedAdminMarketingIndexRouteImport.update({
     id: '/',
@@ -901,6 +921,7 @@ export interface FileRoutesByFullPath {
   '/activity': typeof AuthenticatedActivityRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/api-keys': typeof AuthenticatedApiKeysRoute
+  '/feedback': typeof AuthenticatedFeedbackRoute
   '/trades': typeof AuthenticatedTradesRoute
   '/wallet': typeof AuthenticatedWalletRoute
   '/welcome': typeof AuthenticatedWelcomeRoute
@@ -962,6 +983,7 @@ export interface FileRoutesByFullPath {
   '/account/balances/withdraw': typeof AuthenticatedAccountBalancesWithdrawRoute
   '/account/p2p/listings': typeof AuthenticatedAccountP2pListingsRoute
   '/account/p2p/trades': typeof AuthenticatedAccountP2pTradesRoute
+  '/admin/bugs/$ref': typeof AuthenticatedAdminBugsRefRoute
   '/admin/marketing/ads': typeof AuthenticatedAdminMarketingAdsRoute
   '/admin/marketing/videos': typeof AuthenticatedAdminMarketingVideosRoute
   '/admin/plan/lbtc': typeof AuthenticatedAdminPlanLbtcRoute
@@ -999,6 +1021,7 @@ export interface FileRoutesByFullPath {
   '/api/public/v1/trades': typeof ApiPublicV1TradesRoute
   '/account/balances/': typeof AuthenticatedAccountBalancesIndexRoute
   '/account/p2p/': typeof AuthenticatedAccountP2pIndexRoute
+  '/admin/bugs/': typeof AuthenticatedAdminBugsIndexRoute
   '/admin/marketing/': typeof AuthenticatedAdminMarketingIndexRoute
   '/api/public/cmc/': typeof ApiPublicCmcIndexRoute
   '/api/public/v1/': typeof ApiPublicV1IndexRoute
@@ -1037,6 +1060,7 @@ export interface FileRoutesByTo {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/activity': typeof AuthenticatedActivityRoute
   '/api-keys': typeof AuthenticatedApiKeysRoute
+  '/feedback': typeof AuthenticatedFeedbackRoute
   '/trades': typeof AuthenticatedTradesRoute
   '/wallet': typeof AuthenticatedWalletRoute
   '/welcome': typeof AuthenticatedWelcomeRoute
@@ -1095,6 +1119,7 @@ export interface FileRoutesByTo {
   '/account/balances/withdraw': typeof AuthenticatedAccountBalancesWithdrawRoute
   '/account/p2p/listings': typeof AuthenticatedAccountP2pListingsRoute
   '/account/p2p/trades': typeof AuthenticatedAccountP2pTradesRoute
+  '/admin/bugs/$ref': typeof AuthenticatedAdminBugsRefRoute
   '/admin/marketing/ads': typeof AuthenticatedAdminMarketingAdsRoute
   '/admin/marketing/videos': typeof AuthenticatedAdminMarketingVideosRoute
   '/admin/plan/lbtc': typeof AuthenticatedAdminPlanLbtcRoute
@@ -1132,6 +1157,7 @@ export interface FileRoutesByTo {
   '/api/public/v1/trades': typeof ApiPublicV1TradesRoute
   '/account/balances': typeof AuthenticatedAccountBalancesIndexRoute
   '/account/p2p': typeof AuthenticatedAccountP2pIndexRoute
+  '/admin/bugs': typeof AuthenticatedAdminBugsIndexRoute
   '/admin/marketing': typeof AuthenticatedAdminMarketingIndexRoute
   '/api/public/cmc': typeof ApiPublicCmcIndexRoute
   '/api/public/v1': typeof ApiPublicV1IndexRoute
@@ -1174,6 +1200,7 @@ export interface FileRoutesById {
   '/_authenticated/activity': typeof AuthenticatedActivityRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/api-keys': typeof AuthenticatedApiKeysRoute
+  '/_authenticated/feedback': typeof AuthenticatedFeedbackRoute
   '/_authenticated/trades': typeof AuthenticatedTradesRoute
   '/_authenticated/wallet': typeof AuthenticatedWalletRoute
   '/_authenticated/welcome': typeof AuthenticatedWelcomeRoute
@@ -1235,6 +1262,7 @@ export interface FileRoutesById {
   '/_authenticated/account/balances/withdraw': typeof AuthenticatedAccountBalancesWithdrawRoute
   '/_authenticated/account/p2p/listings': typeof AuthenticatedAccountP2pListingsRoute
   '/_authenticated/account/p2p/trades': typeof AuthenticatedAccountP2pTradesRoute
+  '/_authenticated/admin/bugs/$ref': typeof AuthenticatedAdminBugsRefRoute
   '/_authenticated/admin/marketing/ads': typeof AuthenticatedAdminMarketingAdsRoute
   '/_authenticated/admin/marketing/videos': typeof AuthenticatedAdminMarketingVideosRoute
   '/_authenticated/admin/plan_/lbtc': typeof AuthenticatedAdminPlanLbtcRoute
@@ -1272,6 +1300,7 @@ export interface FileRoutesById {
   '/api/public/v1/trades': typeof ApiPublicV1TradesRoute
   '/_authenticated/account/balances/': typeof AuthenticatedAccountBalancesIndexRoute
   '/_authenticated/account/p2p/': typeof AuthenticatedAccountP2pIndexRoute
+  '/_authenticated/admin/bugs/': typeof AuthenticatedAdminBugsIndexRoute
   '/_authenticated/admin/marketing/': typeof AuthenticatedAdminMarketingIndexRoute
   '/api/public/cmc/': typeof ApiPublicCmcIndexRoute
   '/api/public/v1/': typeof ApiPublicV1IndexRoute
@@ -1314,6 +1343,7 @@ export interface FileRouteTypes {
     | '/activity'
     | '/admin'
     | '/api-keys'
+    | '/feedback'
     | '/trades'
     | '/wallet'
     | '/welcome'
@@ -1375,6 +1405,7 @@ export interface FileRouteTypes {
     | '/account/balances/withdraw'
     | '/account/p2p/listings'
     | '/account/p2p/trades'
+    | '/admin/bugs/$ref'
     | '/admin/marketing/ads'
     | '/admin/marketing/videos'
     | '/admin/plan/lbtc'
@@ -1412,6 +1443,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/trades'
     | '/account/balances/'
     | '/account/p2p/'
+    | '/admin/bugs/'
     | '/admin/marketing/'
     | '/api/public/cmc/'
     | '/api/public/v1/'
@@ -1450,6 +1482,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/activity'
     | '/api-keys'
+    | '/feedback'
     | '/trades'
     | '/wallet'
     | '/welcome'
@@ -1508,6 +1541,7 @@ export interface FileRouteTypes {
     | '/account/balances/withdraw'
     | '/account/p2p/listings'
     | '/account/p2p/trades'
+    | '/admin/bugs/$ref'
     | '/admin/marketing/ads'
     | '/admin/marketing/videos'
     | '/admin/plan/lbtc'
@@ -1545,6 +1579,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/trades'
     | '/account/balances'
     | '/account/p2p'
+    | '/admin/bugs'
     | '/admin/marketing'
     | '/api/public/cmc'
     | '/api/public/v1'
@@ -1586,6 +1621,7 @@ export interface FileRouteTypes {
     | '/_authenticated/activity'
     | '/_authenticated/admin'
     | '/_authenticated/api-keys'
+    | '/_authenticated/feedback'
     | '/_authenticated/trades'
     | '/_authenticated/wallet'
     | '/_authenticated/welcome'
@@ -1647,6 +1683,7 @@ export interface FileRouteTypes {
     | '/_authenticated/account/balances/withdraw'
     | '/_authenticated/account/p2p/listings'
     | '/_authenticated/account/p2p/trades'
+    | '/_authenticated/admin/bugs/$ref'
     | '/_authenticated/admin/marketing/ads'
     | '/_authenticated/admin/marketing/videos'
     | '/_authenticated/admin/plan_/lbtc'
@@ -1684,6 +1721,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/trades'
     | '/_authenticated/account/balances/'
     | '/_authenticated/account/p2p/'
+    | '/_authenticated/admin/bugs/'
     | '/_authenticated/admin/marketing/'
     | '/api/public/cmc/'
     | '/api/public/v1/'
@@ -1997,6 +2035,13 @@ declare module '@tanstack/react-router' {
       path: '/api-keys'
       fullPath: '/api-keys'
       preLoaderRoute: typeof AuthenticatedApiKeysRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/feedback': {
+      id: '/_authenticated/feedback'
+      path: '/feedback'
+      fullPath: '/feedback'
+      preLoaderRoute: typeof AuthenticatedFeedbackRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/trades': {
@@ -2440,6 +2485,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAccountP2pTradesRouteImport
       parentRoute: typeof AuthenticatedAccountP2pRoute
     }
+    '/_authenticated/admin/bugs/': {
+      id: '/_authenticated/admin/bugs/'
+      path: '/bugs'
+      fullPath: '/admin/bugs/'
+      preLoaderRoute: typeof AuthenticatedAdminBugsIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/bugs/$ref': {
+      id: '/_authenticated/admin/bugs/$ref'
+      path: '/bugs/$ref'
+      fullPath: '/admin/bugs/$ref'
+      preLoaderRoute: typeof AuthenticatedAdminBugsRefRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/marketing/': {
       id: '/_authenticated/admin/marketing/'
       path: '/'
@@ -2858,7 +2917,9 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
   AuthenticatedAdminVideosRoute: typeof AuthenticatedAdminVideosRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
+  AuthenticatedAdminBugsRefRoute: typeof AuthenticatedAdminBugsRefRoute
   AuthenticatedAdminPlanLbtcRoute: typeof AuthenticatedAdminPlanLbtcRoute
+  AuthenticatedAdminBugsIndexRoute: typeof AuthenticatedAdminBugsIndexRoute
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
@@ -2875,7 +2936,9 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
   AuthenticatedAdminVideosRoute: AuthenticatedAdminVideosRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
+  AuthenticatedAdminBugsRefRoute: AuthenticatedAdminBugsRefRoute,
   AuthenticatedAdminPlanLbtcRoute: AuthenticatedAdminPlanLbtcRoute,
+  AuthenticatedAdminBugsIndexRoute: AuthenticatedAdminBugsIndexRoute,
 }
 
 const AuthenticatedAdminRouteWithChildren =
@@ -2886,6 +2949,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedActivityRoute: typeof AuthenticatedActivityRoute
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
   AuthenticatedApiKeysRoute: typeof AuthenticatedApiKeysRoute
+  AuthenticatedFeedbackRoute: typeof AuthenticatedFeedbackRoute
   AuthenticatedTradesRoute: typeof AuthenticatedTradesRoute
   AuthenticatedWalletRoute: typeof AuthenticatedWalletRoute
   AuthenticatedWelcomeRoute: typeof AuthenticatedWelcomeRoute
@@ -2899,6 +2963,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedActivityRoute: AuthenticatedActivityRoute,
   AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
   AuthenticatedApiKeysRoute: AuthenticatedApiKeysRoute,
+  AuthenticatedFeedbackRoute: AuthenticatedFeedbackRoute,
   AuthenticatedTradesRoute: AuthenticatedTradesRoute,
   AuthenticatedWalletRoute: AuthenticatedWalletRoute,
   AuthenticatedWelcomeRoute: AuthenticatedWelcomeRoute,

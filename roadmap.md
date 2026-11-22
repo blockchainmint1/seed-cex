@@ -296,3 +296,6 @@
 - [ ] Seeds Key site: copy the new rules.ts (pocketFor always 1106) (blocked: done in the Seeds Key project, then auditor)
 - [ ] Setup guide asks for withdrawal checks (email / two-factor / Telegram) before the wallet step so nobody has to re-link (waiting on Bobby: how many checks, coin re-link approach)
 - [ ] Same phrase in HME Wallet and on a coin: decide where a coin sign-in lands once the HME Wallet link is revoked (today it makes a second account) (waiting on Bobby)
+- [x] Feedback & QA Center (Cory, Nov 22): Feedback button for testers/admins, reports + screenshots/files/recordings, My reports, /admin/bugs triage, on/off switch
+- [ ] Sentry error monitoring (blocked: Bobby's approval of the evaluation; nothing installed)
+- [ ] Admin check of /admin/bugs actions with a fresh admin code (blocked: an admin's authenticator code)

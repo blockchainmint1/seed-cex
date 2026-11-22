@@ -18,6 +18,7 @@ import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { DemoBanner } from "@/components/site/DemoBanner";
 import { VisitCounter } from "@/components/site/VisitCounter";
+import { FeedbackButton } from "@/components/qa/FeedbackButton";
 import { supabase } from "@/integrations/supabase/client";
 
 function NotFoundComponent() {
@@ -173,6 +174,8 @@ function RootComponent() {
         <SiteFooter />
         <VisitCounter />
         <HonestMoneyScripts />
+        {/* Prelaunch QA: testers/admins only, switch in Admin → Bugs. Rollback = delete this line. */}
+        <FeedbackButton />
         {/* Pop-up messages (errors and confirmations) site-wide; without this every toast is silent. */}
         <Toaster position="top-center" closeButton />
       </div>
