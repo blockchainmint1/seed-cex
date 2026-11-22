@@ -330,4 +330,5 @@
 - [ ] QA Center audit follow-ups Q1–Q3 + error-log choice (blocked: Bobby's answers)
 
 - [x] Pocket 1106 keys: AWS KMS envelope locking code, one-way re-lock + Admin → Settings control
-- [ ] Pocket keys under KMS: Bobby creates a symmetric KMS key for seeds-lock-signer and sends its ARN (SEEDS_POCKET_KMS_KEY); then publish, press "Move to AWS KMS", auditor review (blocked: Bobby / auditor)
+- [x] Pocket KMS key created, SEEDS_POCKET_KMS_KEY saved, real lock/unlock/re-lock/tamper test passed
+- [ ] Pocket keys under KMS: auditor review → publish → press "Move to AWS KMS" in Admin → Settings (blocked: auditor)
