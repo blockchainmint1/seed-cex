@@ -96,6 +96,7 @@ import { Route as AuthenticatedP2pDashboardRouteImport } from './routes/_authent
 import { Route as AuthenticatedP2pJuryRouteImport } from './routes/_authenticated/p2p.jury'
 import { Route as AiCoinIdRouteImport } from './routes/ai.coin.$id'
 import { Route as ApiPublicAdEventRouteImport } from './routes/api/public/ad-event'
+import { Route as ApiPublicAwsAlarmRouteImport } from './routes/api/public/aws-alarm'
 import { Route as ApiPublicClientErrorRouteImport } from './routes/api/public/client-error'
 import { Route as ApiPublicTrackRouteImport } from './routes/api/public/track'
 import { Route as P2pSellerHandleRouteImport } from './routes/p2p.seller.$handle'
@@ -606,6 +607,11 @@ const ApiPublicAdEventRoute = ApiPublicAdEventRouteImport.update({
   path: '/api/public/ad-event',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicAwsAlarmRoute = ApiPublicAwsAlarmRouteImport.update({
+  id: '/api/public/aws-alarm',
+  path: '/api/public/aws-alarm',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicClientErrorRoute = ApiPublicClientErrorRouteImport.update({
   id: '/api/public/client-error',
   path: '/api/public/client-error',
@@ -1015,6 +1021,7 @@ export interface FileRoutesByFullPath {
   '/p2p/jury': typeof AuthenticatedP2pJuryRoute
   '/ai/coin/$id': typeof AiCoinIdRoute
   '/api/public/ad-event': typeof ApiPublicAdEventRoute
+  '/api/public/aws-alarm': typeof ApiPublicAwsAlarmRoute
   '/api/public/client-error': typeof ApiPublicClientErrorRoute
   '/api/public/track': typeof ApiPublicTrackRoute
   '/p2p/seller/$handle': typeof P2pSellerHandleRoute
@@ -1157,6 +1164,7 @@ export interface FileRoutesByTo {
   '/p2p/jury': typeof AuthenticatedP2pJuryRoute
   '/ai/coin/$id': typeof AiCoinIdRoute
   '/api/public/ad-event': typeof ApiPublicAdEventRoute
+  '/api/public/aws-alarm': typeof ApiPublicAwsAlarmRoute
   '/api/public/client-error': typeof ApiPublicClientErrorRoute
   '/api/public/track': typeof ApiPublicTrackRoute
   '/p2p/seller/$handle': typeof P2pSellerHandleRoute
@@ -1306,6 +1314,7 @@ export interface FileRoutesById {
   '/_authenticated/p2p/jury': typeof AuthenticatedP2pJuryRoute
   '/ai/coin/$id': typeof AiCoinIdRoute
   '/api/public/ad-event': typeof ApiPublicAdEventRoute
+  '/api/public/aws-alarm': typeof ApiPublicAwsAlarmRoute
   '/api/public/client-error': typeof ApiPublicClientErrorRoute
   '/api/public/track': typeof ApiPublicTrackRoute
   '/p2p/seller/$handle': typeof P2pSellerHandleRoute
@@ -1455,6 +1464,7 @@ export interface FileRouteTypes {
     | '/p2p/jury'
     | '/ai/coin/$id'
     | '/api/public/ad-event'
+    | '/api/public/aws-alarm'
     | '/api/public/client-error'
     | '/api/public/track'
     | '/p2p/seller/$handle'
@@ -1597,6 +1607,7 @@ export interface FileRouteTypes {
     | '/p2p/jury'
     | '/ai/coin/$id'
     | '/api/public/ad-event'
+    | '/api/public/aws-alarm'
     | '/api/public/client-error'
     | '/api/public/track'
     | '/p2p/seller/$handle'
@@ -1745,6 +1756,7 @@ export interface FileRouteTypes {
     | '/_authenticated/p2p/jury'
     | '/ai/coin/$id'
     | '/api/public/ad-event'
+    | '/api/public/aws-alarm'
     | '/api/public/client-error'
     | '/api/public/track'
     | '/p2p/seller/$handle'
@@ -1864,6 +1876,7 @@ export interface RootRouteChildren {
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   AiCoinIdRoute: typeof AiCoinIdRoute
   ApiPublicAdEventRoute: typeof ApiPublicAdEventRoute
+  ApiPublicAwsAlarmRoute: typeof ApiPublicAwsAlarmRoute
   ApiPublicClientErrorRoute: typeof ApiPublicClientErrorRoute
   ApiPublicTrackRoute: typeof ApiPublicTrackRoute
   P2pSellerHandleRoute: typeof P2pSellerHandleRoute
@@ -2521,6 +2534,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicAdEventRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/aws-alarm': {
+      id: '/api/public/aws-alarm'
+      path: '/api/public/aws-alarm'
+      fullPath: '/api/public/aws-alarm'
+      preLoaderRoute: typeof ApiPublicAwsAlarmRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/client-error': {
       id: '/api/public/client-error'
       path: '/api/public/client-error'
@@ -3170,6 +3190,7 @@ const rootRouteChildren: RootRouteChildren = {
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   AiCoinIdRoute: AiCoinIdRoute,
   ApiPublicAdEventRoute: ApiPublicAdEventRoute,
+  ApiPublicAwsAlarmRoute: ApiPublicAwsAlarmRoute,
   ApiPublicClientErrorRoute: ApiPublicClientErrorRoute,
   ApiPublicTrackRoute: ApiPublicTrackRoute,
   P2pSellerHandleRoute: P2pSellerHandleRoute,

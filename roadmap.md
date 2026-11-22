@@ -332,5 +332,7 @@
 - [x] Pocket 1106 keys: AWS KMS envelope locking code, one-way re-lock + Admin → Settings control
 - [x] Pocket KMS key created, SEEDS_POCKET_KMS_KEY saved, real lock/unlock/re-lock/tamper test passed
 - [ ] Pocket keys under KMS: auditor review → publish → press "Move to AWS KMS" in Admin → Settings (blocked: auditor)
-- [ ] KMS review M1–M6 (2026-11-22): Bobby chose: M1 AWS+Telegram alarm, M2 skipped (keep one AWS login), M3 per-link lock stamp, M4 retire old password, M5 no half-set fallback, M6 plain error (blocked: Bobby)
-- [ ] M1 unlock alarm: AWS CloudTrail→CloudWatch alarm→SNS (text/email to Bobby) + SNS-signed receiving page that forwards to the Seeds Telegram group; setup steps for Bobby
+- [x] KMS review M3/M5/M6 done; M4 retire check in Admin → Settings; M2 skipped (Bobby: keep one AWS login)
+- [ ] M4: delete SEEDS_DELEGATION_KEY once Admin → Settings says it's no longer needed (blocked: publish + re-lock + 1 day)
+- [x] M1 receiving page /api/public/aws-alarm + setup guide
+- [ ] M1: Bobby does AWS steps 1–4 and sends the SNS topic ARN (SEEDS_ALARM_SNS_TOPIC_ARN); step 5 after publish (blocked: Bobby / publish)
