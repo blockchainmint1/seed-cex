@@ -299,3 +299,5 @@
 - [x] Feedback & QA Center (Cory, Nov 22): Feedback button for testers/admins, reports + screenshots/files/recordings, My reports, /admin/bugs triage, on/off switch
 - [ ] Sentry error monitoring (blocked: Bobby's approval of the evaluation; nothing installed)
 - [ ] Admin check of /admin/bugs actions with a fresh admin code (blocked: an admin's authenticator code)
+- [x] HME Vault prerequisites from Seeds Key (Nov 22): signed Vault requests, public signing-key record, extra-password seeds
+- [ ] Vault link go-live (blocked: Seeds Key + HME Vault pin the key, coordinated phone test, auditor review, publish)
