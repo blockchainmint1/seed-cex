@@ -12,7 +12,8 @@ export const Route = createFileRoute("/api/public/aws-alarm")({
     handlers: {
       POST: async ({ request }) => {
         const topic = process.env.SEEDS_ALARM_SNS_TOPIC_ARN?.trim();
-        if (!topic) return new Response("Not set up", { status: 503 });
+        // 404 (not 503) while the alarm topic isn't configured: the page is simply not switched on yet.
+        if (!topic) return new Response("Not set up", { status: 404 });
         const raw = await request.text();
         if (raw.length > 64_000) return new Response("Too large", { status: 413 });
         const { parseSnsMessage, snsFresh, isSnsUrl, alarmText } = await import("@/lib/aws-alarm/sns");
