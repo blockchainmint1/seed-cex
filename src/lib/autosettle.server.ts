@@ -109,15 +109,17 @@ async function settleFailedPreflight(trade: FailedTradeRow, leg: LegId, payer: s
 
 /**
  * The terms shown in a trade leg's Telegram tap (audit 2026-11-22 R1): buy/sell, amount,
- * price, what comes back, and a warning when far from the recent price. The side and
+ * price, what comes back, and a warning when far from the market (outside price first, Seeds book second). The side and
  * price are also stored on the approval and must match when it is spent.
  */
 async function tradeTapTerms(trade: { id: string; pair: string | null; side: string; amount: number | string; price: number | string; taker_id: string | null; created_at?: string | null }, payer: string) {
   const { getPair } = await import("@/lib/chains");
-  const { memberSideOf, priceKey, referencePrice, tradeTerms } = await import("./pocket-send/trade-terms");
+  const { memberSideOf, outsidePrice, pickReference, priceKey, referencePrice, tradeTerms } = await import("./pocket-send/trade-terms");
   const pair = getPair(trade.pair ?? "");
   const memberSide = memberSideOf(trade.side === "sell" ? "sell" : "buy", payer === trade.taker_id);
-  const [{ data: last }, { data: bid }, { data: ask }] = await Promise.all([
+  const baseSymbol = getLeg(pair.baseLeg).symbol;
+  const quoteSymbol = getLeg(pair.quoteLeg).symbol;
+  const [{ data: last }, { data: bid }, { data: ask }, quotes] = await Promise.all([
     supabaseAdmin.from("trades").select("price").eq("pair", trade.pair ?? "").neq("id", trade.id)
       .not("first_sent_at", "is", null).not("status", "in", "(timed_out,refunded)")
       .order("created_at", { ascending: false }).limit(1).maybeSingle(),
@@ -125,14 +127,18 @@ async function tradeTapTerms(trade: { id: string; pair: string | null; side: str
       .order("price", { ascending: false }).limit(1).maybeSingle(),
     supabaseAdmin.from("orders").select("price").eq("pair", trade.pair ?? "").eq("side", "sell").in("status", ["open", "partial"])
       .order("price", { ascending: true }).limit(1).maybeSingle(),
+    // Outside USD prices (CoinMarketCap, plus CoinGecko for PLS/HEX/pHEX); a failed read only drops the outside price.
+    import("./cmc.server").then(({ fetchQuotes, TRACKED }) => fetchQuotes(TRACKED)).catch(() => null),
   ]);
-  const reference = referencePrice({
+  const seeds = referencePrice({
     lastPrinted: last ? Number(last.price) : null,
     bestBid: bid ? Number(bid.price) : null,
     bestAsk: ask ? Number(ask.price) : null,
   });
+  const usd = (sym: string) => quotes?.quotes.find((q) => q.symbol === sym)?.price ?? null;
+  const reference = pickReference(outsidePrice(baseSymbol, quoteSymbol, usd), seeds);
   const t = tradeTerms({
-    memberSide, baseSymbol: getLeg(pair.baseLeg).symbol, quoteSymbol: getLeg(pair.quoteLeg).symbol,
+    memberSide, baseSymbol, quoteSymbol,
     amount: Number(trade.amount), price: Number(trade.price), reference,
   });
   return { line: t.line, warning: t.warning, meta: { side: memberSide, price: priceKey(trade.price) } };

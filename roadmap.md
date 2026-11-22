@@ -4,14 +4,17 @@
 - [x] R2: 3 payer-fault failed matches in 24h pauses placing orders; admins can clear (Bobby, Nov 22)
 - [x] R3: short cache on the Place-order balance check; fill-time check stays live (Bobby, Nov 22)
 - [x] R4: trades print on the public price list only once the first payment is sent (Bobby, Nov 22)
-- [x] Save the AWS alarm topic (arn:aws:sns:us-east-1:150646524089:seeds-security-alarms) as SEEDS_ALARM_SNS_TOPIC_ARN so key-unlock alarms reach Telegram (Bobby, Nov 22)
-- [ ] Add the HTTPS subscription to https://seeds.honest.money/api/public/aws-alarm in AWS SNS (blocked: publish first, then Bobby adds it — step in seeds-aws-unlock-alarm-setup.md)
-- [ ] Auditor re-check of R1–R4 (blocked: auditor)
+- [x] Save the AWS alarm topic as SEEDS_ALARM_SNS_TOPIC_ARN (value only in settings) so key-unlock alarms reach Telegram (Bobby, Nov 22)
+- [x] AWS alarm HTTPS subscription confirmed; test alarm + all-clear reached Seeds (Nov 22)
+- [x] Auditor re-check of R1–R4: all correct (Nov 22)
+- [x] R1 follow-up: trade tap compares to an outside price first (CoinMarketCap/CoinGecko, TSD = $1), Seeds book second; ISK/ZCU say "check this price yourself" (Bobby, Nov 22)
+- [x] Alarm page: alarm topic out of the task list + per-connection limit on /api/public/aws-alarm (Bobby, Nov 22)
+- [ ] Auditor review of the R1 follow-up + alarm limit (blocked: auditor)
 - [ ] Seeds Lend review by the auditor before publishing (blocked: auditor)
 - [x] No daily dollar limit on trades for members without two-factor (Bobby: "No limit", Nov 22)
 
 - [x] Coins in open orders / trades / P2P sales show as "In trades" (Balances, Withdraw, order ticket) and can't be withdrawn, swapped, lent or promised twice; coins moved out another way auto-cancel the newest uncovered orders with a Telegram + email notice (Bobby, Nov 22)
-- [ ] Auditor review of set-asides + the order watch (blocked: auditor)
+- [ ] Auditor review of set-asides + the order watch — Bobby picked this as the next review (blocked: auditor)
 
 - [x] Order book: Place order refuses members who can't pay; after a failed match only the side that couldn't pay loses its order; dead orders + 7 stuck old matches cleared; cancelled matches off the tape (Bobby, Nov 22)
 - [x] Exchange trades need only the Telegram tap, not two-factor before the link (Bobby, Nov 22)
@@ -341,8 +344,8 @@
 
 - [x] Pocket 1106 keys: AWS KMS envelope locking code, one-way re-lock + Admin → Settings control
 - [x] Pocket KMS key created, SEEDS_POCKET_KMS_KEY saved, real lock/unlock/re-lock/tamper test passed
-- [ ] Pocket keys under KMS: auditor review → publish → press "Move to AWS KMS" in Admin → Settings (blocked: auditor)
+- [x] Pocket keys under KMS: published and moved (16 keys, Nov 22)
 - [x] KMS review M3/M5/M6 done; M4 retire check in Admin → Settings; M2 skipped (Bobby: keep one AWS login)
-- [ ] M4: delete SEEDS_DELEGATION_KEY once Admin → Settings says it's no longer needed (blocked: publish + re-lock + 1 day)
+- [x] M4: all 16 stored keys moved to AWS KMS; SEEDS_DELEGATION_KEY deleted (Bobby, Nov 22)
 - [x] M1 receiving page /api/public/aws-alarm + setup guide
-- [ ] M1: Bobby does AWS steps 1–4 and sends the SNS topic ARN (SEEDS_ALARM_SNS_TOPIC_ARN); step 5 after publish (blocked: Bobby / publish)
+- [x] M1: AWS alarms (3), email + Telegram group delivery set up and tested (Nov 22)

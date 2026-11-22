@@ -22,6 +22,9 @@ export const Route = createFileRoute("/api/public/aws-alarm")({
         const m = parseSnsMessage(body);
         // Cheap checks first, so random posts never make Seeds fetch anything.
         if (!m || m.TopicArn !== topic || !snsFresh(m.Timestamp, Date.now())) return new Response("Unauthorized", { status: 401 });
+        // The topic name isn't secret, so cap per connection before any certificate fetch or signature work.
+        const [{ ipAllowed }, { IP_LIMITS }] = await Promise.all([import("@/lib/ip-rate.server"), import("@/lib/ip-rate")]);
+        if (!(await ipAllowed("aws-alarm", request.headers, IP_LIMITS.awsAlarm))) return new Response("Too many requests", { status: 429 });
         const { verifySnsSignature } = await import("@/lib/aws-alarm/sns.server");
         if (!(await verifySnsSignature(m))) return new Response("Unauthorized", { status: 401 });
 

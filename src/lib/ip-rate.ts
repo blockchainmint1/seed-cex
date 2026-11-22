@@ -14,6 +14,8 @@ export const IP_LIMITS = {
   chart: 60,
   /** Ad views and clicks per minute from one connection (a page shows at most five ads). */
   adEvent: 40,
+  /** AWS alarm page: posts per minute from one connection that name Seeds' alarm topic (real alarms are a handful a day). */
+  awsAlarm: 20,
 } as const;
 
 /** Start of the current one-minute window. */
