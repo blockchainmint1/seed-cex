@@ -65,7 +65,10 @@ export function SiteHeader() {
     { label: "P2P", to: "/p2p" },
     { label: "Swap", to: "/swap" },
     { label: "AI", to: "/ai" },
-    ...(user ? [{ label: "Activity", to: "/activity" }, { label: "Profile", to: "/account" }] : []),
+    // Activity always shows (signed-out visitors are sent to sign in and come
+    // back), so the menu never shifts once the browser finds the session.
+    { label: "Activity", to: "/activity" },
+    ...(user ? [{ label: "Profile", to: "/account" }] : []),
     { label: "Help", to: "/help" },
     ...about,
     ...proof,
@@ -108,15 +111,13 @@ export function SiteHeader() {
           >
             AI
           </Link>
-          {user ? (
-            <Link
-              to="/activity"
-              className="text-muted-foreground transition-colors hover:text-foreground"
-              activeProps={{ className: "text-primary" }}
-            >
-              Activity
-            </Link>
-          ) : null}
+          <Link
+            to="/activity"
+            className="text-muted-foreground transition-colors hover:text-foreground"
+            activeProps={{ className: "text-primary" }}
+          >
+            Activity
+          </Link>
           <NavMenu label="ABOUT" items={about} />
           <NavMenu label="PROOF" items={proof} />
           <Link
