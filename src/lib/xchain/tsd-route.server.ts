@@ -299,15 +299,15 @@ async function notify(r: Row, text: string) {
  * replaces the link record but not the pocket, so the route carries on with the new record
  * as long as every address it uses is still the same (audit 2026-11-19 carry-over). A revoke stops it.
  */
-async function ciphertextFor(r: Row): Promise<string | null> {
+async function ciphertextFor(r: Row): Promise<{ id: string; ciphertext: string | null }> {
   const { data } = await supabaseAdmin.from("hme_links").select("key_ciphertext, status, revoked_by, account").eq("id", r.link_id!).maybeSingle();
-  if (data?.status === "active") return data.key_ciphertext;
+  if (data?.status === "active") return { id: r.link_id!, ciphertext: data.key_ciphertext };
   if (data && data.revoked_by === "replaced") {
     const { loadLink } = await import("./send.server");
     const now = await loadLink(r.user_id);
     const addrs = now ? Object.values(now.addresses) : [];
     if (now && now.hasKey && now.account === data.account && now.addresses.TXC === r.txc_address && now.addresses.EVM === r.evm_address && addrs.includes(r.coin_address)) {
-      return now.ciphertext;
+      return { id: now.id, ciphertext: now.ciphertext };
     }
   }
   throw new Error("Your trading pocket was unlinked, so Seeds stopped this swap.");

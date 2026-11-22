@@ -316,7 +316,7 @@ export async function wrapBranchBalance(
     }
 
     const signed = buildAndSignBtcTransfer({
-      privateKeyHex: await decryptDelegatedKey(del.key_ciphertext),
+      privateKeyHex: await decryptDelegatedKey(del.key_ciphertext, "delegation:legacy"),
       fromAddress: del.trading_address,
       toAddress: opened.deposit_address,
       amount,
@@ -407,7 +407,7 @@ async function sendWrappedToIssuer(
   const { spendWithin } = await import("./settle-guard.server");
   const sent = await spendWithin(userId, "txc", wrappedSymbol, amount, async () =>
     omniSimpleSend({
-      privateKeyHex: await decryptDelegatedKey(del.key_ciphertext),
+      privateKeyHex: await decryptDelegatedKey(del.key_ciphertext, "delegation:legacy"),
       fromAddress: del.trading_address,
       toAddress: depositAddress,
       amount,

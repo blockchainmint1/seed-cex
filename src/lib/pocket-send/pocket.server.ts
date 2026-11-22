@@ -219,7 +219,7 @@ export async function sendFromPocket(p: {
   if (isOmniLeg(p.leg)) {
     const { omniSimpleSend } = await import("@/lib/omni.server");
     const { propertyId } = omniLegAsset(p.leg);
-    const sent = await withPocketKey(p.link.ciphertext, pocket, p.from, (priv) =>
+    const sent = await withPocketKey(p.link, pocket, p.from, (priv) =>
       omniSimpleSend({ privateKeyHex: bytesToHex(priv), fromAddress: p.from, toAddress: p.to, amount: p.amount, propertyId, beforeBroadcast: p.record }),
     );
     return { txid: sent.txid, chain: "txc", from: p.from, raw: sent.hex };
@@ -230,7 +230,7 @@ export async function sendFromPocket(p: {
     const { loadUtxosFor, feeRateFor, broadcastFor, p2pkhVersionOf } = await import("@/lib/utxo/io.server");
     const { buildAndSignTransfer } = await import("@/lib/txc/tx.server");
     const [utxos, feeRate] = await Promise.all([loadUtxosFor(chain, p.from, { atLeast: p.amount }), feeRateFor(chain)]);
-    const built = await withPocketKey(p.link.ciphertext, pocket, p.from, async (priv) =>
+    const built = await withPocketKey(p.link, pocket, p.from, async (priv) =>
       buildAndSignTransfer({
         privateKeyHex: bytesToHex(priv), fromAddress: p.from, toAddress: p.to, amount: p.amount,
         utxos, feeRate, p2pkhVersion: p2pkhVersionOf(chain), symbol: def.symbol,
@@ -269,7 +269,7 @@ export async function sendFromPocket(p: {
   if (feeHave + 1e-12 < maxFee) {
     throw new Error(`Your trading pocket needs about ${maxFee.toPrecision(3)} ${chain.nativeSymbol} on ${chain.name} for the network fee. Nothing was sent.`);
   }
-  const signed = await withPocketKey(p.link.ciphertext, "EVM", p.from, async (priv) =>
+  const signed = await withPocketKey(p.link, "EVM", p.from, async (priv) =>
     signEip1559({
       privateKeyHex: bytesToHex(priv), chainId: chain.evmChainId as number, nonce,
       maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,

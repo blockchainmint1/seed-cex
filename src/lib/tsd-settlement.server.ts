@@ -255,7 +255,7 @@ export async function settleTsdLeg(
     sent = await spendWithin(sender, "txc", symbol, amount, async () =>
       // Decrypt last: everything above can fail without touching key material.
       omniSimpleSend({
-        privateKeyHex: await decryptDelegatedKey(del.ciphertext),
+        privateKeyHex: await decryptDelegatedKey(del.ciphertext, "delegation:legacy"),
         fromAddress: del.address,
         toAddress: to,
         amount,

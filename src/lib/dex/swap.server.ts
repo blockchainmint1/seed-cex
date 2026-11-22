@@ -404,7 +404,7 @@ async function signAndSend(r: Row, field: "reset_txid" | "approve_txid" | "swap_
   const { signEip1559 } = await import("@/lib/evm/tx.server");
   const { sendRawTransaction } = await import("@/lib/evm.server");
   const chainId = (await import("@/lib/chains")).getChain(chain(net(r))).evmChainId!;
-  const signed = await withPocketKey(link.ciphertext, "EVM", link.addresses.EVM!, async (priv) =>
+  const signed = await withPocketKey(link, "EVM", link.addresses.EVM!, async (priv) =>
     signEip1559({ privateKeyHex: bytesToHex(priv), chainId, nonce, ...fees, gasLimit: tx.gas, to: tx.to, value: tx.value, data: tx.data }));
   if (!sameAddr(signed.from, r.from_address)) throw new Error("The stored key doesn't match your pocket address. Nothing was sent.");
   await save(r.id, { [field]: signed.hash } as Partial<Row>); // recorded before broadcast: never signed again

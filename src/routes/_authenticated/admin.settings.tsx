@@ -521,7 +521,12 @@ function PocketKeys() {
           <p className="text-sm">
             <b>{d.kmsLocked}</b> locked with AWS KMS · <b>{d.oldLocked}</b> still on the old single password.
           </p>
-          {!d.kmsConfigured ? (
+          {d.kmsIncomplete ? (
+            <Note tone="warn">
+              <b>AWS KMS is only half set up, so Seeds is refusing new wallet links.</b>{" "}
+              The key setting is there but one of the AWS login settings is missing. Restore it, or remove <code className="font-mono text-xs">SEEDS_POCKET_KMS_KEY</code>.
+            </Note>
+          ) : !d.kmsConfigured ? (
             <Note tone="warn">
               <b>AWS KMS isn't set up for pocket keys yet, so new keys still use the old single password.</b>{" "}
               The team needs a symmetric AWS KMS key for this (the <code className="font-mono text-xs">SEEDS_POCKET_KMS_KEY</code> setting).
@@ -535,6 +540,20 @@ function PocketKeys() {
             </div>
           ) : (
             <p className="text-xs text-muted-foreground">Every stored key is locked with AWS KMS. New links are locked with it automatically.</p>
+          )}
+          {d.oldPasswordPresent ? (
+            d.safeToRetire ? (
+              <Note tone="info">
+                <b>The old master password is no longer needed.</b> Nothing usable is locked with it any more, so the team can delete
+                {" "}<code className="font-mono text-xs">SEEDS_DELEGATION_KEY</code> from the project's secret settings. Old database backups then can't be opened without AWS.
+              </Note>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                The old master password is still needed{d.oldTemp > 0 ? ` (${d.oldTemp} short-lived sign-in or link ${d.oldTemp === 1 ? "request" : "requests"} still use it)` : ""}. Keep it until every key above is on AWS KMS.
+              </p>
+            )
+          ) : (
+            <p className="text-xs text-muted-foreground">The old master password has been retired.</p>
           )}
           {msg ? <p className="text-sm" role="status">{msg}</p> : null}
         </div>

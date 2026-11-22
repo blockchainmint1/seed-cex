@@ -18,6 +18,7 @@ import { bytesToHex } from "@noble/hashes/utils.js";
 import { bech32 } from "@scure/base";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { decryptDelegatedKey } from "@/lib/delegation.server";
+import { linkRef } from "@/lib/pocket-key-format";
 import type { PocketCoin } from "@/lib/pockets/coins";
 import { pocketReceiveAddress, receivePrivateKey } from "@/lib/pockets/derive";
 import { addressFor, solAddress } from "@/lib/pockets/encode";
@@ -266,11 +267,15 @@ export type SendSwapInput = { from: string; to: string; amount: string; destinat
  * Decrypt one pocket key, prove it controls `address`, run `fn`, then wipe it.
  * Used by TSD routes for the TSD send and the USDC hand-off to TSD Bridge.
  */
-export async function withPocketKey<T>(ciphertext: string | null, pocket: PocketCoin, address: string, fn: (priv: Uint8Array) => Promise<T>): Promise<T> {
+/** The stored link a key belongs to: its row id binds the AWS KMS unlock to that link. */
+export type KeyedLink = { id: string; ciphertext: string | null };
+
+export async function withPocketKey<T>(link: KeyedLink, pocket: PocketCoin, address: string, fn: (priv: Uint8Array) => Promise<T>): Promise<T> {
+  const ciphertext = link.ciphertext;
   if (!ciphertext) throw new Error("Seeds doesn't hold this pocket's key.");
   let priv: Uint8Array | null = null;
   try {
-    const keys = JSON.parse(await decryptDelegatedKey(ciphertext)) as Record<string, string>;
+    const keys = JSON.parse(await decryptDelegatedKey(ciphertext, linkRef(link.id))) as Record<string, string>;
     const xprv = keys[pocket];
     for (const k of Object.keys(keys)) keys[k] = "";
     if (!xprv) throw new Error(`Seeds doesn't hold the ${pocket} key for this pocket.`);
@@ -400,7 +405,7 @@ export async function sendSwapFromPocket(userId: string, isAdmin: boolean, input
   let priv: Uint8Array | null = null;
   try {
     if (!link!.ciphertext) throw new Error("Seeds doesn't hold this pocket's key.");
-    const keys = JSON.parse(await decryptDelegatedKey(link!.ciphertext)) as Record<string, string>;
+    const keys = JSON.parse(await decryptDelegatedKey(link!.ciphertext, linkRef(link!.id))) as Record<string, string>;
     const xprv = keys[src.pocket];
     for (const k of Object.keys(keys)) keys[k] = "";
     if (!xprv) throw new Error(`Seeds doesn't hold the ${from.network} key for this pocket.`);

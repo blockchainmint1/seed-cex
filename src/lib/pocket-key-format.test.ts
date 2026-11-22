@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { randomBytes } from "node:crypto";
-import { aesOpen, aesSeal, canRewrap, formatKmsSealed, isKmsSealed, parseKmsSealed } from "./pocket-key-format";
+import { LEGACY_DELEGATION_REF, aesOpen, aesSeal, canRewrap, formatKmsSealed, isKmsSealed, keyContext, kmsMode, linkRef, parseKmsSealed } from "./pocket-key-format";
 
 const key = new Uint8Array(randomBytes(32));
 
@@ -48,5 +48,25 @@ describe("pocket key storage format", () => {
     expect(canRewrap(kms, formatKmsSealed(new Uint8Array([8]), aesSeal("x", key)))).toBe(false);
     expect(canRewrap(legacy, aesSeal("x", key))).toBe(false);
     expect(canRewrap(null, kms)).toBe(false);
+  });
+
+  test("each stored value's AWS lock names its own link", () => {
+    const id = "6f1c2a8e-1111-4c2b-9a7d-0123456789ab";
+    expect(keyContext(linkRef(id))).toEqual({ "seeds:purpose": "pocket-key", "seeds:ref": `link:${id}` });
+    expect(keyContext(linkRef("a"))).not.toEqual(keyContext(linkRef("b")));
+  });
+
+  test("bad or legacy references are never used as an AWS lock", () => {
+    expect(() => keyContext(linkRef(""))).toThrow();
+    expect(() => keyContext(linkRef("x y"))).toThrow();
+    expect(() => keyContext(LEGACY_DELEGATION_REF)).toThrow();
+  });
+
+  test("a half-set AWS setup is reported as incomplete, never as off", () => {
+    const full = { keyId: "arn:aws:kms:us-east-1:1:key/x", accessKeyId: "A", secret: "S", region: "us-east-1" };
+    expect(kmsMode(full)).toBe("on");
+    expect(kmsMode({ ...full, keyId: "" })).toBe("off");
+    expect(kmsMode({ ...full, secret: "" })).toBe("incomplete");
+    expect(kmsMode({ keyId: full.keyId })).toBe("incomplete");
   });
 });

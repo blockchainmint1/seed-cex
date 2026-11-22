@@ -100,7 +100,7 @@ async function pocketPub(userId: string): Promise<{ pub: Uint8Array; address: st
   const p = await txcPocket(userId);
   if (!p) throw new Error("needs a TXC trading pocket that Seeds can sign for");
   const { withPocketKey } = await import("@/lib/xchain/send.server");
-  const pub = await withPocketKey(p.link.ciphertext, "TXC", p.address, async (priv) => secp256k1.getPublicKey(priv, true));
+  const pub = await withPocketKey(p.link, "TXC", p.address, async (priv) => secp256k1.getPublicKey(priv, true));
   return { pub, address: p.address };
 }
 
@@ -225,7 +225,7 @@ export async function escrowPayout(loanId: string, purpose: R.EscrowPurpose, why
     const pocket = await txcPocket(memberId);
     if (!pocket) throw new Error(`The ${memberRole}'s pocket key isn't available to Seeds (link revoked?)`);
     const { withPocketKey } = await import("@/lib/xchain/send.server");
-    const memberSigs = await withPocketKey(pocket.link.ciphertext, "TXC", pocket.address, async (priv) => {
+    const memberSigs = await withPocketKey(pocket.link, "TXC", pocket.address, async (priv) => {
       if (bytesToHex(secp256k1.getPublicKey(priv, true)) !== memberPubHex) throw new Error(`The ${memberRole}'s pocket key no longer matches the lockbox`);
       return tx.inputs.map((_, i) => E.signEscrowInput(tx, i, rs, priv));
     });

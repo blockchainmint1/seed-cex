@@ -224,9 +224,17 @@ export const getGasWalletStatus = createServerFn({ method: "GET" })
 export type PocketKeyProtection = {
   /** New keys are sealed with AWS KMS. */
   kmsConfigured: boolean;
+  /** Half set up: the key id is there but the AWS login settings aren't, so new links are refused. */
+  kmsIncomplete: boolean;
   /** Active links holding a stored key, by lock type. */
   kmsLocked: number;
   oldLocked: number;
+  /** The old single password is still in settings. */
+  oldPasswordPresent: boolean;
+  /** Still-usable short-lived values (link requests, held replacements, old delegations) on the old password. */
+  oldTemp: number;
+  /** Nothing usable needs the old password any more: it can be deleted from settings. */
+  safeToRetire: boolean;
 };
 
 /** How members' stored 1106 pocket keys are locked. Counts only; never key material. Admins only. */
@@ -234,12 +242,28 @@ export const getPocketKeyProtection = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await requireAdmin(context as never);
-    const { pocketKmsConfigured } = await import("./delegation.server");
+    const { pocketKmsState, legacyPasswordPresent } = await import("./delegation.server");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const base = () => supabaseAdmin.from("hme_links").select("id", { count: "exact", head: true }).eq("status", "active").not("key_ciphertext", "is", null);
-    const [kms, old] = await Promise.all([base().like("key_ciphertext", "kms1.%"), base().not("key_ciphertext", "like", "kms1.%")]);
-    if (kms.error || old.error) throw new Error("Couldn't count stored keys");
-    return { kmsConfigured: pocketKmsConfigured(), kmsLocked: kms.count ?? 0, oldLocked: old.count ?? 0 } satisfies PocketKeyProtection;
+    const now = new Date().toISOString();
+    const head = { count: "exact" as const, head: true };
+    const base = () => supabaseAdmin.from("hme_links").select("id", head).eq("status", "active").not("key_ciphertext", "is", null);
+    const [kms, old, linkReq, signinReq, held, deleg] = await Promise.all([
+      base().like("key_ciphertext", "kms1.%"),
+      base().not("key_ciphertext", "like", "kms1.%"),
+      supabaseAdmin.from("hme_link_requests").select("challenge_id", head).is("consumed_at", null).gt("expires_at", now).not("recipient_priv_ciphertext", "like", "kms1.%"),
+      supabaseAdmin.from("key_signin_requests").select("challenge_id", head).is("consumed_at", null).gt("expires_at", now).not("recipient_priv_ciphertext", "like", "kms1.%"),
+      supabaseAdmin.from("key_signin_requests").select("challenge_id", head).is("replaced_at", null).not("pending_link", "is", null).not("pending_link->>key_ciphertext", "like", "kms1.%"),
+      supabaseAdmin.from("wallet_delegations").select("id", head).not("key_ciphertext", "is", null),
+    ]);
+    if ([kms, old, linkReq, signinReq, held, deleg].some((r) => r.error)) throw new Error("Couldn't count stored keys");
+    const state = pocketKmsState();
+    const oldLocked = old.count ?? 0;
+    const oldTemp = (linkReq.count ?? 0) + (signinReq.count ?? 0) + (held.count ?? 0) + (deleg.count ?? 0);
+    return {
+      kmsConfigured: state === "on", kmsIncomplete: state === "incomplete",
+      kmsLocked: kms.count ?? 0, oldLocked, oldPasswordPresent: legacyPasswordPresent(), oldTemp,
+      safeToRetire: state === "on" && oldLocked === 0 && oldTemp === 0,
+    } satisfies PocketKeyProtection;
   });
 
 /**
@@ -260,7 +284,7 @@ export const movePocketKeysToKms = createServerFn({ method: "POST" })
     let moved = 0, failed = 0;
     for (const r of rows ?? []) {
       try {
-        const next = await rewrapUnderKms(r.key_ciphertext!);
+        const next = await rewrapUnderKms(r.key_ciphertext!, `link:${r.id}`);
         const { data: ok, error: e } = await supabaseAdmin.rpc("rewrap_pocket_key", { p_link: r.id, p_old: r.key_ciphertext!, p_new: next });
         if (e || !ok) { failed++; continue; }
         moved++;

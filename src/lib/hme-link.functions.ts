@@ -15,7 +15,7 @@ export const startHmeLink = createServerFn({ method: "POST" })
     const expires = new Date(Date.now() + 10 * 60_000).toISOString();
     const { error } = await supabaseAdmin.from("hme_link_requests").insert({
       challenge_id: challengeId, challenge: rnd(24), user_id: context.userId,
-      recipient_priv_ciphertext: await encryptDelegatedKey(kp.priv), recipient_pubkey: kp.pub, expires_at: expires,
+      recipient_priv_ciphertext: await encryptDelegatedKey(kp.priv, `link-request:${challengeId}`), recipient_pubkey: kp.pub, expires_at: expires,
     });
     if (error) throw new Error("Could not start link");
     const origin = new URL(data.origin).origin;

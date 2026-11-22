@@ -11,8 +11,34 @@ import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 
 export const KMS_PREFIX = "kms1.";
 
-/** KMS encryption context: Decrypt fails unless the exact same context is sent. */
-export const POCKET_KEY_CONTEXT = { "seeds:purpose": "pocket-key" } as const;
+/** KMS encryption context purpose (the IAM condition key). */
+export const POCKET_KEY_PURPOSE = "pocket-key";
+
+/**
+ * Which stored value a key belongs to. It goes into the KMS encryption context, so AWS's log
+ * names whose key was unlocked, and a value copied onto another row no longer opens (audit M3).
+ */
+export type KeyRef = `link:${string}` | `link-request:${string}` | `signin-request:${string}` | "delegation:legacy";
+
+export const linkRef = (linkId: string): KeyRef => `link:${linkId}`;
+export const linkRequestRef = (challengeId: string): KeyRef => `link-request:${challengeId}`;
+export const signinRequestRef = (challengeId: string): KeyRef => `signin-request:${challengeId}`;
+/** Old vault delegations: never KMS-sealed, so a KMS value under this ref is refused. */
+export const LEGACY_DELEGATION_REF: KeyRef = "delegation:legacy";
+
+/** KMS encryption context for one stored value: Decrypt fails unless the exact same context is sent. */
+export function keyContext(ref: KeyRef): Record<string, string> {
+  const [kind, id] = [ref.slice(0, ref.indexOf(":")), ref.slice(ref.indexOf(":") + 1)];
+  if (!kind || !id || !/^[A-Za-z0-9_-]{1,80}$/.test(id)) throw new Error("bad key reference");
+  if (ref === LEGACY_DELEGATION_REF) throw new Error("legacy delegations are never sealed with AWS KMS");
+  return { "seeds:purpose": POCKET_KEY_PURPOSE, "seeds:ref": ref };
+}
+
+/** Pocket-key AWS KMS setup: off (not set), on, or half-set (key id without credentials → refuse, audit M5). */
+export function kmsMode(env: { keyId?: string | undefined; accessKeyId?: string | undefined; secret?: string | undefined; region?: string | undefined }): "off" | "on" | "incomplete" {
+  if (!env.keyId?.trim()) return "off";
+  return env.accessKeyId?.trim() && env.secret?.trim() && env.region?.trim() ? "on" : "incomplete";
+}
 
 export function isKmsSealed(stored: string | null | undefined): boolean {
   return typeof stored === "string" && stored.startsWith(KMS_PREFIX);

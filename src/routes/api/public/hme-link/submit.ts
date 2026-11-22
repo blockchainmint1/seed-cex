@@ -70,11 +70,13 @@ export const Route = createFileRoute("/api/public/hme-link/submit")({
         );
         if (problem) return json({ error: problem }, 409);
 
+        // The new link's id is chosen here so its key can be bound to it before the row exists.
+        const newLinkId = crypto.randomUUID();
         let keyCiphertext: string | null = null;
         if (b.mode === "access") {
           let xprvs: Record<string, string>;
           try {
-            const plain = openSealed(b.payload!, await decryptDelegatedKey(req.recipient_priv_ciphertext), req.recipient_pubkey);
+            const plain = openSealed(b.payload!, await decryptDelegatedKey(req.recipient_priv_ciphertext, `link-request:${b.token}`), req.recipient_pubkey);
             xprvs = JSON.parse(plain);
           } catch { return json({ error: "cannot open payload" }, 400); }
           for (const c of chains) {
@@ -82,7 +84,7 @@ export const Route = createFileRoute("/api/public/hme-link/submit")({
           }
           const keep: Record<string, string> = {};
           for (const c of ACCEPTED_CHAINS) if (xprvs[c] && chains.includes(c)) keep[c] = xprvs[c];
-          keyCiphertext = await encryptDelegatedKey(JSON.stringify(keep));
+          keyCiphertext = await encryptDelegatedKey(JSON.stringify(keep), `link:${newLinkId}`);
         }
 
         // Burn challenge first (single use), then retire any previous link.
@@ -99,7 +101,7 @@ export const Route = createFileRoute("/api/public/hme-link/submit")({
         }
 
         const { data: link, error } = await supabaseAdmin.from("hme_links").insert({
-          user_id: req.user_id, mode: b.mode, account: b.account!, paths: b.paths,
+          id: newLinkId, user_id: req.user_id, mode: b.mode, account: b.account!, paths: b.paths,
           identity_address: b.identity_address, xpubs, key_ciphertext: keyCiphertext,
         }).select("id").single();
         if (error || !link) return json({ error: "store failed" }, 500);

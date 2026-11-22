@@ -88,7 +88,7 @@ async function openAuthorization(
   }
 
   return {
-    privateKeyHex: await decryptDelegatedKey(data.key_ciphertext),
+    privateKeyHex: await decryptDelegatedKey(data.key_ciphertext, "delegation:legacy"),
     address: data.trading_address,
     maxAmount: Number(data.max_amount),
   };

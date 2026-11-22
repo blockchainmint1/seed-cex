@@ -12,7 +12,7 @@ import { IDENTITY_LABEL, REPLACE_CODE_TRIES, replaceConfirmProblem } from "./rul
 
 const SITE = "https://seeds.honest.money";
 
-type Pending = { account: number; paths: string[]; xpubs: Record<string, string>; identity: string; key_ciphertext: string };
+type Pending = { link_id?: string; account: number; paths: string[]; xpubs: Record<string, string>; identity: string; key_ciphertext: string };
 
 async function telegramTo(userId: string, text: string, linkId?: string): Promise<void> {
   const { sendTelegram, telegramConfigured, telegramActionKey } = await import("@/lib/telegram.server");
@@ -123,8 +123,9 @@ export async function confirmHeldReplace(i: { challengeId: string; code: string 
     .eq("id", r.replace_link_id).eq("user_id", r.user_id).eq("status", "active").select("id");
   if (!revoked?.length) throw new Error("Your trading pocket link changed in the meantime, so nothing was replaced. Start again.");
   await supabaseAdmin.from("hme_trade_proposals").update({ status: "expired" }).eq("link_id", r.replace_link_id).eq("status", "pending");
+  // The held key was sealed for this link id (KMS context), so the row must get exactly that id.
   const { error: le } = await supabaseAdmin.from("hme_links").insert({
-    user_id: r.user_id, mode: "access", account: p.account, paths: p.paths, identity_address: p.identity,
+    ...(p.link_id ? { id: p.link_id } : {}), user_id: r.user_id, mode: "access", account: p.account, paths: p.paths, identity_address: p.identity,
     xpubs: p.xpubs, key_ciphertext: p.key_ciphertext, source: "seeds_key",
   });
   if (le) throw new Error("Couldn't save the new pocket link. Start again.");

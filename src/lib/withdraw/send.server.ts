@@ -8,7 +8,7 @@ import { bytesToHex } from "@noble/hashes/utils.js";
 import { getChain, omniLegAsset } from "@/lib/chains";
 import { EVM_MAX_FEE, EVM_NATIVE, type WithdrawCoin } from "./catalog";
 
-type Link = { ciphertext: string | null };
+type Link = { id: string; ciphertext: string | null };
 
 function evmAsset(c: WithdrawCoin) {
   const chain = getChain(c.evmChain!);
@@ -155,7 +155,7 @@ export async function sendWithdrawal(c: WithdrawCoin, link: Link, from: string, 
       if (bal < units) throw new Error(`Your pocket no longer holds ${coins} ${c.symbol}. Nothing was sent.`);
       const gasHave = asset.contract ? (gasBal ?? 0n) : bal - units;
       if (gasHave < feeWei) throw new Error(`Not enough ${native} left in your pocket on ${chain.name} for the network fee. Nothing was sent.`);
-      const signed = await withPocketKey(link.ciphertext, "EVM", from, async (priv) =>
+      const signed = await withPocketKey(link, "EVM", from, async (priv) =>
         signEip1559({ privateKeyHex: bytesToHex(priv), chainId: chain.evmChainId!, nonce, ...fees, gasLimit, to: target, value, data }));
       if (signed.from.toLowerCase() !== from.toLowerCase()) throw new Error("The stored key doesn't match your pocket address. Nothing was sent.");
       await record(signed.hash);
@@ -164,7 +164,7 @@ export async function sendWithdrawal(c: WithdrawCoin, link: Link, from: string, 
     }
     case "omni": {
       const { omniSimpleSend } = await import("@/lib/omni.server");
-      const sent = await withPocketKey(link.ciphertext, "TXC", from, (priv) =>
+      const sent = await withPocketKey(link, "TXC", from, (priv) =>
         omniSimpleSend({ privateKeyHex: bytesToHex(priv), fromAddress: from, toAddress: to, amount: coins, propertyId: omniLegAsset("tsd").propertyId, beforeBroadcast: record }));
       return sent.txid;
     }
@@ -173,7 +173,7 @@ export async function sendWithdrawal(c: WithdrawCoin, link: Link, from: string, 
       const { loadUtxosFor, feeRateFor, broadcastFor, p2pkhVersionOf } = await import("@/lib/utxo/io.server");
       const { buildAndSignTransfer } = await import("@/lib/txc/tx.server");
       const [utxos, feeRate] = await Promise.all([loadUtxosFor(chain, from, { atLeast: coins }), feeRateFor(chain)]);
-      const tx = await withPocketKey(link.ciphertext, c.pocket, from, async (priv) => buildAndSignTransfer({
+      const tx = await withPocketKey(link, c.pocket, from, async (priv) => buildAndSignTransfer({
         privateKeyHex: bytesToHex(priv), fromAddress: from, toAddress: to, toScript: chain === "ltc" ? ltcScript(to) : undefined,
         amount: coins, utxos, feeRate, p2pkhVersion: p2pkhVersionOf(chain), symbol: c.symbol,
       }));
@@ -185,7 +185,7 @@ export async function sendWithdrawal(c: WithdrawCoin, link: Link, from: string, 
       const { fetchBtcFeeRate, fetchBtcUtxos, broadcastBtcTx } = await import("@/lib/btc/io.server");
       const { buildAndSignBtcTransfer } = await import("@/lib/btc/tx.server");
       const [utxos, feeRate] = await Promise.all([fetchBtcUtxos(from), fetchBtcFeeRate()]);
-      const tx = await withPocketKey(link.ciphertext, "BTC", from, async (priv) =>
+      const tx = await withPocketKey(link, "BTC", from, async (priv) =>
         buildAndSignBtcTransfer({ privateKeyHex: bytesToHex(priv), fromAddress: from, toAddress: to, amount: coins, utxos, feeRate }));
       await record(tx.txid);
       await broadcastBtcTx(tx.hex);
@@ -197,7 +197,7 @@ export async function sendWithdrawal(c: WithdrawCoin, link: Link, from: string, 
       const { bookUtxos, bookFeeRate, bookBroadcast } = await import("@/lib/xchain/send-io.server");
       const { buildAndSignUtxoSend } = await import("@/lib/pockets/utxo-sign.server");
       const [utxos, feeRate] = await Promise.all([bookUtxos(fam, from), bookFeeRate(fam)]);
-      const tx = await withPocketKey(link.ciphertext, fam, from, async (priv) => buildAndSignUtxoSend({ family: fam, privateKey: priv, utxos, to, amount: units, feeRate }));
+      const tx = await withPocketKey(link, fam, from, async (priv) => buildAndSignUtxoSend({ family: fam, privateKey: priv, utxos, to, amount: units, feeRate }));
       await record(tx.txid);
       await bookBroadcast(fam, tx.hex);
       return tx.txid;
@@ -208,7 +208,7 @@ export async function sendWithdrawal(c: WithdrawCoin, link: Link, from: string, 
       const [acct, fee] = await Promise.all([xrpAccount(from), xrpFeeDrops()]);
       const reserve = await xrpReserveDrops(acct.ownerCount);
       if (acct.balanceDrops < units + fee + reserve) throw new Error(`Not enough XRP: the XRP Ledger keeps ${Number(reserve) / 1e6} XRP locked as a reserve. Nothing was sent.`);
-      const tx = await withPocketKey(link.ciphertext, "XRP", from, async (priv) => signXrpPayment({
+      const tx = await withPocketKey(link, "XRP", from, async (priv) => signXrpPayment({
         privateKey: priv, to, drops: units, feeDrops: fee, sequence: acct.sequence, lastLedgerSequence: acct.currentLedger + 20,
         destinationTag: destinationTag ?? undefined,
       }));
@@ -221,7 +221,7 @@ export async function sendWithdrawal(c: WithdrawCoin, link: Link, from: string, 
       const { signTronTransfer } = await import("@/lib/pockets/tron-sign.server");
       const [bal, ref] = await Promise.all([tronSun(from), tronRefBlock()]);
       if (bal < units + 1_000_000n) throw new Error("Not enough TRX: keep about 1 TRX for TRON's network fee. Nothing was sent.");
-      const tx = await withPocketKey(link.ciphertext, "TRX", from, async (priv) =>
+      const tx = await withPocketKey(link, "TRX", from, async (priv) =>
         signTronTransfer({ privateKey: priv, to, sun: units, refBlockNum: ref.number, refBlockId: ref.id, timestamp: Date.now() }));
       await record(tx.txid);
       await tronBroadcast(tx.hex);
@@ -232,7 +232,7 @@ export async function sendWithdrawal(c: WithdrawCoin, link: Link, from: string, 
       const { signSolTransfer } = await import("@/lib/pockets/sol-sign.server");
       const [bal, blockhash] = await Promise.all([solLamports(from), solBlockhash()]);
       if (bal < units + 2_005_000n) throw new Error("Not enough SOL: keep about 0.002 SOL for fees and Solana's account minimum. Nothing was sent.");
-      const tx = await withPocketKey(link.ciphertext, "SOL", from, async (priv) => signSolTransfer({ privateKey: priv, to, lamports: units, recentBlockhash: blockhash }));
+      const tx = await withPocketKey(link, "SOL", from, async (priv) => signSolTransfer({ privateKey: priv, to, lamports: units, recentBlockhash: blockhash }));
       await record(tx.signature);
       await solSend(tx.base64);
       return tx.signature;

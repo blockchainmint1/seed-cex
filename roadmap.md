@@ -332,4 +332,5 @@
 - [x] Pocket 1106 keys: AWS KMS envelope locking code, one-way re-lock + Admin → Settings control
 - [x] Pocket KMS key created, SEEDS_POCKET_KMS_KEY saved, real lock/unlock/re-lock/tamper test passed
 - [ ] Pocket keys under KMS: auditor review → publish → press "Move to AWS KMS" in Admin → Settings (blocked: auditor)
-- [ ] KMS review M1–M6 (2026-11-22): waiting on Bobby's choices — M1 unlock alarm, M2 separate AWS login, M3 per-link lock stamp, M4 retire old password, M5 no half-set fallback, M6 plain error (blocked: Bobby)
+- [ ] KMS review M1–M6 (2026-11-22): Bobby chose: M1 AWS+Telegram alarm, M2 skipped (keep one AWS login), M3 per-link lock stamp, M4 retire old password, M5 no half-set fallback, M6 plain error (blocked: Bobby)
+- [ ] M1 unlock alarm: AWS CloudTrail→CloudWatch alarm→SNS (text/email to Bobby) + SNS-signed receiving page that forwards to the Seeds Telegram group; setup steps for Bobby
