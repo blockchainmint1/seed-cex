@@ -45,7 +45,7 @@ const steps = [
   {
     icon: Wallet,
     title: "Savings and a separate trading pocket",
-    body: "HME Wallet keeps your savings apart from a trading pocket made just for Seeds (pocket 1106 on TEXITcoin to start; HME Wallet issues a new number after a revoke). Seeds never receives savings keys.",
+    body: "HME Wallet keeps your savings apart from a trading pocket made just for Seeds (always pocket 1106 on TEXITcoin, also after a revoke and re-link). Seeds never receives savings keys.",
   },
   {
     icon: KeyRound,
@@ -160,7 +160,7 @@ function HowItWorks() {
 {`HME Wallet recovery phrase (stays on your phone, never sent to Seeds)
 ├── SAVINGS
 │    └─ yours alone. Seeds never receives these keys.
-└── TRADING POCKET (TEXITcoin m/44'/696969'/1106'/… to start)
+└── TRADING POCKET (TEXITcoin m/44'/696969'/1106'/…, always)
      ├─ linked to Seeds by QR code: instant access or approve every trade
      ├─ every coin that leaves needs your Telegram tap
      └─ revoke on Seeds → Seeds' trading key is deleted`}

@@ -9,7 +9,7 @@
  */
 import { sha256 } from "@noble/hashes/sha2.js";
 import { keccak_256 } from "@noble/hashes/sha3.js";
-import { FIRST_POCKET, LAST_POCKET } from "../pockets/coins";
+import { SEEDS_POCKET } from "../pockets/coins";
 
 export type KeyKind = "coin" | "evm" | "sol";
 export const KEY_KINDS: readonly KeyKind[] = ["coin", "evm", "sol"];
@@ -176,15 +176,12 @@ export function shouldAlarmNewAccounts(countLastHour: number, lastAlarmMs: numbe
 export const KEY_REQUEST_KEEP_MS = 24 * 3600_000;
 
 /**
- * Pocket number a sign-in must use. Same pocket while a link is active;
- * after a revoke, the next unused one (Seeds deleted the old keys, so they're never reused).
+ * Pocket number a sign-in must use: always 1106 (SEEDS_POCKET), the same pocket HME Wallet shares.
+ * Signing in again after a revoke brings back the same pocket and addresses, so no coins are left
+ * behind in an old pocket number. The history is accepted so callers don't change; it no longer matters.
  */
-export function pocketFor(history: { account: number; active: boolean }[]): number | null {
-  const active = history.find((h) => h.active);
-  if (active) return active.account;
-  if (!history.length) return FIRST_POCKET;
-  const next = Math.max(...history.map((h) => h.account)) + 1;
-  return next <= LAST_POCKET ? next : null;
+export function pocketFor(_history: { account: number; active: boolean }[] = []): number {
+  return SEEDS_POCKET;
 }
 
 /** Non-deliverable account email for coin/wallet accounts (Seeds' sign-in service needs one). */

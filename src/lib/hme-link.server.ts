@@ -22,7 +22,7 @@ import { ALLOWED_CHAINS, OPTIONAL_CHAINS } from "./hme-link-rules";
 export { ACCEPTED_CHAINS, ALLOWED_CHAINS, OPTIONAL_CHAINS } from "./hme-link-rules";
 export type LinkChain = PocketCoin;
 
-/** The wallet may substitute 1106..2105 after pocket rotation. */
+/** Seeds always asks for, and only accepts, pocket 1106 (pocketNumberProblem). */
 export const REQUEST_PATHS = Object.fromEntries(ALLOWED_CHAINS.map((c) => [c, accountPath(c, 1106)])) as Record<(typeof ALLOWED_CHAINS)[number], string>;
 export const OPTIONAL_PATHS = Object.fromEntries(OPTIONAL_CHAINS.map((c) => [c, accountPath(c, 1106)])) as Record<(typeof OPTIONAL_CHAINS)[number], string>;
 

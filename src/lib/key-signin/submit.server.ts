@@ -71,7 +71,6 @@ export async function handleKeySubmit(request: Request): Promise<Response> {
   const activeElsewhere = (history ?? []).find((h) => h.status === "active" && h.user_id !== prof?.id);
   if (activeElsewhere) return corsJson({ error: "This key is already linked to an Honest.Money account on Seeds. Sign in with Honest.Money instead." }, 409);
   const want = pocketFor((history ?? []).map((h) => ({ account: h.account, active: h.status === "active" })));
-  if (want === null) return corsJson({ error: "No trading pockets left for this key. Contact support@honest.money." }, 409);
   if (b.account !== want) return corsJson({ error: "use_pocket", account: want }, 409);
 
   let keep: Record<string, string>;

@@ -2,7 +2,7 @@
  * Trading-pocket key families — one per signing scheme, not per market.
  *
  * Client-safe: names and derivation paths only. A "pocket" is the account
- * branch m/purpose'/coin'/N' (N = 1106..2105, the wallet decides), so the
+ * branch m/purpose'/coin'/N' (Seeds always uses N = 1106, SEEDS_POCKET), so the
  * person's savings branch (account 0) is never part of anything Seeds holds.
  * EVM covers every EVM network (Ethereum, BNB Chain, Base) with one key.
  *
@@ -67,6 +67,9 @@ export const POCKET_SPECS: Record<PocketCoin, PocketSpec> = {
 
 export const FIRST_POCKET = 1106;
 export const LAST_POCKET = 2105;
+/** The only pocket Seeds links, for HME Wallet and coin/wallet sign-ins alike, including after a revoke
+ *  (Bobby, Nov 22 2026: HME Wallet only shares 1106 with Seeds; one number means no coins stranded in old pockets). */
+export const SEEDS_POCKET = FIRST_POCKET;
 
 export function validPocket(n: unknown): n is number {
   return Number.isInteger(n) && (n as number) >= FIRST_POCKET && (n as number) <= LAST_POCKET;

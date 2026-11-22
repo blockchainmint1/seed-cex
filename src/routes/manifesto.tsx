@@ -410,7 +410,7 @@ const practices: { title: string; status: Status; body: string }[] = [
   {
     title: "Savings never touch Seeds",
     status: "Live",
-    body: "HME Wallet keeps your savings and your trading pocket apart. Seeds only ever asks to link the trading pocket. If you revoke the link, HME Wallet moves you to a fresh pocket, and the old key is useless to Seeds.",
+    body: "HME Wallet keeps your savings and your trading pocket apart. Seeds only ever asks to link the trading pocket. If you revoke the link, Seeds deletes its copy of the pocket key and can no longer trade from it.",
   },
   {
     title: "Approve every trade",

@@ -39,7 +39,7 @@ export const Route = createFileRoute("/api/public/key-signin/manifest/$id")({
           expires_at: new Date(r.expires_at).toISOString(),
           submit_url: `${origin}/api/public/key-signin/submit`,
           kinds: ["coin", "evm", "sol"],
-          // Paths are shown for pocket 1106. If submit answers 409 {error:"use_pocket", account:N}, derive again on pocket N.
+          // Seeds always uses pocket 1106 (SEEDS_POCKET), also after a revoke. A 409 {error:"use_pocket"} answer would name the pocket to derive.
           pocket: FIRST_POCKET,
           request: ALLOWED_CHAINS.map(chain),
           request_optional: OPTIONAL_CHAINS.map(chain),

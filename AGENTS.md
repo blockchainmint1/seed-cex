@@ -8,13 +8,13 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
-- HME Wallet links: src/lib/hme-link.server.ts, hme-link-rules.ts (tested), api/public/hme-link/*. Trust the wallet's pocket number (rotates 1106→2105); a re-link while active must keep its pocket and every coin. hme_links rows = permanent history (trigger blocks deletes/edits; hme-link-history.ts). Why: dropped keys strand coins; the record must stay whole.
+- HME Wallet links: src/lib/hme-link.server.ts, hme-link-rules.ts (tested), api/public/hme-link/*. Every link (HME Wallet or coin/wallet) uses pocket 1106 only (SEEDS_POCKET), also after a revoke; a re-link must keep every coin. hme_links rows = permanent history (trigger blocks deletes/edits; hme-link-history.ts). Why: dropped keys strand coins; the record must stay whole.
 - P2P marketplace logic lives in src/lib/p2p.server.ts (reserve against the live HME-pocket balance, flag drops; release via pocket-send). Why: no custody; safety = on-chain checks + seller score.
 - Every HME-pocket send needs the owner's Telegram tap (src/lib/pocket-send/AGENTS.md).
 - Uniswap/PancakeSwap/PulseX pricing: src/lib/dex/AGENTS.md.
 - /list: packages + rules only in src/lib/listing.ts (tested); applications server-written, reviewed at /admin/listings. Why: shown and stored prices must match.
 - /account is the tabbed HME trading-pocket and settings surface; /wallet and /api-keys redirect into it, legacy vault code stays. Deposit/withdraw networks come only from src/lib/account/deposit-options.ts (pure, tested): deposits open only when coins can leave again (HME Wallet sends, Seeds swaps to TSD, or Seeds sends — PulseChain only). Why: Seeds must not act custodial; no deposit may be one-way.
-- HME pocket receive addresses derive public child 0/0 from the wallet-submitted account xpubs; display native balances separately from settlement assets. Why: pocket rotation must not reuse static legacy derivation paths or mislabel trading liquidity.
+- HME pocket receive addresses derive public child 0/0 from the wallet-submitted account xpubs; display native balances separately from settlement assets. Why: no legacy vault paths, no mislabelled liquidity.
 - HME authentication helpers live in hme-auth.server.ts; verify ticket issuer/site, single-use nonce and expiry, send the Seeds site header, and resolve local accounts by the uniquely indexed hm_member_id before updating contact email. Why: credentials are site-bound and email changes must never merge or recreate accounts.
 - Test files (*.test.ts) are excluded from the app tsconfig and run with `bun test`; never install @types/bun. Why: Bun globals override Workers fetch types and break the app typecheck.
 - orders/trades/escrows/profiles are server-written only (no client INSERT/UPDATE grants); leg amounts are derived from immutable trade terms. Why: audit C1/C3 — settlement must never trust browser-editable rows.

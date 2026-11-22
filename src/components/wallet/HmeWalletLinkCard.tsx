@@ -197,12 +197,12 @@ export function HmeWalletLinkCard({ showBalances = true, className = "border-y b
           {keyKind ? (
             <>
               <Button asChild variant="ghost"><Link to="/account/balances/deposit">Deposit into this pocket</Link></Button>
-              <p className="text-xs">This pocket comes from {keyThing(keyKind)}: only that key can rebuild it, and Seeds never saw your recovery phrase. Revoking here stops Seeds trading from it; signing in again afterwards sets up a new pocket number.</p>
+              <p className="text-xs">This pocket comes from {keyThing(keyKind)}: only that key can rebuild it, and Seeds never saw your recovery phrase. Revoking here stops Seeds trading from it; signing in again afterwards brings back this same pocket and its addresses.</p>
             </>
           ) : (
             <>
               <Button asChild variant="ghost"><a href="https://mobile.honest.money" target="_blank" rel="noreferrer"><ExternalLink /> Open HME Wallet</a></Button>
-              <p className="text-xs">Move funds into this pocket in HME Wallet. Its first number is 1106; Seeds follows the new number whenever your wallet retires a pocket.</p>
+              <p className="text-xs">Move funds into this pocket in HME Wallet. Seeds always uses pocket 1106, so your addresses stay the same even if you revoke and link again.</p>
               <p className="text-xs">Revoking here removes Seeds access only. Revoking in HME Wallet also retires the pocket; check TSD and USDC separately before moving on.</p>
             </>
           )}

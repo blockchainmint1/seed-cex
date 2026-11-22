@@ -9,7 +9,7 @@ It exists so **Seeds never sees a recovery phrase**. The page turns the phrase o
 signature into two things on the device, then forgets everything else:
 
 1. a **sign-in signature** that proves who is signing in, and
-2. the keys to **one trading pocket** (pocket 1106 and up), sealed so only Seeds can open them.
+2. the keys to **one trading pocket** (always pocket 1106, also after a revoke), sealed so only Seeds can open them.
    This is exactly the "instant access" payload HME Wallet sends today.
 
 Seeds' side is already built and tested (`src/lib/key-signin/` in the Seeds project). This guide

@@ -4,7 +4,7 @@ import {
   linkDomainFor, openSealed, parseExtKey, payloadSha256, validAccount, verifyTxcMessage,
 } from "@/lib/hme-link.server";
 import { decryptDelegatedKey, encryptDelegatedKey } from "@/lib/delegation.server";
-import { replaceProblem } from "@/lib/hme-link-rules";
+import { pocketNumberProblem, replaceProblem } from "@/lib/hme-link-rules";
 
 type Body = {
   token?: string; mode?: string; account?: number; paths?: string[]; identity_address?: string;
@@ -23,6 +23,8 @@ export const Route = createFileRoute("/api/public/hme-link/submit")({
         if (!b.token || !/^[A-Za-z0-9_-]{8,64}$/.test(b.token)) return json({ error: "bad token" }, 400);
         if (b.mode !== "access" && b.mode !== "approve") return json({ error: "bad mode" }, 400);
         if (!validAccount(b.account)) return json({ error: "bad account" }, 400);
+        const pocketProblem = pocketNumberProblem(b.account);
+        if (pocketProblem) return json({ error: pocketProblem }, 400);
         if (!Array.isArray(b.paths) || b.paths.length === 0 || b.paths.length > ACCEPTED_CHAINS.length) return json({ error: "bad paths" }, 400);
         if (!b.identity_address || !b.signature || typeof b.message !== "string") return json({ error: "missing signature" }, 400);
 

@@ -46,8 +46,8 @@ export function RevokeSeedsDialog({ extraCoins, pending, onConfirm, keyAccount =
           {keyAccount ? (
             <AlertDialogDescription>
               This deletes Seeds’ trading key for this pocket. It doesn’t move your funds, but afterwards Seeds can’t trade, swap or
-              withdraw from this pocket for you. Withdraw first if you want your coins somewhere else. Signing in again later sets up
-              a new pocket with a new number; coins left in this one stay under your own key.
+              withdraw from this pocket for you. Withdraw first if you want your coins somewhere else. Signing in again later brings
+              back this same pocket (1106) with the same addresses; coins left in it stay under your own key.
             </AlertDialogDescription>
           ) : (
             <AlertDialogDescription>

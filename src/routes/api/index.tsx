@@ -533,8 +533,8 @@ await pollTrades(); // Schedule subsequent calls within your weight budget.`}</C
   "authorizations": [ ... ]   // earlier capped, expiring trading authorizations
 }`}</Code>
         <p>
-          Pocket numbers change when a member revokes and relinks, because HME Wallet moves them
-          to a fresh pocket. Read <C>/account</C> again rather than caching addresses.
+          Seeds always uses pocket 1106, so addresses stay the same across a revoke and re-link. Read
+          <C>/account</C> again rather than caching them, because a member may revoke at any time.
         </p>
       </Section>
 

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { ACCEPTED_CHAINS, OPTIONAL_CHAINS, REFUSE_OTHER_POCKET, coinsToAdd, linkCoins, replaceProblem, requestPaths } from "./hme-link-rules";
+import { ACCEPTED_CHAINS, ONLY_POCKET_1106, OPTIONAL_CHAINS, REFUSE_OTHER_POCKET, coinsToAdd, linkCoins, pocketNumberProblem, replaceProblem, requestPaths } from "./hme-link-rules";
 import { accountPath, type PocketCoin } from "./pockets/coins";
 
 const core: PocketCoin[] = ["TXC", "ISK", "BTC", "LTC", "EVM"];
@@ -13,9 +13,9 @@ describe("Add new coins", () => {
   test("a 16-coin link has nothing to add", () => {
     expect(coinsToAdd(link(1106, all))).toEqual([]);
   });
-  test("the update request asks for the active link's pocket, not 1106", () => {
-    expect(requestPaths(link(1107, core)).core.BTC).toBe(accountPath("BTC", 1107));
-    expect(requestPaths(link(1107, core)).optional.XMR).toBe(accountPath("XMR", 1107));
+  test("every link request asks for pocket 1106", () => {
+    expect(requestPaths(link(1106, core)).core.BTC).toBe(accountPath("BTC", 1106));
+    expect(requestPaths(link(1106, core)).optional.XMR).toBe(accountPath("XMR", 1106));
     expect(requestPaths(null).core.TXC).toBe(accountPath("TXC", 1106));
   });
   test("paths on another pocket number don't count as held", () => {
@@ -52,5 +52,17 @@ describe("replacing an active link", () => {
   test("dropping even one coin is refused", () => {
     const msg = replaceProblem(link(1106, ["TXC", "SOL"]), { account: 1106, chains: ["TXC"] });
     expect(msg).toContain("SOL");
+  });
+});
+
+describe("pocket 1106 only", () => {
+  test("a wallet reporting pocket 1106 is accepted", () => {
+    expect(pocketNumberProblem(1106)).toBeNull();
+  });
+  test("a wallet reporting pocket 1107 is refused", () => {
+    expect(pocketNumberProblem(1107)).toBe(ONLY_POCKET_1106);
+  });
+  test("a wallet reporting pocket 2105 is refused", () => {
+    expect(pocketNumberProblem(2105)).toBe(ONLY_POCKET_1106);
   });
 });

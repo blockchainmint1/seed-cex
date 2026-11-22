@@ -26,7 +26,7 @@ export const Route = createFileRoute("/proof/code")({
 const facts: { k: string; v: string }[] = [
   { k: "Recovery phrase", v: "Created and kept in HME Wallet on your phone. Seeds never creates, imports or receives one" },
   { k: "Savings", v: "Stay in HME Wallet. Seeds never receives savings keys" },
-  { k: "Trading pocket", v: "TEXITcoin m/44'/696969'/1106'/0/0 to start; HME Wallet issues a new pocket number after a revoke" },
+  { k: "Trading pocket", v: "TEXITcoin m/44'/696969'/1106'/0/0, always pocket 1106, also after a revoke and re-link" },
   { k: "Wallet link", v: "Scanned from HME Wallet. Seeds gets the pocket's public keys, plus an encrypted pocket key only in instant-access mode" },
   { k: "TEXITcoin coin type", v: "SLIP-0044 696969, address version byte 66" },
   { k: "TSD", v: "Omni Layer property #39 on TEXITcoin, Omni Core 0.9.1" },

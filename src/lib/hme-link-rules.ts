@@ -3,7 +3,7 @@
  * Shared by the submit endpoint, the manifest and the Security tab so the
  * "Add new coins" button and the server agree on what a link holds.
  */
-import { POCKET_SPECS, accountPath, parseAccountPath, type PocketCoin } from "./pockets/coins";
+import { POCKET_SPECS, SEEDS_POCKET, accountPath, parseAccountPath, type PocketCoin } from "./pockets/coins";
 import { HME_WALLET_CANT_HOLD } from "./pockets/hme-support";
 
 /** Pockets requested from every wallet today (HME Wallet derives these five). */
@@ -30,9 +30,15 @@ export function coinsToAdd(link: LinkLike): PocketCoin[] {
   return ACCEPTED_CHAINS.filter((c) => !have.includes(c));
 }
 
-/** Paths a new link request asks for: the active link's pocket when there is one, else the first pocket (1106). */
-export function requestAccount(active: LinkLike | null): number {
-  return active?.account ?? 1106;
+/** Paths a link request asks for: always pocket 1106, the only pocket HME Wallet shares with Seeds. */
+export function requestAccount(_active: LinkLike | null): number {
+  return SEEDS_POCKET;
+}
+
+export const ONLY_POCKET_1106 = "Seeds only links pocket 1106. Update HME Wallet and link again; nothing in your wallet moves.";
+/** A wallet reporting any pocket other than 1106 is refused (Bobby, Nov 22 2026). */
+export function pocketNumberProblem(account: number): string | null {
+  return account === SEEDS_POCKET ? null : ONLY_POCKET_1106;
 }
 export function requestPaths(active: LinkLike | null): { core: Record<string, string>; optional: Record<string, string> } {
   const n = requestAccount(active);

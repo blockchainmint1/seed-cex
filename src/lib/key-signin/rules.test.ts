@@ -9,14 +9,15 @@ describe("pocket number for a key sign-in", () => {
   test("a brand-new coin starts on pocket 1106", () => {
     expect(pocketFor([])).toBe(1106);
   });
-  test("an active link keeps its pocket", () => {
-    expect(pocketFor([{ account: 1106, active: false }, { account: 1107, active: true }])).toBe(1107);
+  test("an active link stays on 1106", () => {
+    expect(pocketFor([{ account: 1106, active: true }])).toBe(1106);
   });
-  test("after a revoke the next pocket is used, never the old one", () => {
-    expect(pocketFor([{ account: 1106, active: false }])).toBe(1107);
+  test("after a revoke, signing in again brings back pocket 1106, not 1107", () => {
+    expect(pocketFor([{ account: 1106, active: false }])).toBe(1106);
+    expect(pocketFor([{ account: 1106, active: false }, { account: 1106, active: false }])).toBe(1106);
   });
-  test("no pockets left after 2105", () => {
-    expect(pocketFor([{ account: 2105, active: false }])).toBeNull();
+  test("an older account that once rotated to 1107 comes back to 1106", () => {
+    expect(pocketFor([{ account: 1107, active: false }])).toBe(1106);
   });
 });
 
