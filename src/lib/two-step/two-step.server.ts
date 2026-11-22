@@ -21,7 +21,7 @@ import { receivePocket, sendBlocker, sendSource } from "@/lib/xchain/send-rules"
 import { DEX_NETWORKS, NATIVE, isNative, sameAddr, tokenRisk, venueById, type DexNetwork, type TokenRisk } from "@/lib/dex/venues";
 import { MAX_SLIPPAGE_BPS, dexSwapBlocker, feeNeedWei, feeProblem, swapGasUnits } from "@/lib/dex/swap-rules";
 import { agreedMinimum, dexTwin, floorAmount, planSwap, twoStepMids, twoStepProtocols, type TwoStepDirection } from "@/lib/swap/plan";
-import { FIRST_HOP_TOLERANCE, HOP_WAIT_MINUTES, TWO_STEP_TESTERS_ONLY, isTwoStepTerminal, midToHandOn, type TwoStepStatus } from "./rules";
+import { FIRST_HOP_TOLERANCE, HOP_WAIT_MINUTES, TWO_STEP_TESTERS_ONLY, isTwoStepTerminal, midToHandOn, stopForMissingMid, type TwoStepStatus } from "./rules";
 
 type Row = Database["public"]["Tables"]["two_step_swaps"]["Row"];
 
@@ -479,7 +479,17 @@ async function step(r: Row): Promise<boolean> {
       // Whole-coin view of the noted starting balance (rounding is far below a coin's smallest unit).
       const base = r.mid_baseline_units == null ? null : Number(r.mid_baseline_units) / 10 ** dec;
       const hand = midToHandOn(reported, bal == null ? null : fromUnits(bal, dec), base);
-      if (hand == null) return go({ error: `Waiting for the ${mid.symbol} to show in your pocket.` });
+      if (hand == null) {
+        // The member may spend the middle coin meanwhile (other swaps stay allowed): never wait forever.
+        // Only after the wait, and only once the previous check also saw nothing new (a just-landed payout gets a minute to show).
+        const sawNothingBefore = (r.error ?? "").startsWith(`Waiting for the ${mid.symbol} to show`);
+        if (stopForMissingMid(minutesSince(r.step_at), sawNothingBefore, bal != null)) {
+          const why = `The ${mid.symbol} from step 1 wasn't found in your pocket above what you had before the swap, so Seeds stopped before step 2.`;
+          void notify(r, `${why} Any ${mid.symbol} that arrived stays in your pocket.`);
+          return go(move("kept_mid", { error: `${why} Any ${mid.symbol} that arrived stays in your pocket.`.slice(0, 400) }));
+        }
+        return go({ error: `Waiting for the ${mid.symbol} to show in your pocket.` });
+      }
       return go(move("mid", { mid_amount: hand }));
     }
 

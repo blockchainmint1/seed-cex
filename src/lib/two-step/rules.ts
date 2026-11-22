@@ -82,3 +82,12 @@ export function midToHandOn(reported: number | null, pocketBalance: number | nul
  * make each step check the member's own caps without counting the swap twice (audit T2).
  */
 export const TWO_STEP_TESTERS_ONLY = true;
+
+/**
+ * Step 1 paid out but nothing showed above the starting balance (the member may have spent the
+ * middle coin meanwhile): stop with the coin kept once the hop wait is over and the previous
+ * check also found nothing, so a just-landed payout is never missed and nothing waits forever.
+ */
+export function stopForMissingMid(minutesInStep: number, previousCheckFoundNothing: boolean, balanceKnown: boolean): boolean {
+  return balanceKnown && previousCheckFoundNothing && minutesInStep > HOP_WAIT_MINUTES;
+}

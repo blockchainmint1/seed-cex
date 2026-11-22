@@ -317,7 +317,20 @@ const legProtocol = (r: Pick<Row, "protocol">): Protocol => (r.protocol === "may
  * a pre-send check failed — nothing reserved or sent), the other one is tried with
  * the same price reference and limits.
  */
+/**
+ * A swap leg this route already reserved (tagged with the route's id by reserve_swap_send).
+ * A crash between broadcast and saving swap_send_id must never send the leg twice.
+ */
+async function legSent(r: Row): Promise<{ id: string; protocol: Protocol } | null> {
+  const { data } = await supabaseAdmin.from("swap_sends").select("id, protocol")
+    .eq("user_id", r.user_id).eq("parent_id", r.id).neq("status", "failed").order("created_at", { ascending: false }).limit(1);
+  const s = data?.[0];
+  return s ? { id: s.id, protocol: s.protocol === "maya" ? "maya" : "thorchain" } : null;
+}
+
 async function sendLeg(r: Row, coin: SwapCoin): Promise<Partial<Row>> {
+  const earlier = await legSent(r);
+  if (earlier) return move("swap_sent", { swap_send_id: earlier.id, protocol: earlier.protocol });
   const { sendSwapFromPocket, PriceMovedError, RouteUnavailableError } = await import("./send.server");
   const buy = r.direction === "buy";
   const amountIn = buy ? Number(r.usdc_amount) : Number(r.amount_in);
@@ -343,6 +356,9 @@ async function sendLeg(r: Row, coin: SwapCoin): Promise<Partial<Row>> {
         lastUnavailable = e;
         continue;
       }
+      // Might have reached the network: follow it if it was recorded, never send again.
+      const after = await legSent(r).catch(() => null);
+      if (after) return move("swap_sent", { swap_send_id: after.id, protocol: after.protocol });
       throw e;
     }
   }

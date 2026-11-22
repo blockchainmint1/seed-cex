@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { TWO_STEP_TESTERS_ONLY, firstHopOk, isTwoStepTerminal, midToHandOn, secondHopOk, twoStepIndex } from "./rules";
+import { HOP_WAIT_MINUTES, TWO_STEP_TESTERS_ONLY, stopForMissingMid, firstHopOk, isTwoStepTerminal, midToHandOn, secondHopOk, twoStepIndex } from "./rules";
 
 describe("two-step swap rules", () => {
   test("first hop goes ahead within 2% of the shown price, not past it", () => {
@@ -47,5 +47,14 @@ describe("audit T2: two-step swaps stay testers-only", () => {
     // Inner steps skip per-swap caps (held once by reserve_two_step_swap). Opening two-step
     // swaps to capped members needs that change first; see TWO_STEP_TESTERS_ONLY in rules.ts.
     expect(TWO_STEP_TESTERS_ONLY).toBe(true);
+  });
+});
+
+describe("re-check: step 2 never waits forever when the middle coin was spent", () => {
+  test("stops (coin kept) only after the wait and a second empty check", () => {
+    expect(stopForMissingMid(HOP_WAIT_MINUTES + 1, true, true)).toBe(true);
+    expect(stopForMissingMid(HOP_WAIT_MINUTES + 1, false, true)).toBe(false);
+    expect(stopForMissingMid(HOP_WAIT_MINUTES - 1, true, true)).toBe(false);
+    expect(stopForMissingMid(HOP_WAIT_MINUTES + 1, true, false)).toBe(false);
   });
 });
