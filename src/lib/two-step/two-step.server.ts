@@ -21,7 +21,7 @@ import { receivePocket, sendBlocker, sendSource } from "@/lib/xchain/send-rules"
 import { DEX_NETWORKS, NATIVE, isNative, sameAddr, tokenRisk, venueById, type DexNetwork, type TokenRisk } from "@/lib/dex/venues";
 import { MAX_SLIPPAGE_BPS, dexSwapBlocker, feeNeedWei, feeProblem, swapGasUnits } from "@/lib/dex/swap-rules";
 import { agreedMinimum, dexTwin, floorAmount, planSwap, twoStepMids, twoStepProtocols, type TwoStepDirection } from "@/lib/swap/plan";
-import { FIRST_HOP_TOLERANCE, HOP_WAIT_MINUTES, isTwoStepTerminal, midToHandOn, type TwoStepStatus } from "./rules";
+import { FIRST_HOP_TOLERANCE, HOP_WAIT_MINUTES, TWO_STEP_TESTERS_ONLY, isTwoStepTerminal, midToHandOn, type TwoStepStatus } from "./rules";
 
 type Row = Database["public"]["Tables"]["two_step_swaps"]["Row"];
 
@@ -160,6 +160,7 @@ export async function requestTwoStep(userId: string, tester: boolean, input: Two
   const link = await loadLink(userId);
   const { data: prof } = await supabaseAdmin.from("profiles").select("telegram_verified").eq("id", userId).maybeSingle();
   const linkLike = link ? { mode: link.mode, hasKey: link.hasKey, pockets: link.pockets as string[] } : null;
+  if (TWO_STEP_TESTERS_ONLY && !tester) throw new Error("Two-step swaps are open to beta testers first. They open to members after that.");
   const gate = dexSwapBlocker({ tester, tsdSide: null, telegramVerified: prof?.telegram_verified === true, link: linkLike });
   if (gate) throw new Error(gate);
 
@@ -300,10 +301,14 @@ async function paidOut(protocol: Protocol, txid: string, asset: string): Promise
 
 type XHop = { kind: "sent"; id: string; protocol: Protocol } | { kind: "price"; fresh: number } | { kind: "unavailable"; message: string };
 
-/** A THORChain/Maya send this hop already made since the step started (a crash after broadcast must never send twice). */
+/**
+ * A THORChain/Maya send this hop already made since the step started (a crash after broadcast
+ * must never send twice). Only sends tagged with this two-step swap count, so a member's own
+ * separate swap of the same coins is never taken for a step (audit T1).
+ */
 async function sentSince(r: Row, from: SwapCoin, to: SwapCoin): Promise<{ id: string; protocol: Protocol } | null> {
   const { data } = await supabaseAdmin.from("swap_sends").select("id, protocol, status")
-    .eq("user_id", r.user_id).eq("from_asset", from.asset).eq("to_asset", to.asset).gte("created_at", r.step_at)
+    .eq("user_id", r.user_id).eq("parent_id", r.id).eq("from_asset", from.asset).eq("to_asset", to.asset).gte("created_at", r.step_at)
     .neq("status", "failed").order("created_at", { ascending: false }).limit(1);
   const s = data?.[0];
   return s ? { id: s.id, protocol: s.protocol === "maya" ? "maya" : "thorchain" } : null;
@@ -425,6 +430,15 @@ async function step(r: Row): Promise<boolean> {
           return go(move("failed", { error: `${why} Nothing was sent.`.slice(0, 300) }));
         }
       }
+      // Note the middle coin already in the pocket before step 1, so step 2 only ever hands on what arrived (audit T4).
+      if (r.mid_baseline_units == null) {
+        const { dexBalanceOf } = await import("@/lib/dex/swap.server");
+        const before = await dexBalanceOf(net, midTwin.address, r.to_address);
+        if (before == null) return go({ error: `Couldn't read your ${mid.symbol} balance before step 1; retrying.` });
+        const { data: noted, error: be } = await supabaseAdmin.from("two_step_swaps").update({ mid_baseline_units: before.toString() } as never)
+          .eq("id", r.id).eq("status", "approved").is("mid_baseline_units", null).select("id");
+        if (be || !noted?.length) return go({ error: "Couldn't note your starting balance; retrying." });
+      }
       try {
         const hop = await sendXHop(r, { from: coin, to: mid, amount: floorAmount(Number(r.amount_in), 8), destination: r.to_address, shownOut: Number(r.shown_mid), tolerance: FIRST_HOP_TOLERANCE });
         if (hop.kind === "price") return go(move("failed", { error: `The price moved more than ${FIRST_HOP_TOLERANCE * 100}% before step 1. Nothing was sent.` }));
@@ -462,7 +476,9 @@ async function step(r: Row): Promise<boolean> {
       const { dexBalanceOf } = await import("@/lib/dex/swap.server");
       const dec = (await decimalsOf(net, midTwin.address)) ?? 18;
       const bal = await dexBalanceOf(net, midTwin.address, r.to_address);
-      const hand = midToHandOn(reported, bal == null ? null : fromUnits(bal, dec));
+      // Whole-coin view of the noted starting balance (rounding is far below a coin's smallest unit).
+      const base = r.mid_baseline_units == null ? null : Number(r.mid_baseline_units) / 10 ** dec;
+      const hand = midToHandOn(reported, bal == null ? null : fromUnits(bal, dec), base);
       if (hand == null) return go({ error: `Waiting for the ${mid.symbol} to show in your pocket.` });
       return go(move("mid", { mid_amount: hand }));
     }

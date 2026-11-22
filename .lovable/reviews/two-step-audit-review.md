@@ -15,4 +15,4 @@ I checked each point against our code. Here's my take:
 
 **Still owed before publishing (auditor's list, not run yet):** one real swap each way (BTC→PEPE and PEPE→BTC) on a tester pocket, decline/expire/unlink during step 1, a price miss that keeps the middle coin, a crash between sending and saving, and a before/after test of T1.
 
-**Nothing has been changed yet.** I'll start once you answer the questions.
+**Decisions (Nov 22):** T1 fix — yes; block other swaps — no; T4 — only what arrived; T2 — skip + test. Done in preview.

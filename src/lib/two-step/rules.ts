@@ -62,9 +62,23 @@ export function secondHopOk(freshOut: number, agreedMin: number): boolean {
   return Number.isFinite(freshOut) && Number.isFinite(agreedMin) && agreedMin > 0 && freshOut >= agreedMin;
 }
 
-/** Coins handed to the second hop: what the first hop paid, never more than the pocket holds. */
-export function midToHandOn(reported: number | null, pocketBalance: number | null): number | null {
+/**
+ * Coins handed to the second hop: what the first hop paid, never more than arrived in the
+ * pocket since just before step 1 (`baseline`), so coins the member already held are never
+ * spent (audit T4). Rows from before the baseline existed (`baseline` null) fall back to
+ * the pocket balance.
+ */
+export function midToHandOn(reported: number | null, pocketBalance: number | null, baseline: number | null = null): number | null {
   if (reported == null || !(reported > 0)) return null;
   if (pocketBalance == null) return null;
-  return Math.min(reported, pocketBalance);
+  const arrived = baseline == null ? pocketBalance : pocketBalance - baseline;
+  if (!(arrived > 0)) return null;
+  return Math.min(reported, arrived);
 }
+
+/**
+ * Two-step swaps are for beta testers only. Their inner steps skip the per-swap caps (the
+ * caps are held once, by reserve_two_step_swap, like a TSD swap). Before turning this off,
+ * make each step check the member's own caps without counting the swap twice (audit T2).
+ */
+export const TWO_STEP_TESTERS_ONLY = true;

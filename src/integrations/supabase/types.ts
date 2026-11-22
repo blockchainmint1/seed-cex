@@ -2996,6 +2996,7 @@ export type Database = {
           memo: string
           min_out: number | null
           out_txid: string | null
+          parent_id: string | null
           pocket: string
           protocol: string
           router: string | null
@@ -3022,6 +3023,7 @@ export type Database = {
           memo: string
           min_out?: number | null
           out_txid?: string | null
+          parent_id?: string | null
           pocket: string
           protocol: string
           router?: string | null
@@ -3048,6 +3050,7 @@ export type Database = {
           memo?: string
           min_out?: number | null
           out_txid?: string | null
+          parent_id?: string | null
           pocket?: string
           protocol?: string
           router?: string | null
@@ -3343,6 +3346,7 @@ export type Database = {
           leg2_swap_send_id: string | null
           link_id: string
           mid_amount: number | null
+          mid_baseline_units: number | null
           mid_id: string
           min_out: number
           network: string
@@ -3379,6 +3383,7 @@ export type Database = {
           leg2_swap_send_id?: string | null
           link_id: string
           mid_amount?: number | null
+          mid_baseline_units?: number | null
           mid_id: string
           min_out: number
           network: string
@@ -3415,6 +3420,7 @@ export type Database = {
           leg2_swap_send_id?: string | null
           link_id?: string
           mid_amount?: number | null
+          mid_baseline_units?: number | null
           mid_id?: string
           min_out?: number
           network?: string

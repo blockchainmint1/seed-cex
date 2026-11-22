@@ -4,7 +4,8 @@
 - [x] Deposit history: record each new deposit from now on + fill in past deposits from TXC, ISK and Ethereum-style networks (Bobby: "Both", Nov 22)
 - [x] One Swap page for every coin: THORChain/Maya, Uniswap/PancakeSwap/PulseX and TSD in one form, Seeds picks the best route; old Any-coin address forwards (Nov 22)
 - [x] Two-step swaps done automatically under one Telegram tap (e.g. PEPE on Ethereum → Bitcoin, Bitcoin → a Base token); stops safely with the in-between coin in the pocket if the price moves (Nov 22)
-- [ ] Auditor review of two-step swaps before publishing (blocked: auditor)
+- [x] Auditor review of two-step swaps (Nov 22): T1 fixed (sends tagged per swap), T4 fixed (only coins that arrived), T2 skipped + tester-only test; overlapping swaps stay allowed
+- [ ] Auditor re-check of the T1/T4 fixes (blocked: auditor)
 - [ ] First real two-step swap, small amount, by a beta tester (blocked: auditor review + a tester's Telegram tap)
 
 - [x] /admin/marketing panel: one home for coin recruiting, ads and coin videos; old /admin/ads and /admin/videos addresses forward there (Nov 21)
