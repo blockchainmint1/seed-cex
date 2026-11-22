@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { getMarketStats, getOrderBook, getPriceSeries, getTape } from "@/lib/market.functions";
 import { LegPanel } from "@/components/trade/LegPanel";
 import {
+  cancelAllOrders,
   cancelOrder,
   getMyOrders,
   getMyTrades,
@@ -124,6 +125,7 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
   const fetchMyTrades = useServerFn(getMyTrades);
   const submitOrder = useServerFn(placeOrder);
   const killOrder = useServerFn(cancelOrder);
+  const killAllOrders = useServerFn(cancelAllOrders);
 
   const myOrders = useQuery({
     queryKey: ["my-orders", PAIR],
@@ -239,6 +241,12 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
     mutationFn: (id: string) => killOrder({ data: { id } }),
     onSuccess: refreshAll,
   });
+  // Cancel every open order on this market (Bobby, Nov 22 2026). Other markets stay.
+  const cancelAll = useMutation({
+    mutationFn: () => killAllOrders({ data: { pair: PAIR } }),
+    onSuccess: refreshAll,
+  });
+  const openHere = (myOrders.data ?? []).filter((o) => o.pair === PAIR && (o.status === "open" || o.status === "partial")).length;
 
   const notional = useMemo(() => {
     const p = Number(price);
@@ -434,7 +442,19 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
             )}
           </Panel>
 
-          <Panel title="Your orders">
+          <Panel
+            title="Your orders"
+            right={user && openHere > 0 ? (
+              <button
+                type="button"
+                disabled={cancelAll.isPending}
+                onClick={() => { if (window.confirm(`Cancel all ${openHere} open order${openHere === 1 ? "" : "s"} on this market?`)) cancelAll.mutate(); }}
+                className="font-mono text-[11px] text-muted-foreground hover:text-destructive disabled:opacity-50"
+              >
+                {cancelAll.isPending ? "Cancelling…" : openHere > 1 ? `Cancel all (${openHere})` : "Cancel all"}
+              </button>
+            ) : null}
+          >
             {!user ? (
               <p className="p-4 font-mono text-xs text-muted-foreground">Sign in to place orders.</p>
             ) : (myOrders.data ?? []).filter((o) => o.pair === PAIR).length === 0 ? (
