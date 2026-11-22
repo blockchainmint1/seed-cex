@@ -335,14 +335,14 @@ export const checkMyP2pPockets = createServerFn({ method: "GET" })
       .select("id, asset, side, price, price_mode, margin_pct, min_fiat, max_fiat")
       .eq("seller_id", me)
       .neq("side", "buy");
-    const { pocketStatus, lockedAmount, effectivePrice } = await engine();
+    const { pocketStatus, setAsideAmount, effectivePrice } = await engine();
     const assets = [...new Set((offers ?? []).map((o) => o.asset as P2pAsset))];
     const perAsset: Record<string, { balance: number | null; blocker: string | null; locked: number }> = {};
     await Promise.all(
       assets.map(async (a) => {
         const [st, locked] = await Promise.all([
           pocketStatus(me, a, { display: true }).catch(() => ({ balance: null, blocker: "Couldn't read your pocket" })),
-          lockedAmount(me, a).catch(() => 0),
+          setAsideAmount(me, a).catch(() => Infinity),
         ]);
         perAsset[a] = { balance: st.balance, blocker: st.blocker, locked };
       }),
@@ -568,13 +568,14 @@ export const openTrade = createServerFn({ method: "POST" })
     }
 
     const feePct = Number(o.fee_pct);
-    const { effectivePrice, p2pAlert, pocketBalance, lockedAmount, systemMessage } = await engine();
+    const { effectivePrice, p2pAlert, pocketBalance, setAsideAmount, systemMessage } = await engine();
     const price = await effectivePrice(o);
     const feeFiat = +(data.fiat * (feePct / 100)).toFixed(2);
     const crypto = +((data.fiat - feeFiat) / price).toFixed(P2P_ASSETS[asset].decimals);
 
-    // Lock: the seller's pocket must cover this trade on top of everything already reserved.
-    const [bal, locked] = await Promise.all([pocketBalance(sellerId, asset), lockedAmount(sellerId, asset)]);
+    // Lock: the seller's pocket must cover this trade on top of everything already set aside
+    // (other P2P sales, open exchange orders, exchange trades being paid).
+    const [bal, locked] = await Promise.all([pocketBalance(sellerId, asset), setAsideAmount(sellerId, asset).catch(() => Infinity)]);
     if (bal === null) throw new Error(buyAd ? "We couldn't read your trading pocket — authorize it on the Wallet page first" : "We couldn't verify the seller's funds right now — try another seller");
     if (bal - locked + 1e-8 < crypto) {
       if (buyAd) throw new Error("Your trading pocket doesn't have enough for that amount");

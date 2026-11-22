@@ -192,8 +192,18 @@ export async function startTsdRoute(userId: string, isAdmin: boolean, input: Sta
     if (bal == null) throw new Error("Couldn't read your TSD balance. Try again in a minute.");
     if (bal - locked < q.amountIn) {
       throw new Error(locked > 0
-        ? `You have ${fmt(bal, 2)} TSD, but ${fmt(locked, 2)} is set aside for P2P trades. Free to swap: ${fmt(Math.max(0, bal - locked), 2)} TSD.`
+        ? `You have ${fmt(bal, 2)} TSD, but ${fmt(locked, 2)} is set aside for your open orders and trades. Free to swap: ${fmt(Math.max(0, bal - locked), 2)} TSD. Cancel an order on the Activity page to free more.`
         : `Your trading pocket has ${fmt(bal, 2)} TSD.`);
+    }
+  }
+
+  if (input.direction === "sell") {
+    const { legForSwapAsset } = await import("@/lib/set-asides");
+    const held = legForSwapAsset(coin.asset);
+    if (held) {
+      const { pocketSpendProblem } = await import("@/lib/set-asides.server");
+      const why = await pocketSpendProblem(userId, held, q.amountIn, { address: coinAddress, network: null });
+      if (why) throw new Error(why);
     }
   }
 
@@ -240,12 +250,13 @@ export async function freeTsdFor(userId: string, txcAddress: string): Promise<nu
   return bal == null ? null : Math.max(0, bal - locked);
 }
 
-/** TSD in the member's TXC pocket and how much of it P2P trades have set aside. */
+/** TSD in the member's TXC pocket and how much of it is set aside (P2P sales, open orders, trades being paid). */
 async function freeTsd(userId: string, txcAddress: string): Promise<[number | null, number]> {
   const { fetchOmniBalance } = await import("@/lib/omni.server");
-  const { lockedAmount } = await import("@/lib/p2p.server");
-  const [b, locked] = await Promise.all([fetchOmniBalance(txcAddress), lockedAmount(userId, "TSD")]);
-  return [b.online ? b.balance : null, locked];
+  const { setAsideFor } = await import("@/lib/set-asides.server");
+  const [b, held] = await Promise.all([fetchOmniBalance(txcAddress), setAsideFor(userId, "tsd").catch(() => null)]);
+  // Unreadable set-asides: report the balance as unreadable so nothing is sent.
+  return [b.online && held ? b.balance : null, held?.total ?? 0];
 }
 
 /* --------------------------------- advance --------------------------------- */

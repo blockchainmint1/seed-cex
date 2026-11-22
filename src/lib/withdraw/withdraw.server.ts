@@ -153,6 +153,16 @@ async function prepare(userId: string, tester: boolean, input: WithdrawInput) {
   const problem = amountProblem({ symbol: coin.symbol, decimals: coin.decimals, units, balance: bal.units, feeBalance: bal.feeUnits, feeCoin: coin.feeCoin });
   if (problem) throw new Error(problem);
   const amount = unitsToNumber(units!, coin.decimals);
+  // Coins set aside for open orders and trades can't be withdrawn (set-asides.ts).
+  {
+    const { legForCoin } = await import("@/lib/set-asides");
+    const held = legForCoin(coin.symbol, coin.network);
+    if (held) {
+      const { pocketSpendProblem } = await import("@/lib/set-asides.server");
+      const why = await pocketSpendProblem(userId, held, amount, { address: from!, network: coin.evmChain ?? null });
+      if (why) throw new Error(why);
+    }
+  }
   // Beta testers have no dollar limits, so a coin without a live price (ISK, ZCU) can still go; members need a price.
   if (price == null && !lim.tester) throw new Error(`No live price for ${coin.symbol} right now, so your withdrawal limit can't be checked.`);
   const amountUsd = price == null ? 0 : Math.round(amount * price * 100) / 100;

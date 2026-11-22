@@ -179,16 +179,15 @@ export async function pocketLegChain(tradeId: string, leg: LegId): Promise<strin
  * enough beyond what their other open orders already promise. Returns a plain reason, or null.
  */
 export async function orderPayProblem(userId: string, leg: LegId, need: number): Promise<string | null> {
-  const { committedOnLeg, orderCoverProblem } = await import("@/lib/order-readiness");
+  const { orderCoverProblem } = await import("@/lib/order-readiness");
+  const { setAsideFor } = await import("@/lib/set-asides.server");
   const symbol = getLeg(leg).symbol;
   const s = await pocketSender(userId, leg, "trade");
   if (!s.ok) return `Before you can place this order: ${s.reason}`;
-  const [bal, { data: open, error }] = await Promise.all([
-    pocketLegBalance(s.address, leg, need),
-    supabaseAdmin.from("orders").select("pair, side, price, amount, filled").eq("user_id", userId).in("status", ["open", "partial"]),
-  ]);
-  if (error) return "Couldn't check your open orders right now, so the order wasn't placed. Try again in a minute.";
-  const committed = committedOnLeg((open ?? []) as Parameters<typeof committedOnLeg>[0], leg);
+  // Set aside = other open orders + trades still being paid + live P2P sales (set-asides.ts).
+  const [bal, held] = await Promise.all([pocketLegBalance(s.address, leg, need), setAsideFor(userId, leg).catch(() => null)]);
+  if (!held) return "Couldn't check your open orders right now, so the order wasn't placed. Try again in a minute.";
+  const committed = held.total;
   const short = orderCoverProblem({ symbol, balance: bal.balance, committed, need });
   if (short) return short;
   // Fee coins (Omni carrier TXC, EVM gas) — same rule a fill would apply.

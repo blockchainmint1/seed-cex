@@ -7,6 +7,7 @@ import { HmeWalletLinkCard } from "@/components/wallet/HmeWalletLinkCard";
 import { fmtCoin, fmtUsd, usePocketBalances, usePocketLink } from "@/components/account/use-pocket";
 import { revokeCheck, listCoins } from "@/lib/pockets/hme-support";
 import { withdrawRoute } from "@/lib/account/deposit-options";
+import { rowKey, useSetAsides } from "@/components/account/use-set-asides";
 
 /** Coins with no THORChain/Maya pool: trade them on their Seeds TSD market instead. */
 const NO_SWAP = new Set(["PLS", "HEX", "pHEX"]);
@@ -30,6 +31,7 @@ function SpotBalances() {
   const link = usePocketLink();
   const l = link.data;
   const { rows, total, unpriced, balances, refreshNow } = usePocketBalances(l?.addresses, l?.id);
+  const held = useSetAsides(rows, Boolean(l));
   const [hideZero, setHideZero] = useState(false);
   const [q, setQ] = useState("");
 
@@ -71,6 +73,15 @@ function SpotBalances() {
         </div>
       </Card>
 
+      {held.any ? (
+        <Note>
+          Some coins are <strong>in trades</strong>: set aside for your open orders, trades being paid or P2P sales. They stay in your pocket, but Seeds
+          won't withdraw, swap or promise them to another order until the order is cancelled or the trade finishes. If they leave your pocket another
+          way (for example from HME Wallet), Seeds cancels the newest orders they no longer cover and tells you.{" "}
+          <Link to="/activity" className="text-primary underline">See your open orders</Link>
+        </Note>
+      ) : null}
+
       <div className="flex flex-wrap items-center gap-4">
         <label className="relative min-w-0 flex-1 sm:max-w-xs">
           <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -93,6 +104,11 @@ function SpotBalances() {
               <div data-qa-mask className="text-right">
                 <span className="num block">{r.balance == null ? (balances.isFetching ? "Checking…" : "—") : fmtCoin(r.balance)}</span>
                 <span className="num block text-xs text-muted-foreground">{fmtUsd(r.usd)}</span>
+                {held.byRow[rowKey(r)] ? (
+                  <span className="num block text-xs text-muted-foreground">
+                    In trades {fmtCoin(held.byRow[rowKey(r)]!)} · Available {r.balance == null ? "—" : fmtCoin(Math.max(0, r.balance - held.byRow[rowKey(r)]!))}
+                  </span>
+                ) : null}
               </div>
             </div>
             <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold text-primary">
@@ -107,12 +123,14 @@ function SpotBalances() {
       </ul>
 
       <div className="hidden overflow-x-auto rounded-md border border-border sm:block">
-        <table className="w-full min-w-[44rem] text-left text-sm">
+        <table className="w-full min-w-[56rem] text-left text-sm">
           <thead className="border-b border-border bg-muted/40 font-mono text-[11px] text-muted-foreground uppercase">
             <tr>
               <th className="px-4 py-3">Coin</th>
               <th className="px-4 py-3">Network</th>
               <th className="px-4 py-3 text-right">Balance</th>
+              <th className="whitespace-nowrap px-4 py-3 text-right">In trades</th>
+              <th className="px-4 py-3 text-right">Available</th>
               <th className="px-4 py-3 text-right">Value</th>
               <th className="px-4 py-3 text-right">Actions</th>
             </tr>
@@ -131,6 +149,8 @@ function SpotBalances() {
                     {route !== "hme" ? <span className="ml-2 whitespace-nowrap rounded-sm border border-warn/60 px-1.5 py-0.5 font-mono text-[10px] text-foreground">Not in HME Wallet</span> : null}
                   </td>
                   <td className="num px-4 py-3 text-right">{r.balance == null ? (balances.isFetching ? "Checking…" : "Not available") : fmtCoin(r.balance)}</td>
+                  <td data-qa-mask className="num px-4 py-3 text-right text-muted-foreground">{held.byRow[rowKey(r)] ? fmtCoin(held.byRow[rowKey(r)]!) : "—"}</td>
+                  <td data-qa-mask className="num px-4 py-3 text-right">{r.balance == null ? "—" : fmtCoin(Math.max(0, r.balance - (held.byRow[rowKey(r)] ?? 0)))}</td>
                   <td className="num px-4 py-3 text-right text-muted-foreground">{fmtUsd(r.usd)}</td>
                   <td className="px-4 py-2 text-right whitespace-nowrap">
                     <Link to="/account/balances/deposit" search={{ coin: r.asset.symbol, network: r.net.id }} className="px-2 text-xs font-semibold text-primary hover:underline">Deposit</Link>
@@ -142,7 +162,7 @@ function SpotBalances() {
               );
             })}
             {!shown.length ? (
-              <tr><td colSpan={5} className="px-4 py-6 text-center text-sm text-muted-foreground">{hideZero ? "No coins with a balance yet." : "No coins match."}</td></tr>
+              <tr><td colSpan={7} className="px-4 py-6 text-center text-sm text-muted-foreground">{hideZero ? "No coins with a balance yet." : "No coins match."}</td></tr>
             ) : null}
           </tbody>
         </table>

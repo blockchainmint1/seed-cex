@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, Note, TabTitle } from "@/components/account/ui";
 import { CoinNetworkPicker } from "@/components/account/CoinNetworkPicker";
 import { fmtCoin, usePocketBalances, usePocketLink } from "@/components/account/use-pocket";
+import { rowKey, useSetAsides } from "@/components/account/use-set-asides";
 import { findAsset, findNetwork, withdrawRoute, type DepositNetwork } from "@/lib/account/deposit-options";
 import { SeedsWithdraw } from "@/components/account/SeedsWithdraw";
 import { withdrawCoin } from "@/lib/withdraw/catalog";
@@ -43,6 +44,9 @@ function Withdraw() {
   const net = findNetwork(asset, search.network);
   const linked = new Set(Object.keys(l?.addresses ?? {}));
   const row = net ? rows.find((r) => r.asset.symbol === asset?.symbol && r.net.id === net.id) : undefined;
+  const held = useSetAsides(rows, Boolean(l));
+  const inTrades = row ? (held.byRow[rowKey(row)] ?? 0) : 0;
+  const free = row?.balance == null ? null : Math.max(0, row.balance - inTrades);
   const coin = withdrawCoin(asset?.symbol, net?.id);
   // Coin / outside-wallet members have no HME Wallet: Seeds is the only way to send, and "re-link" = sign in again.
   const keyKind = useMyIdentity().keyKind;
@@ -78,7 +82,8 @@ function Withdraw() {
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="rounded-sm border border-border bg-background px-3 py-2">
                       <p className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">Available</p>
-                      <p className="num mt-0.5 text-lg font-semibold">{fmtCoin(row.balance)} {asset.symbol}</p>
+                      <p data-qa-mask className="num mt-0.5 text-lg font-semibold">{fmtCoin(free)} {asset.symbol}</p>
+                      {inTrades > 0 ? <p data-qa-mask className="num text-xs text-muted-foreground">{fmtCoin(inTrades)} more in trades</p> : null}
                     </div>
                     <div className="min-w-0 rounded-sm border border-border bg-background px-3 py-2">
                       <p className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">From pocket #{l.account}</p>
@@ -87,11 +92,22 @@ function Withdraw() {
                   </div>
                   {coin ? (
                     <>
-                      <SeedsWithdraw coin={coin} from={row.address} balance={row.balance} />
+                      {inTrades > 0 ? (
+                        <Note>
+                          {fmtCoin(inTrades)} {asset.symbol} is set aside for your open orders and trades, so it can't be withdrawn.{" "}
+                          <Link to="/activity" className="text-primary underline">Cancel an order</Link> to free it.
+                        </Note>
+                      ) : null}
+                      <SeedsWithdraw coin={coin} from={row.address} balance={free} />
                       {withdrawRoute(net) === "hme" && !keyKind ? (
                         <details className="rounded-sm border border-border px-3 py-2 text-sm">
                           <summary className="cursor-pointer font-semibold">Or send it yourself from HME Wallet</summary>
                           <div className="mt-3"><Steps net={net} symbol={asset.symbol} account={l.account} /></div>
+                          {inTrades > 0 ? (
+                            <p className="mt-3 text-xs text-muted-foreground">
+                              If you send coins that are in trades this way, Seeds cancels the newest orders they no longer cover and tells you.
+                            </p>
+                          ) : null}
                         </details>
                       ) : null}
                     </>

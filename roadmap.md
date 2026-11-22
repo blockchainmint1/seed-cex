@@ -1,5 +1,8 @@
 # Roadmap
 
+- [x] Coins in open orders / trades / P2P sales show as "In trades" (Balances, Withdraw, order ticket) and can't be withdrawn, swapped, lent or promised twice; coins moved out another way auto-cancel the newest uncovered orders with a Telegram + email notice (Bobby, Nov 22)
+- [ ] Auditor review of set-asides + the order watch (blocked: auditor)
+
 - [x] Order book: Place order refuses members who can't pay; after a failed match only the side that couldn't pay loses its order; dead orders + 7 stuck old matches cleared; cancelled matches off the tape (Bobby, Nov 22)
 - [x] Exchange trades need only the Telegram tap, not two-factor before the link (Bobby, Nov 22)
 - [ ] First real exchange trade between Bobby's two ready accounts, small amount (blocked: Bobby funds the buying pocket with a little TSD and taps Approve)

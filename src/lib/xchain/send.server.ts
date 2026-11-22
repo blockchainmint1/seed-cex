@@ -329,6 +329,18 @@ export async function sendSwapFromPocket(userId: string, isAdmin: boolean, input
 
   const fromAddress = link!.addresses[src.pocket]!;
 
+  // Coins set aside for open orders and trades stay put (set-asides.ts). TSD-route legs
+  // were checked when their route started.
+  if (!leg) {
+    const { legForSwapAsset } = await import("@/lib/set-asides");
+    const held = legForSwapAsset(from.asset);
+    if (held) {
+      const { pocketSpendProblem } = await import("@/lib/set-asides.server");
+      const why = await pocketSpendProblem(userId, held, Number(amount) / 1e8, { address: fromAddress, network: null });
+      if (why) throw new Error(why);
+    }
+  }
+
   // Audit 2026-11-19 H2: paying out anywhere but the member's own pocket is a withdrawal.
   // It needs a fresh two-factor code and a Telegram Approve tap for exactly this send.
   // TSD-route legs (leg set) always pay the member's own pocket and never get here unchecked.

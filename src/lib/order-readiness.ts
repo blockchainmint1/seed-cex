@@ -45,7 +45,7 @@ export function orderCoverProblem(i: { symbol: string; balance: number | null; c
   const free = i.balance - i.committed;
   if (free + 1e-8 >= i.need) return null;
   if (i.committed > 1e-8) {
-    return `This order needs ${fmt(i.need)} ${i.symbol}. Your trading pocket holds ${fmt(i.balance)} ${i.symbol}, and your other open orders already use ${fmt(i.committed)}. Cancel one or add ${i.symbol} first.`;
+    return `This order needs ${fmt(i.need)} ${i.symbol}. Your trading pocket holds ${fmt(i.balance)} ${i.symbol}, and ${fmt(i.committed)} of it is already set aside for your other open orders and trades. Cancel one or add ${i.symbol} first.`;
   }
   return `This order needs ${fmt(i.need)} ${i.symbol}, but your trading pocket holds ${fmt(i.balance)} ${i.symbol}. Add ${i.symbol} first.`;
 }

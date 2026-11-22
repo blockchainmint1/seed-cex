@@ -156,6 +156,30 @@ export async function pocketLegBalance(address: string, leg: LegId, need = 0, op
   }
 }
 
+/**
+ * The leg's balance on every network it can sit on (one row for TXC/ISK/LTC/Omni coins;
+ * one per network for EVM coins like USDC). Live reads, for set-aside checks
+ * (set-asides.server.ts). null = nothing could be read.
+ */
+export async function pocketLegBalancesByNetwork(address: string, leg: LegId): Promise<Array<{ network: string | null; balance: number }> | null> {
+  const def = getLeg(leg);
+  if (def.kind !== "evm") {
+    const b = await pocketLegBalance(address, leg, 0, { balanceOnly: true });
+    return b.balance == null ? null : [{ network: null, balance: b.balance }];
+  }
+  const { fetchTokenBalance } = await import("@/lib/evm.server");
+  const rows = await Promise.all(
+    ((def.evmChains ?? []) as ChainId[]).map(async (c) => {
+      const asset = evmAssetFor(c, leg);
+      if (!asset) return null;
+      const bal = await fetchTokenBalance(c, asset.contract, address, asset.decimals).catch(() => null);
+      return bal == null ? null : { network: c as string, balance: bal };
+    }),
+  );
+  const ok = rows.filter((r): r is { network: string; balance: number } => r != null);
+  return ok.length ? ok : null;
+}
+
 /** Can the pocket cover `amount` plus its network fee? Plain reason, or null. */
 export function coverProblem(leg: LegId, b: PocketBalance, amount: number): string | null {
   const sym = getLeg(leg).symbol;

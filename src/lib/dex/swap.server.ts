@@ -225,6 +225,14 @@ export async function requestDexSwap(userId: string, tester: boolean, input: Dex
     const bal = await balanceOf(net, legIn, evm);
     if (bal == null) throw new Error(`Couldn't read your pocket on ${DEX_NETWORKS[net].name}. Try again in a minute.`);
     if (bal < legInUnits) throw new Error(`Your pocket holds ${fmtNum(fromUnits(bal, ia.decimals))} ${ia.symbol} on ${DEX_NETWORKS[net].name}.`);
+    // Coins set aside for open orders and trades stay put (set-asides.ts).
+    const { legForEvmToken } = await import("@/lib/set-asides");
+    const held = legForEvmToken(net, isNative(input.tokenIn) ? null : input.tokenIn);
+    if (held) {
+      const { pocketSpendProblem } = await import("@/lib/set-asides.server");
+      const why = await pocketSpendProblem(userId, held, amountIn, { address: evm, network: net });
+      if (why) throw new Error(why);
+    }
   }
   const fees = await networkFees(net);
   if (!fees) throw new Error(`${DEX_NETWORKS[net].name} didn't answer. Try again in a minute.`);

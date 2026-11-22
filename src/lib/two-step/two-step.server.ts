@@ -182,6 +182,19 @@ export async function requestTwoStep(userId: string, tester: boolean, input: Two
   const toAddress = toPocket ? link!.addresses[toPocket] : undefined;
   if (!fromAddress || !toAddress) throw new Error(`Your trading pocket has no ${input.direction === "dex_then_x" ? coin.network : DEX_NETWORKS[input.network].name} address yet. Sign in again to add it.`);
 
+  // Coins set aside for open orders and trades stay put (set-asides.ts).
+  {
+    const { legForEvmToken, legForSwapAsset } = await import("@/lib/set-asides");
+    const tokenNative = input.token.toLowerCase() === "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+    const held = input.direction === "dex_then_x" ? legForEvmToken(input.network, tokenNative ? null : input.token) : legForSwapAsset(coin.asset);
+    if (held) {
+      const { pocketSpendProblem } = await import("@/lib/set-asides.server");
+      const network = input.direction === "dex_then_x" ? input.network : null;
+      const why = await pocketSpendProblem(userId, held, Number(input.amount), { address: fromAddress, network });
+      if (why) throw new Error(why);
+    }
+  }
+
   // Coins and the network fee must already be in the pocket.
   const { dexBalanceOf, dexNetworkFees } = await import("@/lib/dex/swap.server");
   const { fromUnits, toUnits } = await import("@/lib/dex/quote.server");

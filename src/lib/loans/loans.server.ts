@@ -294,6 +294,13 @@ export async function requestLoanSend(l: LoanRow, kind: LoanSendKind, actorId: s
   if (!s.ok) throw new Error(s.reason);
   const problem = coverProblem(leg, await pocketLegBalance(s.address, leg, amount), amount);
   if (problem) throw new Error(problem);
+  if (kind !== "loan_repay") {
+    // Coins set aside for open orders and trades stay put (set-asides.ts). A repayment
+    // always goes; orders it leaves uncovered are cancelled by the order watch.
+    const { pocketSpendProblem } = await import("@/lib/set-asides.server");
+    const why = await pocketSpendProblem(payer, leg, amount, { address: s.address, network: null });
+    if (why) throw new Error(why);
+  }
   const ap = await requestSendApproval({ userId: payer, linkId: s.link.id, purpose: kind, refId: l.id, leg, amount, from: s.address, to, what });
   await loanEvent(l.id, "approval_requested", `${what}: ${amount} ${leg.toUpperCase()} — waiting for a Telegram tap.`, actorId);
   return ap;

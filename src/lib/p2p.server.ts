@@ -53,6 +53,18 @@ export async function lockedAmount(sellerId: string, asset: string, excludeTrade
   return (data ?? []).reduce((s, t) => s + Number(t.crypto_amount), 0);
 }
 
+/**
+ * Everything already set aside from this coin: live P2P sales plus open exchange orders
+ * and exchange trades still being paid (set-asides.server.ts). Use this for "free to use";
+ * lockedAmount (P2P only) is for the P2P watch, where P2P sales come first.
+ */
+export async function setAsideAmount(userId: string, asset: string): Promise<number> {
+  const a = P2P_ASSETS[asset as P2pAsset];
+  if (!a) return lockedAmount(userId, asset);
+  const { setAsideFor } = await import("@/lib/set-asides.server");
+  return (await setAsideFor(userId, a.leg)).total;
+}
+
 /** Refresh an offer's cached verified balance (balance minus what's already reserved). */
 export async function refreshOffer(offerId: string) {
   const { data: offer } = await supabaseAdmin
@@ -65,7 +77,7 @@ export async function refreshOffer(offerId: string) {
   // Display figure only ("funds verified"); openTrade re-reads the pocket from our node.
   const [{ balance: bal }, locked] = await Promise.all([
     pocketStatus(offer.seller_id, offer.asset as P2pAsset, { display: true }),
-    lockedAmount(offer.seller_id, offer.asset),
+    setAsideAmount(offer.seller_id, offer.asset).catch(() => Infinity),
   ]);
   const available = Math.max(0, (bal ?? 0) - locked);
   await supabaseAdmin

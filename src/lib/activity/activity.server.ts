@@ -27,7 +27,7 @@ const pairOf = (id: string) => {
 export async function loadActivity(userId: string) {
   const me = userId;
   const [orders, trades, sends, routes, dex, twos, p2p, withdrawals, ai, approvals, links, deposits] = await Promise.all([
-    supabaseAdmin.from("orders").select("id, pair, side, price, amount, filled, status, order_type, created_at").eq("user_id", me).order("created_at", { ascending: false }).limit(300),
+    supabaseAdmin.from("orders").select("id, pair, side, price, amount, filled, status, order_type, cancel_reason, created_at").eq("user_id", me).order("created_at", { ascending: false }).limit(300),
     supabaseAdmin.from("trades").select("id, pair, side, price, amount, status, maker_id, taker_id, created_at").or(`maker_id.eq.${me},taker_id.eq.${me}`).order("created_at", { ascending: false }).limit(300),
     supabaseAdmin.from("swap_sends").select("id, from_asset, to_asset, amount_in, expected_out, status, protocol, txid, error, created_at").eq("user_id", me).order("created_at", { ascending: false }).limit(200),
     supabaseAdmin.from("tsd_routes").select("id, direction, coin, amount_in, amount_out, shown_out, stage, protocol, swap_send_id, tsd_txid, error, created_at").eq("user_id", me).order("created_at", { ascending: false }).limit(200),
@@ -51,7 +51,7 @@ export async function loadActivity(userId: string) {
       id: `o-${o.id}`, kind: "order", at: o.created_at,
       title: `${o.order_type === "market" ? "Market" : "Limit"} ${o.side} ${p?.label ?? o.pair}`,
       detail: `${num(o.filled)} of ${num(o.amount)} ${p?.base ?? ""} filled at ${num(o.price)}`,
-      sent: null, got: null, status: ORDER_LABEL[o.status] ?? o.status, tone: orderTone(o.status),
+      sent: null, got: null, status: o.cancel_reason === "coins_left_pocket" ? "Cancelled · coins left your pocket" : (ORDER_LABEL[o.status] ?? o.status), tone: orderTone(o.status),
       href: p ? `/trade/${p.slug}` : null, txUrl: null,
     });
   }

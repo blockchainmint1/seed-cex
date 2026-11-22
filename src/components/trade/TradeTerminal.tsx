@@ -11,6 +11,7 @@ import {
   placeOrder,
 } from "@/lib/trading.functions";
 import { getChainSnapshot } from "@/lib/txc.functions";
+import { getMyTicketFunds } from "@/lib/set-asides.functions";
 import { getReferencePrices } from "@/lib/cmc.functions";
 import { useSession } from "@/hooks/use-session";
 import { getPair, PAIRS, type PairId } from "@/lib/chains";
@@ -136,6 +137,14 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
     enabled: Boolean(user),
     refetchInterval: 15_000,
   });
+  // What the ticket can spend: pocket balance minus coins already set aside for orders and trades.
+  const fetchFunds = useServerFn(getMyTicketFunds);
+  const funds = useQuery({
+    queryKey: ["ticket-funds", PAIR],
+    queryFn: () => fetchFunds({ data: { pair: PAIR } }),
+    enabled: Boolean(user),
+    refetchInterval: 30_000,
+  });
 
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [orderType, setOrderType] = useState<"limit" | "market">("limit");
@@ -153,6 +162,8 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
     queryClient.invalidateQueries({ queryKey: ["my-orders"] });
     queryClient.invalidateQueries({ queryKey: ["my-trades"] });
     queryClient.invalidateQueries({ queryKey: ["series", PAIR] });
+    queryClient.invalidateQueries({ queryKey: ["ticket-funds"] });
+    queryClient.invalidateQueries({ queryKey: ["my-set-asides"] });
   };
 
   const submit = useMutation({
@@ -643,6 +654,20 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
                   </p>
                 </>
               )}
+
+              {user && funds.data?.linked ? (() => {
+                const f = side === "buy" ? funds.data.quote : funds.data.base;
+                const sym = side === "buy" ? pair.quote : pair.base;
+                return (
+                  <p data-qa-mask className="mb-3 flex justify-between gap-3 font-mono text-[11px] text-muted-foreground">
+                    <span>Available</span>
+                    <span className="text-right tabular-nums">
+                      <span className="text-foreground">{f.available == null ? "—" : `${fmtAmount(f.available, 4)} ${sym}`}</span>
+                      {f.setAside > 1e-8 ? <span className="block">+ {fmtAmount(f.setAside, 4)} {sym} in orders &amp; trades</span> : null}
+                    </span>
+                  </p>
+                );
+              })() : null}
 
               <label
                 htmlFor="ticket-amount"
