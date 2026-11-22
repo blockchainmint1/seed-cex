@@ -7,7 +7,7 @@
  */
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getChain, getLeg, isOmniLeg, omniLegAsset, type ChainId, type LegId, type UtxoChainId } from "@/lib/chains";
-import { pocketForLeg, pocketSendBlocker, type PocketId } from "./rules";
+import { pocketForLeg, pocketSendBlocker, type PocketId, type PocketSendUse } from "./rules";
 
 export type PocketLink = {
   id: string;
@@ -26,15 +26,16 @@ export async function activeLink(userId: string): Promise<PocketLink | null> {
   return { id: l.id, mode: l.mode, account: l.account, hasKey: l.hasKey, ciphertext: l.ciphertext, addresses: l.addresses };
 }
 
-/** Can this member send this leg from their pocket? Returns the link + address, or a plain reason. */
-export async function pocketSender(userId: string, leg: LegId): Promise<
+/** Can this member send this leg from their pocket? Returns the link + address, or a plain reason.
+ *  use "trade" = exchange order-book legs (Telegram tap only, no two-factor-before-link rule). */
+export async function pocketSender(userId: string, leg: LegId, use: PocketSendUse = "send"): Promise<
   { ok: true; link: PocketLink; pocket: PocketId; address: string } | { ok: false; reason: string; link: PocketLink | null }
 > {
   const pocket = pocketForLeg(leg);
   const link = await activeLink(userId);
   const address = link?.addresses[pocket] ?? null;
   let twoFactor: "ready" | "needs_2fa" | "needs_relink" | null = null;
-  if (link) {
+  if (link && use !== "trade") {
     const { withdrawLinkStateFor } = await import("@/lib/two-factor.server");
     twoFactor = await withdrawLinkStateFor(userId, link.id).catch(() => null);
   }
@@ -50,6 +51,7 @@ export async function pocketSender(userId: string, leg: LegId): Promise<
       telegramVerified: prof?.telegram_verified === true && Boolean(prof?.telegram_chat_id),
     },
     pocket,
+    use,
   );
   if (reason || !link || !address) return { ok: false, reason: reason ?? "No pocket address", link };
   return { ok: true, link, pocket, address };

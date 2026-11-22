@@ -78,6 +78,16 @@ export async function matchOrder(userId: string, pair: string, input: PlaceOrder
     price = input.price;
   }
 
+  // Place order check (Bobby, Nov 22 2026): nobody who couldn't pay right now goes on
+  // the book or takes from it. Rules in order-readiness.ts; the fill re-checks live.
+  {
+    const { payLegOf, payAmountOf } = await import("@/lib/order-readiness");
+    const { orderPayProblem } = await import("@/lib/pocket-send/trade.server");
+    const payLeg = payLegOf(pair, input.side);
+    const problem = await orderPayProblem(userId, payLeg, payAmountOf(input.side, input.amount, price));
+    if (problem) throw new Error(problem);
+  }
+
   const { data: taker, error: takerError } = await supabaseAdmin
     .from("orders")
     .insert({

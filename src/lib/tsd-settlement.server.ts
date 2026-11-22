@@ -99,6 +99,7 @@ export type TsdPreview = {
   nodeOnline: boolean;
   /** "pocket" = paid from the member's HME pocket after a Telegram approval. */
   source?: "pocket" | "legacy";
+  fault?: import("@/lib/order-readiness").PreflightFault;
   approval?: string | null;
 };
 
@@ -145,7 +146,7 @@ export async function previewTsdSettlement(
     const { previewPocketLeg } = await import("./pocket-send/trade.server");
     const p = await previewPocketLeg(userId, tradeId, leg);
     return { ...base, ready: p.ready, reason: p.reason, fromAddress: p.fromAddress, toAddress: p.toAddress,
-      balance: p.balance, feeBalance: p.feeBalance, source: "pocket", approval: p.approval };
+      balance: p.balance, feeBalance: p.feeBalance, source: "pocket", approval: p.approval, fault: p.fault };
   }
 
   const ctx = { ...base, fromAddress: del.address, toAddress };

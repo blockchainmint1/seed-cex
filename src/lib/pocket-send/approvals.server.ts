@@ -389,7 +389,7 @@ async function approveBlocker(row: ApprovalRow): Promise<string | null> {
     return null;
   }
   const { pocketSender } = await import("./pocket.server");
-  const s = await pocketSender(row.user_id, row.leg as LegId);
+  const s = await pocketSender(row.user_id, row.leg as LegId, row.purpose === "trade_leg" ? "trade" : "send");
   if (!s.ok) return s.reason;
   if (s.link.id !== row.link_id || s.address !== row.from_address) return "Your wallet link changed since this request.";
   return null;

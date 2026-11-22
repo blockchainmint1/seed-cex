@@ -357,6 +357,7 @@ export type SettlementPreview = {
   symbol: string;
   /** "pocket" = paid from the member's HME pocket after a Telegram approval. */
   source?: "pocket" | "legacy";
+  fault?: import("@/lib/order-readiness").PreflightFault;
   approval?: string | null;
 };
 
@@ -417,7 +418,7 @@ export async function previewUtxoSettlement(
     const { previewPocketLeg } = await import("./pocket-send/trade.server");
     const p = await previewPocketLeg(userId, tradeId, chain);
     return { ...base, ready: p.ready, reason: p.reason, amount: p.amount, fromAddress: p.fromAddress,
-      toAddress: p.toAddress, balance: p.balance, source: "pocket", approval: p.approval };
+      toAddress: p.toAddress, balance: p.balance, source: "pocket", approval: p.approval, fault: p.fault };
   }
   if (new Date(del.expires_at).getTime() <= Date.now()) {
     return { ...base, amount, fromAddress, toAddress, reason: "The seller's authorization expired" };

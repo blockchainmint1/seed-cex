@@ -1,5 +1,10 @@
 # Roadmap
 
+- [x] Order book: Place order refuses members who can't pay; after a failed match only the side that couldn't pay loses its order; dead orders + 7 stuck old matches cleared; cancelled matches off the tape (Bobby, Nov 22)
+- [x] Exchange trades need only the Telegram tap, not two-factor before the link (Bobby, Nov 22)
+- [ ] First real exchange trade between Bobby's two ready accounts, small amount (blocked: Bobby funds the buying pocket with a little TSD and taps Approve)
+- [ ] Auditor review of the order-book readiness change + trade 2FA rule (blocked: auditor)
+
 - [x] "Use HME Vault" button on the sign-in page next to coin / other wallet, opening straight into the Vault sign-in (Bobby, Nov 22)
 - [ ] Seeds Key page opens its Vault scan directly for ?kind=vault (blocked: paste the prompt into the Seeds Key project)
 

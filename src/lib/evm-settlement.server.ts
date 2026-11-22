@@ -100,6 +100,7 @@ export type EvmPreview = {
   amount: number;
   /** "pocket" = paid from the member's HME pocket after a Telegram approval. */
   source?: "pocket" | "legacy";
+  fault?: import("@/lib/order-readiness").PreflightFault;
   approval?: string | null;
 };
 
@@ -148,7 +149,7 @@ export async function previewEvmSettlement(
     const p = await previewPocketLeg(userId, tradeId, leg);
     return { ...base, ready: p.ready, reason: p.reason, chain: (p.chain as ChainId | null), chainName: p.chainName,
       fromAddress: p.fromAddress, toAddress: p.toAddress, balance: p.balance, gasBalance: p.feeBalance,
-      source: "pocket", approval: p.approval };
+      source: "pocket", approval: p.approval, fault: p.fault };
   }
 
   const chain = getChain(del.chain);

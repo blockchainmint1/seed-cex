@@ -39,15 +39,22 @@ export type SendReadiness = {
   telegramVerified: boolean;
 };
 
+/**
+ * What the send is for. "trade" = an exchange order-book leg paying the matched member:
+ * Bobby (Nov 22 2026) — the Telegram tap is enough, no two-factor-before-link rule.
+ * Every other pocket send (P2P release, loans, …) keeps the withdrawal rule.
+ */
+export type PocketSendUse = "send" | "trade";
+
 /** Why this member can't send from their pocket right now, or null when they can. Plain English. */
-export function pocketSendBlocker(i: SendReadiness, pocket: PocketId): string | null {
+export function pocketSendBlocker(i: SendReadiness, pocket: PocketId, use: PocketSendUse = "send"): string | null {
   if (!i.link) return "Link your HME Wallet first (Account → Security).";
   if (i.link.mode !== "access") {
     return "Your HME Wallet link is set to approve each trade inside HME Wallet, which Seeds can't do yet. Re-link with instant access to send from Seeds.";
   }
   if (!i.link.hasKey) return "Seeds doesn't hold a key for your pocket. Re-link your HME Wallet with instant access.";
   if (!i.link.pocketAddress) return `Your HME Wallet link doesn't include a ${pocket === "EVM" ? "Ethereum-type" : pocket} pocket. Re-link to add it.`;
-  if (i.twoFactor !== "ready") {
+  if (use !== "trade" && i.twoFactor !== "ready") {
     return i.twoFactor === "needs_relink"
       ? "Re-link your HME Wallet: two-factor was turned on after this link, and coins only leave your pocket when two-factor came first."
       : "Turn on two-factor sign-in (Account → Security), then re-link your HME Wallet. Coins only leave your pocket when two-factor was on before the link.";

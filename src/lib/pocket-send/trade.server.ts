@@ -7,6 +7,7 @@ import { getLeg, type LegId } from "@/lib/chains";
 import { assertDeliverer, claimLeg } from "@/lib/settle-guard.server";
 import { delivererOf, legAmount, legRole, receiverOf, type TradeShape } from "@/lib/leg-roles";
 import { coverProblem, pocketLegBalance, pocketSender, receiveAddress, sendFromPocket, validDestination } from "./pocket.server";
+import type { PreflightFault } from "@/lib/order-readiness";
 
 export type PocketLegPreview = {
   ready: boolean;
@@ -20,6 +21,8 @@ export type PocketLegPreview = {
   chain: string | null;
   chainName: string | null;
   approval: string | null;
+  /** Whose problem it is when not ready (order-readiness.ts decides whose order comes off the book). */
+  fault?: PreflightFault;
 };
 
 async function loadTrade(userId: string, tradeId: string): Promise<TradeShape & { id: string; status: string; settle_started_at: string | null }> {
@@ -47,18 +50,19 @@ export async function previewPocketLeg(userId: string, tradeId: string, leg: Leg
     ready: false, reason: null, source: "pocket", fromAddress: null, toAddress: null, balance: null, feeBalance: null,
     amount, chain: null, chainName: null, approval: null,
   };
-  if (!sender || !receiver) return { ...base, reason: "This trade has no counterparty yet" };
+  if (!sender) return { ...base, reason: "This trade has no paying side", fault: "payer" };
+  if (!receiver) return { ...base, reason: "This trade has no receiving side", fault: "receiver" };
 
   const [s, to, { data: ap }] = await Promise.all([
-    pocketSender(sender, leg),
+    pocketSender(sender, leg, "trade"),
     receiveAddress(receiver, leg),
     supabaseAdmin.from("send_approvals").select("status").eq("purpose", "trade_leg").eq("ref_id", t.id).eq("leg", leg)
       .order("created_at", { ascending: false }).limit(1).maybeSingle(),
   ]);
   const ctx = { ...base, toAddress: to, approval: ap?.status ?? null };
   // Only the payer sees their own setup problems in detail.
-  if (!s.ok) return { ...ctx, reason: sender === userId ? s.reason : "The other side's trading pocket isn't ready to send" };
-  if (!to || !(await validDestination(leg, to))) return { ...ctx, fromAddress: s.address, reason: `The receiving side has no valid ${getLeg(leg).symbol} address` };
+  if (!s.ok) return { ...ctx, fault: "payer", reason: sender === userId ? s.reason : "The other side's trading pocket isn't ready to send" };
+  if (!to || !(await validDestination(leg, to))) return { ...ctx, fault: "receiver", fromAddress: s.address, reason: `The receiving side has no valid ${getLeg(leg).symbol} address` };
   const bal = await pocketLegBalance(s.address, leg, amount);
   const { getChain } = await import("@/lib/chains");
   const withBal = {
@@ -66,7 +70,8 @@ export async function previewPocketLeg(userId: string, tradeId: string, leg: Leg
     chain: bal.chain, chainName: bal.chain ? getChain(bal.chain).name : null,
   };
   const problem = coverProblem(leg, bal, amount);
-  if (problem) return { ...withBal, reason: sender === userId ? problem : "The other side's trading pocket can't cover this trade" };
+  // An unreadable balance is our servers' problem, not the payer's.
+  if (problem) return { ...withBal, fault: bal.balance == null ? "network" : "payer", reason: sender === userId ? problem : "The other side's trading pocket can't cover this trade" };
   return { ...withBal, ready: true };
 }
 
@@ -94,7 +99,7 @@ async function preparePocketLeg(userId: string, tradeId: string, leg: LegId) {
   if (escrow.release_txid && !escrow.release_txid.startsWith("sim-")) throw new Error(`The ${def.symbol} leg has already been broadcast`);
 
   const amount = legAmount(t, role, escrow.expected_amount);
-  const s = await pocketSender(sender, leg);
+  const s = await pocketSender(sender, leg, "trade");
   if (!s.ok) throw new Error(s.reason);
   const to = await receiveAddress(receiver, leg);
   if (!to || !(await validDestination(leg, to))) throw new Error(`The receiving side has no valid ${def.symbol} address`);
@@ -166,4 +171,27 @@ export async function pocketLegChain(tradeId: string, leg: LegId): Promise<strin
     .order("created_at", { ascending: false }).limit(1).maybeSingle();
   const c = (data?.detail as { chain?: string } | null)?.chain;
   return typeof c === "string" ? c : null;
+}
+
+/**
+ * Place order check (Bobby, Nov 22 2026): can this member pay if the order fills right now?
+ * Their pocket must be able to send this coin (instant-access link + Telegram) and hold
+ * enough beyond what their other open orders already promise. Returns a plain reason, or null.
+ */
+export async function orderPayProblem(userId: string, leg: LegId, need: number): Promise<string | null> {
+  const { committedOnLeg, orderCoverProblem } = await import("@/lib/order-readiness");
+  const symbol = getLeg(leg).symbol;
+  const s = await pocketSender(userId, leg, "trade");
+  if (!s.ok) return `Before you can place this order: ${s.reason}`;
+  const [bal, { data: open, error }] = await Promise.all([
+    pocketLegBalance(s.address, leg, need),
+    supabaseAdmin.from("orders").select("pair, side, price, amount, filled").eq("user_id", userId).in("status", ["open", "partial"]),
+  ]);
+  if (error) return "Couldn't check your open orders right now, so the order wasn't placed. Try again in a minute.";
+  const committed = committedOnLeg((open ?? []) as Parameters<typeof committedOnLeg>[0], leg);
+  const short = orderCoverProblem({ symbol, balance: bal.balance, committed, need });
+  if (short) return short;
+  // Fee coins (Omni carrier TXC, EVM gas) — same rule a fill would apply.
+  const fee = coverProblem(leg, bal, need);
+  return fee ? `Before you can place this order: ${fee}` : null;
 }

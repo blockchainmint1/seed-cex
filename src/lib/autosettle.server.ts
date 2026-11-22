@@ -15,7 +15,8 @@
  */
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getLeg, isOmniLeg, type LegId } from "@/lib/chains";
-import { delivererOf, legRole, type TradeShape } from "@/lib/leg-roles";
+import { delivererOf, legRole, receiverOf, type TradeShape } from "@/lib/leg-roles";
+import { ordersAfterFailedPreflight, type PreflightFault } from "@/lib/order-readiness";
 
 export type AutoLegResult = {
   leg: LegId;
@@ -79,6 +80,30 @@ export async function restoreFills(orderIds: Array<string | null>, amount: numbe
   }
 }
 
+type FailedTradeRow = {
+  pair: string | null;
+  side: string;
+  maker_id: string | null;
+  taker_id: string | null;
+  maker_order_id: string | null;
+  taker_order_id: string | null;
+  amount: number | string;
+};
+
+/** A match was cancelled before anything moved: take the culprit's order off the book, give the other side its size back. */
+async function settleFailedPreflight(trade: FailedTradeRow, leg: LegId, payer: string | null, fault: PreflightFault) {
+  const shape = trade as unknown as TradeShape;
+  const receiver = receiverOf(shape, legRole(trade.pair, leg));
+  const { cancel, restore } = ordersAfterFailedPreflight(
+    { makerId: trade.maker_id, takerId: trade.taker_id, makerOrderId: trade.maker_order_id, takerOrderId: trade.taker_order_id },
+    { fault, payer, receiver },
+  );
+  for (const id of cancel) {
+    await supabaseAdmin.from("orders").update({ status: "cancelled" }).eq("id", id).in("status", ["open", "partial"]);
+  }
+  await restoreFills(restore, Number(trade.amount));
+}
+
 export async function autoSettleTrade(tradeId: string): Promise<AutoLegResult[]> {
   const { data: trade } = await supabaseAdmin
     .from("trades")
@@ -125,7 +150,9 @@ export async function autoSettleTrade(tradeId: string): Promise<AutoLegResult[]>
     if (!p || !p.ready) {
       const reason = p?.reason ?? "No paying party";
       await supabaseAdmin.from("trades").update({ status: "timed_out" }).eq("id", tradeId);
-      await restoreFills([trade.maker_order_id, trade.taker_order_id], Number(trade.amount));
+      // Only the side whose problem it was comes off the book (order-readiness.ts); a network
+      // hiccup puts both back. Otherwise a dead order keeps matching and failing forever.
+      await settleFailedPreflight(trade, l.leg, l.payer, p ? (p as { fault?: PreflightFault }).fault ?? "network" : "payer");
       const { cancelApprovals } = await import("./pocket-send/approvals.server");
       await cancelApprovals({ purpose: "trade_leg", refId: tradeId }, `The trade was cancelled: ${reason}`);
       await fail("cancelled_preflight", l.leg, reason);
@@ -177,11 +204,18 @@ export async function autoSettleTrade(tradeId: string): Promise<AutoLegResult[]>
           out.push({ leg: l.leg, ok: false, pending: true, error: st === "approved" ? "Approved — waiting for the other side" : "Waiting for approval in Telegram" });
           continue;
         }
+        let fault: PreflightFault = "network";
         try {
-          const s = await pocketSender(l.payer, l.leg);
-          if (!s.ok) throw new Error(s.reason);
+          const s = await pocketSender(l.payer, l.leg, "trade");
+          if (!s.ok) {
+            fault = "payer";
+            throw new Error(s.reason);
+          }
           const p = (await previewOne(l.payer, tradeId, l.leg)) as { amount?: number; toAddress?: string | null };
-          if (!p.toAddress || !(p.amount && p.amount > 0)) throw new Error("No receiving address");
+          if (!p.toAddress || !(p.amount && p.amount > 0)) {
+            fault = "receiver";
+            throw new Error("No receiving address");
+          }
           await requestSendApproval({
             userId: l.payer, linkId: s.link.id, purpose: "trade_leg", refId: tradeId, leg: l.leg,
             amount: p.amount, from: s.address, to: p.toAddress,
@@ -191,7 +225,7 @@ export async function autoSettleTrade(tradeId: string): Promise<AutoLegResult[]>
         } catch (e) {
           const reason = e instanceof Error ? e.message : "Couldn't ask for approval";
           await supabaseAdmin.from("trades").update({ status: "timed_out" }).eq("id", tradeId).eq("status", "matched");
-          await restoreFills([trade.maker_order_id, trade.taker_order_id], Number(trade.amount));
+          await settleFailedPreflight(trade, l.leg, l.payer, fault);
           await cancelApprovals({ purpose: "trade_leg", refId: tradeId }, `The trade was cancelled: ${reason}`);
           await fail("cancelled_preflight", l.leg, reason);
           return [{ leg: l.leg, ok: false, error: `Trade cancelled, nothing was sent: ${reason}` }];

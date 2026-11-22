@@ -96,6 +96,9 @@ export async function fetchTape(pair: string, limit = 30): Promise<TapeEntry[]> 
     .from("trades")
     .select("id, side, price, amount, created_at")
     .eq("pair", pair)
+    // A match cancelled before anything moved never traded: it must not show on the
+    // tape or set the last price, 24h volume, charts or the API (Nov 22 2026).
+    .not("status", "in", "(timed_out,refunded)")
     .order("created_at", { ascending: false })
     .limit(limit);
 

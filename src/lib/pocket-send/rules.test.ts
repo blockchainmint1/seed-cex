@@ -25,6 +25,13 @@ describe("who can send from a pocket", () => {
     expect(pocketSendBlocker({ ...ready, twoFactor: "needs_relink" }, "TXC")).toContain("Re-link");
     expect(pocketSendBlocker({ ...ready, twoFactor: null }, "TXC")).not.toBeNull();
   });
+  test("exchange trades need only the Telegram tap, not two-factor before the link (Bobby, Nov 22)", () => {
+    expect(pocketSendBlocker({ ...ready, twoFactor: "needs_2fa" }, "TXC", "trade")).toBeNull();
+    expect(pocketSendBlocker({ ...ready, twoFactor: "needs_relink" }, "TXC", "trade")).toBeNull();
+    expect(pocketSendBlocker({ ...ready, twoFactor: null }, "TXC", "trade")).toBeNull();
+    expect(pocketSendBlocker({ ...ready, twoFactor: null, telegramVerified: false }, "TXC", "trade")).toContain("Telegram");
+    expect(pocketSendBlocker({ ...ready, twoFactor: null, link: { ...ready.link, mode: "approve" } }, "TXC", "trade")).not.toBeNull();
+  });
   test("no verified Telegram blocks the send", () => {
     expect(pocketSendBlocker({ ...ready, telegramVerified: false }, "TXC")).toContain("Telegram");
   });
