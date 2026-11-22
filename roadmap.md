@@ -1,5 +1,10 @@
 # Roadmap
 
+- [x] One Swap page for every coin: THORChain/Maya, Uniswap/PancakeSwap/PulseX and TSD in one form, Seeds picks the best route; old Any-coin address forwards (Nov 22)
+- [x] Two-step swaps done automatically under one Telegram tap (e.g. PEPE on Ethereum → Bitcoin, Bitcoin → a Base token); stops safely with the in-between coin in the pocket if the price moves (Nov 22)
+- [ ] Auditor review of two-step swaps before publishing (blocked: auditor)
+- [ ] First real two-step swap, small amount, by a beta tester (blocked: auditor review + a tester's Telegram tap)
+
 - [x] /admin/marketing panel: one home for coin recruiting, ads and coin videos; old /admin/ads and /admin/videos addresses forward there (Nov 21)
 - [x] Admin → Marketing → Coin recruiting: find coin teams on CoinMarketCap (mid-size, newest, MEXC/LBank/XT/Gate/BingX) or a pasted list (BitMart), score 0–100 with reasons, pipeline stages, AI-drafted outreach a person approves and sends, 1,000-paid-listings goal tracker (Nov 21)
 - [ ] Paste the BitMart stranded-coin list into Admin → Recruiting (blocked: someone gathers the list)

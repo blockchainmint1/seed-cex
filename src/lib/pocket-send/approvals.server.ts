@@ -14,8 +14,9 @@ import { APPROVAL_TTL_MS, approvalMatches, approvalMetaMatches, approvalTapDecis
  * trade_leg / p2p_release: settlement sends. swap_out: a swap paying out to an outside address (audit 2026-11-19 H2).
  * dex_swap: a Uniswap / PancakeSwap / PulseX swap from the member's pocket back into the same pocket.
  * withdrawal: a Seeds-signed withdrawal to an outside address (src/lib/withdraw/); the tap starts its hold.
+ * two_step: one tap for both hops of a two-step swap (src/lib/two-step/), own pocket to own pocket.
  */
-export type ApprovalPurpose = "trade_leg" | "p2p_release" | "swap_out" | "dex_swap" | "withdrawal";
+export type ApprovalPurpose = "trade_leg" | "p2p_release" | "swap_out" | "dex_swap" | "withdrawal" | "two_step";
 
 export type ApprovalRow = {
   id: string;
@@ -271,6 +272,11 @@ async function continueAfter(r: ApprovalRow) {
       await advanceDexSwap(r.ref_id);
       return;
     }
+    if (r.purpose === "two_step") {
+      const { advanceTwoStep } = await import("@/lib/two-step/two-step.server");
+      await advanceTwoStep(r.ref_id);
+      return;
+    }
     if (r.purpose === "trade_leg") {
       const { autoSettleTrade } = await import("@/lib/autosettle.server");
       await autoSettleTrade(r.ref_id);
@@ -354,7 +360,7 @@ export async function handleApprovalTap(cq: CallbackQuery): Promise<string | nul
   if (!ok?.length) { await answer("This request was already decided or ended."); return "already_decided"; }
   await editApprovalMessage(row, row.purpose === "swap_out"
     ? `✅ <b>Approved</b>\n${what}\nYour open Seeds Swap page sends it now, after one last price check. If you closed that page, nothing is sent.`
-    : row.purpose === "dex_swap"
+    : row.purpose === "dex_swap" || row.purpose === "two_step"
       ? `✅ <b>Approved</b>\n${what}\nSwapping now, after one last price check and a test run. You'll get a message when it's done.`
       : row.purpose === "withdrawal"
       ? `✅ <b>Approved</b>\n${what}\nSeeds sends it after your withdrawal wait (none for beta testers). You can still cancel on Seeds until then.`
@@ -370,7 +376,7 @@ async function approveBlocker(row: ApprovalRow): Promise<string | null> {
     const { withdrawalApproveBlocker } = await import("@/lib/withdraw/withdraw.server");
     return withdrawalApproveBlocker(row);
   }
-  if (row.purpose === "swap_out" || row.purpose === "dex_swap") {
+  if (row.purpose === "swap_out" || row.purpose === "dex_swap" || row.purpose === "two_step") {
     const { loadLink } = await import("@/lib/xchain/send.server");
     const link = await loadLink(row.user_id);
     if (!link || link.id !== row.link_id || !link.hasKey) return "Your wallet link changed since this request.";

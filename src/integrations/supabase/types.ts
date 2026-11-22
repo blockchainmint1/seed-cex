@@ -764,6 +764,7 @@ export type Database = {
           tsd_address: string | null
           tsd_route_id: string | null
           tsd_side: string | null
+          two_step_id: string | null
           updated_at: string
           user_id: string
           venue_id: string | null
@@ -808,6 +809,7 @@ export type Database = {
           tsd_address?: string | null
           tsd_route_id?: string | null
           tsd_side?: string | null
+          two_step_id?: string | null
           updated_at?: string
           user_id: string
           venue_id?: string | null
@@ -852,6 +854,7 @@ export type Database = {
           tsd_address?: string | null
           tsd_route_id?: string | null
           tsd_side?: string | null
+          two_step_id?: string | null
           updated_at?: string
           user_id?: string
           venue_id?: string | null
@@ -3227,6 +3230,117 @@ export type Database = {
         }
         Relationships: []
       }
+      two_step_swaps: {
+        Row: {
+          amount_in: number
+          amount_out: number | null
+          amount_usd: number
+          approval_id: string | null
+          coin_id: string
+          created_at: string
+          dex_swap_id: string | null
+          direction: string
+          error: string | null
+          from_address: string
+          id: string
+          leg2_dex_swap_id: string | null
+          leg2_swap_send_id: string | null
+          link_id: string
+          mid_amount: number | null
+          mid_id: string
+          min_out: number
+          network: string
+          protocol: string
+          shown_mid: number
+          shown_out: number
+          slippage_bps: number
+          status: string
+          step_at: string
+          swap_send_id: string | null
+          symbol_in: string
+          symbol_out: string
+          to_address: string
+          token_address: string
+          token_decimals: number
+          token_symbol: string
+          updated_at: string
+          user_id: string
+          working_until: string | null
+        }
+        Insert: {
+          amount_in: number
+          amount_out?: number | null
+          amount_usd?: number
+          approval_id?: string | null
+          coin_id: string
+          created_at?: string
+          dex_swap_id?: string | null
+          direction: string
+          error?: string | null
+          from_address: string
+          id?: string
+          leg2_dex_swap_id?: string | null
+          leg2_swap_send_id?: string | null
+          link_id: string
+          mid_amount?: number | null
+          mid_id: string
+          min_out: number
+          network: string
+          protocol: string
+          shown_mid: number
+          shown_out: number
+          slippage_bps: number
+          status?: string
+          step_at?: string
+          swap_send_id?: string | null
+          symbol_in: string
+          symbol_out: string
+          to_address: string
+          token_address: string
+          token_decimals: number
+          token_symbol: string
+          updated_at?: string
+          user_id: string
+          working_until?: string | null
+        }
+        Update: {
+          amount_in?: number
+          amount_out?: number | null
+          amount_usd?: number
+          approval_id?: string | null
+          coin_id?: string
+          created_at?: string
+          dex_swap_id?: string | null
+          direction?: string
+          error?: string | null
+          from_address?: string
+          id?: string
+          leg2_dex_swap_id?: string | null
+          leg2_swap_send_id?: string | null
+          link_id?: string
+          mid_amount?: number | null
+          mid_id?: string
+          min_out?: number
+          network?: string
+          protocol?: string
+          shown_mid?: number
+          shown_out?: number
+          slippage_bps?: number
+          status?: string
+          step_at?: string
+          swap_send_id?: string | null
+          symbol_in?: string
+          symbol_out?: string
+          to_address?: string
+          token_address?: string
+          token_decimals?: number
+          token_symbol?: string
+          updated_at?: string
+          user_id?: string
+          working_until?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -3801,6 +3915,10 @@ export type Database = {
           _txc_address: string
           _user_id: string
         }
+        Returns: string
+      }
+      reserve_two_step_swap: {
+        Args: { _daily_max_usd: number; _per_swap_max_usd: number; _row: Json }
         Returns: string
       }
       reserve_withdrawal: {

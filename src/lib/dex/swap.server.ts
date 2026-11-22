@@ -127,6 +127,9 @@ export async function dexSwapContext(userId: string, tester: boolean, network: D
   };
 }
 
+/** For two-step swaps (src/lib/two-step/): the same pocket reads this file uses. */
+export { balanceOf as dexBalanceOf, networkFees as dexNetworkFees, coinInfo as dexCoinInfo };
+
 /* ----------------------------------- request ---------------------------------- */
 
 export type DexSwapRequest = {
@@ -270,6 +273,75 @@ export async function requestDexSwap(userId: string, tester: boolean, input: Dex
   }
 }
 
+/** The pools can't take this hop right now (no pool, or the price is under what was agreed). Nothing was reserved. */
+export class DexLegRefused extends Error {
+  constructor(message: string, public freshOut: number | null = null) {
+    super(message);
+    this.name = "DexLegRefused";
+  }
+}
+
+export type DexLegInput = {
+  network: DexNetwork;
+  tokenIn: string;
+  tokenOut: string;
+  amount: string;
+  /** What the member was shown for this hop (coins out). */
+  shownOut: number;
+  slippageBps: number;
+  /** Refuse below this, and never write a lower minimum into the swap (base units of tokenOut). */
+  atLeastUnits: bigint;
+  amountUsd: number;
+  twoStepId: string;
+};
+
+/**
+ * A pool hop of a two-step swap. The member's single Telegram tap was for the whole
+ * two-step swap (spent there), so this row starts as approved — the database allows that
+ * only for a two-step swap that is itself approved and running. Same pocket in and out.
+ */
+export async function startDexLeg(userId: string, tester: boolean, i: DexLegInput): Promise<{ id: string; quotedOut: number }> {
+  const net = i.network;
+  if (isTsdDex(i.tokenIn) || isTsdDex(i.tokenOut)) throw new Error("A two-step hop never trades TSD.");
+  const { loadLink } = await import("@/lib/xchain/send.server");
+  const link = await loadLink(userId);
+  if (!link || link.mode !== "access" || !link.hasKey || !link.addresses.EVM) throw new Error("Your trading pocket was unlinked, so Seeds stopped this swap.");
+  const evm = link.addresses.EVM;
+  const [ia, ib] = await Promise.all([coinInfo(net, i.tokenIn), coinInfo(net, i.tokenOut)]);
+  if (!ia || !ib) throw new Error(`That address isn't a coin on ${DEX_NETWORKS[net].name}.`);
+  const units = toUnits(i.amount, ia.decimals);
+  const amountIn = round8(fromUnits(units, ia.decimals));
+  if (units <= 0n || !(amountIn > 0)) throw new Error("Amount too small.");
+  const routes = await quoteRoutes(net, i.tokenIn, i.tokenOut, units);
+  const best = routes[0];
+  if (!best) throw new DexLegRefused(`No pool on ${DEX_NETWORKS[net].name} trades ${ia.symbol} → ${ib.symbol} right now.`);
+  if (best.amountOut < i.atLeastUnits) throw new DexLegRefused("The pool price is under what you agreed.", fromUnits(best.amountOut, ib.decimals));
+  const venue = venueById(net, best.venueId)!;
+  const floor = minOutUnits(best.amountOut, i.slippageBps);
+  const minOut = floor > i.atLeastUnits ? floor : i.atLeastUnits;
+  const { swapLimitsFor } = await import("@/lib/xchain/send-rules");
+  const limits = swapLimitsFor(tester);
+  const row = {
+    user_id: userId, link_id: link.id, network: net, from_address: evm, tsd_side: "", tsd_address: "", bridge_fee_bps: "",
+    token_in: i.tokenIn, token_out: i.tokenOut, symbol_in: ia.symbol, symbol_out: ib.symbol,
+    decimals_in: ia.decimals, decimals_out: ib.decimals, amount_in: amountIn, shown_out: i.shownOut > 0 ? i.shownOut : fromUnits(best.amountOut, ib.decimals),
+    shown_leg_in_units: units.toString(), shown_leg_out_units: best.amountOut.toString(),
+    amount_in_units: units.toString(), venue_id: venue.id, venue_name: venue.name, router: venue.router, kind: venue.kind,
+    path: best.path, fees: best.fees, quoted_out_units: best.amountOut.toString(), min_out_units: minOut.toString(),
+    slippage_bps: i.slippageBps, amount_usd: Math.round(Math.max(0, i.amountUsd) * 100) / 100,
+  };
+  const { data: id, error } = await supabaseAdmin.rpc("reserve_dex_swap", { _row: row as never, _per_swap_max_usd: limits.perSwapUsd, _daily_max_usd: limits.dailyUsd });
+  if (error || !id) throw new DexLegRefused(clean(error?.message ?? "Could not start this swap."));
+  const { data: ok, error: e2 } = await supabaseAdmin.from("dex_swaps")
+    .update({ status: "approved", two_step_id: i.twoStepId, step_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .eq("id", id as string).eq("status", "awaiting_approval").select("id");
+  if (e2 || !ok?.length) {
+    await supabaseAdmin.from("dex_swaps").update({ status: "cancelled", error: "Two-step hop could not start", updated_at: new Date().toISOString() }).eq("id", id as string).eq("status", "awaiting_approval");
+    throw new Error(clean(e2?.message ?? "This hop could not start. Nothing was sent."));
+  }
+  return { id: id as string, quotedOut: fromUnits(best.amountOut, ib.decimals) };
+}
+
 /** Members can call off a swap only while it still waits for their Telegram tap. */
 export async function cancelDexSwap(userId: string, id: string) {
   const { data } = await supabaseAdmin.from("dex_swaps").update({ status: "cancelled", error: "Cancelled on the Swap page", updated_at: new Date().toISOString() })
@@ -368,6 +440,8 @@ async function step(r: Row): Promise<boolean> {
     }
 
     case "approved": {
+      // Approved by its own tap, or as a hop of an approved two-step swap (the database checks the same).
+      if (!r.approval_id && !r.two_step_id) return go(move("failed", { error: "This swap was never approved. Nothing was sent." }));
       if (r.tsd_side !== "buy") return go(move("ready"));
       const { startTsdRoute } = await import("@/lib/xchain/tsd-route.server");
       const { isTesterUser } = await import("@/lib/ai/execute.server");
@@ -397,7 +471,7 @@ async function step(r: Row): Promise<boolean> {
       const best = routes[0];
       const reference = scaledReference(BigInt(r.shown_leg_out_units!), BigInt(r.shown_leg_in_units!), units);
       if (!best || !requoteUnitsOk(reference, best.amountOut, TSD_LEG_TOLERANCE_BPS)) {
-        void notify(r, `Seeds stopped your TSD → ${r.symbol_out} swap: the price moved more than ${TSD_LEG_TOLERANCE_BPS / 100}% while TSD Bridge converted. Your USDC is in your pocket; swap it on Seeds → Swap → Tokens when you like.`);
+        void notify(r, `Seeds stopped your TSD → ${r.symbol_out} swap: the price moved more than ${TSD_LEG_TOLERANCE_BPS / 100}% while TSD Bridge converted. Your USDC is in your pocket; swap it on Seeds → Swap when you like.`);
         return go(move("kept_usdc", { error: `The price moved more than ${TSD_LEG_TOLERANCE_BPS / 100}% while TSD Bridge converted. Your USDC is in your pocket.` }));
       }
       const v = venueById(n, best.venueId)!;
@@ -580,6 +654,8 @@ export async function listDexSwaps(userId: string) {
     .from("dex_swaps")
     .select("id, network, tsd_side, token_in, token_out, symbol_in, symbol_out, decimals_out, amount_in, shown_out, min_out_units, venue_name, slippage_bps, approve_txid, swap_txid, amount_out, status, error, created_at, updated_at")
     .eq("user_id", userId)
+    // A two-step swap's pool hop is shown inside that swap, never as a second row.
+    .is("two_step_id", null)
     .order("created_at", { ascending: false })
     .limit(20);
   if (error) throw new Error(error.message);

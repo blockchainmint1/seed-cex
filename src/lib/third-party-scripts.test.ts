@@ -7,7 +7,7 @@ describe("Honest.Money scripts: public pages only", () => {
   });
   test("account, admin, setup guide, sign-in, trading, swaps and P2P never do", () => {
     for (const p of ["/account", "/account/security", "/admin", "/admin/users", "/welcome", "/wallet", "/auth", "/sso",
-      "/link-account", "/trade/tsd-txc", "/swap", "/swap/tokens", "/p2p", "/pay/abc", "/ai"]) expect(thirdPartyScriptsAllowed(p)).toBe(false);
+      "/link-account", "/trade/tsd-txc", "/swap", "/p2p", "/pay/abc", "/ai"]) expect(thirdPartyScriptsAllowed(p)).toBe(false);
   });
   test("look-alike paths don't sneak in", () => {
     expect(thirdPartyScriptsAllowed("/ignite-admin")).toBe(false);

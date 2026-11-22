@@ -17,7 +17,10 @@ export const Route = createFileRoute("/api/public/jobs/tsd-routes")({
         // Uniswap / PancakeSwap / PulseX token swaps (their TSD Bridge steps are ordinary routes, moved above).
         const { advanceOpenDexSwaps } = await import("@/lib/dex/swap.server");
         const dex = await advanceOpenDexSwaps().catch((e) => { console.error("[dex-swap] job failed", e); return null; });
-        return Response.json({ ok: true, ...result, ai, dex });
+        // Two-step swaps (pool hop + THORChain/Maya hop under one tap); their hops are moved by the lines above too.
+        const { advanceOpenTwoSteps } = await import("@/lib/two-step/two-step.server");
+        const twoStep = await advanceOpenTwoSteps().catch((e) => { console.error("[two-step] job failed", e); return null; });
+        return Response.json({ ok: true, ...result, ai, dex, twoStep });
       },
     },
   },

@@ -460,6 +460,15 @@ export async function listSwapSends(userId: string) {
     .eq("user_id", userId)
     .not("swap_send_id", "is", null);
   if (legErr) throw new Error(legErr.message);
-  const legIds = new Set((legs ?? []).map((l) => l.swap_send_id));
+  // A two-step swap's THORChain/Maya hop is shown inside that swap too.
+  const { data: hops, error: hopErr } = await supabaseAdmin
+    .from("two_step_swaps")
+    .select("swap_send_id, leg2_swap_send_id")
+    .eq("user_id", userId);
+  if (hopErr) throw new Error(hopErr.message);
+  const legIds = new Set([
+    ...(legs ?? []).map((l) => l.swap_send_id),
+    ...(hops ?? []).flatMap((h) => [h.swap_send_id, h.leg2_swap_send_id]).filter(Boolean),
+  ]);
   return (data ?? []).filter((s) => !legIds.has(s.id)).slice(0, 20);
 }

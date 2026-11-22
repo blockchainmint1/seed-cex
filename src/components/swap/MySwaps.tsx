@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Check, Circle, Coins, ExternalLink, Loader2 } from "lucide-react";
-import { SWAP_COINS, swapCoin } from "@/lib/xchain/assets";
+import { PROTOCOL_LABEL, SWAP_COINS, swapCoin } from "@/lib/xchain/assets";
 import type { getSwapSendContext } from "@/lib/xchain/swap.functions";
 import { answerTsdSwap, getTsdRoutes } from "@/lib/xchain/tsd-route.functions";
 import { isTerminal, routeSteps, stepIndex, SWAPPER_SHORT, type RouteDirection } from "@/lib/xchain/tsd-route";
@@ -9,10 +9,13 @@ import { TRACKER_NAME, trackerUrl } from "@/lib/xchain/send-rules";
 import { cancelMyDexSwap, getDexSwaps } from "@/lib/dex/dex.functions";
 import { DEX_STATUS_LABEL, dexStepIndex, dexSteps, type DexStatus } from "@/lib/dex/swap-rules";
 import { DEX_NETWORKS, type DexNetwork } from "@/lib/dex/venues";
+import { cancelMyTwoStepSwap, getTwoStepSwaps } from "@/lib/two-step/two-step.functions";
+import { TWO_STEP_LABEL, twoStepIndex, twoStepSteps, type TwoStepStatus } from "@/lib/two-step/rules";
 
 type SendRow = Awaited<ReturnType<typeof getSwapSendContext>>["sends"][number];
 type RouteRow = Awaited<ReturnType<typeof getTsdRoutes>>["routes"][number];
 type DexRow = Awaited<ReturnType<typeof getDexSwaps>>["swaps"][number];
+type TwoRow = Awaited<ReturnType<typeof getTwoStepSwaps>>["swaps"][number];
 
 const num = (n: number | null | undefined, d = 8) => (n == null || !Number.isFinite(n) ? "—" : n.toLocaleString("en-US", { maximumFractionDigits: d }));
 const when = (iso: string) => new Date(iso).toLocaleString("en-US", { dateStyle: "short", timeStyle: "short" });
@@ -68,6 +71,18 @@ export function MySwaps({ signedIn, sends }: { signedIn: boolean; sends: SendRow
     mutationFn: (id: string) => cancelDex({ data: { id } }),
     onSettled: () => qc.invalidateQueries({ queryKey: ["dex-swaps"] }),
   });
+  const fetchTwo = useServerFn(getTwoStepSwaps);
+  const { data: twoData } = useQuery({
+    queryKey: ["two-step-swaps"],
+    queryFn: () => fetchTwo(),
+    enabled: signedIn,
+    refetchInterval: (q) => (q.state.data?.swaps.some((r) => !r.terminal) ? 10_000 : 60_000),
+  });
+  const cancelTwo = useServerFn(cancelMyTwoStepSwap);
+  const stopTwo = useMutation({
+    mutationFn: (id: string) => cancelTwo({ data: { id } }),
+    onSettled: () => qc.invalidateQueries({ queryKey: ["two-step-swaps"] }),
+  });
   const routes: RouteRow[] = data?.routes ?? [];
   const dexRows: DexRow[] = dexData?.swaps ?? [];
   // Older swaps may predate the server hiding TSD steps; never show one twice.
@@ -76,6 +91,7 @@ export function MySwaps({ signedIn, sends }: { signedIn: boolean; sends: SendRow
     ...routes.map((r) => ({ kind: "tsd" as const, at: r.created_at, r })),
     ...sends.filter((s) => !legIds.has(s.id)).map((s) => ({ kind: "send" as const, at: s.created_at, s })),
     ...dexRows.map((d) => ({ kind: "dex" as const, at: d.created_at, d })),
+    ...(twoData?.swaps ?? []).map((t) => ({ kind: "two" as const, at: t.created_at, t })),
   ].sort((a, b) => b.at.localeCompare(a.at));
   if (!rows.length) return null;
 
@@ -84,6 +100,7 @@ export function MySwaps({ signedIn, sends }: { signedIn: boolean; sends: SendRow
       <h2 className="border-b border-border px-4 py-3 font-mono text-[11px] tracking-[0.2em] uppercase">My swaps</h2>
       <ul className="divide-y divide-border">
         {rows.map((row) => {
+          if (row.kind === "two") return <TwoStepItem key={`w-${row.t.id}`} t={row.t} onCancel={() => stopTwo.mutate(row.t.id)} cancelling={stopTwo.isPending} />;
           if (row.kind === "dex") return <DexItem key={`d-${row.d.id}`} d={row.d} onCancel={() => stopDex.mutate(row.d.id)} cancelling={stopDex.isPending} />;
           if (row.kind === "send") {
             const s = row.s;
@@ -152,6 +169,7 @@ export function MySwaps({ signedIn, sends }: { signedIn: boolean; sends: SendRow
         })}
       </ul>
       {act.error ? <p role="alert" className="px-4 pb-3 font-mono text-xs text-destructive">{(act.error as Error).message}</p> : null}
+      {stopTwo.error ? <p role="alert" className="px-4 pb-3 font-mono text-xs text-destructive">{(stopTwo.error as Error).message}</p> : null}
       {stopDex.error ? <p role="alert" className="px-4 pb-3 font-mono text-xs text-destructive">{(stopDex.error as Error).message}</p> : null}
     </div>
   );
@@ -196,6 +214,58 @@ function DexItem({ d, onCancel, cancelling }: { d: DexRow; onCancel: () => void;
         </a>
       ) : null}
       {d.status === "awaiting_approval" ? (
+        <div className="flex flex-wrap items-center gap-2 border-t border-border pt-2">
+          <span className="flex-1 text-[11px]">Tap Approve in Telegram to start. Nothing moves until you do.</span>
+          <button type="button" disabled={cancelling} onClick={onCancel} className="h-8 rounded-md border border-border px-3 disabled:opacity-50">
+            Cancel
+          </button>
+        </div>
+      ) : null}
+    </li>
+  );
+}
+
+/** A two-step swap: one row, one Telegram tap, both hops shown as its steps. */
+function TwoStepItem({ t, onCancel, cancelling }: { t: TwoRow; onCancel: () => void; cancelling: boolean }) {
+  const swapper = PROTOCOL_LABEL[t.xProtocol];
+  const steps = twoStepSteps({ direction: t.direction as "dex_then_x" | "x_then_dex", symbolIn: t.symbol_in, mid: t.mid_symbol, symbolOut: t.symbol_out, pool: t.pool, swapper });
+  const at = twoStepIndex(t.status);
+  const stopped = ["failed", "refunded", "kept_mid", "declined", "expired", "cancelled"].includes(t.status);
+  return (
+    <li className="space-y-2 px-4 py-3 text-xs">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <span className="font-semibold">
+          {num(t.amount_in)} {t.symbol_in} → {t.symbol_out}
+          <span className="ml-2 font-mono text-[10px] font-normal text-muted-foreground">two steps via {t.mid_symbol} · {t.networkName}</span>
+        </span>
+        <span className={`font-mono text-[11px] ${t.status === "done" ? "text-primary" : stopped ? "text-destructive" : ""}`}>{TWO_STEP_LABEL[t.status as TwoStepStatus] ?? t.status}</span>
+      </div>
+      {!stopped ? (
+        <ol className="flex flex-wrap gap-x-4 gap-y-1">
+          {steps.map((s, i) => (
+            <li key={s} className={`flex items-center gap-1.5 ${i < at ? "text-foreground" : "text-muted-foreground"}`}>
+              {i < at ? <Check className="h-3.5 w-3.5 text-primary" /> : i === at ? <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" /> : <Circle className="h-3 w-3" />}
+              {s}
+            </li>
+          ))}
+        </ol>
+      ) : null}
+      <p className="font-mono text-[11px] text-muted-foreground">
+        {t.status === "done" && t.amount_out != null ? `Got ${num(t.amount_out)} ${t.symbol_out}` : `Expecting ≈ ${num(t.shown_out)} ${t.symbol_out} (at least ${num(t.min_out)})`}
+        {t.mid_amount != null && t.status !== "done" ? ` · ${num(t.mid_amount)} ${t.mid_symbol} after step 1` : ""}
+        {" · "}
+        {when(t.created_at)}
+      </p>
+      {t.error ? <p className="text-[11px] text-muted-foreground">{t.error}</p> : null}
+      <div className="flex flex-wrap gap-x-4 gap-y-1">
+        {t.poolTx ? (
+          <a href={t.poolTx} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-mono text-[11px] text-primary underline">
+            Pool swap on the explorer <ExternalLink className="h-3 w-3" />
+          </a>
+        ) : null}
+        {t.xTxid ? <Track txid={t.xTxid} protocol={t.xProtocol} /> : null}
+      </div>
+      {t.status === "awaiting_approval" ? (
         <div className="flex flex-wrap items-center gap-2 border-t border-border pt-2">
           <span className="flex-1 text-[11px]">Tap Approve in Telegram to start. Nothing moves until you do.</span>
           <button type="button" disabled={cancelling} onClick={onCancel} className="h-8 rounded-md border border-border px-3 disabled:opacity-50">

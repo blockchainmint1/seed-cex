@@ -704,7 +704,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     title: "Swap across blockchains",
     summary: "Seeds compares THORChain and Maya and picks the best price. Swaps are a small staff-only test until launch.",
     category: "swaps",
-    keywords: ["swap", "thorchain", "maya", "cross-chain", "convert", "exchange", "btc", "xrp"],
+    keywords: ["swap", "thorchain", "maya", "cross-chain", "convert", "exchange", "btc", "xrp", "two-step", "two steps"],
     blocks: [
       { note: "Swap prices are open to everyone. Sending real swaps is open to **beta testers** for now (no Seeds size limit) and opens to members later ($250 per swap, $1,000 a day to start).", tone: "warn" },
       { steps: [
@@ -717,6 +717,18 @@ export const HELP_ARTICLES: HelpArticle[] = [
         "Seeds re-checks the price just before sending. If the price slips too far, THORChain or Maya refunds you.",
         "Paying out to an address outside your pocket needs your two-factor code and a Telegram approval.",
         "Seeds charges no swap fee today. Network and partner fees still apply.",
+      ] },
+      { h: "One form for every coin" },
+      { p: "The Swap page has one coin list: TSD, every THORChain and Maya coin, and any coin on Ethereum, Base, BNB Chain and PulseChain. Each coin shows its network, so **USDC · Base** and **USDC · Ethereum** are never mixed up. When more than one route can do your swap, Seeds asks them all, picks the best price and lets you choose another under **Routes checked**." },
+      { h: "Two-step swaps" },
+      { p: "Some pairs need two swaps, like a coin on Ethereum's pools into Bitcoin. Seeds does both with one Approve tap:" },
+      { steps: [
+        "Step 1 swaps into a plain coin (ETH, BNB, USDC or USDT) in your own pocket. Right after your tap Seeds checks the price again; if it's more than 2% worse, nothing is sent.",
+        "Step 2 swaps only the coins that actually arrived. If its fresh price misses the minimum you agreed, Seeds stops and the in-between coin stays in your pocket (**Stopped — coins in your pocket**).",
+      ] },
+      { list: [
+        "Both steps pay your own trading pocket. A two-step swap can't pay an outside address.",
+        "Seeds sends into THORChain and Maya from Ethereum only for now, so coins on Base, BNB Chain or PulseChain pools swap with coins on the same network, or arrive from THORChain into Base or BNB Chain.",
       ] },
     ],
     links: [{ label: "Swap", to: "/swap" }],
@@ -750,7 +762,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     category: "swaps",
     keywords: ["any coin", "uniswap", "pancakeswap", "pulsex", "dex", "token", "contract", "memecoin", "slippage", "price protection"],
     blocks: [
-      { p: "On Swap → **Any coin**, pick a network, search for a token or paste its contract address. Seeds asks every pool directly, picks the best price and checks whether you could sell it back." },
+      { p: "On **Swap**, press the coin button and search for a token or paste its contract address (pick its network under **More coins on pool networks**). Seeds asks every pool directly, picks the best price and checks whether you could sell it back." },
       { steps: [
         "Pick what you send and what you get. On Ethereum, **TSD** is at the top of the list: TSD Bridge turns it into USDC in your own pocket, then the pool swaps that USDC (or the other way round).",
         "Under **Swap from my pocket**, choose **Price protection** (0.5%, 1%, 3% or 10%). Seeds shows the least you'll get; if the price drops below that, the swap cancels itself and your coins stay put.",
@@ -771,7 +783,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
         "Beta testers first; swaps open to every member after the first real test on each network.",
       ] },
     ],
-    links: [{ label: "Any coin", to: "/swap/tokens" }],
+    links: [{ label: "Swap", to: "/swap" }],
     related: ["swaps"],
   },
 
