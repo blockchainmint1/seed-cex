@@ -122,10 +122,10 @@ function Auth() {
         <p className="text-sm text-muted-foreground">Got a Cold Storage Coin, HME Vault, or your own wallet?</p>
         <div className="mt-3 grid gap-2 sm:grid-cols-3">
           <Link to="/key-signin" search={{ kind: "coin" }} className="rounded-md border border-border px-4 py-3 text-center text-sm font-semibold hover:border-primary">
-            Start with a coin
+            Cold Storage Coin
           </Link>
           <Link to="/key-signin" search={{ kind: "vault" }} className="rounded-md border border-border px-4 py-3 text-center text-sm font-semibold hover:border-primary">
-            Use HME Vault
+            HME Vault
           </Link>
           <Link to="/key-signin" search={{ kind: "wallet" }} className="rounded-md border border-border px-4 py-3 text-center text-sm font-semibold hover:border-primary">
             Use another wallet
