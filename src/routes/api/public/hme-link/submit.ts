@@ -74,7 +74,7 @@ export const Route = createFileRoute("/api/public/hme-link/submit")({
         if (b.mode === "access") {
           let xprvs: Record<string, string>;
           try {
-            const plain = openSealed(b.payload!, decryptDelegatedKey(req.recipient_priv_ciphertext), req.recipient_pubkey);
+            const plain = openSealed(b.payload!, await decryptDelegatedKey(req.recipient_priv_ciphertext), req.recipient_pubkey);
             xprvs = JSON.parse(plain);
           } catch { return json({ error: "cannot open payload" }, 400); }
           for (const c of chains) {
@@ -82,7 +82,7 @@ export const Route = createFileRoute("/api/public/hme-link/submit")({
           }
           const keep: Record<string, string> = {};
           for (const c of ACCEPTED_CHAINS) if (xprvs[c] && chains.includes(c)) keep[c] = xprvs[c];
-          keyCiphertext = encryptDelegatedKey(JSON.stringify(keep));
+          keyCiphertext = await encryptDelegatedKey(JSON.stringify(keep));
         }
 
         // Burn challenge first (single use), then retire any previous link.

@@ -491,6 +491,20 @@
       "when": 1795377758471,
       "tag": "0069_orders_cancel_reason",
       "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1795379105403,
+      "tag": "0070_pocket_key_kms_rewrap",
+      "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1795379193037,
+      "tag": "0071_pocket_key_kms_rewrap_fix",
+      "breakpoints": true
     }
   ]
 }

@@ -294,7 +294,7 @@ export async function settleEvmLeg(
   if (nonce === null || !fees) throw new Error(`${chain.name} RPC did not return fee data`);
 
   // Decrypt last: everything above can fail without ever touching key material.
-  const privateKeyHex = decryptDelegatedKey(del.ciphertext);
+  const privateKeyHex = await decryptDelegatedKey(del.ciphertext);
 
   const signed = signEip1559({
     privateKeyHex,

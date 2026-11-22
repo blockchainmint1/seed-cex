@@ -252,10 +252,10 @@ export async function settleTsdLeg(
   const unclaim = await claimLeg(escrowLeg.id);
   let sent: Awaited<ReturnType<typeof omniSimpleSend>>;
   try {
-    sent = await spendWithin(sender, "txc", symbol, amount, () =>
+    sent = await spendWithin(sender, "txc", symbol, amount, async () =>
       // Decrypt last: everything above can fail without touching key material.
       omniSimpleSend({
-        privateKeyHex: decryptDelegatedKey(del.ciphertext),
+        privateKeyHex: await decryptDelegatedKey(del.ciphertext),
         fromAddress: del.address,
         toAddress: to,
         amount,

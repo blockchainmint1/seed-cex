@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Pause, Plus, Search, ShieldCheck, ShieldOff, Trash2, Undo2, X } from "lucide-react";
-import { getWithdrawalSettings, getGasWalletStatus, resetMemberTwoFactor, saveWithdrawalTiers, setWithdrawalOverride, type LimitMemberRow } from "@/lib/admin-settings.functions";
+import { getWithdrawalSettings, getGasWalletStatus, getPocketKeyProtection, movePocketKeysToKms, resetMemberTwoFactor, saveWithdrawalTiers, setWithdrawalOverride, type LimitMemberRow } from "@/lib/admin-settings.functions";
 import { CodeField } from "@/components/account/CodeField";
 import { proveTwoFactor } from "@/components/account/two-factor";
 import { DEFAULT_TIERS, MAX_TIERS, tiersProblem, type WithdrawTier } from "@/lib/withdraw-limits";
@@ -56,6 +56,7 @@ function AdminSettingsPage() {
           <TierEditor tiers={d.tiers} members={d.members} maxWaiting={d.maxWaiting} />
           <MemberLimits members={d.members} tiers={d.tiers} me={d.me} meTwoFactor={d.meTwoFactor} />
           <GasWallet />
+          <PocketKeys />
           <Card title="History" desc="Every change to levels or a member's limits, newest first.">
             {d.history.length === 0 ? <p className="text-sm text-muted-foreground">No changes yet.</p> : (
               <ul className="space-y-2 text-sm">
@@ -485,6 +486,58 @@ function GasWallet() {
           To have Seeds pay the fee instead, the team needs a separate AWS KMS key for it
           (the <code className="font-mono text-xs">SEEDS_GAS_KMS_KEY_ETH</code> setting).
         </Note>
+      )}
+    </Card>
+  );
+}
+
+/** How members' stored 1106 pocket keys are locked, and the one-way move to AWS KMS. */
+function PocketKeys() {
+  const load = useServerFn(getPocketKeyProtection);
+  const move = useServerFn(movePocketKeysToKms);
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["admin-pocket-keys"], queryFn: () => load(), retry: false });
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const d = q.data;
+  async function onMove() {
+    setBusy(true); setMsg(null);
+    try {
+      const r = await move();
+      setMsg(r.failed ? `${r.moved} moved, ${r.failed} couldn't be moved — they still work with the old lock. Try again later.` : `${r.moved} moved to AWS KMS.`);
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Couldn't move the keys.");
+    } finally {
+      setBusy(false);
+      void qc.invalidateQueries({ queryKey: ["admin-pocket-keys"] });
+    }
+  }
+  return (
+    <Card title="Stored pocket keys" desc="Members who link with full trading access hand Seeds their pocket 1106 keys. Each one is saved locked; with AWS KMS, every unlock is a logged call to AWS that can be cut off at any time.">
+      {q.isPending ? <Loading /> : !d ? (
+        <p role="alert" className="text-sm text-destructive">Couldn't load key protection. Refresh to retry.</p>
+      ) : (
+        <div className="space-y-3">
+          <p className="text-sm">
+            <b>{d.kmsLocked}</b> locked with AWS KMS · <b>{d.oldLocked}</b> still on the old single password.
+          </p>
+          {!d.kmsConfigured ? (
+            <Note tone="warn">
+              <b>AWS KMS isn't set up for pocket keys yet, so new keys still use the old single password.</b>{" "}
+              The team needs a symmetric AWS KMS key for this (the <code className="font-mono text-xs">SEEDS_POCKET_KMS_KEY</code> setting).
+            </Note>
+          ) : d.oldLocked > 0 ? (
+            <div className="flex flex-wrap items-center gap-3">
+              <Button type="button" size="sm" onClick={() => void onMove()} disabled={busy}>
+                {busy ? "Moving…" : `Move ${d.oldLocked} to AWS KMS`}
+              </Button>
+              <span className="text-xs text-muted-foreground">One way only. Coins don't move and members notice nothing.</span>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">Every stored key is locked with AWS KMS. New links are locked with it automatically.</p>
+          )}
+          {msg ? <p className="text-sm" role="status">{msg}</p> : null}
+        </div>
       )}
     </Card>
   );

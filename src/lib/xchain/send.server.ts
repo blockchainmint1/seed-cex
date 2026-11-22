@@ -270,7 +270,7 @@ export async function withPocketKey<T>(ciphertext: string | null, pocket: Pocket
   if (!ciphertext) throw new Error("Seeds doesn't hold this pocket's key.");
   let priv: Uint8Array | null = null;
   try {
-    const keys = JSON.parse(decryptDelegatedKey(ciphertext)) as Record<string, string>;
+    const keys = JSON.parse(await decryptDelegatedKey(ciphertext)) as Record<string, string>;
     const xprv = keys[pocket];
     for (const k of Object.keys(keys)) keys[k] = "";
     if (!xprv) throw new Error(`Seeds doesn't hold the ${pocket} key for this pocket.`);
@@ -400,7 +400,7 @@ export async function sendSwapFromPocket(userId: string, isAdmin: boolean, input
   let priv: Uint8Array | null = null;
   try {
     if (!link!.ciphertext) throw new Error("Seeds doesn't hold this pocket's key.");
-    const keys = JSON.parse(decryptDelegatedKey(link!.ciphertext)) as Record<string, string>;
+    const keys = JSON.parse(await decryptDelegatedKey(link!.ciphertext)) as Record<string, string>;
     const xprv = keys[src.pocket];
     for (const k of Object.keys(keys)) keys[k] = "";
     if (!xprv) throw new Error(`Seeds doesn't hold the ${from.network} key for this pocket.`);

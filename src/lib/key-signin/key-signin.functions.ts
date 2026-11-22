@@ -32,7 +32,7 @@ export const startKeySignin = createServerFn({ method: "POST" })
     const { createdAt, expiresAt } = keyRequestWindow(Date.now(), KEY_REQUEST_TTL_MS);
     const { error } = await supabaseAdmin.from("key_signin_requests").insert({
       created_at: createdAt, challenge_id: id, challenge, browser_secret_hash: sha256Hex(secret),
-      recipient_priv_ciphertext: encryptDelegatedKey(kp.priv), recipient_pubkey: kp.pub,
+      recipient_priv_ciphertext: await encryptDelegatedKey(kp.priv), recipient_pubkey: kp.pub,
       ip_hash: ipHash(requestIp(getRequest().headers)), expires_at: expiresAt,
     });
     if (error) throw new Error("Couldn't start sign-in. Try again.");

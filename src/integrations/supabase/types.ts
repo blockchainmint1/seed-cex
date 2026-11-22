@@ -4766,6 +4766,10 @@ export type Database = {
         }
         Returns: string
       }
+      rewrap_pocket_key: {
+        Args: { p_link: string; p_new: string; p_old: string }
+        Returns: boolean
+      }
       save_withdrawal_tiers: {
         Args: { _actor: string; _tiers: Json }
         Returns: string

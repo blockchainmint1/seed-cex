@@ -42,7 +42,8 @@ export function toLowSDer(der: Uint8Array): Uint8Array {
   return new secp256k1.Signature(sig.r, s).toBytes("der");
 }
 
-async function kms<T>(target: "Sign" | "GetPublicKey", body: Record<string, unknown>): Promise<T> {
+/** One signed AWS KMS call with Seeds' KMS user. Also used by delegation.server.ts (pocket-key envelope). */
+export async function kmsCall<T>(target: "Sign" | "GetPublicKey" | "GenerateDataKey" | "Decrypt", body: Record<string, unknown>): Promise<T> {
   const accessKeyId = process.env.SEEDS_KMS_ACCESS_KEY_ID!;
   const secret = process.env.SEEDS_KMS_SECRET_ACCESS_KEY!;
   const region = process.env.SEEDS_KMS_REGION!.trim();
@@ -69,7 +70,7 @@ export async function kmsSeedsSigner(chain: LockChain): Promise<SeedsSigner> {
   const keyId = process.env[keyEnv(chain)]!.trim();
   let publicKey = pubCache.get(keyId);
   if (!publicKey) {
-    const r = await kms<{ PublicKey: string; KeySpec: string; KeyUsage: string }>("GetPublicKey", { KeyId: keyId });
+    const r = await kmsCall<{ PublicKey: string; KeySpec: string; KeyUsage: string }>("GetPublicKey", { KeyId: keyId });
     if (r.KeySpec !== "ECC_SECG_P256K1" || r.KeyUsage !== "SIGN_VERIFY") throw new Error("KMS key must be ECC_SECG_P256K1 / SIGN_VERIFY");
     publicKey = spkiToCompressed(base64.decode(r.PublicKey));
     pubCache.set(keyId, publicKey);
@@ -79,7 +80,7 @@ export async function kmsSeedsSigner(chain: LockChain): Promise<SeedsSigner> {
     publicKey: pub, source: "kms",
     async sign(digest) {
       if (digest.length !== 32) throw new Error("digest must be 32 bytes");
-      const r = await kms<{ Signature: string }>("Sign", { KeyId: keyId, Message: base64.encode(digest), MessageType: "DIGEST", SigningAlgorithm: "ECDSA_SHA_256" });
+      const r = await kmsCall<{ Signature: string }>("Sign", { KeyId: keyId, Message: base64.encode(digest), MessageType: "DIGEST", SigningAlgorithm: "ECDSA_SHA_256" });
       const der = toLowSDer(base64.decode(r.Signature));
       if (!secp256k1.verify(der, digest, pub, { prehash: false, format: "der", lowS: true })) throw new Error("KMS signature did not verify");
       return der;
@@ -105,7 +106,7 @@ export async function kmsGasSigner(): Promise<{ publicKey: Uint8Array; sign(dige
   const keyId = process.env[GAS_KEY_ENV]!.trim();
   let publicKey = pubCache.get(keyId);
   if (!publicKey) {
-    const r = await kms<{ PublicKey: string; KeySpec: string; KeyUsage: string }>("GetPublicKey", { KeyId: keyId });
+    const r = await kmsCall<{ PublicKey: string; KeySpec: string; KeyUsage: string }>("GetPublicKey", { KeyId: keyId });
     if (r.KeySpec !== "ECC_SECG_P256K1" || r.KeyUsage !== "SIGN_VERIFY") throw new Error("KMS key must be ECC_SECG_P256K1 / SIGN_VERIFY");
     publicKey = spkiToCompressed(base64.decode(r.PublicKey));
     pubCache.set(keyId, publicKey);
@@ -115,7 +116,7 @@ export async function kmsGasSigner(): Promise<{ publicKey: Uint8Array; sign(dige
     publicKey: pub,
     async sign(digest) {
       if (digest.length !== 32) throw new Error("digest must be 32 bytes");
-      const r = await kms<{ Signature: string }>("Sign", { KeyId: keyId, Message: base64.encode(digest), MessageType: "DIGEST", SigningAlgorithm: "ECDSA_SHA_256" });
+      const r = await kmsCall<{ Signature: string }>("Sign", { KeyId: keyId, Message: base64.encode(digest), MessageType: "DIGEST", SigningAlgorithm: "ECDSA_SHA_256" });
       return recoverableFromDer(toLowSDer(base64.decode(r.Signature)), digest, pub);
     },
   };

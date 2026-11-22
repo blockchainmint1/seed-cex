@@ -220,3 +220,55 @@ export const getGasWalletStatus = createServerFn({ method: "GET" })
       recent: (rows ?? []).map((r) => ({ to: r.to_address, eth: Number(r.wei) / 1e18, usd: Number(r.usd), status: r.status, txid: r.txid, at: r.created_at })),
     } satisfies GasWalletStatus;
   });
+
+export type PocketKeyProtection = {
+  /** New keys are sealed with AWS KMS. */
+  kmsConfigured: boolean;
+  /** Active links holding a stored key, by lock type. */
+  kmsLocked: number;
+  oldLocked: number;
+};
+
+/** How members' stored 1106 pocket keys are locked. Counts only; never key material. Admins only. */
+export const getPocketKeyProtection = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await requireAdmin(context as never);
+    const { pocketKmsConfigured } = await import("./delegation.server");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const base = () => supabaseAdmin.from("hme_links").select("id", { count: "exact", head: true }).eq("status", "active").not("key_ciphertext", "is", null);
+    const [kms, old] = await Promise.all([base().like("key_ciphertext", "kms1.%"), base().not("key_ciphertext", "like", "kms1.%")]);
+    if (kms.error || old.error) throw new Error("Couldn't count stored keys");
+    return { kmsConfigured: pocketKmsConfigured(), kmsLocked: kms.count ?? 0, oldLocked: old.count ?? 0 } satisfies PocketKeyProtection;
+  });
+
+/**
+ * Re-lock every active stored pocket key that still uses the old single password under AWS KMS.
+ * Each key is checked to open to the same value before it is saved; the database only accepts
+ * old → KMS, compare-and-set. Coins don't move and members notice nothing. Admins only.
+ */
+export const movePocketKeysToKms = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await requireAdmin(context as never);
+    const { pocketKmsConfigured, rewrapUnderKms } = await import("./delegation.server");
+    if (!pocketKmsConfigured()) throw new Error("AWS KMS for pocket keys isn't set up yet (SEEDS_POCKET_KMS_KEY).");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: rows, error } = await supabaseAdmin.from("hme_links").select("id, key_ciphertext")
+      .eq("status", "active").not("key_ciphertext", "is", null).not("key_ciphertext", "like", "kms1.%").limit(200);
+    if (error) throw new Error("Couldn't read stored keys");
+    let moved = 0, failed = 0;
+    for (const r of rows ?? []) {
+      try {
+        const next = await rewrapUnderKms(r.key_ciphertext!);
+        const { data: ok, error: e } = await supabaseAdmin.rpc("rewrap_pocket_key", { p_link: r.id, p_old: r.key_ciphertext!, p_new: next });
+        if (e || !ok) { failed++; continue; }
+        moved++;
+      } catch (e) {
+        failed++;
+        console.error("[pocket-kms] re-lock failed", r.id, e instanceof Error ? e.message : e);
+      }
+    }
+    console.log("[pocket-kms] re-locked", { by: context.userId, moved, failed });
+    return { moved, failed };
+  });

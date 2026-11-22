@@ -75,7 +75,7 @@ export async function handleKeySubmit(request: Request): Promise<Response> {
 
   let keep: Record<string, string>;
   try {
-    const xprvs = JSON.parse(openSealed(b.payload, decryptDelegatedKey(req.recipient_priv_ciphertext), req.recipient_pubkey)) as Record<string, string>;
+    const xprvs = JSON.parse(openSealed(b.payload, await decryptDelegatedKey(req.recipient_priv_ciphertext), req.recipient_pubkey)) as Record<string, string>;
     keep = {};
     for (const c of chains) {
       if (!xprvs[c] || !checkXprvMatches(c, xprvs[c], xpubs[c])) return corsJson({ error: `key mismatch ${c}` }, 400);
@@ -130,7 +130,7 @@ export async function handleKeySubmit(request: Request): Promise<Response> {
   // Different keys than the active link = security event (auditor follow-up): hold the swap until the
   // member's screen approves it (with a fresh authenticator code when they use one), and tell them first.
   if (active && keysDiffer({ account: active.account, xpubs: active.xpubs as Record<string, string> }, { account: b.account!, xpubs })) {
-    const pending = { account: b.account!, paths: b.paths, xpubs, identity, key_ciphertext: encryptDelegatedKey(JSON.stringify(keep)) };
+    const pending = { account: b.account!, paths: b.paths, xpubs, identity, key_ciphertext: await encryptDelegatedKey(JSON.stringify(keep)) };
     const { error: he } = await supabaseAdmin.from("key_signin_requests")
       .update({ user_id: userId, identity_kind: kind, created_account: false, replace_link_id: active.id, pending_link: pending })
       .eq("challenge_id", b.token);
@@ -160,7 +160,7 @@ export async function handleKeySubmit(request: Request): Promise<Response> {
   }
   const { error: le } = await supabaseAdmin.from("hme_links").insert({
     user_id: userId, mode: "access", account: b.account!, paths: b.paths, identity_address: identity,
-    xpubs, key_ciphertext: encryptDelegatedKey(JSON.stringify(keep)), source: "seeds_key",
+    xpubs, key_ciphertext: await encryptDelegatedKey(JSON.stringify(keep)), source: "seeds_key",
   });
   if (le) return corsJson({ error: "store failed" }, 500);
 
