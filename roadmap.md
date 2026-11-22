@@ -301,3 +301,4 @@
 - [ ] Admin check of /admin/bugs actions with a fresh admin code (blocked: an admin's authenticator code)
 - [x] HME Vault prerequisites from Seeds Key (Nov 22): signed Vault requests, public signing-key record, extra-password seeds
 - [ ] Vault link go-live (blocked: Seeds Key + HME Vault pin the key, coordinated phone test, auditor review, publish)
+- [ ] QA Center audit follow-ups Q1–Q3 + error-log choice (blocked: Bobby's answers)
