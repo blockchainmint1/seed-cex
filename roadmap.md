@@ -353,3 +353,18 @@
 - [x] Honest.Money members can link a Cold Storage Coin, HME Vault or outside wallet as their trading pocket (Security: big HME Wallet tile + expandable tiles with pros/cons), held until their own screen confirms
 - [ ] Link-a-key auditor review + publish (blocked: auditor)
 - [ ] Real phone test of linking a coin / Vault / MetaMask on the live Seeds Key page (blocked: publish)
+
+- [x] Coins-in-trades audit C1: order watch cancels only after two shortfall checks in a row; sent trade/P2P legs stop counting (Bobby, Nov 22)
+- [x] C2: one spend check at a time per member (check + hold together) (Bobby, Nov 22)
+- [x] C3: "Going out" set-aside for withdrawals/swaps waiting for approval (Bobby, Nov 22)
+- [x] C5: clearer one-network message for USDC/USDT (Bobby, Nov 22)
+- [x] Seeds Lend audit L1+L5: adopt the recorded send instead of assuming "nothing sent"; a send that never went out reopens by itself after 10 minutes, so no admin button is needed (Bobby, Nov 22)
+- [x] L2: honest lockbox wording (Bobby, Nov 22)
+- [ ] L2 alarm, L3 dust, L8 resend guard: build into the BTC/ETH lockbox (blocked: that rebuild; TXC lockbox retired)
+- [x] L6: no account ids in the public loan list; L7 (tokens in a TXC lockbox) dropped with TXC (Bobby, Nov 22)
+- [x] Turn Seeds Lend OFF everywhere (page, actions, watcher) until the rules are worked out (Bobby, Nov 22)
+- [x] No TXC in Seeds Lend; borrowers will lock BTC or ETH (Bobby, Nov 22)
+- [ ] Rebuild Seeds Lend lockboxes for BTC and ETH collateral (blocked: lending stays off; BTC needs a Seeds signing key in AWS KMS, ETH needs a 2-of-3 lockbox contract + its own audit)
+- [x] L4 liquidation price: dropped with TXC (Bobby, Nov 22)
+- [ ] C4: split the order watch across more runs once a few hundred members hold orders (later)
+- [ ] Auditor re-check of C1–C3, C5 and the Lend switch-off + L1/L5 (blocked: auditor)

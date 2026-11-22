@@ -75,7 +75,7 @@ function SpotBalances() {
 
       {held.any ? (
         <Note>
-          Some coins are <strong>in trades</strong>: set aside for your open orders, trades being paid or P2P sales. They stay in your pocket, but Seeds
+          Some coins are <strong>in trades</strong>: set aside for your open orders, trades being paid, P2P sales, or withdrawals and swaps waiting for your approval (going out). They stay in your pocket, but Seeds
           won't withdraw, swap or promise them to another order until the order is cancelled or the trade finishes. If they leave your pocket another
           way (for example from HME Wallet), Seeds cancels the newest orders they no longer cover and tells you.{" "}
           <Link to="/activity" className="text-primary underline">See your open orders</Link>

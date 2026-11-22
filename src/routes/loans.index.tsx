@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 
 const title = "Seeds Lend — peer-to-peer loans, no middleman cut | Seeds";
 const description =
-  "Borrow against your TXC or lend stablecoins to real people. Every loan has its own lockbox that needs two of three keys, and Seeds never takes a cut.";
+  "Borrow against your crypto or lend stablecoins to real people. Every loan has its own lockbox, and Seeds never takes a cut. Switched off for now while the rules are reworked.";
 
 export const Route = createFileRoute("/loans/")({
   // Private preview: unlinked and kept out of search until beta access is set up.
@@ -51,6 +51,8 @@ function LoansPage() {
   const [taking, setTaking] = useState<Offer | null>(null);
   const [posting, setPosting] = useState(false);
   const price = market.data?.txcPrice ?? null;
+  const open = market.data?.open ?? false;
+  const mine = useMemo(() => new Set((desk.data?.offers ?? []).map((o) => o.id)), [desk.data]);
 
   const rows = useMemo(
     () => (market.data?.offers ?? []).filter((o) => o.side === side && (coin === "all" || o.coin === coin)).sort((a, b) => a.ratePct / a.days - b.ratePct / b.days),
@@ -69,21 +71,29 @@ function LoansPage() {
           </h1>
           <p className="mt-4 max-w-xl text-muted-foreground">
             Lenders post what they'll lend, borrowers post what they need, and you work out the terms together. Every loan gets its
-            own lockbox on TEXITcoin — nothing is pooled, nothing is lent out again, and Seeds never takes a cut of your loan or your interest.
+            own lockbox — nothing is pooled, nothing is lent out again, and Seeds never takes a cut of your loan or your interest.
           </p>
+          {!open && !market.isLoading ? (
+            <div role="status" className="mt-6 rounded-sm border border-destructive/40 bg-destructive/10 p-4 text-sm">
+              <b className="font-display">Seeds Lend is switched off for now.</b>{" "}
+              <span className="text-muted-foreground">
+                We're reworking the rules before anyone can lend or borrow. Nothing can be offered, accepted or sent here until it's back.
+              </span>
+            </div>
+          ) : null}
           <div className="mt-6 flex flex-wrap gap-3">
-            {user ? (
+            {!open ? null : user ? (
               <Button onClick={() => setPosting(true)} className="bg-action text-action-foreground hover:brightness-105">Post an offer</Button>
             ) : (
               <Button asChild className="bg-action text-action-foreground hover:brightness-105"><Link to="/auth" search={{ redirect: "/loans" }}>Sign in to lend or borrow</Link></Button>
             )}
-            <Button variant="outline" asChild><a href="#how">How it works</a></Button>
+            {open ? <Button variant="outline" asChild><a href="#how">How it works</a></Button> : null}
           </div>
         </div>
         <div className="grid gap-2 text-sm">
           {[
-            [Lock, "One lockbox per loan", "Your TXC sits in an address made just for this loan. Never pooled, never re-lent."],
-            [KeyRound, "Two of three keys", "Borrower, lender and Seeds each hold one. Seeds alone can never move it."],
+            [Lock, "One lockbox per loan", "Your collateral sits in an address made just for this loan. Never pooled, never re-lent."],
+            [KeyRound, "Two of three keys", "Borrower, lender and Seeds each hold one. Seeds can only ever pay the two of you, by the terms you agreed."],
             [HandCoins, "Seeds takes no cut", `0% on every loan. Only a liquidation or default carries a ${SEEDS_DEFAULT_FEE_PCT}% fee — from the borrower's leftover, never the lender's.`],
           ].map(([Icon, h, b]) => {
             const I = Icon as typeof Lock;
@@ -99,6 +109,8 @@ function LoansPage() {
 
       {user && desk.data ? <DeskPanel desk={desk.data} price={price} /> : null}
 
+      {/* Switched off (and TXC collateral retired): the market and the TXC walkthrough stay hidden. */}
+      {open ? (<>
       <section className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex rounded-sm border border-border text-sm">
           {(["lend", "borrow"] as const).map((x) => (
@@ -122,7 +134,7 @@ function LoansPage() {
           <p className="p-6 text-sm text-muted-foreground">Loading offers…</p>
         ) : !rows.length ? (
           <p className="p-6 text-sm text-muted-foreground">
-            {side === "lend" ? "No lenders yet." : "No borrowers yet."} {user ? <button className="text-primary" onClick={() => setPosting(true)}>Be the first to post.</button> : null}
+            {side === "lend" ? "No lenders yet." : "No borrowers yet."} {user && open ? <button className="text-primary" onClick={() => setPosting(true)}>Be the first to post.</button> : null}
           </p>
         ) : (
           rows.map((o) => (
@@ -140,7 +152,7 @@ function LoansPage() {
               <div className="font-mono text-sm">{o.days} days</div>
               <div className="font-mono text-sm">{fmt(o.maxLtvPct)}%</div>
               <div>
-                {user?.id === o.userId ? (
+                {mine.has(o.id) ? (
                   <span className="font-mono text-[10px] text-muted-foreground uppercase">Your offer</span>
                 ) : user ? (
                   <Button size="sm" onClick={() => setTaking(o)}>{o.side === "lend" ? "Borrow" : "Lend"} <ArrowRight className="ml-1 h-3.5 w-3.5" /></Button>
@@ -157,6 +169,7 @@ function LoansPage() {
       </p>
 
       <HowItWorks />
+      </>) : null}
 
       {taking ? <ProposeDialog offer={taking} price={price} onClose={() => setTaking(null)} /> : null}
       {posting ? <PostOfferDialog price={price} onClose={() => setPosting(false)} /> : null}

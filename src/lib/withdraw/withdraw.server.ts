@@ -203,7 +203,13 @@ export async function sendWithdrawalEmailCode(userId: string, tester: boolean, i
 }
 
 /** Step 2: both codes, then reserve and ask Telegram. Nothing is signed now. */
+/** Audit C2: the free-coins check and the hold it leads to run one at a time per member. */
 export async function requestWithdrawal(userId: string, tester: boolean, input: WithdrawInput & { emailCode: string }, claims: SessionClaims | null) {
+  const { withPocketSpendLock } = await import("@/lib/set-asides.server");
+  return withPocketSpendLock(userId, () => requestWithdrawalUnlocked(userId, tester, input, claims));
+}
+
+async function requestWithdrawalUnlocked(userId: string, tester: boolean, input: WithdrawInput & { emailCode: string }, claims: SessionClaims | null) {
   if (!freshTwoFactor(claims, Math.floor(Date.now() / 1000))) throw new Error("Enter the 6-digit code from your authenticator app to approve this withdrawal.");
   const p = await prepare(userId, tester, input);
   const secret = codeSecret();

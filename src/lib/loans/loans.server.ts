@@ -267,9 +267,16 @@ export type LoanSendKind = "loan_collateral" | "loan_funding" | "loan_repay";
 
 /** Ask the right member to approve the next send in Telegram. Returns the approval or throws a plain reason. */
 export async function requestLoanSend(l: LoanRow, kind: LoanSendKind, actorId: string) {
+  const { withPocketSpendLock } = await import("@/lib/set-asides.server");
+  return withPocketSpendLock(actorId, () => requestLoanSendUnlocked(l, kind, actorId));
+}
+
+async function requestLoanSendUnlocked(l: LoanRow, kind: LoanSendKind, actorId: string) {
   const { pocketSender, pocketLegBalance, coverProblem, receiveAddress } = await import("@/lib/pocket-send/pocket.server");
   const { requestSendApproval } = await import("@/lib/pocket-send/approvals.server");
   let payer: string, leg: LegId, amount: number, to: string | null, what: string;
+  // Seeds Lend is switched off: nothing new goes into a loan. A repayment always may.
+  if (kind !== "loan_repay") { const off = R.lendingClosedProblem(); if (off) throw new Error(off); }
   if (kind === "loan_collateral") {
     if (l.status !== "awaiting_collateral") throw new Error("Collateral isn't needed right now");
     payer = l.borrower_id; leg = "txc"; to = l.escrow_address;
@@ -318,6 +325,10 @@ export async function continueLoanSend(r: ApprovalRow) {
       return;
     }
     if (r.status !== "approved") return;
+    if (kind !== "loan_repay" && R.lendingClosedProblem()) {
+      await loanEvent(l.id, "send_blocked", `Couldn't send the ${label}: ${R.LENDING_PAUSED}`);
+      return;
+    }
     const { spendApproval, recordApprovalTx, recordApprovalError } = await import("@/lib/pocket-send/approvals.server");
     const { pocketSender, sendFromPocket } = await import("@/lib/pocket-send/pocket.server");
     const leg = r.leg as LegId;
@@ -340,7 +351,13 @@ export async function continueLoanSend(r: ApprovalRow) {
       if (!data) { await recordApprovalError(spent.id, "The loan can no longer be repaid this way"); return; }
     }
     try {
-      const sent = await sendFromPocket({ link: s.link, leg, from: s.address, to: r.to_address, amount: r.amount, record: (txid) => recordApprovalTx(spent.id, txid) });
+      // The txid must be on the approval before anything is broadcast (audit L1): if this
+      // write fails, the send stops here and nothing goes out.
+      const record = async (txid: string) => {
+        const { error } = await supabaseAdmin.from("send_approvals").update({ txid }).eq("id", spent.id).is("txid", null);
+        if (error) throw new Error("Couldn't record the send, so nothing was sent.");
+      };
+      const sent = await sendFromPocket({ link: s.link, leg, from: s.address, to: r.to_address, amount: r.amount, record });
       await recordApprovalTx(spent.id, sent.txid);
       if (kind === "loan_funding") {
         await supabaseAdmin.from("loans").update({
@@ -356,9 +373,11 @@ export async function continueLoanSend(r: ApprovalRow) {
     } catch (e) {
       const m = e instanceof Error ? e.message : "Send failed";
       await recordApprovalError(spent.id, m);
-      if (kind === "loan_funding") await supabaseAdmin.from("loans").update({ funding_started_at: null }).eq("id", l.id).is("funding_txid", null);
-      if (kind === "loan_repay") await supabaseAdmin.from("loans").update({ repay_started_at: null }).eq("id", l.id).is("repay_txid", null);
-      await loanEvent(l.id, "send_failed", `The ${label} send failed: ${m} Nothing was sent.`);
+      // Audit L1: an error after the broadcast must never reopen a loan that was paid.
+      if (kind === "loan_funding" || kind === "loan_repay") {
+        const fresh = await loadLoan(l.id);
+        if (fresh) await settleStuckSend(fresh, kind);
+      }
     }
   } catch (e) {
     console.error("[loans] continue failed", r.id, e);
@@ -366,6 +385,72 @@ export async function continueLoanSend(r: ApprovalRow) {
 }
 
 /* --------------------------------- watcher -------------------------------- */
+
+/** The newest used approval for this loan send: its txid (stored before broadcast) and error. */
+async function lastLoanApproval(loanId: string, kind: "loan_funding" | "loan_repay") {
+  const { data, error } = await supabaseAdmin.from("send_approvals").select("id, txid, error, leg")
+    .eq("purpose", kind).eq("ref_id", loanId).eq("status", "used").order("used_at", { ascending: false }).limit(1);
+  if (error) throw new Error(error.message);
+  const r = data?.[0] as { id: string; txid: string | null; error: string | null; leg: LegId } | undefined;
+  return r ?? null;
+}
+
+/** Which network a recorded send went out on (EVM coins can sit on several). */
+async function networkOfSend(leg: LegId, txid: string): Promise<string | null> {
+  const { getLeg } = await import("@/lib/chains");
+  const def = getLeg(leg);
+  if (def.kind !== "evm") return def.kind === "omni" ? "txc" : (def.chain ?? null);
+  const { evmTxLookupEach } = await import("@/lib/evm.server");
+  for (const net of def.evmChains ?? []) {
+    const r = await evmTxLookupEach(net, txid).catch(() => null);
+    if (r?.answers.some((a) => a === "found")) return net;
+  }
+  return null;
+}
+
+/**
+ * A funding/repayment send started but the loan has no txid (audit L1/L5): adopt the txid
+ * the approval recorded before broadcast, reopen only when provably nothing went out,
+ * otherwise wait. Safe to run any number of times.
+ */
+export async function settleStuckSend(l: LoanRow, kind: "loan_funding" | "loan_repay"): Promise<R.StuckSendStep> {
+  const repay = kind === "loan_repay";
+  const ap = await lastLoanApproval(l.id, kind);
+  const step = R.stuckSendStep({
+    startedAtMs: ms(repay ? l.repay_started_at : l.funding_started_at) || null,
+    loanTxid: repay ? l.repay_txid : l.funding_txid,
+    approvalTxid: ap?.txid ?? null,
+    approvalError: Boolean(ap?.error),
+    nowMs: Date.now(),
+  });
+  const label = repay ? "repayment" : "loan";
+  if (step === "adopt") {
+    const txid = ap!.txid!;
+    const network = await networkOfSend(ap!.leg, txid).catch(() => null);
+    const now = new Date().toISOString();
+    if (repay) {
+      const to = await (await import("@/lib/pocket-send/pocket.server")).receiveAddress(l.lender_id, ap!.leg).catch(() => null);
+      const { data } = await supabaseAdmin.from("loans").update({ repay_txid: txid, repay_network: network, repay_to: to, repay_sent_at: now })
+        .eq("id", l.id).is("repay_txid", null).select("id").maybeSingle();
+      if (data) {
+        await loanEvent(l.id, "repay_sent", `The repayment went out (recorded before broadcast). Waiting for it to confirm.`, null, txid);
+        await loanAlert(l.lender_id, l.id, `💸 The borrower's repayment for ${l.ref} is on its way. The collateral is released once it confirms.`);
+      }
+    } else {
+      const to = await (await import("@/lib/pocket-send/pocket.server")).receiveAddress(l.borrower_id, ap!.leg).catch(() => null);
+      const { data } = await supabaseAdmin.from("loans").update({
+        funding_txid: txid, funding_network: network, funding_to: to, funded_at: now,
+        due_at: new Date(Date.now() + l.days * 24 * HOUR).toISOString(),
+      }).eq("id", l.id).is("funding_txid", null).select("id").maybeSingle();
+      if (data) await loanEvent(l.id, "loan_sent", `The loan went out (recorded before broadcast). Waiting for it to confirm.`, null, txid);
+    }
+  } else if (step === "reopen") {
+    if (repay) await supabaseAdmin.from("loans").update({ repay_started_at: null }).eq("id", l.id).is("repay_txid", null);
+    else await supabaseAdmin.from("loans").update({ funding_started_at: null }).eq("id", l.id).is("funding_txid", null);
+    await loanEvent(l.id, "send_failed", `The ${label} send didn't go out. Nothing was sent; it can be tried again.`);
+  }
+  return step;
+}
 
 async function sendState(leg: LegId, txid: string, network: string | null, sentAt: string | null) {
   const { checkSentLeg } = await import("@/lib/settle/confirm.server");
@@ -403,6 +488,10 @@ export async function tickLoan(id: string): Promise<void> {
       return;
     }
     // awaiting_funding
+    if (l.funding_started_at && !l.funding_txid) {
+      await settleStuckSend(l, "loan_funding");
+      return;
+    }
     if (l.funding_txid) {
       const st = await sendState(legOf(l.coin), l.funding_txid, l.funding_network, l.funded_at);
       if (st === "confirmed") {
@@ -419,6 +508,18 @@ export async function tickLoan(id: string): Promise<void> {
   }
 
   if (l.status === "active") {
+    // A repayment in flight with no txid on the loan: settle it before any liquidation or
+    // default check (audit L1). Anything but "reopen" means hands off the collateral.
+    if (l.repay_started_at && !l.repay_txid) {
+      const step = await settleStuckSend(l, "loan_repay");
+      if (step !== "reopen") return;
+      l.repay_started_at = null;
+    }
+    if (l.repay_txid && !l.repay_network) {
+      const ap = await lastLoanApproval(l.id, "loan_repay").catch(() => null);
+      const net = ap?.leg ? await networkOfSend(ap.leg, l.repay_txid).catch(() => null) : null;
+      if (net) { await supabaseAdmin.from("loans").update({ repay_network: net }).eq("id", l.id).is("repay_network", null); l.repay_network = net; }
+    }
     if (l.repay_txid) {
       const st = await sendState(legOf(l.coin), l.repay_txid, l.repay_network, l.repay_sent_at);
       if (st === "confirmed") {

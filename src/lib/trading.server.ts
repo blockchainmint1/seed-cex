@@ -25,7 +25,13 @@ function simulatedEscrowAddress(leg: Leg, tradeId: string): string {
   return getLeg(leg).kind === "evm" ? `0x${compact.slice(0, 40)}` : `T${compact.slice(0, 32)}`;
 }
 
+/** Audit C2: the free-coins check and the hold it leads to run one at a time per member. */
 export async function matchOrder(userId: string, pair: string, input: PlaceOrderInput) {
+  const { withPocketSpendLock } = await import("@/lib/set-asides.server");
+  return withPocketSpendLock(userId, () => matchOrderUnlocked(userId, pair, input));
+}
+
+async function matchOrderUnlocked(userId: string, pair: string, input: PlaceOrderInput) {
   // A member whose trade payment vanished can't trade until an admin clears it (audit #3 A1).
   const { tradingFrozenReason } = await import("@/lib/settle/confirm.server");
   const frozen = await tradingFrozenReason(userId);

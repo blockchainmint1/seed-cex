@@ -153,7 +153,13 @@ export async function quoteTsdRoute(direction: RouteDirection, coin: SwapCoin, a
 
 export type StartRouteInput = { direction: RouteDirection; coin: string; amount: string; shownOut: number };
 
+/** Audit C2: the free-coins check and the hold it leads to run one at a time per member. */
 export async function startTsdRoute(userId: string, isAdmin: boolean, input: StartRouteInput, opts: { waitForFirstSend?: boolean } = {}) {
+  const { withPocketSpendLock } = await import("@/lib/set-asides.server");
+  return withPocketSpendLock(userId, () => startTsdRouteUnlocked(userId, isAdmin, input, opts));
+}
+
+async function startTsdRouteUnlocked(userId: string, isAdmin: boolean, input: StartRouteInput, opts: { waitForFirstSend?: boolean } = {}) {
   const coin = swapCoin(input.coin);
   if (!coin) throw new Error("Pick a coin.");
   const { loadLink } = await import("./send.server");

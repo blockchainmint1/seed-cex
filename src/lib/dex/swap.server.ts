@@ -142,7 +142,13 @@ export type DexSwapRequest = {
   slippageBps: number;
 };
 
+/** Audit C2: the free-coins check and the hold it leads to run one at a time per member. */
 export async function requestDexSwap(userId: string, tester: boolean, input: DexSwapRequest) {
+  const { withPocketSpendLock } = await import("@/lib/set-asides.server");
+  return withPocketSpendLock(userId, () => requestDexSwapUnlocked(userId, tester, input));
+}
+
+async function requestDexSwapUnlocked(userId: string, tester: boolean, input: DexSwapRequest) {
   const net = input.network;
   if (sameAddr(input.tokenIn, input.tokenOut)) throw new Error("Pick two different coins.");
   const tsdProblem = tsdPairProblem(net, input.tokenIn, input.tokenOut);

@@ -105,7 +105,7 @@ function LoanRoom() {
         <div className="grid content-start gap-4">
           <section className="rounded-sm border border-border bg-surface p-5">
             <h2 className="flex items-center gap-2 font-display text-lg font-bold"><Lock className="h-4 w-4 text-primary" /> The lockbox</h2>
-            <p className="mt-2 text-sm text-muted-foreground">This loan's collateral lives at its own TEXITcoin address. Any two of these three keys can move it — never one alone.</p>
+            <p className="mt-2 text-sm text-muted-foreground">This loan's collateral lives at its own lockbox address. It needs two of these three keys, and Seeds can only ever pay the two of you, by the terms you agreed.</p>
             <p className="mt-3 break-all rounded-sm border border-border bg-background p-2 font-mono text-xs" data-qa-mask>{l.escrow_address}</p>
             <ul className="mt-3 space-y-1.5 text-sm">
               {[

@@ -526,6 +526,13 @@
       "when": 1795385316748,
       "tag": "0074_link_key_history_guard_fix",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1795386858541,
+      "tag": "0075_coins_in_trades_c1_c2",
+      "breakpoints": true
     }
   ]
 }

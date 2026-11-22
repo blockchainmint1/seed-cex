@@ -18,11 +18,18 @@ export type SetAside = {
   trades: number;
   /** Live P2P sales (open, paid or disputed). */
   p2p: number;
+  /**
+   * Seeds sends still waiting to leave (audit C3): withdrawals waiting for their tap or
+   * hold, swaps and loan sends waiting for their Telegram tap. Counted against new
+   * spends only — the order watch leaves it out, because once one of these goes out
+   * the orders were already placed against what's left.
+   */
+  goingOut: number;
   total: number;
   openOrders: number;
 };
 
-export const NOTHING_SET_ASIDE: SetAside = { orders: 0, trades: 0, p2p: 0, total: 0, openOrders: 0 };
+export const NOTHING_SET_ASIDE: SetAside = { orders: 0, trades: 0, p2p: 0, goingOut: 0, total: 0, openOrders: 0 };
 
 const EPS = 1e-8;
 const round8 = (n: number) => Math.round(n * 1e8) / 1e8;
@@ -48,6 +55,7 @@ export function setAsidesByLeg(i: {
   orders: OpenOrderRow[];
   unsentLegs: UnsentLeg[];
   p2p: Array<{ leg: LegId; amount: number }>;
+  goingOut?: Array<{ leg: LegId; amount: number }>;
 }): Partial<Record<LegId, SetAside>> {
   const out: Partial<Record<LegId, SetAside>> = {};
   const at = (leg: LegId) => (out[leg] ??= { ...NOTHING_SET_ASIDE });
@@ -62,11 +70,13 @@ export function setAsidesByLeg(i: {
   }
   for (const t of i.unsentLegs) if (t.amount > EPS) at(t.leg).trades += t.amount;
   for (const p of i.p2p) if (p.amount > EPS) at(p.leg).p2p += p.amount;
+  for (const g of i.goingOut ?? []) if (g.amount > EPS) at(g.leg).goingOut += g.amount;
   for (const s of Object.values(out)) {
     s.orders = round8(s.orders);
     s.trades = round8(s.trades);
     s.p2p = round8(s.p2p);
-    s.total = round8(s.orders + s.trades + s.p2p);
+    s.goingOut = round8(s.goingOut);
+    s.total = round8(s.orders + s.trades + s.p2p + s.goingOut);
   }
   return out;
 }
@@ -77,6 +87,7 @@ export function setAsideWhat(s: SetAside): string {
   if (s.orders > EPS) parts.push(s.openOrders === 1 ? "an open order" : "open orders");
   if (s.trades > EPS) parts.push("trades being paid");
   if (s.p2p > EPS) parts.push("P2P sales");
+  if (s.goingOut > EPS) parts.push("sends waiting to go out");
   if (parts.length <= 1) return parts[0] ?? "trades";
   return `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
 }
@@ -112,10 +123,33 @@ export function spendProblem(i: {
   const afterHere = here - i.amount;
   if (Math.max(afterHere, otherBest) + EPS >= held) return null;
   const free = otherBest + EPS >= held ? here : Math.max(0, here - held);
+  // Audit C5: a coin on several networks (USDC, USDT) must cover its set-aside on ONE
+  // network, because a fill is paid from one network. Say so, or the numbers look wrong.
+  const networks = rows.filter((b) => b.network != null && b.balance > EPS).length;
+  if (networks > 1) {
+    return `Your ${setAsideWhat(i.setAside)} need ${fmt(held)} ${i.symbol} on a single network, because a fill is paid from one network. From this network you can use up to ${fmt(free)} ${i.symbol} right now. Cancel an order on the Activity page to free more. Nothing was sent.`;
+  }
   return `${fmt(held)} ${i.symbol} in your pocket is set aside for ${setAsideWhat(i.setAside)}. You can use up to ${fmt(free)} ${i.symbol} right now. Cancel an order on the Activity page to free more. Nothing was sent.`;
 }
 
 export type CoverOrder = OpenOrderRow & { id: string; created_at: string };
+
+/**
+ * Audit C1: a shortfall seen once may be a send Seeds just made whose record isn't
+ * updated yet (or explorer/node lag). Orders are cancelled only when the same coin is
+ * still short on a later run: at least COVER_RECHECK_MS after it was first seen, and the
+ * first sighting is forgotten after COVER_FLAG_TTL_MS.
+ */
+export const COVER_RECHECK_MS = 45_000;
+export const COVER_FLAG_TTL_MS = 30 * 60_000;
+export function coverStrike(firstSeenMs: number | null, nowMs: number): "flag" | "cancel" {
+  if (firstSeenMs == null || !Number.isFinite(firstSeenMs)) return "flag";
+  const age = nowMs - firstSeenMs;
+  return age >= COVER_RECHECK_MS && age <= COVER_FLAG_TTL_MS ? "cancel" : "flag";
+}
+
+/** What the order watch holds the pocket to: everything except sends still waiting to leave. */
+export const watchTotal = (s: SetAside) => round8(s.total - s.goingOut);
 
 /**
  * The pocket no longer covers everything set aside for this coin: which orders come off

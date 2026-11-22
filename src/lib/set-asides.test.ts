@@ -17,7 +17,7 @@ describe("what is set aside", () => {
   });
 });
 
-const held = (total: number): SetAside => ({ orders: total, trades: 0, p2p: 0, total, openOrders: 1 });
+const held = (total: number): SetAside => ({ orders: total, trades: 0, p2p: 0, goingOut: 0, total, openOrders: 1 });
 
 describe("sending while coins are set aside", () => {
   test("nothing set aside: never blocked", () => {

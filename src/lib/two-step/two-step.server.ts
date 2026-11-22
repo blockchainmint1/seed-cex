@@ -146,7 +146,13 @@ export async function quoteTwoStep(i: TwoStepQuoteInput): Promise<TwoStepQuote> 
 
 export type TwoStepRequest = TwoStepQuoteInput & { shownOut: number; slippageBps: number };
 
+/** Audit C2: the free-coins check and the hold it leads to run one at a time per member. */
 export async function requestTwoStep(userId: string, tester: boolean, input: TwoStepRequest) {
+  const { withPocketSpendLock } = await import("@/lib/set-asides.server");
+  return withPocketSpendLock(userId, () => requestTwoStepUnlocked(userId, tester, input));
+}
+
+async function requestTwoStepUnlocked(userId: string, tester: boolean, input: TwoStepRequest) {
   const coin = swapCoin(input.coin);
   if (!coin) throw new Error("Pick a coin.");
   if (!Number.isInteger(input.slippageBps) || input.slippageBps < 10 || input.slippageBps > MAX_SLIPPAGE_BPS) throw new Error("Pick a price protection between 0.1% and 10%.");

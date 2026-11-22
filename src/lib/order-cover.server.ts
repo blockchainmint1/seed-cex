@@ -8,10 +8,14 @@
  * A shortfall must show on BOTH the quick explorer read (it counts coins still waiting to
  * confirm, like the change from a send) and our own node before anything is cancelled,
  * and an unreadable balance never cancels anything.
+ *
+ * Audit C1: and it must still be there on a later run (coverStrike, at least 45 seconds
+ * after it was first seen; order_cover_flags). A member with a fresh sighting is checked
+ * again on the next run even when the rotation has moved on.
  */
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getLeg, type LegId } from "@/lib/chains";
-import { ordersToCancel, type CoverOrder } from "@/lib/set-asides";
+import { COVER_FLAG_TTL_MS, coverStrike, ordersToCancel, watchTotal, type CoverOrder } from "@/lib/set-asides";
 
 const EPS = 1e-8;
 /** Members checked per run; the list rotates each minute so everyone is reached. */
@@ -32,11 +36,24 @@ export async function checkOrderCover(): Promise<{ members: number; checked: num
   for (const o of (data ?? []) as unknown as OpenRow[]) byUser.set(o.user_id, [...(byUser.get(o.user_id) ?? []), o]);
   const users = [...byUser.keys()].sort();
   const start = users.length > MEMBERS_PER_RUN ? (Math.floor(Date.now() / 60_000) * MEMBERS_PER_RUN) % users.length : 0;
-  const batch = users.length > MEMBERS_PER_RUN ? [...users, ...users].slice(start, start + MEMBERS_PER_RUN) : users;
+  const rotation = users.length > MEMBERS_PER_RUN ? [...users, ...users].slice(start, start + MEMBERS_PER_RUN) : users;
+  // Members with a recent shortfall sighting get their second look on this run.
+  const { data: flags } = await supabaseAdmin.from("order_cover_flags").select("user_id, leg, first_seen_at");
+  const flagged = new Map<string, Map<string, number>>();
+  for (const f of flags ?? []) {
+    if (!byUser.has(f.user_id)) continue;
+    const m = flagged.get(f.user_id) ?? new Map<string, number>();
+    m.set(f.leg, Date.parse(f.first_seen_at));
+    flagged.set(f.user_id, m);
+  }
+  // Sightings for members with no open orders left are done with.
+  const done = (flags ?? []).filter((f) => !byUser.has(f.user_id)).map((f) => f.user_id);
+  if (done.length) await supabaseAdmin.from("order_cover_flags").delete().in("user_id", [...new Set(done)]);
+  const batch = [...new Set([...flagged.keys(), ...rotation])];
 
   let cancelled = 0;
   for (let i = 0; i < batch.length; i += PARALLEL) {
-    const counts = await Promise.all(batch.slice(i, i + PARALLEL).map((u) => checkMember(u, byUser.get(u) ?? []).catch((e) => {
+    const counts = await Promise.all(batch.slice(i, i + PARALLEL).map((u) => checkMember(u, byUser.get(u) ?? [], flagged.get(u) ?? new Map()).catch((e) => {
       console.error("order cover check failed", e instanceof Error ? e.message : e);
       return 0;
     })));
@@ -45,20 +62,41 @@ export async function checkOrderCover(): Promise<{ members: number; checked: num
   return { members: users.length, checked: batch.length, cancelled };
 }
 
-async function checkMember(userId: string, orders: OpenRow[]): Promise<number> {
+async function clearFlag(userId: string, leg: string, seen: Map<string, number>) {
+  if (!seen.has(leg)) return;
+  await supabaseAdmin.from("order_cover_flags").delete().eq("user_id", userId).eq("leg", leg);
+}
+
+async function checkMember(userId: string, orders: OpenRow[], seen: Map<string, number>): Promise<number> {
   const { loadSetAsides } = await import("@/lib/set-asides.server");
   const { pocketSender, pocketLegBalance } = await import("@/lib/pocket-send/pocket.server");
   const held = await loadSetAsides(userId);
   let total = 0;
+  for (const leg of seen.keys()) if (!held[leg as LegId] || held[leg as LegId]!.orders <= EPS) await clearFlag(userId, leg, seen);
   for (const [leg, s] of Object.entries(held) as Array<[LegId, NonNullable<(typeof held)[LegId]>]>) {
     if (s.orders <= EPS) continue;
+    // Sends Seeds is about to make (withdrawals, swaps waiting for a tap) don't count here:
+    // orders were placed against what's left after them (audit C3).
+    const need = watchTotal(s);
     // A pocket that can't send at all is handled when a match happens (order-readiness.ts).
     const sender = await pocketSender(userId, leg, "trade");
     if (!sender.ok) continue;
-    const quick = await pocketLegBalance(sender.address, leg, s.total, { balanceOnly: true, display: true });
-    if (quick.balance == null || quick.balance + EPS >= s.total) continue;
-    const node = await pocketLegBalance(sender.address, leg, s.total, { balanceOnly: true });
-    if (node.balance == null || node.balance + EPS >= s.total) continue;
+    const quick = await pocketLegBalance(sender.address, leg, need, { balanceOnly: true, display: true });
+    if (quick.balance == null) continue;
+    if (quick.balance + EPS >= need) { await clearFlag(userId, leg, seen); continue; }
+    const node = await pocketLegBalance(sender.address, leg, need, { balanceOnly: true });
+    if (node.balance == null) continue;
+    if (node.balance + EPS >= need) { await clearFlag(userId, leg, seen); continue; }
+    // Audit C1: first sighting → remember it and look again next run. Nothing is cancelled.
+    const firstSeen = seen.get(leg) ?? null;
+    if (coverStrike(firstSeen, Date.now()) === "flag") {
+      // Keep a recent sighting as it is (a quick second run mustn't push it forward).
+      if (firstSeen == null || Date.now() - firstSeen > COVER_FLAG_TTL_MS) {
+        await supabaseAdmin.from("order_cover_flags").upsert({ user_id: userId, leg, first_seen_at: new Date().toISOString() }, { onConflict: "user_id,leg" });
+      }
+      continue;
+    }
+    await clearFlag(userId, leg, seen);
     const balance = Math.max(quick.balance, node.balance);
     const ids = ordersToCancel({ leg, balance, fixed: s.trades + s.p2p, orders });
     const gone: OpenRow[] = [];
@@ -72,7 +110,7 @@ async function checkMember(userId: string, orders: OpenRow[]): Promise<number> {
     }
     if (gone.length) {
       total += gone.length;
-      await tell(userId, leg, gone.length, balance, s.total);
+      await tell(userId, leg, gone.length, balance, need);
     }
   }
   return total;

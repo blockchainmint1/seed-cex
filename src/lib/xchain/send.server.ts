@@ -296,7 +296,18 @@ export type MemberSendOptions = { claims: unknown; approvalId?: string };
 /** Returned instead of sending when a swap to an outside address is waiting for the member's Telegram tap. */
 export type SwapNeedsApproval = { needsApproval: true; approvalId: string; expiresAt: string };
 
+/**
+ * Audit C2: a member's own new swap runs its free-coins check and send one at a time per
+ * member. TSD-route legs (checked when the route started) and an approved outside swap
+ * (already counted as going out) skip the lock.
+ */
 export async function sendSwapFromPocket(userId: string, isAdmin: boolean, input: SendSwapInput, leg?: RouteLegOptions, member?: MemberSendOptions) {
+  if (leg || member?.approvalId) return sendSwapFromPocketUnlocked(userId, isAdmin, input, leg, member);
+  const { withPocketSpendLock } = await import("@/lib/set-asides.server");
+  return withPocketSpendLock(userId, () => sendSwapFromPocketUnlocked(userId, isAdmin, input, leg, member));
+}
+
+async function sendSwapFromPocketUnlocked(userId: string, isAdmin: boolean, input: SendSwapInput, leg?: RouteLegOptions, member?: MemberSendOptions) {
   const from = swapCoin(input.from);
   const to = swapCoin(input.to);
   const protocol: Protocol = input.protocol ?? SEND_PROTOCOL;
@@ -341,7 +352,8 @@ export async function sendSwapFromPocket(userId: string, isAdmin: boolean, input
     const held = legForSwapAsset(from.asset);
     if (held) {
       const { pocketSpendProblem } = await import("@/lib/set-asides.server");
-      const why = await pocketSpendProblem(userId, held, Number(amount) / 1e8, { address: fromAddress, network: null });
+      // An approved outside swap mustn't be blocked by its own "going out" amount (audit C3).
+      const why = await pocketSpendProblem(userId, held, Number(amount) / 1e8, { address: fromAddress, network: null }, { exceptApprovalId: member?.approvalId });
       if (why) throw new Error(why);
     }
   }

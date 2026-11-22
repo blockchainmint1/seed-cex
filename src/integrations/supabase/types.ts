@@ -2384,6 +2384,24 @@ export type Database = {
         }
         Relationships: []
       }
+      order_cover_flags: {
+        Row: {
+          first_seen_at: string
+          leg: string
+          user_id: string
+        }
+        Insert: {
+          first_seen_at?: string
+          leg: string
+          user_id: string
+        }
+        Update: {
+          first_seen_at?: string
+          leg?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           amount: number
@@ -2930,6 +2948,24 @@ export type Database = {
           token_address?: string | null
           tx_url?: string | null
           txid?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      pocket_spend_locks: {
+        Row: {
+          expires_at: string
+          token: string
+          user_id: string
+        }
+        Insert: {
+          expires_at: string
+          token: string
+          user_id: string
+        }
+        Update: {
+          expires_at?: string
+          token?: string
           user_id?: string
         }
         Relationships: []
@@ -4573,6 +4609,10 @@ export type Database = {
         Args: { _id: string; _user_id: string }
         Returns: boolean
       }
+      claim_pocket_spend_lock: {
+        Args: { _token: string; _ttl_seconds: number; _user: string }
+        Returns: boolean
+      }
       claim_pocket_withdrawal: { Args: { _id: string }; Returns: boolean }
       client_errors_prune: { Args: never; Returns: undefined }
       custody_snapshot: {
@@ -4663,6 +4703,10 @@ export type Database = {
       redeem_legacy_claim: { Args: { _token_hash: string }; Returns: string }
       release_delegation_spend: {
         Args: { _amount: number; _id: string }
+        Returns: undefined
+      }
+      release_pocket_spend_lock: {
+        Args: { _token: string; _user: string }
         Returns: undefined
       }
       reserve_delegation_spend: {

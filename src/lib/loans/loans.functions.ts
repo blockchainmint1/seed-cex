@@ -3,12 +3,17 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { adminUnlocked, hasTesterRole, pilotTesterAccess } from "@/lib/admin-guard";
 import {
-  fitsOffer, LIQUIDATION_LTV, LOAN_COINS, MARGIN_CALL_LTV, partiesFor, PROPOSAL_TTL_HOURS,
+  fitsOffer, LENDING_OPEN, lendingClosedProblem, LIQUIDATION_LTV, LOAN_COINS, MARGIN_CALL_LTV, partiesFor, PROPOSAL_TTL_HOURS,
   proposalActionProblem, SEEDS_DEFAULT_FEE_PCT, termsProblem, type LoanTerms, type ProposalStatus,
 } from "./rules";
 
 const admin = async () => (await import("@/integrations/supabase/client.server")).supabaseAdmin;
 const engine = () => import("./loans.server");
+/** Seeds Lend is switched off (rules.ts LENDING_OPEN): every action refuses. */
+function refuseWhileClosed() {
+  const why = lendingClosedProblem();
+  if (why) throw new Error(why);
+}
 const TESTERS_ONLY = "Seeds Lend is in a private beta: real loans are open to beta testers for now.";
 
 const termsSchema = z.object({
@@ -69,7 +74,11 @@ function proposalOut(p: Record<string, unknown>) {
 
 /* --------------------------------- public --------------------------------- */
 
+type MarketOffer = Omit<ReturnType<typeof offerOut>, "userId"> & { name: string; record: { repaid: number; bad: number; lent: number } };
+
 export const getLoanMarket = createServerFn({ method: "GET" }).handler(async () => {
+  const rules = { marginCallLtv: MARGIN_CALL_LTV, liquidationLtv: LIQUIDATION_LTV, feePct: SEEDS_DEFAULT_FEE_PCT };
+  if (!LENDING_OPEN) return { open: false as const, offers: [] as MarketOffer[], txcPrice: null as number | null, rules };
   const db = await admin();
   const { data } = await db.from("loan_offers").select("*").eq("status", "open").order("created_at", { ascending: false }).limit(200);
   const offers = (data ?? []).map((o) => offerOut(o as Record<string, unknown>));
@@ -77,9 +86,11 @@ export const getLoanMarket = createServerFn({ method: "GET" }).handler(async () 
   const [names, records, { collateralPrice }] = await Promise.all([namesFor(ids), trackRecords(ids), engine()]);
   const price = await collateralPrice("TXC").catch(() => null);
   return {
-    offers: offers.map((o) => ({ ...o, name: names[o.userId] ?? "member", record: records[o.userId] ?? { repaid: 0, bad: 0, lent: 0 } })),
+    open: true as const,
+    // Audit L6: never hand out member account ids publicly — the offer id is enough.
+    offers: offers.map(({ userId, ...o }): MarketOffer => ({ ...o, name: names[userId] ?? "member", record: records[userId] ?? { repaid: 0, bad: 0, lent: 0 } })),
     txcPrice: price,
-    rules: { marginCallLtv: MARGIN_CALL_LTV, liquidationLtv: LIQUIDATION_LTV, feePct: SEEDS_DEFAULT_FEE_PCT },
+    rules,
   };
 });
 
@@ -127,6 +138,7 @@ export const createLoanOffer = createServerFn({ method: "POST" })
     }).parse(i),
   )
   .handler(async ({ data, context }) => {
+    refuseWhileClosed();
     if (data.maxAmount < data.minAmount) throw new Error("The most can't be less than the least");
     for (const amount of [data.minAmount, data.maxAmount]) {
       const p = termsProblem({ coin: data.coin, collateralCoin: "TXC", amount, ratePct: data.ratePct, days: data.days, startLtvPct: data.maxLtvPct });
@@ -160,6 +172,7 @@ export const proposeLoan = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) => z.object({ offerId: z.string().uuid(), terms: termsSchema, note: z.string().trim().max(500).optional() }).parse(i))
   .handler(async ({ data, context }) => {
+    refuseWhileClosed();
     const db = await admin();
     const { data: o } = await db.from("loan_offers").select("*").eq("id", data.offerId).eq("status", "open").maybeSingle();
     if (!o) throw new Error("This offer isn't open any more");
@@ -193,6 +206,7 @@ export const answerProposal = createServerFn({ method: "POST" })
     }).parse(i),
   )
   .handler(async ({ data, context }) => {
+    refuseWhileClosed();
     const db = await admin();
     const { data: raw } = await db.from("loan_proposals").select("*").eq("id", data.id).maybeSingle();
     if (!raw) throw new Error("Not found");
@@ -280,6 +294,7 @@ export const startLoanSend = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) => z.object({ id: z.string().uuid(), kind: z.enum(["loan_collateral", "loan_funding", "loan_repay"]) }).parse(i))
   .handler(async ({ data, context }) => {
+    refuseWhileClosed();
     if (!(await pilotTesterAccess(context as never))) throw new Error(TESTERS_ONLY);
     const { l, role } = await partyLoan(context, data.id);
     if (role === "viewer") throw new Error("Only the borrower or lender can do this");
@@ -307,6 +322,7 @@ export const refreshLoan = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) => z.object({ id: z.string().uuid() }).parse(i))
   .handler(async ({ data, context }) => {
+    refuseWhileClosed();
     const { l } = await partyLoan(context, data.id);
     const { tickLoan } = await engine();
     await tickLoan(l.id);

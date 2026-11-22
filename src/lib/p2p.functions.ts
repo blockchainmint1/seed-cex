@@ -573,36 +573,42 @@ export const openTrade = createServerFn({ method: "POST" })
     const feeFiat = +(data.fiat * (feePct / 100)).toFixed(2);
     const crypto = +((data.fiat - feeFiat) / price).toFixed(P2P_ASSETS[asset].decimals);
 
-    // Lock: the seller's pocket must cover this trade on top of everything already set aside
-    // (other P2P sales, open exchange orders, exchange trades being paid).
-    const [bal, locked] = await Promise.all([pocketBalance(sellerId, asset), setAsideAmount(sellerId, asset).catch(() => Infinity)]);
-    if (bal === null) throw new Error(buyAd ? "We couldn't read your trading pocket — authorize it on the Wallet page first" : "We couldn't verify the seller's funds right now — try another seller");
-    if (bal - locked + 1e-8 < crypto) {
-      if (buyAd) throw new Error("Your trading pocket doesn't have enough for that amount");
-      const r = offerRange({ side: "sell", minFiat: Number(o.min_fiat), maxFiat: Number(o.max_fiat), available: bal - locked, price });
-      throw new Error(r.live ? `This seller's pocket covers up to $${r.max.toFixed(2)} right now. Try a smaller amount.` : "This seller doesn't have enough funds in their trading pocket right now. Try another seller.");
-    }
+    // Audit C2: the seller's free-coins check and the sale that holds the coins run one at
+    // a time per seller, so two buyers at once can't both be promised the same coins.
+    const { withPocketSpendLock } = await import("@/lib/set-asides.server");
+    const t = await withPocketSpendLock(sellerId, async () => {
+      // Lock: the seller's pocket must cover this trade on top of everything already set aside
+      // (other P2P sales, open exchange orders, exchange trades being paid).
+      const [bal, locked] = await Promise.all([pocketBalance(sellerId, asset), setAsideAmount(sellerId, asset).catch(() => Infinity)]);
+      if (bal === null) throw new Error(buyAd ? "We couldn't read your trading pocket — authorize it on the Wallet page first" : "We couldn't verify the seller's funds right now — try another seller");
+      if (bal - locked + 1e-8 < crypto) {
+        if (buyAd) throw new Error("Your trading pocket doesn't have enough for that amount");
+        const r = offerRange({ side: "sell", minFiat: Number(o.min_fiat), maxFiat: Number(o.max_fiat), available: bal - locked, price });
+        throw new Error(r.live ? `This seller's pocket covers up to $${r.max.toFixed(2)} right now. Try a smaller amount.` : "This seller doesn't have enough funds in their trading pocket right now. Try another seller.");
+      }
 
-    const { data: t, error } = await db
-      .from("p2p_trades")
-      .insert({
-        offer_id: o.id,
-        seller_id: sellerId,
-        buyer_id: buyerId,
-        asset,
-        price,
-        fee_pct: feePct,
-        crypto_amount: crypto,
-        fiat_amount: data.fiat,
-        fee_fiat: feeFiat,
-        payment_method: data.method,
-        instructions,
-        buyer_address: to,
-        expires_at: new Date(Date.now() + o.window_minutes * 60_000).toISOString(),
-      })
-      .select("id")
-      .single();
-    if (error) throw new Error(error.message);
+      const { data: row, error } = await db
+        .from("p2p_trades")
+        .insert({
+          offer_id: o.id,
+          seller_id: sellerId,
+          buyer_id: buyerId,
+          asset,
+          price,
+          fee_pct: feePct,
+          crypto_amount: crypto,
+          fiat_amount: data.fiat,
+          fee_fiat: feeFiat,
+          payment_method: data.method,
+          instructions,
+          buyer_address: to,
+          expires_at: new Date(Date.now() + o.window_minutes * 60_000).toISOString(),
+        })
+        .select("id")
+        .single();
+      if (error) throw new Error(error.message);
+      return row;
+    });
     await systemMessage(
       t.id,
       `Trade opened. ${crypto} ${asset} is reserved in the seller's trading pocket. Buyer: pay $${data.fiat.toFixed(2)} by ${data.method} within ${o.window_minutes} minutes, then tap "I've paid".`,

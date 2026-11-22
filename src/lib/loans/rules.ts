@@ -8,6 +8,17 @@
  * out of the borrower's leftover collateral after the lender has been made whole.
  */
 
+/**
+ * Master switch (Bobby, Nov 22 2026): Seeds Lend is OFF until the rules are worked out.
+ * While false nothing can be offered, negotiated, accepted or sent; the page says so.
+ * TXC will not be used in Seeds Lend; collateral will be BTC and ETH when it returns.
+ */
+export const LENDING_OPEN = false;
+export const LENDING_PAUSED = "Seeds Lend is switched off while we work out the rules. Nothing can be offered, borrowed or sent right now.";
+export function lendingClosedProblem(open: boolean = LENDING_OPEN): string | null {
+  return open ? null : LENDING_PAUSED;
+}
+
 export const LOAN_COINS = ["TSD", "USDC", "USDT"] as const;
 export type LoanCoin = (typeof LOAN_COINS)[number];
 /** Collateral must be a coin Seeds can lock in a lockbox on its own chain. */
@@ -46,6 +57,31 @@ export const PRICE_STALE_MS = 15 * 60_000;
 /** Lockbox outputs smaller than this aren't worth a coin of their own. */
 export const DUST_SATS = 10_000n;
 export const SATS = 100_000_000;
+
+/**
+ * A funding or repayment send was started (…_started_at set) but its txid never reached
+ * the loan row. Audit L1/L5 (Nov 22 2026): never assume "nothing was sent" from an error.
+ * Seeds stores the txid on the Telegram approval BEFORE broadcasting (and refuses to
+ * broadcast if it can't), so:
+ *  - a txid on the approval → adopt it (the coins may well have left);
+ *  - no txid, and the send already failed (error on the approval) → nothing went out, reopen;
+ *  - no txid after SEND_STUCK_MS → the send died before broadcasting, reopen;
+ *  - otherwise the send may still be running → wait.
+ */
+export const SEND_STUCK_MS = 10 * 60_000;
+export type StuckSendStep = "none" | "adopt" | "reopen" | "wait";
+export function stuckSendStep(i: {
+  startedAtMs: number | null;
+  loanTxid: string | null;
+  approvalTxid: string | null;
+  approvalError: boolean;
+  nowMs: number;
+}): StuckSendStep {
+  if (i.startedAtMs == null || !Number.isFinite(i.startedAtMs) || i.loanTxid) return "none";
+  if (i.approvalTxid) return "adopt";
+  if (i.approvalError) return "reopen";
+  return i.nowMs - i.startedAtMs >= SEND_STUCK_MS ? "reopen" : "wait";
+}
 
 export type LoanTerms = {
   coin: LoanCoin;
