@@ -45,7 +45,8 @@ export function spkiFromCert(der: Uint8Array): Uint8Array<ArrayBuffer> {
 async function certSpki(url: string): Promise<Uint8Array<ArrayBuffer>> {
   const hit = keyCache.get(url);
   if (hit && Date.now() - hit.at < 24 * 3600_000) return hit.der;
-  const res = await fetch(url, { signal: AbortSignal.timeout(5_000), redirect: "error" });
+  // Workers reject the "error" redirect mode; "manual" + the ok check below refuses any redirect the same way.
+  const res = await fetch(url, { signal: AbortSignal.timeout(5_000), redirect: "manual" });
   if (!res.ok) throw new Error(`certificate fetch ${res.status}`);
   const pem = await res.text();
   if (pem.length > 10_000 || !pem.includes("BEGIN CERTIFICATE")) throw new Error("not a certificate");

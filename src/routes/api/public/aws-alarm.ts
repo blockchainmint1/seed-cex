@@ -27,7 +27,7 @@ export const Route = createFileRoute("/api/public/aws-alarm")({
 
         if (m.Type === "SubscriptionConfirmation") {
           if (!isSnsUrl(m.SubscribeURL, "subscribe")) return new Response("Unauthorized", { status: 401 });
-          const r = await fetch(m.SubscribeURL!, { signal: AbortSignal.timeout(5_000), redirect: "error" });
+          const r = await fetch(m.SubscribeURL!, { signal: AbortSignal.timeout(5_000), redirect: "manual" });
           console.log("[aws-alarm] subscription confirm", r.status);
           return Response.json({ ok: r.ok });
         }
