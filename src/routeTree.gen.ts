@@ -124,6 +124,7 @@ import { Route as ApiPublicJobsPulseWithdrawalsRouteImport } from './routes/api/
 import { Route as ApiPublicJobsSendApprovalsRouteImport } from './routes/api/public/jobs/send-approvals'
 import { Route as ApiPublicJobsTsdRoutesRouteImport } from './routes/api/public/jobs/tsd-routes'
 import { Route as ApiPublicKeySigninSubmitRouteImport } from './routes/api/public/key-signin/submit'
+import { Route as ApiPublicKeySigninVaultSignerRouteImport } from './routes/api/public/key-signin/vault-signer'
 import { Route as ApiPublicMinehmeProfileUpdateRouteImport } from './routes/api/public/minehme/profile-update'
 import { Route as ApiPublicNectarpayWebhookRouteImport } from './routes/api/public/nectarpay/webhook'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
@@ -757,6 +758,12 @@ const ApiPublicKeySigninSubmitRoute =
     path: '/api/public/key-signin/submit',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicKeySigninVaultSignerRoute =
+  ApiPublicKeySigninVaultSignerRouteImport.update({
+    id: '/api/public/key-signin/vault-signer',
+    path: '/api/public/key-signin/vault-signer',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicMinehmeProfileUpdateRoute =
   ApiPublicMinehmeProfileUpdateRouteImport.update({
     id: '/api/public/minehme/profile-update',
@@ -1002,6 +1009,7 @@ export interface FileRoutesByFullPath {
   '/api/public/jobs/send-approvals': typeof ApiPublicJobsSendApprovalsRoute
   '/api/public/jobs/tsd-routes': typeof ApiPublicJobsTsdRoutesRoute
   '/api/public/key-signin/submit': typeof ApiPublicKeySigninSubmitRoute
+  '/api/public/key-signin/vault-signer': typeof ApiPublicKeySigninVaultSignerRoute
   '/api/public/minehme/profile-update': typeof ApiPublicMinehmeProfileUpdateRoute
   '/api/public/nectarpay/webhook': typeof ApiPublicNectarpayWebhookRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
@@ -1138,6 +1146,7 @@ export interface FileRoutesByTo {
   '/api/public/jobs/send-approvals': typeof ApiPublicJobsSendApprovalsRoute
   '/api/public/jobs/tsd-routes': typeof ApiPublicJobsTsdRoutesRoute
   '/api/public/key-signin/submit': typeof ApiPublicKeySigninSubmitRoute
+  '/api/public/key-signin/vault-signer': typeof ApiPublicKeySigninVaultSignerRoute
   '/api/public/minehme/profile-update': typeof ApiPublicMinehmeProfileUpdateRoute
   '/api/public/nectarpay/webhook': typeof ApiPublicNectarpayWebhookRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
@@ -1281,6 +1290,7 @@ export interface FileRoutesById {
   '/api/public/jobs/send-approvals': typeof ApiPublicJobsSendApprovalsRoute
   '/api/public/jobs/tsd-routes': typeof ApiPublicJobsTsdRoutesRoute
   '/api/public/key-signin/submit': typeof ApiPublicKeySigninSubmitRoute
+  '/api/public/key-signin/vault-signer': typeof ApiPublicKeySigninVaultSignerRoute
   '/api/public/minehme/profile-update': typeof ApiPublicMinehmeProfileUpdateRoute
   '/api/public/nectarpay/webhook': typeof ApiPublicNectarpayWebhookRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
@@ -1424,6 +1434,7 @@ export interface FileRouteTypes {
     | '/api/public/jobs/send-approvals'
     | '/api/public/jobs/tsd-routes'
     | '/api/public/key-signin/submit'
+    | '/api/public/key-signin/vault-signer'
     | '/api/public/minehme/profile-update'
     | '/api/public/nectarpay/webhook'
     | '/api/public/telegram/webhook'
@@ -1560,6 +1571,7 @@ export interface FileRouteTypes {
     | '/api/public/jobs/send-approvals'
     | '/api/public/jobs/tsd-routes'
     | '/api/public/key-signin/submit'
+    | '/api/public/key-signin/vault-signer'
     | '/api/public/minehme/profile-update'
     | '/api/public/nectarpay/webhook'
     | '/api/public/telegram/webhook'
@@ -1702,6 +1714,7 @@ export interface FileRouteTypes {
     | '/api/public/jobs/send-approvals'
     | '/api/public/jobs/tsd-routes'
     | '/api/public/key-signin/submit'
+    | '/api/public/key-signin/vault-signer'
     | '/api/public/minehme/profile-update'
     | '/api/public/nectarpay/webhook'
     | '/api/public/telegram/webhook'
@@ -1805,6 +1818,7 @@ export interface RootRouteChildren {
   ApiPublicJobsSendApprovalsRoute: typeof ApiPublicJobsSendApprovalsRoute
   ApiPublicJobsTsdRoutesRoute: typeof ApiPublicJobsTsdRoutesRoute
   ApiPublicKeySigninSubmitRoute: typeof ApiPublicKeySigninSubmitRoute
+  ApiPublicKeySigninVaultSignerRoute: typeof ApiPublicKeySigninVaultSignerRoute
   ApiPublicMinehmeProfileUpdateRoute: typeof ApiPublicMinehmeProfileUpdateRoute
   ApiPublicNectarpayWebhookRoute: typeof ApiPublicNectarpayWebhookRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
@@ -2639,6 +2653,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicKeySigninSubmitRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/key-signin/vault-signer': {
+      id: '/api/public/key-signin/vault-signer'
+      path: '/api/public/key-signin/vault-signer'
+      fullPath: '/api/public/key-signin/vault-signer'
+      preLoaderRoute: typeof ApiPublicKeySigninVaultSignerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/minehme/profile-update': {
       id: '/api/public/minehme/profile-update'
       path: '/api/public/minehme/profile-update'
@@ -3061,6 +3082,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicJobsSendApprovalsRoute: ApiPublicJobsSendApprovalsRoute,
   ApiPublicJobsTsdRoutesRoute: ApiPublicJobsTsdRoutesRoute,
   ApiPublicKeySigninSubmitRoute: ApiPublicKeySigninSubmitRoute,
+  ApiPublicKeySigninVaultSignerRoute: ApiPublicKeySigninVaultSignerRoute,
   ApiPublicMinehmeProfileUpdateRoute: ApiPublicMinehmeProfileUpdateRoute,
   ApiPublicNectarpayWebhookRoute: ApiPublicNectarpayWebhookRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,

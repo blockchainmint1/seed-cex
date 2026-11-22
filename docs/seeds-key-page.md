@@ -97,12 +97,12 @@ updates copy straight across.
 
 | Function | What it does |
 | --- | --- |
-| `coinIdentityKey(words)` | private key of TXC `m/44'/696969'/0'/0/0` (the coin's sign-in key — the same address HME Wallet signs links with) |
+| `coinIdentityKey(words, passphrase = "")` | private key of TXC `m/44'/696969'/0'/0/0` (the coin's sign-in key — the same address HME Wallet signs links with). `passphrase` = optional BIP39 extra password, NFKD-normalised via `seedPassphrase`; `""` = none |
 | `signTxcMessage(key, message)` | Bitcoin-style signed message → `{ address, signature }` (base64) |
 | `walletPocketWords(signature, host)` | turns a wallet's signature over `walletPocketMessage(host, kind, address)` into a 24-word pocket phrase |
 | `pairingCode(challenge)` (rules.ts) | the three-digit match code the Seeds tab also shows |
 | `shortKeyName(kind, identity)` (rules.ts) | the short name both screens show, e.g. `Coin TZZC…xsVd` |
-| `buildHandoff({ manifest, words, kind, identity, account? })` | derives every pocket key, seals them, and returns `{ message, body }` ready to sign and POST |
+| `buildHandoff({ manifest, words, kind, identity, account?, passphrase? })` | derives every pocket key, seals them, and returns `{ message, body }` ready to sign and POST. Pass the **same** `passphrase` as `coinIdentityKey`; it is never sent |
 
 ## Coin flow (`kind=coin`)
 

@@ -17,6 +17,18 @@ export const Route = createFileRoute("/api/public/key-signin/manifest/$id")({
           .select("challenge_id, challenge, recipient_pubkey, expires_at, consumed_at, created_at").eq("challenge_id", params.id).maybeSingle();
         if (!r || r.consumed_at || new Date(r.expires_at) < new Date()) return corsJson({ error: "expired" }, 404);
         const origin = new URL(request.url).origin;
+        const { vaultSigner } = await import("@/lib/key-signin/vault-request.server");
+        const { vaultRequestFor } = await import("@/lib/key-signin/vault-request");
+        const domain = linkDomainFor(request);
+        const keyHost = keyHostOf(process.env.SEEDS_KEY_URL);
+        const issuedAt = new Date(r.created_at).toISOString();
+        const expiresAt = new Date(r.expires_at).toISOString();
+        // HME Vault (signed request v2): only on the live addresses with Seeds' signer configured;
+        // otherwise omitted and Seeds Key hides the Vault choice. Mirrors the fields below exactly.
+        const vaultRequest = vaultRequestFor({
+          domain, key_host: keyHost, challenge_id: r.challenge_id, challenge: r.challenge,
+          recipient_pubkey: r.recipient_pubkey, pocket: FIRST_POCKET, issued_at: issuedAt, expires_at: expiresAt,
+        }, vaultSigner());
         const chain = (c: (typeof ALLOWED_CHAINS)[number] | (typeof OPTIONAL_CHAINS)[number]) => ({
           chain: c, path: accountPath(c, FIRST_POCKET), curve: POCKET_SPECS[c].curve,
           format: (KEY_FORMATS as Record<string, string>)[c] ?? "bip32",
@@ -26,7 +38,7 @@ export const Route = createFileRoute("/api/public/key-signin/manifest/$id")({
           version: 1,
           app_name: "Seeds Exchange",
           origin,
-          domain: linkDomainFor(request),
+          domain,
           challenge_id: r.challenge_id,
           challenge: r.challenge,
           // The Seeds tab shows the same three digits; continue only when they match.
@@ -34,15 +46,16 @@ export const Route = createFileRoute("/api/public/key-signin/manifest/$id")({
           recipient_pubkey: r.recipient_pubkey,
           // Wallet sign-ins sign these exact values (Sign-In with Ethereum / Solana: domain = key_host,
           // Issued At = issued_at, Expiration Time = expires_at, Nonce = challenge).
-          key_host: keyHostOf(process.env.SEEDS_KEY_URL),
-          issued_at: new Date(r.created_at).toISOString(),
-          expires_at: new Date(r.expires_at).toISOString(),
+          key_host: keyHost,
+          issued_at: issuedAt,
+          expires_at: expiresAt,
           submit_url: `${origin}/api/public/key-signin/submit`,
           kinds: ["coin", "evm", "sol"],
           // Seeds always uses pocket 1106 (SEEDS_POCKET), also after a revoke. A 409 {error:"use_pocket"} answer would name the pocket to derive.
           pocket: FIRST_POCKET,
           request: ALLOWED_CHAINS.map(chain),
           request_optional: OPTIONAL_CHAINS.map(chain),
+          ...(vaultRequest ? { vault_request: vaultRequest } : {}),
         });
       },
     },

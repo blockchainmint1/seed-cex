@@ -24,9 +24,12 @@ export const startKeySignin = createServerFn({ method: "POST" })
     const id = rnd(16);
     const secret = rnd(32);
     const challenge = rnd(24);
-    const expiresAt = new Date(Date.now() + KEY_REQUEST_TTL_MS).toISOString();
+    // Issued (created_at) and expiry from one clock reading: exactly the request lifetime,
+    // which the signed HME Vault request needs (≤ 10 minutes, canonical times).
+    const { keyRequestWindow } = await import("./vault-request");
+    const { createdAt, expiresAt } = keyRequestWindow(Date.now(), KEY_REQUEST_TTL_MS);
     const { error } = await supabaseAdmin.from("key_signin_requests").insert({
-      challenge_id: id, challenge, browser_secret_hash: sha256Hex(secret),
+      created_at: createdAt, challenge_id: id, challenge, browser_secret_hash: sha256Hex(secret),
       recipient_priv_ciphertext: encryptDelegatedKey(kp.priv), recipient_pubkey: kp.pub,
       ip_hash: ipHash(requestIp(getRequest().headers)), expires_at: expiresAt,
     });

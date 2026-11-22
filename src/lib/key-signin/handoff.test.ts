@@ -82,3 +82,52 @@ describe("outside-wallet hand-off", () => {
     expect(verifyKeySignature("sol", pub, "bye", sig)).toBe(false);
   });
 });
+
+describe("extra password (BIP39 passphrase) for HME Vault seeds", () => {
+  const ADDR = "TZZCuca5ntPVCJL5ryTjh465Jvw5vHxsVd";
+
+  test("no password = unchanged coin identity", () => {
+    expect(signTxcMessage(coinIdentityKey(WORDS, ""), "x").address).toBe(ADDR);
+  });
+
+  test("identity uses the official BIP39 seed for the password (TREZOR test vector)", async () => {
+    const { HDKey } = await import("@scure/bip32");
+    // BIP39 vector: "abandon … about" + passphrase "TREZOR".
+    const seed = hex.decode("c55257c360c07c72029aebc1b53c05ed0362ada38ead3e3e9efa3708e53495531f09a6987599d18264c1e1c92f2cf141630c7a3c4ab7c81b2f001698e7463b04");
+    const want = HDKey.fromMasterSeed(seed).derive("m/44'/696969'/0'/0/0").privateKey!;
+    expect(hex.encode(coinIdentityKey(WORDS, "TREZOR"))).toBe(hex.encode(want));
+    expect(signTxcMessage(coinIdentityKey(WORDS, "TREZOR"), "x").address).not.toBe(ADDR);
+  });
+
+  test("Seeds accepts a password seed's hand-off and every pocket key matches", async () => {
+    const kp = newRecipientKeypair();
+    const key = coinIdentityKey(WORDS, "TREZOR");
+    const identity = signTxcMessage(key, "x").address;
+    const h = await buildHandoff({ manifest: manifest(kp.pub), words: WORDS, kind: "coin", identity, passphrase: "TREZOR" });
+    const plain = await buildHandoff({ manifest: manifest(kp.pub), words: WORDS, kind: "coin", identity });
+    expect(h.addresses.TXC).not.toBe(plain.addresses.TXC);
+    expect(h.addresses.ADA).not.toBe(plain.addresses.ADA);
+    const { signature } = signTxcMessage(key, h.message);
+    expect(verifyKeySignature("coin", identity, h.message, signature)).toBe(true);
+    const xprvs = JSON.parse(openSealed(h.body.payload, kp.priv, kp.pub)) as Record<string, string>;
+    expect(Object.keys(h.body.xpubs).length).toBe(16);
+    for (const [c, pub] of Object.entries(h.body.xpubs)) expect(checkXprvMatches(c as LinkChain, xprvs[c]!, pub as string)).toBe(true);
+  });
+
+  test("the same password typed two Unicode ways gives the same wallet, Cardano included", async () => {
+    const composed = "caf\u00e9 ñ";
+    const decomposed = "cafe\u0301 n\u0303";
+    expect(hex.encode(coinIdentityKey(WORDS, composed))).toBe(hex.encode(coinIdentityKey(WORDS, decomposed)));
+    const kp = newRecipientKeypair();
+    const a = await buildHandoff({ manifest: manifest(kp.pub), words: WORDS, kind: "coin", identity: "x", passphrase: composed });
+    const b = await buildHandoff({ manifest: manifest(kp.pub), words: WORDS, kind: "coin", identity: "x", passphrase: decomposed });
+    expect(a.addresses).toEqual(b.addresses);
+    expect(a.body.xpubs).toEqual(b.body.xpubs);
+  });
+
+  test("a password is never part of what Seeds receives", async () => {
+    const kp = newRecipientKeypair();
+    const h = await buildHandoff({ manifest: manifest(kp.pub), words: WORDS, kind: "coin", identity: "x", passphrase: "correct horse battery" });
+    expect(JSON.stringify({ m: h.message, b: h.body })).not.toContain("correct horse");
+  });
+});
