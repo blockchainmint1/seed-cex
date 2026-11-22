@@ -279,3 +279,43 @@ export function replaceConfirmProblem(i: {
   if (i.twoFactorOn && !(i.code && /^\d{6}$/.test(i.code))) return REPLACE_CODE_NEEDED;
   return null;
 }
+
+/**
+ * Link mode (Bobby, Nov 22 2026): a member signed in with Honest.Money links a Cold Storage Coin, HME Vault
+ * or outside wallet as their trading pocket, on the account they're already in. Never creates, merges
+ * or signs into another account. null = go ahead; otherwise the plain reason.
+ */
+export function keyLinkProblem(i: {
+  memberKind: string;
+  /** Seeds account that signs in with this key, if any. */
+  keyAccountId: string | null;
+  memberId: string;
+  /** Active pocket link with this key on another Seeds account. */
+  activeElsewhere: boolean;
+  /** The member's own active link: null when none, otherwise whether it has the same keys. */
+  memberActive: { sameKeys: boolean } | null;
+}): string | null {
+  if (i.memberKind !== "hme") return "Coin and wallet accounts set up their pocket by signing in again with their own key.";
+  if (i.keyAccountId && i.keyAccountId !== i.memberId)
+    return "This key already has its own Seeds account. Sign in with it to use that account. Seeds never merges accounts.";
+  if (i.activeElsewhere) return "This key is already the trading pocket of another Seeds account. Revoke it there first.";
+  if (i.memberActive && !i.memberActive.sameKeys)
+    return "You already have a trading pocket linked. Stop Seeds' access to it first (Account → Security), then link this one.";
+  return null;
+}
+
+/** Same keys as the active link = a refresh (nothing to approve); anything else waits for the member's screen. */
+export function keyLinkOutcome(memberActive: { sameKeys: boolean } | null): "refresh" | "hold" {
+  return memberActive?.sameKeys ? "refresh" : "hold";
+}
+
+/**
+ * One phrase, one account: a coin / wallet sign-in never opens a brand-new account for a key that was
+ * already the trading pocket of another Seeds account (active or revoked) — two accounts would share one pocket.
+ */
+export function secondAccountProblem(i: { keyAccountId: string | null; linkedOnAccounts: string[] }): string | null {
+  if (i.keyAccountId) return null;
+  return i.linkedOnAccounts.length
+    ? "This key was already the trading pocket of another Seeds account, so Seeds won't open a second account with it. Sign in to that account (with Honest.Money if that's how you set it up)."
+    : null;
+}

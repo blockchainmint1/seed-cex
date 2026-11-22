@@ -7,7 +7,7 @@
 import { ACCEPTED_CHAINS, ALLOWED_CHAINS, type LinkChain, chainForPath, checkXprvMatches, linkDomainFor, openSealed, parseExtKey, payloadSha256 } from "../hme-link.server";
 import { replaceProblem } from "../hme-link-rules";
 import { decryptDelegatedKey, encryptDelegatedKey } from "../delegation.server";
-import { NEW_ACCOUNTS_PER_IP_HOUR, NEW_KEY_ACCOUNTS_ALARM_GAP_MS, NEW_KEY_ACCOUNTS_ALARM_PER_HOUR, shouldAlarmNewAccounts, isKeyKind, keepExistingLink, keyHostOf, keySigninMessage, keysDiffer, normalizeIdentity, placeholderEmail, pocketFor, startingName, type KeyKind } from "./rules";
+import { NEW_ACCOUNTS_PER_IP_HOUR, NEW_KEY_ACCOUNTS_ALARM_GAP_MS, NEW_KEY_ACCOUNTS_ALARM_PER_HOUR, secondAccountProblem, shouldAlarmNewAccounts, isKeyKind, keepExistingLink, keyHostOf, keySigninMessage, keysDiffer, normalizeIdentity, placeholderEmail, pocketFor, startingName, type KeyKind } from "./rules";
 import { corsJson, ipHash, sha256Hex, verifyKeySignature } from "./signin.server";
 import { requestIp } from "../ip-rate.server";
 
@@ -60,6 +60,15 @@ export async function handleKeySubmit(request: Request): Promise<Response> {
   if (b.message !== expected) return corsJson({ error: "message mismatch", expected }, 400);
   if (!verifyKeySignature(kind, b.identity_address!.trim(), b.message, b.signature)) return corsJson({ error: "bad signature" }, 401);
 
+  // Started by a signed-in Honest.Money member: the key joins THAT account as its trading pocket (link.server.ts).
+  if (req.link_user_id) {
+    const { submitKeyLink } = await import("./link.server");
+    return submitKeyLink({
+      token: b.token, linkUserId: req.link_user_id, recipientPrivCiphertext: req.recipient_priv_ciphertext, recipientPubkey: req.recipient_pubkey,
+      kind, identity, account: b.account!, paths: b.paths, chains, xpubs, payload: b.payload,
+    });
+  }
+
   // Who is this? A coin/wallet account is found by its identity, never by email.
   const { data: prof } = await supabaseAdmin.from("profiles").select("id, hm_status")
     .eq("identity_kind", kind).eq("identity_address", identity).maybeSingle();
@@ -70,6 +79,8 @@ export async function handleKeySubmit(request: Request): Promise<Response> {
   const { data: history } = await supabaseAdmin.from("hme_links").select("user_id, account, status").eq("identity_address", identity);
   const activeElsewhere = (history ?? []).find((h) => h.status === "active" && h.user_id !== prof?.id);
   if (activeElsewhere) return corsJson({ error: "This key is already linked to an Honest.Money account on Seeds. Sign in with Honest.Money instead." }, 409);
+  const second = secondAccountProblem({ keyAccountId: prof?.id ?? null, linkedOnAccounts: (history ?? []).map((h) => h.user_id).filter((u) => u !== prof?.id) });
+  if (second) return corsJson({ error: second }, 409);
   const want = pocketFor((history ?? []).map((h) => ({ account: h.account, active: h.status === "active" })));
   if (b.account !== want) return corsJson({ error: "use_pocket", account: want }, 409);
 
@@ -131,7 +142,7 @@ export async function handleKeySubmit(request: Request): Promise<Response> {
   // member's screen approves it (with a fresh authenticator code when they use one), and tell them first.
   if (active && keysDiffer({ account: active.account, xpubs: active.xpubs as Record<string, string> }, { account: b.account!, xpubs })) {
     const pendingId = crypto.randomUUID();
-    const pending = { link_id: pendingId, account: b.account!, paths: b.paths, xpubs, identity, key_ciphertext: await encryptDelegatedKey(JSON.stringify(keep), `link:${pendingId}`) };
+    const pending = { link_id: pendingId, account: b.account!, paths: b.paths, xpubs, identity, kind, key_ciphertext: await encryptDelegatedKey(JSON.stringify(keep), `link:${pendingId}`) };
     const { error: he } = await supabaseAdmin.from("key_signin_requests")
       .update({ user_id: userId, identity_kind: kind, created_account: false, replace_link_id: active.id, pending_link: pending })
       .eq("challenge_id", b.token);
@@ -162,7 +173,7 @@ export async function handleKeySubmit(request: Request): Promise<Response> {
   const newLinkId = crypto.randomUUID();
   const { error: le } = await supabaseAdmin.from("hme_links").insert({
     id: newLinkId, user_id: userId, mode: "access", account: b.account!, paths: b.paths, identity_address: identity,
-    xpubs, key_ciphertext: await encryptDelegatedKey(JSON.stringify(keep), `link:${newLinkId}`), source: "seeds_key",
+    xpubs, key_ciphertext: await encryptDelegatedKey(JSON.stringify(keep), `link:${newLinkId}`), source: "seeds_key", key_kind: kind,
   });
   if (le) return corsJson({ error: "store failed" }, 500);
 

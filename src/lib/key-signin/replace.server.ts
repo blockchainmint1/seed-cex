@@ -12,7 +12,7 @@ import { IDENTITY_LABEL, REPLACE_CODE_TRIES, replaceConfirmProblem } from "./rul
 
 const SITE = "https://seeds.honest.money";
 
-type Pending = { link_id?: string; account: number; paths: string[]; xpubs: Record<string, string>; identity: string; key_ciphertext: string };
+type Pending = { link_id?: string; account: number; paths: string[]; xpubs: Record<string, string>; identity: string; kind?: string; key_ciphertext: string };
 
 async function telegramTo(userId: string, text: string, linkId?: string): Promise<void> {
   const { sendTelegram, telegramConfigured, telegramActionKey } = await import("@/lib/telegram.server");
@@ -89,8 +89,10 @@ async function codeMatches(email: string, userId: string, code: string): Promise
  */
 export async function confirmHeldReplace(i: { challengeId: string; code: string | null }): Promise<void> {
   const { data: r } = await supabaseAdmin.from("key_signin_requests")
-    .select("user_id, claimed_at, replace_link_id, pending_link, replace_tries, replaced_at").eq("challenge_id", i.challengeId).maybeSingle();
-  if (!r?.user_id || !r.replace_link_id || !r.pending_link || r.replaced_at) throw new Error("That sign-in ran out. Start again.");
+    .select("user_id, link_user_id, claimed_at, replace_link_id, pending_link, replace_tries, replaced_at").eq("challenge_id", i.challengeId).maybeSingle();
+  // Link mode (a signed-in member linking a key, link.server.ts) may have no old link to replace; sign-ins always do.
+  const linkMode = Boolean(r?.link_user_id) && r?.link_user_id === r?.user_id;
+  if (!r?.user_id || (!r.replace_link_id && !linkMode) || !r.pending_link || r.replaced_at) throw new Error("That sign-in ran out. Start again.");
   const { hasTwoFactor } = await import("../two-factor.server");
   const twoFactorOn = await hasTwoFactor(r.user_id);
   const problem = replaceConfirmProblem({
@@ -118,17 +120,32 @@ export async function confirmHeldReplace(i: { challengeId: string; code: string 
     .eq("challenge_id", i.challengeId).is("replaced_at", null).not("pending_link", "is", null).select("challenge_id");
   if (!took?.length) throw new Error("That sign-in was already used. Start again.");
   const p = r.pending_link as unknown as Pending;
-  const { data: revoked } = await supabaseAdmin.from("hme_links")
-    .update({ status: "revoked", revoked_at: new Date().toISOString(), revoked_by: "replaced", key_ciphertext: null })
-    .eq("id", r.replace_link_id).eq("user_id", r.user_id).eq("status", "active").select("id");
-  if (!revoked?.length) throw new Error("Your trading pocket link changed in the meantime, so nothing was replaced. Start again.");
-  await supabaseAdmin.from("hme_trade_proposals").update({ status: "expired" }).eq("link_id", r.replace_link_id).eq("status", "pending");
+  if (r.replace_link_id) {
+    const { data: revoked } = await supabaseAdmin.from("hme_links")
+      .update({ status: "revoked", revoked_at: new Date().toISOString(), revoked_by: "replaced", key_ciphertext: null })
+      .eq("id", r.replace_link_id).eq("user_id", r.user_id).eq("status", "active").select("id");
+    if (!revoked?.length) throw new Error("Your trading pocket link changed in the meantime, so nothing was replaced. Start again.");
+    await supabaseAdmin.from("hme_trade_proposals").update({ status: "expired" }).eq("link_id", r.replace_link_id).eq("status", "pending");
+  } else {
+    // Nothing was linked when the key arrived: still nothing may be, or we'd end up with two pockets.
+    const { count } = await supabaseAdmin.from("hme_links").select("id", { count: "exact", head: true }).eq("user_id", r.user_id).eq("status", "active");
+    if ((count ?? 0) > 0) throw new Error("Another trading pocket was linked in the meantime, so nothing changed. Start again.");
+  }
+  const kindOk = p.kind === "coin" || p.kind === "evm" || p.kind === "sol";
   // The held key was sealed for this link id (KMS context), so the row must get exactly that id.
   const { error: le } = await supabaseAdmin.from("hme_links").insert({
     ...(p.link_id ? { id: p.link_id } : {}), user_id: r.user_id, mode: "access", account: p.account, paths: p.paths, identity_address: p.identity,
-    xpubs: p.xpubs, key_ciphertext: p.key_ciphertext, source: "seeds_key",
+    xpubs: p.xpubs, key_ciphertext: p.key_ciphertext, source: "seeds_key", ...(kindOk ? { key_kind: p.kind } : {}),
   });
   if (le) throw new Error("Couldn't save the new pocket link. Start again.");
+  if (linkMode) {
+    const what = (IDENTITY_LABEL[p.kind ?? ""] ?? "key").toLowerCase();
+    await telegramTo(r.user_id, `🔑 <b>Seeds security</b>\nYour trading pocket is now linked to your ${what}${twoFactorOn ? ", confirmed with your authenticator code" : ""}. Seeds never saw your recovery phrase. If this wasn't you, revoke Seeds' access in Security now and contact support@honest.money.\n\n<a href="${SITE}/account/security">Open Security</a>`).catch(() => undefined);
+    const { emailAccountChange } = await import("@/lib/email/send.server");
+    await emailAccountChange(r.user_id, "Trading pocket", [`Your trading pocket is now linked to your ${what} (pocket #${p.account})`],
+      "revoke Seeds' access in Account → Security right away and contact support@honest.money.").catch(() => undefined);
+    return;
+  }
   await telegramTo(r.user_id, `🔑 <b>Seeds security</b>\nYour trading-pocket keys were just replaced after a sign-in on another screen${twoFactorOn ? " with your authenticator code" : ""}. If this wasn't you, revoke Seeds' access in Security now and contact support@honest.money.\n\n<a href="${SITE}/account/security">Open Security</a>`).catch(() => undefined);
   const { emailAccountChange } = await import("@/lib/email/send.server");
   await emailAccountChange(r.user_id, "Trading pocket keys", ["Your trading-pocket keys were replaced after a sign-in on another screen"],

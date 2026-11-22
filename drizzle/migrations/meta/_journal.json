@@ -512,6 +512,20 @@
       "when": 1795382005757,
       "tag": "0072_order_book_review_r2_r4",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1795385280310,
+      "tag": "0073_link_key_to_hme_account",
+      "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1795385316748,
+      "tag": "0074_link_key_history_guard_fix",
+      "breakpoints": true
     }
   ]
 }

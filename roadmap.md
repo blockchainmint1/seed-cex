@@ -334,7 +334,7 @@
 - [x] Always pocket 1106: HME Wallet links refuse other numbers; coin/wallet sign-ins reuse 1106 after a revoke; wording updated (Nov 22)
 - [ ] Seeds Key site: copy the new rules.ts (pocketFor always 1106) (blocked: done in the Seeds Key project, then auditor)
 - [ ] Setup guide asks for withdrawal checks (email / two-factor / Telegram) before the wallet step so nobody has to re-link (waiting on Bobby: how many checks, coin re-link approach)
-- [ ] Same phrase in HME Wallet and on a coin: decide where a coin sign-in lands once the HME Wallet link is revoked (today it makes a second account) (waiting on Bobby)
+- [x] Same phrase in HME Wallet and on a coin: a coin sign-in no longer opens a second account for a key that was ever another account's pocket; it says to sign in to that account (Nov 22, safety default — Bobby can change)
 - [x] Feedback & QA Center (Cory, Nov 22): Feedback button for testers/admins, reports + screenshots/files/recordings, My reports, /admin/bugs triage, on/off switch
 - [ ] Sentry error monitoring (blocked: Bobby's approval of the evaluation; nothing installed)
 - [ ] Admin check of /admin/bugs actions with a fresh admin code (blocked: an admin's authenticator code)
@@ -349,3 +349,7 @@
 - [x] M4: all 16 stored keys moved to AWS KMS; SEEDS_DELEGATION_KEY deleted (Bobby, Nov 22)
 - [x] M1 receiving page /api/public/aws-alarm + setup guide
 - [x] M1: AWS alarms (3), email + Telegram group delivery set up and tested (Nov 22)
+
+- [x] Honest.Money members can link a Cold Storage Coin, HME Vault or outside wallet as their trading pocket (Security: big HME Wallet tile + expandable tiles with pros/cons), held until their own screen confirms
+- [ ] Link-a-key auditor review + publish (blocked: auditor)
+- [ ] Real phone test of linking a coin / Vault / MetaMask on the live Seeds Key page (blocked: publish)

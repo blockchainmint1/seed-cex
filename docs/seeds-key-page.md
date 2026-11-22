@@ -231,3 +231,10 @@ deploy the page before announcing the feature.
 The wallet message's fixed fields (`WALLET_POCKET_NONCE`, `WALLET_POCKET_ISSUED_AT`, the statement,
 the HKDF label `seeds-key wallet pocket v2`) are permanent for the same reason. Version 1 of the
 message was never used by any member.
+
+## Link mode (Nov 22 2026) — no Seeds Key change needed
+
+A member already signed in with Honest.Money can link a coin, HME Vault or outside wallet as their trading pocket.
+Seeds starts the same request and manifest; the Key page does exactly what it does for a sign-in. The submit reply
+for a new key is `{ signed_in: false, needs_confirm: true }` (same as a held key change): show "Finish on your Seeds
+screen". The same key again replies `{ signed_in: true }`. Refusals come back as a 409 `error` string to show as-is.

@@ -26,16 +26,29 @@ export function keyThing(kind: KeyKind): string {
   return THING[kind];
 }
 
+/**
+ * Where the trading pocket comes from. Coin / wallet accounts: their sign-in key. Honest.Money members:
+ * HME Wallet, or a coin / Vault / outside wallet they linked (viaLink) — then "re-link" means linking that key again.
+ */
+export type PocketSource = { kind: SignInKind; viaLink: boolean };
+export function pocketSource(signIn: SignInKind, active: { source: string | null; keyKind: string | null } | null): PocketSource {
+  if (isKeyKind(signIn)) return { kind: signIn, viaLink: false };
+  if (active && active.source === "seeds_key" && isKeyKind(active.keyKind)) return { kind: active.keyKind, viaLink: true };
+  return { kind: "hme", viaLink: false };
+}
+
 /** Plain step that refreshes the trading-pocket link (needed after two-factor / Telegram change). */
-export function relinkStep(kind: SignInKind): string {
-  return kind === "hme"
-    ? "re-link your HME Wallet in Account → Security"
+export function relinkStep(kind: SignInKind, viaLink = false): string {
+  if (kind === "hme") return "re-link your HME Wallet in Account → Security";
+  return viaLink
+    ? `link ${THING[kind]} again using the button in Account → Security`
     : `sign in again with ${THING[kind]} using the button in Account → Security`;
 }
 
 /** Button label for that step. */
-export function relinkButton(kind: SignInKind): string {
-  return kind === "hme" ? "Re-link HME Wallet" : `Sign in again with ${THING[kind]}`;
+export function relinkButton(kind: SignInKind, viaLink = false): string {
+  if (kind === "hme") return "Re-link HME Wallet";
+  return viaLink ? `Link ${THING[kind]} again` : `Sign in again with ${THING[kind]}`;
 }
 
 export type KeyWithdrawStepKey = "email" | "two_factor" | "telegram" | "sign_in_again";

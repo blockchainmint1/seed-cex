@@ -12,43 +12,59 @@ const kindSchema = z.enum(["coin", "wallet", "vault"]);
  */
 export const startKeySignin = createServerFn({ method: "POST" })
   .inputValidator((d) => z.object({ origin: z.string().url().max(200), kind: kindSchema }).parse(d))
-  .handler(async ({ data }) => {
-    const { requireIpAllowance, requestIp } = await import("../ip-rate.server");
-    const { KEY_START_PER_MINUTE, KEY_REQUEST_TTL_MS, pairingCode } = await import("./rules");
-    await requireIpAllowance("key-signin-start", KEY_START_PER_MINUTE);
-    const { getRequest } = await import("@tanstack/react-start/server");
-    const { newRecipientKeypair } = await import("../hme-link.server");
-    const { encryptDelegatedKey } = await import("../delegation.server");
-    const { ipHash, sha256Hex } = await import("./signin.server");
+  .handler(async ({ data }) => newKeyRequest(data.origin, data.kind, null));
+
+/**
+ * Link mode: a member signed in with Honest.Money links a coin, HME Vault or outside wallet as the trading
+ * pocket of THIS account (link.server.ts). Same single-use request; the key never opens another account.
+ */
+export const startKeyLink = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ origin: z.string().url().max(200), kind: kindSchema }).parse(d))
+  .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const rnd = (n: number) => Array.from(crypto.getRandomValues(new Uint8Array(n)), (x) => x.toString(16).padStart(2, "0")).join("");
-    const kp = newRecipientKeypair();
-    const id = rnd(16);
-    const secret = rnd(32);
-    const challenge = rnd(24);
-    // Issued (created_at) and expiry from one clock reading: exactly the request lifetime,
-    // which the signed HME Vault request needs (≤ 10 minutes, canonical times).
-    const { keyRequestWindow } = await import("./vault-request");
-    const { createdAt, expiresAt } = keyRequestWindow(Date.now(), KEY_REQUEST_TTL_MS);
-    const { error } = await supabaseAdmin.from("key_signin_requests").insert({
-      created_at: createdAt, challenge_id: id, challenge, browser_secret_hash: sha256Hex(secret),
-      recipient_priv_ciphertext: await encryptDelegatedKey(kp.priv, `signin-request:${id}`), recipient_pubkey: kp.pub,
-      ip_hash: ipHash(requestIp(getRequest().headers)), expires_at: expiresAt,
-    });
-    if (error) throw new Error("Couldn't start sign-in. Try again.");
-    const origin = new URL(data.origin).origin;
-    const manifestUrl = `${origin}/api/public/key-signin/manifest/${id}`;
-    const base = (process.env.SEEDS_KEY_URL ?? "").trim().replace(/\/+$/, "");
-    const keyPageUrl = /^https:\/\/[a-z0-9.-]+(:\d+)?(\/.*)?$/i.test(base)
-      ? `${base}/?kind=${data.kind}&r=${encodeURIComponent(manifestUrl)}`
-      : null;
-    const { vaultAvailable } = await import("./vault-request");
-    const { vaultSigner } = await import("./vault-request.server");
-    const { keyHostOf } = await import("./rules");
-    const vaultReady = vaultAvailable(new URL(origin).host, keyHostOf(process.env.SEEDS_KEY_URL), vaultSigner() !== null);
-    // Shown here and on the Seeds Key page; the member continues only when they match (auditor K2).
-    return { id, secret, manifestUrl, keyPageUrl, expiresAt, pairCode: pairingCode(challenge), vaultReady };
+    const { data: p } = await supabaseAdmin.from("profiles").select("identity_kind").eq("id", context.userId).maybeSingle();
+    if ((p?.identity_kind ?? "hme") !== "hme") throw new Error("Your pocket comes from the key you sign in with. Sign in again with it instead.");
+    return newKeyRequest(data.origin, data.kind, context.userId);
   });
+
+async function newKeyRequest(originIn: string, kind: z.infer<typeof kindSchema>, linkUserId: string | null) {
+  const { requireIpAllowance, requestIp } = await import("../ip-rate.server");
+  const { KEY_START_PER_MINUTE, KEY_REQUEST_TTL_MS, pairingCode } = await import("./rules");
+  await requireIpAllowance("key-signin-start", KEY_START_PER_MINUTE);
+  const { getRequest } = await import("@tanstack/react-start/server");
+  const { newRecipientKeypair } = await import("../hme-link.server");
+  const { encryptDelegatedKey } = await import("../delegation.server");
+  const { ipHash, sha256Hex } = await import("./signin.server");
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const rnd = (n: number) => Array.from(crypto.getRandomValues(new Uint8Array(n)), (x) => x.toString(16).padStart(2, "0")).join("");
+  const kp = newRecipientKeypair();
+  const id = rnd(16);
+  const secret = rnd(32);
+  const challenge = rnd(24);
+  // Issued (created_at) and expiry from one clock reading: exactly the request lifetime,
+  // which the signed HME Vault request needs (≤ 10 minutes, canonical times).
+  const { keyRequestWindow } = await import("./vault-request");
+  const { createdAt, expiresAt } = keyRequestWindow(Date.now(), KEY_REQUEST_TTL_MS);
+  const { error } = await supabaseAdmin.from("key_signin_requests").insert({
+    created_at: createdAt, challenge_id: id, challenge, browser_secret_hash: sha256Hex(secret),
+    recipient_priv_ciphertext: await encryptDelegatedKey(kp.priv, `signin-request:${id}`), recipient_pubkey: kp.pub,
+    ip_hash: ipHash(requestIp(getRequest().headers)), expires_at: expiresAt, link_user_id: linkUserId,
+  });
+  if (error) throw new Error("Couldn't start. Try again.");
+  const origin = new URL(originIn).origin;
+  const manifestUrl = `${origin}/api/public/key-signin/manifest/${id}`;
+  const base = (process.env.SEEDS_KEY_URL ?? "").trim().replace(/\/+$/, "");
+  const keyPageUrl = /^https:\/\/[a-z0-9.-]+(:\d+)?(\/.*)?$/i.test(base)
+    ? `${base}/?kind=${kind}&r=${encodeURIComponent(manifestUrl)}`
+    : null;
+  const { vaultAvailable } = await import("./vault-request");
+  const { vaultSigner } = await import("./vault-request.server");
+  const { keyHostOf } = await import("./rules");
+  const vaultReady = vaultAvailable(new URL(origin).host, keyHostOf(process.env.SEEDS_KEY_URL), vaultSigner() !== null);
+  // Shown here and on the Seeds Key page; the member continues only when they match (auditor K2).
+  return { id, secret, manifestUrl, keyPageUrl, expiresAt, pairCode: pairingCode(challenge), vaultReady };
+}
 
 /** The browser that started the request asks whether the Seeds Key page finished; once, it gets a session. */
 export const claimKeySignin = createServerFn({ method: "POST" })
@@ -123,19 +139,82 @@ export const dropKeyReplace = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+const linkInput = (d: unknown) =>
+  z.object({ id: z.string().regex(/^[a-f0-9]{32}$/), secret: z.string().regex(/^[a-f0-9]{64}$/), code: z.string().regex(/^\d{6}$/).nullable().default(null) }).parse(d);
+
+/** The signed-in member's own link request, or an error. Only the screen (and session) that started it may use it. */
+async function myLinkRequest(id: string, secret: string, userId: string) {
+  const { sameDigest, sha256Hex } = await import("./signin.server");
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: r } = await supabaseAdmin.from("key_signin_requests")
+    .select("browser_secret_hash, expires_at, consumed_at, user_id, link_user_id, claimed_at, pending_link, replaced_at")
+    .eq("challenge_id", id).maybeSingle();
+  if (!r || r.link_user_id !== userId || !sameDigest(r.browser_secret_hash, sha256Hex(secret))) return null;
+  return r;
+}
+
+/** Link mode: did the Seeds Key page finish? "confirm" = a new key waits for this screen; "linked" = same key, refreshed. */
+export const claimKeyLink = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ id: z.string().regex(/^[a-f0-9]{32}$/), secret: z.string().regex(/^[a-f0-9]{64}$/) }).parse(d))
+  .handler(async ({ data, context }) => {
+    const r = await myLinkRequest(data.id, data.secret, context.userId);
+    if (!r) return { status: "expired" as const };
+    if (!r.consumed_at || !r.user_id) return { status: new Date(r.expires_at) < new Date() ? ("expired" as const) : ("waiting" as const) };
+    if (r.replaced_at) return { status: "linked" as const };
+    if (!r.pending_link) return { status: "expired" as const };
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // The 10-minute approval window starts the first time this screen sees the held key.
+    if (!r.claimed_at) await supabaseAdmin.from("key_signin_requests").update({ claimed_at: new Date().toISOString() }).eq("challenge_id", data.id).is("claimed_at", null);
+    const { isKeyKind, shortKeyName } = await import("./rules");
+    const pending = r.pending_link as { kind?: string; identity?: string };
+    const who = isKeyKind(pending.kind) && pending.identity ? shortKeyName(pending.kind, pending.identity) : "this key";
+    const { hasTwoFactor } = await import("../two-factor.server");
+    return { status: "confirm" as const, who, kind: isKeyKind(pending.kind) ? pending.kind : null, needsCode: await hasTwoFactor(context.userId) };
+  });
+
+/** Link mode: this screen approves the held key (fresh authenticator code when two-factor is on). */
+export const confirmKeyLink = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(linkInput)
+  .handler(async ({ data, context }) => {
+    const r = await myLinkRequest(data.id, data.secret, context.userId);
+    if (!r || !r.claimed_at) throw new Error("That link request ran out. Start again.");
+    const { confirmHeldReplace } = await import("./replace.server");
+    await confirmHeldReplace({ challengeId: data.id, code: data.code });
+    return { ok: true };
+  });
+
+/** Link mode: "not mine" — throw the held key away. */
+export const dropKeyLink = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(linkInput)
+  .handler(async ({ data, context }) => {
+    const r = await myLinkRequest(data.id, data.secret, context.userId);
+    if (!r) return { ok: true };
+    const { dropHeldReplace } = await import("./replace.server");
+    await dropHeldReplace(data.id);
+    return { ok: true };
+  });
+
 /** How this account signs in, and whether it still needs a real email. */
 export const getMyIdentity = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { isPlaceholderEmail } = await import("./rules");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const [{ data: p }, u] = await Promise.all([
+    const [{ data: p }, u, { data: active }] = await Promise.all([
       supabaseAdmin.from("profiles").select("identity_kind, identity_address, hm_member_id").eq("id", context.userId).maybeSingle(),
       supabaseAdmin.auth.admin.getUserById(context.userId),
+      supabaseAdmin.from("hme_links").select("source, key_kind").eq("user_id", context.userId).eq("status", "active").maybeSingle(),
     ]);
     const email = u.data.user?.email ?? null;
+    const kind = (p?.identity_kind ?? "hme") as "hme" | "coin" | "evm" | "sol";
+    const { pocketSource } = await import("../account/sign-in-kind");
     return {
-      kind: (p?.identity_kind ?? "hme") as "hme" | "coin" | "evm" | "sol",
+      kind,
+      /** Where the trading pocket comes from (an Honest.Money member may have linked a coin or wallet). */
+      pocket: pocketSource(kind, active ? { source: active.source, keyKind: active.key_kind } : null),
       identityAddress: p?.identity_address ?? null,
       hmeMember: Boolean(p?.hm_member_id),
       email: isPlaceholderEmail(email) ? null : email,

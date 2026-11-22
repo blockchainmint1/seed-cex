@@ -46,3 +46,21 @@ describe("steps to a coin member's first withdrawal", () => {
     expect(nextKeyWithdrawStep(s)).toBeNull();
   });
 });
+
+import { pocketSource } from "./sign-in-kind";
+
+describe("where the trading pocket comes from", () => {
+  test("coin / wallet accounts: always their own sign-in key", () => {
+    expect(pocketSource("coin", null)).toEqual({ kind: "coin", viaLink: false });
+    expect(pocketSource("evm", { source: "seeds_key", keyKind: "evm" })).toEqual({ kind: "evm", viaLink: false });
+  });
+  test("Honest.Money member with a linked coin: the coin, re-linked by linking again", () => {
+    expect(pocketSource("hme", { source: "seeds_key", keyKind: "coin" })).toEqual({ kind: "coin", viaLink: true });
+    expect(relinkButton("coin", true)).toBe("Link your coin again");
+    expect(relinkStep("sol", true)).toContain("link your Solana wallet again");
+  });
+  test("Honest.Money member with HME Wallet or nothing linked: HME Wallet", () => {
+    expect(pocketSource("hme", { source: "hme_wallet", keyKind: null })).toEqual({ kind: "hme", viaLink: false });
+    expect(pocketSource("hme", null)).toEqual({ kind: "hme", viaLink: false });
+  });
+});

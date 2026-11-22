@@ -18,7 +18,7 @@ export type OnboardingStatus = "done" | "skipped" | null;
 export const STEP_LABELS: Record<OnboardingStep, string> = {
   welcome: "Welcome",
   name: "Your name",
-  wallet: "Link HME Wallet",
+  wallet: "Link a wallet",
   login: "Easy login",
   fees: "Network fees",
   alerts: "Alerts",

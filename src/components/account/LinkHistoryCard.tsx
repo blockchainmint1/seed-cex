@@ -50,14 +50,14 @@ export function LinkHistoryCard() {
   return (
     <Card
       title={keyKind ? "Pocket link history" : "Wallet link history"}
-      desc={keyKind ? "Every time your trading pocket was set up, refreshed by signing in again, or revoked. Kept permanently, and it can't be edited." : "Every time your HME Wallet was linked, updated or revoked. Kept permanently, and it can't be edited."}
+      desc={keyKind ? "Every time your trading pocket was set up, refreshed by signing in again, or revoked. Kept permanently, and it can't be edited." : "Every time your HME Wallet, coin or wallet was linked, updated or revoked as your trading pocket. Kept permanently, and it can't be edited."}
     >
       {history.isPending || link.isPending ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : history.isError ? (
         <p role="alert" className="text-sm text-muted-foreground">Couldn&rsquo;t load your link history. Try again in a minute.</p>
       ) : rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{keyKind ? "No pocket links yet. Each sign-in that sets up your pocket shows up here." : "No wallet links yet. When you link your HME Wallet, it shows up here."}</p>
+        <p className="text-sm text-muted-foreground">{keyKind ? "No pocket links yet. Each sign-in that sets up your pocket shows up here." : "No wallet links yet. When you link HME Wallet, a coin or another wallet, it shows up here."}</p>
       ) : (
         <>
           <ol className="divide-y divide-border">

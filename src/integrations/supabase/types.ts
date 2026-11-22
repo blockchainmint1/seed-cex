@@ -1114,6 +1114,7 @@ export type Database = {
           id: string
           identity_address: string
           key_ciphertext: string | null
+          key_kind: string | null
           mode: string
           paths: Json
           revoked_at: string | null
@@ -1129,6 +1130,7 @@ export type Database = {
           id?: string
           identity_address: string
           key_ciphertext?: string | null
+          key_kind?: string | null
           mode: string
           paths: Json
           revoked_at?: string | null
@@ -1144,6 +1146,7 @@ export type Database = {
           id?: string
           identity_address?: string
           key_ciphertext?: string | null
+          key_kind?: string | null
           mode?: string
           paths?: Json
           revoked_at?: string | null
@@ -1445,6 +1448,7 @@ export type Database = {
           expires_at: string
           identity_kind: string | null
           ip_hash: string
+          link_user_id: string | null
           pending_link: Json | null
           recipient_priv_ciphertext: string
           recipient_pubkey: string
@@ -1464,6 +1468,7 @@ export type Database = {
           expires_at: string
           identity_kind?: string | null
           ip_hash: string
+          link_user_id?: string | null
           pending_link?: Json | null
           recipient_priv_ciphertext: string
           recipient_pubkey: string
@@ -1483,6 +1488,7 @@ export type Database = {
           expires_at?: string
           identity_kind?: string | null
           ip_hash?: string
+          link_user_id?: string | null
           pending_link?: Json | null
           recipient_priv_ciphertext?: string
           recipient_pubkey?: string

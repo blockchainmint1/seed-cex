@@ -24,7 +24,7 @@ export const Route = createFileRoute("/_authenticated/account/security")({
   head: () => ({
     meta: [
       { title: "Security — Seeds" },
-      { name: "description", content: "Your sign-in method, two-factor codes, linked HME Wallet trading pocket, revoke access, API key exposure and security notices." },
+      { name: "description", content: "Your sign-in method, two-factor codes, linked trading pocket (HME Wallet, coin, Vault or wallet), revoke access, API key exposure and security notices." },
       { property: "og:title", content: "Security — Seeds" },
       { property: "og:description", content: "Sign-in, wallet link and access controls for your Seeds account." },
       { property: "og:type", content: "website" },
@@ -49,10 +49,11 @@ function SecurityTab() {
   const id = useMyIdentity();
   const kind = id.keyKind;
   const d = id.data;
-  const relink = relinkStep(kind ?? "hme");
+  const pk = id.pocketKeyKind;
+  const relink = relinkStep(pk ?? "hme", id.pocketViaLink);
   const relinkHint = l?.mode === "access" && l.withdrawals === "needs_relink"
     ? ` To allow withdrawals, ${relink}.`
-    : l?.mode === "access" && l.withdrawals === "needs_2fa" ? ` Withdrawals need two-factor, then ${kind ? `signing in again with ${keyThing(kind)}` : "a re-link"}.` : "";
+    : l?.mode === "access" && l.withdrawals === "needs_2fa" ? ` Withdrawals need two-factor, then ${pk ? (id.pocketViaLink ? `linking ${keyThing(pk)} again` : `signing in again with ${keyThing(pk)}`) : "a re-link"}.` : "";
 
   const checks: Check[] = [
     kind
@@ -62,10 +63,10 @@ function SecurityTab() {
     { ok: Boolean(twoFactor.data), label: "Two-factor sign-in on Seeds", hint: twoFactor.data ? "Withdrawals ask for a code from your phone." : "Set it up below. Needed for every withdrawal." },
     {
       ok: Boolean(l),
-      label: kind ? "Trading pocket set up" : "HME Wallet trading pocket linked",
+      label: kind ? "Trading pocket set up" : pk ? `Trading pocket linked to ${keyThing(pk)}` : l ? "HME Wallet trading pocket linked" : "Trading pocket linked",
       hint: l
         ? `Pocket #${l.account}, ${l.mode === "access" ? "instant trades" : "you approve every trade"}.${relinkHint}`
-        : kind ? `Sign in again with ${keyThing(kind)} to set up your pocket again.` : "Link it below, after turning on two-factor.",
+        : kind ? `Sign in again with ${keyThing(kind)} to set up your pocket again.` : "Link HME Wallet, a Cold Storage Coin, HME Vault or another wallet below, after turning on two-factor.",
     },
     { ok: Boolean(p?.telegram_verified && p?.notify_login), label: "Sign-in alerts on Telegram", hint: p?.telegram_verified ? (p.notify_login ? "You'll hear about every new sign-in." : "Turn on “New sign-in” in Alerts.") : "Connect Telegram in Alerts." },
     { ok: tradeKeys === 0 || (keys.data ?? []).every((k) => !k.enabled || (k.ip_allowlist ?? []).length > 0), label: "Trading API keys locked to IP addresses", hint: tradeKeys ? `${tradeKeys} key(s) can trade. Add an IP allowlist to each.` : "No trading keys." },

@@ -49,7 +49,9 @@ function Withdraw() {
   const free = row?.balance == null ? null : Math.max(0, row.balance - inTrades);
   const coin = withdrawCoin(asset?.symbol, net?.id);
   // Coin / outside-wallet members have no HME Wallet: Seeds is the only way to send, and "re-link" = sign in again.
-  const keyKind = useMyIdentity().keyKind;
+  const identity = useMyIdentity();
+  const keyKind = identity.pocketKeyKind;
+  const again = keyKind ? (identity.pocketViaLink ? `link ${keyThing(keyKind)} again` : `sign in again with ${keyThing(keyKind)}`) : "";
 
   return (
     <div className="space-y-5">
@@ -59,7 +61,7 @@ function Withdraw() {
       />
       {!link.isPending && !l ? (
         <Note tone="warn">
-          {keyKind ? `You have no active trading pocket. Sign in again with ${keyThing(keyKind)} to set one up — ` : "Link your HME Wallet trading pocket first — "}
+          {identity.keyKind ? `You have no active trading pocket. Sign in again with ${keyThing(identity.keyKind)} to set one up — ` : "Link a trading pocket first (HME Wallet, a Cold Storage Coin, HME Vault or another wallet) — "}
           <Link to="/account/security" className="text-primary underline">go to Security</Link>.
         </Note>
       ) : null}
@@ -126,7 +128,7 @@ function Withdraw() {
             <ul className="list-disc space-y-1.5 pl-4 text-muted-foreground">
               <li>
                 {keyKind
-                  ? `Add an email, turn on two-factor and connect Telegram, then sign in again with ${keyThing(keyKind)}. A pocket link made before two-factor and Telegram can't withdraw — so someone who gets into your sign-in can't add their own phone and take your coins.`
+                  ? `Add an email, turn on two-factor and connect Telegram, then ${again}. A pocket link made before two-factor and Telegram can't withdraw — so someone who gets into your sign-in can't add their own phone and take your coins.`
                   : "Turn on two-factor and connect Telegram first, then link your HME Wallet. A link made before both can't withdraw — so someone who gets into your sign-in can't add their own phone and take your coins."}
               </li>
               <li>Every withdrawal: an email code for that exact amount and address, your authenticator code, and your Approve tap in Telegram.</li>

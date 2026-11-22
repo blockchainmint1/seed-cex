@@ -350,6 +350,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
         "Approve in HME Wallet. Seeds shows your pocket number, the coins it can see and the date it was linked.",
       ] },
       { p: "Linking moves no coins. Every send still asks for your Telegram approval." },
+      { p: "Rather use a **Cold Storage Coin**, **HME Vault**, or **MetaMask, Ledger** or another wallet? Open its tile under the HME Wallet one on the Security tab to see the good and the trade-offs, then link it on the Seeds Key page. You stay signed in with Honest.Money, on the same account, and Seeds never sees your recovery phrase. To switch later, revoke the current link first; a different key means different addresses." },
       { p: "Every link, update and revoke is saved in **Wallet link history** on the Security tab, and can't be edited." },
     ],
     links: [{ label: "Link HME Wallet", to: "/account/security" }, { label: "Open HME Wallet", to: "https://mobile.honest.money" }],

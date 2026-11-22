@@ -18,7 +18,7 @@ const amt = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 8 
  * Wallet can't hold are still in the pocket we show them and ask for an
  * explicit acknowledgement first.
  */
-export function RevokeSeedsDialog({ extraCoins, pending, onConfirm, keyAccount = false }: { extraCoins: string[]; pending: boolean; onConfirm: () => void; keyAccount?: boolean }) {
+export function RevokeSeedsDialog({ extraCoins, pending, onConfirm, keyAccount = false, viaLink = false }: { extraCoins: string[]; pending: boolean; onConfirm: () => void; keyAccount?: boolean; viaLink?: boolean }) {
   const [open, setOpen] = useState(false);
   const [ack, setAck] = useState(false);
   const read = useServerFn(getMyExtraPocketBalances);
@@ -46,7 +46,7 @@ export function RevokeSeedsDialog({ extraCoins, pending, onConfirm, keyAccount =
           {keyAccount ? (
             <AlertDialogDescription>
               This deletes Seeds’ trading key for this pocket. It doesn’t move your funds, but afterwards Seeds can’t trade, swap or
-              withdraw from this pocket for you. Withdraw first if you want your coins somewhere else. Signing in again later brings
+              withdraw from this pocket for you. Withdraw first if you want your coins somewhere else. {viaLink ? "Linking the same key again later" : "Signing in again later"} brings
               back this same pocket (1106) with the same addresses; coins left in it stay under your own key.
             </AlertDialogDescription>
           ) : (

@@ -17,8 +17,11 @@ const WHERE: Record<Exclude<KeyWithdrawStepKey, "sign_in_again">, "/account/prof
   telegram: "/account/alerts",
 };
 
-/** "Sign in again with your coin": refreshes the pocket link after two-factor / Telegram (same pocket, same coins). */
-export function SignInAgainButton({ kind, size = "sm", variant = "default" }: { kind: KeyKind; size?: "sm" | "default"; variant?: "default" | "outline" }) {
+/**
+ * "Sign in again with your coin": refreshes the pocket link after two-factor / Telegram (same pocket, same coins).
+ * Honest.Money members who linked a coin or wallet (viaLink) link it again instead — they stay signed in.
+ */
+export function SignInAgainButton({ kind, viaLink = false, size = "sm", variant = "default" }: { kind: KeyKind; viaLink?: boolean; size?: "sm" | "default"; variant?: "default" | "outline" }) {
   const navigate = useNavigate();
   return (
     <Button
@@ -26,10 +29,10 @@ export function SignInAgainButton({ kind, size = "sm", variant = "default" }: { 
       variant={variant}
       onClick={() => {
         rememberReturnPath("/account/security");
-        navigate({ to: "/key-signin", search: { kind: keySigninTab(kind) } });
+        navigate({ to: "/key-signin", search: viaLink ? { kind: keySigninTab(kind), link: true } : { kind: keySigninTab(kind) } });
       }}
     >
-      <KeyRound /> {relinkButton(kind)}
+      <KeyRound /> {relinkButton(kind, viaLink)}
     </Button>
   );
 }

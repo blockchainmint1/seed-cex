@@ -13,6 +13,7 @@ import { Link2, ShieldCheck, ExternalLink, PlusCircle } from "lucide-react";
 import { useMyIdentity } from "@/components/account/use-identity";
 import { SignInAgainButton } from "@/components/account/KeyWithdrawSteps";
 import { keyThing } from "@/lib/account/sign-in-kind";
+import { LinkOptions } from "./LinkOptions";
 
 function LinkQr({ manifest, onCancel, updating }: { manifest: string; onCancel: () => void; updating?: boolean }) {
   return (
@@ -72,15 +73,21 @@ export function HmeWalletLinkCard({ showBalances = true, className = "border-y b
     onSuccess: () => { qc.removeQueries({ queryKey: ["hme-pocket-balances"] }); qc.invalidateQueries({ queryKey: ["hme-link"] }); },
   });
 
-  // Coin / outside-wallet members: the pocket comes from the key they sign in with, not HME Wallet.
-  const keyKind = useMyIdentity().keyKind;
+  // Where the pocket comes from: HME Wallet, or a coin / Vault / outside wallet (the member's sign-in key,
+  // or one an Honest.Money member linked — then "re-link" means linking it again, not signing in).
+  const id = useMyIdentity();
+  const keyKind = id.pocketKeyKind;
+  const viaLink = id.pocketViaLink;
+  const thing = keyKind ? keyThing(keyKind) : "";
+  const again = viaLink ? `link ${thing} again` : `sign in again with ${thing}`;
+  const Again = again.charAt(0).toUpperCase() + again.slice(1);
   const l = link.data;
   const extraCoins = l && !keyKind ? Object.keys(l.addresses).filter((c) => (HME_WALLET_CANT_HOLD as string[]).includes(c)) : [];
   const extraWarning = hmeCantHoldWarning(extraCoins);
   const toAdd = l && !keyKind ? coinsToAdd(l) : [];
   return (
     <section className={className}>
-      <div className="flex items-center gap-3"><ShieldCheck className="h-5 w-5 text-primary" /><h2 className="font-display text-xl font-bold text-foreground">{keyKind ? "Trading pocket" : "HME Wallet trading pocket"}</h2></div>
+      <div className="flex items-center gap-3"><ShieldCheck className="h-5 w-5 text-primary" /><h2 className="font-display text-xl font-bold text-foreground">{keyKind || !l ? "Trading pocket" : "HME Wallet trading pocket"}</h2></div>
 
       {l ? (
         <div className="mt-3 space-y-3 text-sm text-muted-foreground">
@@ -104,7 +111,7 @@ export function HmeWalletLinkCard({ showBalances = true, className = "border-y b
             </div>
             <p className="mt-1.5 text-xs">
               {keyKind
-                ? `The key that set up this pocket link when you signed in with ${keyThing(keyKind)} on ${new Date(l.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}.`
+                ? `The key that set up this pocket link when you ${viaLink ? "linked" : "signed in with"} ${thing} on ${new Date(l.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}.`
                 : <>This is the address inside your wallet that signed the link on{" "}
               {new Date(l.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}.
               Match it against the address shown in your wallet to confirm which wallet or app this is.</>}
@@ -155,14 +162,14 @@ export function HmeWalletLinkCard({ showBalances = true, className = "border-y b
               {keyKind ? (
                 <>
                   <p className="font-semibold text-foreground">
-                    {l.withdrawals === "needs_2fa" ? "Withdrawals are off: turn on two-factor first" : `Sign in again with ${keyThing(keyKind)} to turn on withdrawals`}
+                    {l.withdrawals === "needs_2fa" ? "Withdrawals are off: turn on two-factor first" : `${Again} to turn on withdrawals`}
                   </p>
                   <p className="mt-1 text-xs">
                     {l.withdrawals === "needs_2fa"
-                      ? `Seeds only sends withdrawals from a pocket link made after two-factor sign-in and Telegram are on. Turn both on, then sign in again with ${keyThing(keyKind)}. Trading isn't affected.`
-                      : `This pocket link was made before your security setup, so Seeds won't send withdrawals from it. Sign in again with ${keyThing(keyKind)} once: same pocket, same coins, nothing moves. Trading isn't affected.`}
+                      ? `Seeds only sends withdrawals from a pocket link made after two-factor sign-in and Telegram are on. Turn both on, then ${again}. Trading isn't affected.`
+                      : `This pocket link was made before your security setup, so Seeds won't send withdrawals from it. ${Again} once: same pocket, same coins, nothing moves. Trading isn't affected.`}
                   </p>
-                  {l.withdrawals === "needs_relink" ? <div className="mt-3"><SignInAgainButton kind={keyKind} /></div> : null}
+                  {l.withdrawals === "needs_relink" ? <div className="mt-3"><SignInAgainButton kind={keyKind} viaLink={viaLink} /></div> : null}
                 </>
               ) : (
                 <>
@@ -193,17 +200,19 @@ export function HmeWalletLinkCard({ showBalances = true, className = "border-y b
           {l.mode === "approve" && l.pending > 0 ? (
             <p className="text-foreground">{l.pending} trade(s) waiting for your approval in the HME Wallet.</p>
           ) : null}
-          <RevokeSeedsDialog extraCoins={extraCoins} pending={stop.isPending} onConfirm={() => stop.mutate()} keyAccount={Boolean(keyKind)} />
+          <RevokeSeedsDialog extraCoins={extraCoins} pending={stop.isPending} onConfirm={() => stop.mutate()} keyAccount={Boolean(keyKind)} viaLink={viaLink} />
           {keyKind ? (
             <>
               <Button asChild variant="ghost"><Link to="/account/balances/deposit">Deposit into this pocket</Link></Button>
-              <p className="text-xs">This pocket comes from {keyThing(keyKind)}: only that key can rebuild it, and Seeds never saw your recovery phrase. Revoking here stops Seeds trading from it; signing in again afterwards brings back this same pocket and its addresses.</p>
+              <p className="text-xs">This pocket comes from {thing}: only that key can rebuild it, and Seeds never saw your recovery phrase. Revoking here stops Seeds trading from it; {viaLink ? "linking it again" : "signing in again"} afterwards brings back this same pocket and its addresses.</p>
+              {viaLink ? <p className="text-xs">Want HME Wallet or a different key instead? Revoke Seeds' access here first, then pick another option. Move your coins out of this pocket before you switch: a different key means different addresses.</p> : null}
             </>
           ) : (
             <>
               <Button asChild variant="ghost"><a href="https://mobile.honest.money" target="_blank" rel="noreferrer"><ExternalLink /> Open HME Wallet</a></Button>
               <p className="text-xs">Move funds into this pocket in HME Wallet. Seeds always uses pocket 1106, so your addresses stay the same even if you revoke and link again.</p>
               <p className="text-xs">Revoking here removes Seeds access only. Revoking in HME Wallet also retires the pocket; check TSD and USDC separately before moving on.</p>
+              {id.keyKind ? null : <p className="text-xs">Want a Cold Storage Coin, HME Vault or another wallet instead? Revoke Seeds' access here first, then pick one. A different key means different addresses, so move your coins first.</p>}
             </>
           )}
           {extraWarning ? (
@@ -216,25 +225,13 @@ export function HmeWalletLinkCard({ showBalances = true, className = "border-y b
         </div>
       ) : manifest ? (
         <LinkQr manifest={manifest} onCancel={() => { setManifest(null); setExpiresAt(null); }} />
-      ) : keyKind ? (
+      ) : id.keyKind ? (
         <div className="mt-3 text-sm text-muted-foreground">
-          <p>No active trading pocket. Sign in again with {keyThing(keyKind)} to set up a new one. Nothing moves, and Seeds never sees your recovery phrase.</p>
-          <div className="mt-4"><SignInAgainButton kind={keyKind} size="default" /></div>
+          <p>No active trading pocket. Sign in again with {keyThing(id.keyKind)} to set up a new one. Nothing moves, and Seeds never sees your recovery phrase.</p>
+          <div className="mt-4"><SignInAgainButton kind={id.keyKind} size="default" /></div>
         </div>
       ) : (
-        <div className="mt-3 text-sm text-muted-foreground">
-          <p>Connect the separate trading pocket in HME Wallet. Your main wallet and recovery phrase stay private.</p>
-          <p className="mt-2">Choose instant access until revoked, or approve every trade in HME Wallet. Ethereum approval is not supported yet.</p>
-          <Button
-            onClick={() => begin.mutate()}
-            disabled={begin.isPending}
-            className="mt-4"
-          >
-            <Link2 />
-            {begin.isPending ? "Preparing…" : "Link HME Wallet"}
-          </Button>
-          {begin.error ? <p className="mt-2 text-xs text-destructive">Couldn't start the link. Try again.</p> : null}
-        </div>
+        <LinkOptions onLinkHme={() => begin.mutate()} hmePending={begin.isPending} hmeError={Boolean(begin.error)} />
       )}
       {link.isPending ? <p className="mt-3 text-sm text-muted-foreground">Checking your wallet connection…</p> : null}
       {link.error ? <p role="alert" className="mt-3 text-sm text-destructive">{link.error.message}</p> : null}

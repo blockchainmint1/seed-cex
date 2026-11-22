@@ -53,16 +53,16 @@ const READINESS_TEXT_HME: Record<Exclude<WithdrawReadiness, "ready">, string> = 
 export const READINESS_TEXT = READINESS_TEXT_HME;
 
 /** Coin / outside-wallet members refresh their pocket link by signing in again with that key. */
-function keyReadinessText(r: Exclude<WithdrawReadiness, "ready">, kind: KeyKind): string {
-  const again = relinkStep(kind);
+function keyReadinessText(r: Exclude<WithdrawReadiness, "ready">, kind: KeyKind, viaLink = false): string {
+  const again = relinkStep(kind, viaLink);
   if (r === "needs_2fa") return `Withdrawals need two-factor sign-in. Turn it on in Account → Security, connect Telegram in Account → Alerts, then ${again}. Same pocket, same coins, nothing moves.`;
   if (r === "needs_telegram") return `Withdrawals need Telegram: every one waits for your tap there. Connect it in Account → Alerts, then ${again}. Same pocket, same coins, nothing moves.`;
   return `Your trading pocket was set up before two-factor and Telegram were both on, so Seeds won't send withdrawals from it yet. To fix it, ${again}. Same pocket, same coins, nothing moves.`;
 }
 
-export function readinessProblem(r: WithdrawReadiness, kind: SignInKind = "hme"): string | null {
+export function readinessProblem(r: WithdrawReadiness, kind: SignInKind = "hme", viaLink = false): string | null {
   if (r === "ready") return null;
-  return isKeyKind(kind) ? keyReadinessText(r, kind) : READINESS_TEXT_HME[r];
+  return isKeyKind(kind) ? keyReadinessText(r, kind, viaLink) : READINESS_TEXT_HME[r];
 }
 
 /** Coin / wallet accounts start with no real email; Seeds emails a code for every withdrawal. */
@@ -78,7 +78,7 @@ export function sendBlocker(p: { link: LinkLike; tester: boolean; frozen: boolea
   if (!p.link) {
     return p.kind && isKeyKind(p.kind)
       ? `You have no active trading pocket. Sign in again with ${keyThing(p.kind)} (Account → Security) to set up a new one.`
-      : "Link your HME Wallet trading pocket first (Account → Security).";
+      : "Link a trading pocket first: HME Wallet, a Cold Storage Coin, HME Vault or another wallet (Account → Security).";
   }
   if (p.link.mode !== "access" || !p.link.hasKey) return "Your pocket is linked in approve-every-trade mode. Seeds needs instant access to send for you — re-link with instant access.";
   if (!p.link.address) return `Your linked pocket doesn't include ${p.symbol} on ${p.networkLabel}.`;

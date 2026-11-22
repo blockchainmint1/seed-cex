@@ -27,9 +27,12 @@ export function TwoFactorCard() {
   const qc = useQueryClient();
   const sync = useServerFn(syncMyTwoFactor);
   const status = useMyTwoFactor();
-  const keyKind = useMyIdentity().keyKind;
-  // HME members re-link HME Wallet; coin / wallet members refresh the link by signing in again with their key.
-  const relink = keyKind ? `sign in again with ${keyThing(keyKind)}` : "re-link your HME Wallet";
+  const identity = useMyIdentity();
+  const keyKind = identity.keyKind;
+  // HME Wallet pockets re-link HME Wallet; coin / wallet pockets refresh by signing in again with that key,
+  // or (Honest.Money members who linked one) by linking it again.
+  const pk = identity.pocketKeyKind;
+  const relink = pk ? (identity.pocketViaLink ? `link ${keyThing(pk)} again` : `sign in again with ${keyThing(pk)}`) : "re-link your HME Wallet";
   const [setup, setSetup] = useState<Setup | null>(null);
   const [turningOff, setTurningOff] = useState(false);
   const [code, setCode] = useState("");
@@ -71,7 +74,7 @@ export function TwoFactorCard() {
     try {
       const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: setup.factorId, code: c });
       if (error) throw new Error("That code didn't work. Use the newest code in your app and check your phone's clock is set automatically.");
-      await after(keyKind
+      await after(pk
         ? `Two-factor is on. Next: connect Telegram (Account → Alerts), then ${relink} using the button on this page to allow withdrawals. Every withdrawal will ask for a code.`
         : "Two-factor is on. Now re-link your HME Wallet on this page to allow withdrawals. Every withdrawal will ask for a code.");
     } catch (e) {
@@ -166,9 +169,9 @@ export function TwoFactorCard() {
       ) : (
         <div className="space-y-3">
           <p className="text-sm">
-            {keyKind
+            {pk
               ? <>Needed for <b>every withdrawal</b>. Turn it on, connect Telegram, then {relink} once. Then someone who gets hold of a Seeds sign-in can't withdraw without your phone and your Telegram.</>
-              : <>Needed for <b>every withdrawal</b>. Turn it on first, then link (or re-link) your HME Wallet. Then someone who gets into your Honest.Money account can't withdraw without your phone and your wallet.</>}
+              : <>Needed for <b>every withdrawal</b>. Turn it on first, then link (or re-link) your trading pocket. Then someone who gets into your Honest.Money account can't withdraw without your phone and your wallet.</>}
           </p>
           {err ? <Note tone="error">{err}</Note> : null}
           {done ? <Note tone="ok">{done}</Note> : null}

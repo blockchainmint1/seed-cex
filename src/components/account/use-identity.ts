@@ -9,7 +9,16 @@ export function useMyIdentity() {
   const load = useServerFn(getMyIdentity);
   const q = useQuery({ queryKey: ["my-identity"], queryFn: () => load(), staleTime: 30_000 });
   const kind = q.data?.kind ?? "hme";
-  return { ...q, keyKind: isKeyKind(kind) ? (kind as KeyKind) : null };
+  const pocket = q.data?.pocket ?? { kind: "hme" as const, viaLink: false };
+  return {
+    ...q,
+    /** How the member signs in: a coin / wallet key, or null for Honest.Money. */
+    keyKind: isKeyKind(kind) ? (kind as KeyKind) : null,
+    /** The key their trading pocket comes from (also when an Honest.Money member linked a coin or wallet), or null for HME Wallet. */
+    pocketKeyKind: isKeyKind(pocket.kind) ? (pocket.kind as KeyKind) : null,
+    /** True when that key was linked to an Honest.Money account: "re-link" = link it again, not sign in with it. */
+    pocketViaLink: pocket.viaLink,
+  };
 }
 
 /** Opens the Honest.Money sign-in popup that joins an HME membership to this coin / wallet account. */

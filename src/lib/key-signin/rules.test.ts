@@ -188,3 +188,39 @@ describe("signing in again with the same key", () => {
     expect(startingName("evm", "0xAbCdEf0123456789aBcDeF0123456789AbCdEf01")).toBe("Wallet 0xAb…Ef01");
   });
 });
+
+import { keyLinkOutcome, keyLinkProblem, secondAccountProblem } from "./rules";
+
+describe("Honest.Money members linking a coin, Vault or outside wallet", () => {
+  const base = { memberKind: "hme", keyAccountId: null, memberId: "me", activeElsewhere: false, memberActive: null };
+  test("an Honest.Money member with no pocket can link a key", () => {
+    expect(keyLinkProblem(base)).toBeNull();
+  });
+  test("coin / wallet accounts can't use link mode", () => {
+    expect(keyLinkProblem({ ...base, memberKind: "coin" })).toContain("signing in again");
+  });
+  test("a key that has its own Seeds account is refused (never merged)", () => {
+    expect(keyLinkProblem({ ...base, keyAccountId: "other" })).toContain("never merges");
+  });
+  test("a key active on another account is refused", () => {
+    expect(keyLinkProblem({ ...base, activeElsewhere: true })).toContain("another Seeds account");
+  });
+  test("switching from a linked pocket needs a revoke first", () => {
+    expect(keyLinkProblem({ ...base, memberActive: { sameKeys: false } })).toContain("Stop Seeds' access");
+  });
+  test("the same key again is a refresh, a new key waits for the member's screen", () => {
+    expect(keyLinkProblem({ ...base, memberActive: { sameKeys: true } })).toBeNull();
+    expect(keyLinkOutcome({ sameKeys: true })).toBe("refresh");
+    expect(keyLinkOutcome(null)).toBe("hold");
+  });
+});
+
+describe("one phrase, one account", () => {
+  test("a key already used as another account's pocket can't open a second account", () => {
+    expect(secondAccountProblem({ keyAccountId: null, linkedOnAccounts: ["hme-member"] })).toContain("won't open a second account");
+  });
+  test("a fresh key opens an account; an existing key account always signs in", () => {
+    expect(secondAccountProblem({ keyAccountId: null, linkedOnAccounts: [] })).toBeNull();
+    expect(secondAccountProblem({ keyAccountId: "acct", linkedOnAccounts: ["acct"] })).toBeNull();
+  });
+});

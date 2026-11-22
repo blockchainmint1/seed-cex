@@ -81,7 +81,7 @@ export function SeedsWithdraw({ coin, from, balance }: { coin: WithdrawCoin; fro
               {d.readiness === "needs_2fa" ? <Button asChild size="sm" variant="outline"><Link to="/account/security">Turn on two-factor</Link></Button> : null}
               {d.readiness === "needs_telegram" || d.readiness === "needs_2fa" ? <Button asChild size="sm" variant="outline"><Link to="/account/alerts">Connect Telegram</Link></Button> : null}
               <Button asChild size="sm" variant="outline">
-                <Link to="/account/security">{isKeyKind(d.signIn) ? `Sign in again with ${keyThing(d.signIn)}` : "Re-link HME Wallet"}</Link>
+                <Link to="/account/security">{isKeyKind(d.pocket.kind) ? (d.pocket.viaLink ? `Link ${keyThing(d.pocket.kind)} again` : `Sign in again with ${keyThing(d.pocket.kind)}`) : "Re-link HME Wallet"}</Link>
               </Button>
             </div>
           ) : null}
