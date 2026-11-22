@@ -2,14 +2,14 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, ArrowRight, CalendarDays, CheckCircle2, Circle, Flame, Fuel, HandCoins, ShieldCheck, Sprout } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarDays, CheckCircle2, Circle, Flame, Fuel, HandCoins, KeyRound, Mail, ShieldCheck, Smartphone, Sprout } from "lucide-react";
 import { getMyProfile, updateMyProfile } from "@/lib/profile.functions";
 import { setMyOnboarding } from "@/lib/onboarding.functions";
 import { getMyFeePrep } from "@/lib/fee-prep.functions";
 import { FEE_PREP } from "@/lib/fee-prep";
 import { getIgniteSeats, getMyIgnite } from "@/lib/ignite.functions";
 import {
-  afterOnboarding, cleanStep, ONBOARDING_QUERY, nextStep, ONBOARDING_STEPS, prevStep, STEP_LABELS, stepNumber, type OnboardingStep,
+  afterOnboarding, cleanStep, ONBOARDING_QUERY, nextStep, prevStep, STEP_LABELS, stepNumber, stepsFor, type OnboardingStep,
 } from "@/lib/onboarding";
 import { DEPOSIT_USD, SCHEDULE_DATES, SCHEDULE_START_UTC, SCHEDULE_TIME } from "@/lib/ignite-registration";
 import { useSession } from "@/hooks/use-session";
@@ -18,7 +18,7 @@ import { Card, fieldLabel, inputCls, Note } from "@/components/account/ui";
 import { HmeWalletLinkCard } from "@/components/wallet/HmeWalletLinkCard";
 import { KeyIdentityCard } from "@/components/account/KeyIdentityCard";
 import { SignInAgainButton } from "@/components/account/KeyWithdrawSteps";
-import { useMyIdentity } from "@/components/account/use-identity";
+import { useJoinHonestMoney, useMyIdentity } from "@/components/account/use-identity";
 import { keyThing } from "@/lib/account/sign-in-kind";
 import { usePocketLink } from "@/components/account/use-pocket";
 import { TelegramCard } from "@/components/account/TelegramCard";
@@ -36,7 +36,7 @@ export const Route = createFileRoute("/_authenticated/welcome")({
   head: () => ({
     meta: [
       { title: "Welcome to Seeds — set up your account" },
-      { name: "description", content: "A short setup guide for new Seeds members: your name, HME Wallet trading pocket, alerts, two-factor and the Ignite class." },
+      { name: "description", content: "A short setup guide for new Seeds members: your name, trading pocket, an easy login, alerts, two-factor and the Ignite class." },
       { property: "og:title", content: "Welcome to Seeds — set up your account" },
       { property: "og:description", content: "Set up your Seeds account in a few minutes. Skip any step and come back later." },
       { property: "og:type", content: "website" },
@@ -103,9 +103,17 @@ function Welcome() {
       .catch(() => { marked.current = false; });
   }, [step, finish, qc, resumeKey]);
 
-  const { n, of } = stepNumber(step);
-  const back = prevStep(step);
-  const forward = () => go(nextStep(step));
+  // Coin / Vault / wallet members get the extra "Easy login" step (join Honest.Money).
+  const identity = useMyIdentity();
+  const steps = stepsFor({ keyMember: Boolean(identity.keyKind) });
+  useEffect(() => {
+    if (identity.isPending || steps.includes(step)) return;
+    navigate({ to: "/welcome", search: { step: nextStep(step, steps), next: search.next }, replace: true });
+  }, [identity.isPending, steps, step, search.next, navigate]);
+
+  const { n, of } = stepNumber(step, steps);
+  const back = prevStep(step, steps);
+  const forward = () => go(nextStep(step, steps));
 
   return (
     <div className="mx-auto max-w-7xl px-5 py-10">
@@ -119,13 +127,14 @@ function Welcome() {
           ) : null}
         </div>
 
-        {step !== "done" ? <Progress step={step} n={n} of={of} /> : null}
+        {step !== "done" ? <Progress step={step} steps={steps} n={n} of={of} /> : null}
         {err ? <div className="mt-4"><Note tone="error">{err}</Note></div> : null}
 
         <div className="mt-8">
           {step === "welcome" ? <StepWelcome onNext={forward} /> : null}
           {step === "name" ? <StepName onNext={forward} /> : null}
           {step === "wallet" ? <StepWallet /> : null}
+          {step === "login" && identity.keyKind ? <StepLogin /> : null}
           {step === "fees" ? <StepFees onSkip={forward} /> : null}
           {step === "alerts" ? <StepAlerts /> : null}
           {step === "security" ? <StepSecurity /> : null}
@@ -142,9 +151,9 @@ function Welcome() {
   );
 }
 
-function Progress({ step, n, of }: { step: OnboardingStep; n: number; of: number }) {
-  const steps = ONBOARDING_STEPS.filter((s) => s !== "done");
-  const at = ONBOARDING_STEPS.indexOf(step);
+function Progress({ step, steps: all, n, of }: { step: OnboardingStep; steps: readonly OnboardingStep[]; n: number; of: number }) {
+  const steps = all.filter((s) => s !== "done");
+  const at = all.indexOf(step);
   const keyKind = useMyIdentity().keyKind;
   const label = (x: OnboardingStep) => (x === "wallet" && keyKind ? "Your pocket" : STEP_LABELS[x]);
   return (
@@ -273,7 +282,7 @@ function StepWallet() {
         <Heading title={link.data || link.isPending ? "Your trading pocket is ready" : "Your trading pocket"}>
           {link.data || link.isPending
             ? <>Signing in with {keyThing(keyKind)} already set up your own <b className="text-foreground">trading pocket</b>. Seeds never saw your recovery phrase, and no coins moved.</>
-            : <>Your <b className="text-foreground">trading pocket</b> comes from {keyThing(keyKind)}. Seeds never sees your recovery phrase, and setting it up moves no coins.</>} You can add an email now (withdrawals need one) or join Honest.Money; both are optional for trading.
+            : <>Your <b className="text-foreground">trading pocket</b> comes from {keyThing(keyKind)}. Seeds never sees your recovery phrase, and setting it up moves no coins.</>} You can add an email now (withdrawals need one); it's optional for trading. Next up: an easy way to sign back in.
         </Heading>
         {link.data ? <div className="mb-4"><Note tone="ok">Trading pocket #{link.data.account} is set up. You're good to continue.</Note></div> : null}
         {!link.data && !link.isPending ? (
@@ -282,7 +291,7 @@ function StepWallet() {
             <SignInAgainButton kind={keyKind} />
           </div>
         ) : null}
-        <KeyIdentityCard />
+        <KeyIdentityCard showJoin={false} />
       </>
     );
   }
@@ -299,6 +308,54 @@ function StepWallet() {
         <HmeWalletLinkCard showBalances={false} className="py-6" />
       </div>
       <p className="mt-3 text-xs text-muted-foreground">No HME Wallet yet? Open <a href="https://mobile.honest.money" target="_blank" rel="noreferrer" className="text-primary underline underline-offset-4">mobile.honest.money</a> on your phone, then come back to this step.</p>
+    </>
+  );
+}
+
+function StepLogin() {
+  const identity = useMyIdentity();
+  const joinHonestMoney = useJoinHonestMoney();
+  const kind = identity.keyKind;
+  const d = identity.data;
+  if (!kind) return null;
+  const today = kind === "coin" ? "scanning your Cold Storage Coin or HME Vault again" : `approving a sign-in message in ${keyThing(kind)} again`;
+  const what = kind === "coin" ? "your coin or Vault" : keyThing(kind);
+
+  if (d?.hmeMember) {
+    return (
+      <>
+        <Heading title="Your easy login is set up">
+          This Seeds account is joined to your Honest.Money membership. Next time, tap <b className="text-foreground">Sign in with Honest.Money</b> on the sign-in page. Signing in with {what} still works too.
+        </Heading>
+        <Note tone="ok">Same account, same trading pocket, same coins and history.</Note>
+      </>
+    );
+  }
+
+  const points = [
+    { icon: Smartphone, title: "Sign in from anywhere", text: `Use your Honest.Money login on any phone or computer, without ${what} in hand.` },
+    { icon: Mail, title: "Your email comes with it", text: "Withdrawals need an email. Your Honest.Money email covers that, so there's nothing extra to type." },
+    { icon: KeyRound, title: "Nothing else changes", text: `Same account, same trading pocket, same coins and history. Signing in with ${what} keeps working.` },
+  ];
+  return (
+    <>
+      <Heading title="Set up an easy login">
+        Right now, getting back into Seeds means {today}. Join your Honest.Money membership to this account and you can just sign in with Honest.Money instead. You can skip this.
+      </Heading>
+      <ul className="grid gap-3 md:grid-cols-3">
+        {points.map((p) => (
+          <li key={p.title} className="rounded-md border border-border bg-surface p-4">
+            <p.icon aria-hidden className="h-5 w-5 text-primary" />
+            <p className="mt-3 font-semibold">{p.title}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{p.text}</p>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-6 flex flex-wrap items-center gap-2">
+        <Button size="lg" onClick={joinHonestMoney}>Join with Honest.Money <ArrowRight /></Button>
+        <Button asChild size="lg" variant="ghost"><a href="https://honest.money" target="_blank" rel="noreferrer">No membership yet? Create one</a></Button>
+      </div>
+      <p className="mt-3 text-xs text-muted-foreground">Creating a membership opens Honest.Money in a new tab. Come back here afterwards and tap Join; this guide picks up where you left off. You can also join later from Account → Overview.</p>
     </>
   );
 }
@@ -502,6 +559,7 @@ function StepDone({ onFinish }: { onFinish: () => void }) {
   const rows: { done: boolean; label: string; to: "/account/profile" | "/account/security" | "/account/alerts" | "/account/balances/deposit" | "/ignite" }[] = [
     { done: Boolean(p?.display_name), label: "Display name", to: "/account/profile" },
     { done: Boolean(link.data), label: keyKind ? "Trading pocket set up" : "HME Wallet trading pocket linked", to: "/account/security" },
+    ...(keyKind ? [{ done: Boolean(identity.data?.hmeMember), label: "Easy login with Honest.Money (optional)", to: "/account/profile" as const }] : []),
     ...(keyKind ? [{ done: Boolean(identity.data?.email), label: "Email added (needed for withdrawals)", to: "/account/profile" as const }] : []),
     { done: fees.data?.ethereum.level === "enough" && fees.data?.base.level === "enough", label: "ETH for network fees (Ethereum and Base)", to: "/account/balances/deposit" },
     { done: Boolean(p?.telegram_verified), label: "Telegram alerts", to: "/account/alerts" },

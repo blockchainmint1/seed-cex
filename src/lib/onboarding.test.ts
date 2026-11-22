@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { afterOnboarding, cleanStep, needsOnboarding, nextStep, prevStep, stepNumber } from "./onboarding";
+import { afterOnboarding, cleanStep, needsOnboarding, nextStep, prevStep, stepNumber, stepsFor } from "./onboarding";
 
 describe("new-member setup guide", () => {
   test("a member who has never finished or skipped it is sent to it", () => {
@@ -10,19 +10,34 @@ describe("new-member setup guide", () => {
     expect(needsOnboarding("done")).toBe(false);
     expect(needsOnboarding("skipped")).toBe(false);
   });
-  test("the steps run welcome → name → two-factor → wallet → network fees → alerts → Ignite (two-factor before linking, so the link can withdraw) → all set", () => {
+  test("Honest.Money members: welcome → name → two-factor → wallet → network fees → alerts → Ignite (two-factor before linking, so the link can withdraw) → all set", () => {
+    const steps = stepsFor({ keyMember: false });
     const seen = ["welcome"];
     let s = cleanStep("welcome");
-    while (s !== "done") { s = nextStep(s); seen.push(s); }
+    while (s !== "done") { s = nextStep(s, steps); seen.push(s); }
     expect(seen).toEqual(["welcome", "name", "security", "wallet", "fees", "alerts", "ignite", "done"]);
-    expect(nextStep("done")).toBe("done");
-    expect(prevStep("welcome")).toBeNull();
-    expect(prevStep("wallet")).toBe("security");
-    expect(prevStep("fees")).toBe("wallet"); // fee money comes after linking, so the pocket can be checked
+    expect(nextStep("done", steps)).toBe("done");
+    expect(prevStep("welcome", steps)).toBeNull();
+    expect(prevStep("wallet", steps)).toBe("security");
+    expect(prevStep("fees", steps)).toBe("wallet"); // fee money comes after linking, so the pocket can be checked
   });
-  test("there are 7 counted steps", () => {
-    expect(stepNumber("welcome")).toEqual({ n: 1, of: 7 });
-    expect(stepNumber("ignite")).toEqual({ n: 7, of: 7 });
+  test("Honest.Money members get 7 counted steps", () => {
+    const steps = stepsFor({ keyMember: false });
+    expect(stepNumber("welcome", steps)).toEqual({ n: 1, of: 7 });
+    expect(stepNumber("ignite", steps)).toEqual({ n: 7, of: 7 });
+  });
+  test("coin, Vault and wallet members get an Easy login step right after their pocket (Bobby, Nov 22)", () => {
+    const steps = stepsFor({ keyMember: true });
+    expect(steps).toEqual(["welcome", "name", "security", "wallet", "login", "fees", "alerts", "ignite", "done"]);
+    expect(nextStep("wallet", steps)).toBe("login");
+    expect(nextStep("login", steps)).toBe("fees");
+    expect(prevStep("fees", steps)).toBe("login");
+    expect(stepNumber("ignite", steps)).toEqual({ n: 8, of: 8 });
+  });
+  test("an Honest.Money member sent to the Easy login step just moves on to network fees", () => {
+    const steps = stepsFor({ keyMember: false });
+    expect(steps).not.toContain("login");
+    expect(nextStep("login", steps)).toBe("fees");
   });
   test("an unknown step starts at the beginning", () => {
     expect(cleanStep("hack")).toBe("welcome");

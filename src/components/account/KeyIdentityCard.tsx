@@ -9,8 +9,8 @@ import { Card, Note, fieldLabel, inputCls } from "@/components/account/ui";
 import { useMyTwoFactor } from "@/components/account/TwoFactorCard";
 import { proveTwoFactor } from "@/components/account/two-factor";
 
-/** Coin / outside-wallet accounts: how they sign in, add an email, join Honest.Money. */
-export function KeyIdentityCard() {
+/** Coin / outside-wallet accounts: how they sign in, add an email, join Honest.Money (hidden where a page offers joining itself). */
+export function KeyIdentityCard({ showJoin = true }: { showJoin?: boolean }) {
   const qc = useQueryClient();
   const ask = useServerFn(requestAccountEmail);
   const confirm = useServerFn(confirmAccountEmail);
@@ -80,7 +80,7 @@ export function KeyIdentityCard() {
         </div>
       ) : null}
 
-      {!d.hmeMember ? (
+      {showJoin && !d.hmeMember ? (
         <div className="mt-5 space-y-3 border-t border-border pt-4">
           <p className="text-sm text-foreground"><b>Join Honest.Money (optional).</b> You get Ignite, referrals and one login across the Honest.Money ecosystem, and your membership email comes with it, which withdrawals need. Your coins, pocket number and history stay exactly where they are, and you can still sign in with your coin.</p>
           <div className="flex flex-wrap gap-2">
