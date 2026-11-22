@@ -410,7 +410,7 @@ function FeeCard(p: { network: string; suggest: string; why: string; have: numbe
       <p className="mt-1 text-sm text-muted-foreground">{p.why}</p>
       {p.have != null ? (
         <p className="mt-3 text-sm">
-          In your pocket: <b>{ethAmt(p.have)} ETH</b>{p.price ? <> ({money(p.have * p.price)})</> : null}
+          In your pocket: <span data-qa-mask><b>{ethAmt(p.have)} ETH</b>{p.price ? <> ({money(p.have * p.price)})</> : null}</span>
           {status ? <span className={status.tone === "ok" ? "text-primary" : "text-muted-foreground"}> · {status.text}</span> : null}
         </p>
       ) : null}

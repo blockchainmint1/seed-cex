@@ -190,3 +190,70 @@ export const adminSetQaTelegramGroup = createServerFn({ method: "POST" })
     if (error) throw new Error("Couldn't save the setting.");
     return { ok: true };
   });
+
+/* ------------------------- Seeds' own error log (Errors tab) ------------------------- */
+
+export type AdminErrorGroup = {
+  signature: string; kind: string; message: string; source: string; first_seen: string; last_seen: string;
+  occurrences: number; handled_at: string | null; handled_by: string; last_week: number;
+};
+
+export const adminListClientErrors = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await requireAdmin(context as never);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { namesFor } = await import("./qa.server");
+    const weekAgo = new Date(Date.now() - 7 * 86_400_000).toISOString();
+    const [{ data: groups }, { data: recent }, { data: s }] = await Promise.all([
+      supabaseAdmin.from("client_error_groups").select("*").order("last_seen", { ascending: false }).limit(500),
+      supabaseAdmin.from("client_errors").select("signature").gte("created_at", weekAgo).limit(20000),
+      supabaseAdmin.from("qa_settings").select("error_log_enabled").eq("id", 1).maybeSingle(),
+    ]);
+    const week: Record<string, number> = {};
+    for (const r of recent ?? []) week[r.signature] = (week[r.signature] ?? 0) + 1;
+    const names = await namesFor((groups ?? []).map((g) => g.handled_by ?? ""));
+    const rows: AdminErrorGroup[] = (groups ?? []).map((g) => ({
+      signature: g.signature, kind: g.kind, message: g.message, source: g.source, first_seen: g.first_seen, last_seen: g.last_seen,
+      occurrences: Number(g.occurrences), handled_at: g.handled_at, handled_by: g.handled_by ? names[g.handled_by] ?? "Admin" : "", last_week: week[g.signature] ?? 0,
+    }));
+    return { rows, enabled: s?.error_log_enabled ?? false };
+  });
+
+export const adminGetClientError = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ signature: z.string().regex(/^[0-9a-f]{32}$/) }).parse(input))
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context as never);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { namesFor } = await import("./qa.server");
+    const { data: rows } = await supabaseAdmin.from("client_errors")
+      .select("id, message, source, page_path, browser, os, viewport, app_version, host, account_id, created_at")
+      .eq("signature", data.signature).order("created_at", { ascending: false }).limit(50);
+    const names = await namesFor((rows ?? []).map((r) => r.account_id ?? ""));
+    return { rows: (rows ?? []).map((r) => ({ ...r, account: r.account_id ? names[r.account_id] ?? "Member" : "" })) };
+  });
+
+export const adminSetClientErrorHandled = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ signature: z.string().regex(/^[0-9a-f]{32}$/), handled: z.boolean() }).parse(input))
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context as never);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("client_error_groups")
+      .update(data.handled ? { handled_at: new Date().toISOString(), handled_by: context.userId } : { handled_at: null, handled_by: null })
+      .eq("signature", data.signature);
+    if (error) throw new Error("Couldn't save that.");
+    return { ok: true };
+  });
+
+export const adminSetErrorLog = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ enabled: z.boolean() }).parse(input))
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context as never);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("qa_settings").update({ error_log_enabled: data.enabled, updated_by: context.userId, updated_at: new Date().toISOString() }).eq("id", 1);
+    if (error) throw new Error("Couldn't save the setting.");
+    return { ok: true };
+  });

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useLocation } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -13,6 +13,7 @@ import {
   scrubPagePath, viewportLabel, type QaCategory, type QaFileKind,
 } from "@/lib/qa/qa-rules";
 import { BUILD_ID } from "@/lib/qa/build-id";
+import { screenshotBlocked } from "@/lib/qa/mask-rules";
 import { canvasToBlob, captureViewport, type MaskBox } from "./capture";
 import { ScreenshotReview } from "./ScreenshotReview";
 import { RecordingPill, canRecordScreen, useScreenRecorder } from "./Recorder";
@@ -43,6 +44,8 @@ export function ReportDialog({ open, onOpenChange, recordingsEnabled }: { open: 
   });
   const recordable = useMemo(() => recordingsEnabled && canRecordScreen(), [recordingsEnabled]);
   const bugLike = category === "bug" || category === "performance";
+  const { pathname } = useLocation();
+  const noShot = screenshotBlocked(pathname);
 
   useEffect(() => () => { files.forEach((f) => URL.revokeObjectURL(f.preview)); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -56,6 +59,7 @@ export function ReportDialog({ open, onOpenChange, recordingsEnabled }: { open: 
 
   const takeScreenshot = async () => {
     setError(null);
+    if (screenshotBlocked(window.location.pathname)) return;
     onOpenChange(false);
     await nextFrame();
     await new Promise((r) => setTimeout(r, 300));
@@ -176,13 +180,14 @@ export function ReportDialog({ open, onOpenChange, recordingsEnabled }: { open: 
               <div className="space-y-2">
                 <span className={label}>Attachments ({files.length}/{QA_MAX_FILES})</span>
                 <div className="flex flex-wrap gap-2">
-                  <Button type="button" variant="outline" size="sm" onClick={takeScreenshot} disabled={files.length >= QA_MAX_FILES}><Camera className="mr-1 h-4 w-4" />Screenshot this page</Button>
+                  {noShot ? null : <Button type="button" variant="outline" size="sm" onClick={takeScreenshot} disabled={files.length >= QA_MAX_FILES}><Camera className="mr-1 h-4 w-4" />Screenshot this page</Button>}
                   <label className={`inline-flex cursor-pointer items-center rounded-md border border-input px-3 py-1.5 text-sm hover:bg-accent ${files.length >= QA_MAX_FILES ? "pointer-events-none opacity-50" : ""}`}>
                     <Paperclip className="mr-1 h-4 w-4" />Attach a file
                     <input type="file" accept={QA_FILE_ACCEPT} multiple className="sr-only" onChange={(e) => { for (const f of Array.from(e.target.files ?? [])) add(f.type.startsWith("video/") ? "recording" : "file", f, f.name, false); e.target.value = ""; }} />
                   </label>
                   {recordable ? <Button type="button" variant="outline" size="sm" onClick={startRecording} disabled={files.length >= QA_MAX_FILES}><Film className="mr-1 h-4 w-4" />Record screen (30 s)</Button> : null}
                 </div>
+                {noShot ? <p className="text-xs text-muted-foreground">This page shows sign-in codes, keys or withdrawal details, so the page screenshot is off here. You can attach your own picture (black out anything private first) or just describe what you see.</p> : null}
                 {files.length ? (
                   <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                     {files.map((f) => (

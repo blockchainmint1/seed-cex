@@ -226,7 +226,7 @@ function KeySignin() {
                 <div className="min-w-0 space-y-3 text-sm">
                   {req.pairCode ? (
                     <p className="rounded-md border border-primary/40 bg-primary/5 px-3 py-2">
-                      Match code <b className="font-mono text-lg tracking-[0.3em] text-primary">{req.pairCode}</b>
+                      Match code <b data-qa-mask className="font-mono text-lg tracking-[0.3em] text-primary">{req.pairCode}</b>
                       <span className="block text-xs text-muted-foreground">The Seeds Key page shows the same three digits. Only continue there if they match.</span>
                     </p>
                   ) : null}

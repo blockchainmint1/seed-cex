@@ -1,10 +1,46 @@
 /** Server-only helpers for the QA Center (storage, settings, attachments). */
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { QA_IMAGE_MAX_BYTES, QA_RECORDING_MAX_BYTES } from "./qa-rules";
+import { QA_IMAGE_MAX_BYTES, QA_RECORDING_MAX_BYTES, bucketSafeForUploads } from "./qa-rules";
 
 export const QA_BUCKET = "qa-attachments";
 /** Signed links to view an attachment last this long (seconds). */
 export const QA_VIEW_SECONDS = 120;
+
+let bucketOkAt = 0;
+let lastBucketAlert = 0;
+export const QA_BUCKET_NOT_PRIVATE = "Attachments are paused: Seeds' private file storage isn't confirmed private right now. Send the report without files, and the team has been told.";
+
+/**
+ * Refuse uploads unless the attachments bucket says it is private (checked at most once a
+ * minute per server instance; a bad answer is never cached). The first refusal each hour
+ * posts a warning to the QA group / admins.
+ */
+export async function assertQaBucketPrivate(): Promise<void> {
+  if (Date.now() - bucketOkAt < 60_000) return;
+  let bucket: { public?: unknown } | null = null;
+  try {
+    const { data } = await supabaseAdmin.storage.getBucket(QA_BUCKET);
+    bucket = data;
+  } catch { bucket = null; }
+  if (bucketSafeForUploads(bucket)) { bucketOkAt = Date.now(); return; }
+  bucketOkAt = 0;
+  console.error("QA attachments bucket is not confirmed private; uploads refused.");
+  if (Date.now() - lastBucketAlert > 3600_000) {
+    lastBucketAlert = Date.now();
+    await postToQaGroup("⚠️ <b>Feedback attachments paused</b>\nSeeds' QA file storage isn't confirmed private, so new screenshots and files are being refused. Reports without files still go through. Please check the storage settings.");
+  }
+  throw new Error(QA_BUCKET_NOT_PRIVATE);
+}
+
+let errorLogCache: { at: number; on: boolean } | null = null;
+/** Admin → Bugs → Errors switch (cached a minute per server instance). */
+export async function errorLogEnabled(): Promise<boolean> {
+  if (errorLogCache && Date.now() - errorLogCache.at < 60_000) return errorLogCache.on;
+  const { data } = await supabaseAdmin.from("qa_settings").select("error_log_enabled").eq("id", 1).maybeSingle();
+  const on = data?.error_log_enabled ?? false;
+  errorLogCache = { at: Date.now(), on };
+  return on;
+}
 
 export async function qaSettings(): Promise<{ enabled: boolean; recordingsEnabled: boolean }> {
   const { data } = await supabaseAdmin.from("qa_settings").select("enabled, recordings_enabled").eq("id", 1).maybeSingle();

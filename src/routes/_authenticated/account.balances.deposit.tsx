@@ -74,12 +74,12 @@ function Deposit() {
                   <div className="min-w-0 flex-1 space-y-3">
                     <div>
                       <p className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">{asset!.symbol} address · {net.label}</p>
-                      <p className="mt-1 break-all rounded-sm border border-border bg-background px-3 py-2 font-mono text-sm">{state.address}</p>
+                      <p data-qa-mask className="mt-1 break-all rounded-sm border border-border bg-background px-3 py-2 font-mono text-sm">{state.address}</p>
                     </div>
                     <Button variant="outline" onClick={async () => { try { await navigator.clipboard.writeText(state.address); setCopied(true); } catch { setCopied(false); } }}>
                       {copied ? <Check /> : <Copy />} {copied ? "Copied" : "Copy address"}
                     </Button>
-                    <p className="text-xs text-muted-foreground">In your pocket now: <span className="num text-foreground">{fmtCoin(balance)} {asset!.symbol}</span></p>
+                    <p className="text-xs text-muted-foreground">In your pocket now: <span data-qa-mask className="num text-foreground">{fmtCoin(balance)} {asset!.symbol}</span></p>
                     <ul className="space-y-1.5">
                       {[`Only send ${asset!.symbol} on ${net.label} to this address.`, ...net.notes].map((n) => (
                         <li key={n} className="flex gap-2 text-sm"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warn" /> <span className="min-w-0 [overflow-wrap:anywhere]">{n}</span></li>

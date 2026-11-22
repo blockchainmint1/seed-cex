@@ -238,3 +238,13 @@ export function groupStatusText(r: { ref: number; title: string; from: string; t
 
 /** Link to a report on the site the action happened on. */
 export const reportLink = (origin: string, ref: number) => `${origin.replace(/\/+$/, "")}/admin/bugs/${ref}`;
+
+// ---- Attachment storage must stay private ----
+
+/**
+ * Uploads go ahead only when the storage bucket answers and says it is private. Anything
+ * else (missing, unreadable, public, or no clear answer) refuses the upload.
+ */
+export function bucketSafeForUploads(b: { public?: unknown } | null | undefined): boolean {
+  return !!b && b.public === false;
+}

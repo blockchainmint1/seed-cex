@@ -1,5 +1,13 @@
 # Roadmap
 
+- [x] QA auditor Q1: screenshots auto-black-out codes, QR codes, addresses, balances (Bobby: yes, Nov 22)
+- [x] QA auditor Q1b: no "Screenshot this page" on coin sign-in, Security, Withdraw (Bobby: yes, Nov 22)
+- [x] QA auditor Q2: refuse uploads if the attachments storage ever turns public (Bobby: yes, Nov 22)
+- [x] QA auditor Q3: hide assignee from testers (Bobby: yes, Nov 22)
+- [x] Seeds' own error log for unreported browser errors: scrubbed, IP-capped, Telegram heads-up for new errors, tab in Admin → Bugs; no Sentry (Bobby: own log, Nov 22)
+- [ ] Auditor review of the QA follow-ups + error log (blocked: auditor)
+- [ ] Fix the page-mismatch error on /swap that the new error log caught (blocked: Bobby's go-ahead)
+
 - [x] Activity page (/activity, /trades forwards): action-needed strip, tabs for open orders, order history, trades, swaps, P2P, deposits, withdrawals, Seeds AI, plus All activity with filters + CSV (Bobby, Nov 22)
 - [x] Deposit history: record each new deposit from now on + fill in past deposits from TXC, ISK and Ethereum-style networks (Bobby: "Both", Nov 22)
 - [x] One Swap page for every coin: THORChain/Maya, Uniswap/PancakeSwap/PulseX and TSD in one form, Seeds picks the best route; old Any-coin address forwards (Nov 22)

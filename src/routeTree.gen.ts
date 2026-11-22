@@ -94,6 +94,7 @@ import { Route as AuthenticatedP2pDashboardRouteImport } from './routes/_authent
 import { Route as AuthenticatedP2pJuryRouteImport } from './routes/_authenticated/p2p.jury'
 import { Route as AiCoinIdRouteImport } from './routes/ai.coin.$id'
 import { Route as ApiPublicAdEventRouteImport } from './routes/api/public/ad-event'
+import { Route as ApiPublicClientErrorRouteImport } from './routes/api/public/client-error'
 import { Route as ApiPublicTrackRouteImport } from './routes/api/public/track'
 import { Route as P2pSellerHandleRouteImport } from './routes/p2p.seller.$handle'
 import { Route as AuthenticatedAccountBalancesIndexRouteImport } from './routes/_authenticated/account.balances.index'
@@ -104,6 +105,7 @@ import { Route as AuthenticatedAccountP2pListingsRouteImport } from './routes/_a
 import { Route as AuthenticatedAccountP2pTradesRouteImport } from './routes/_authenticated/account.p2p.trades'
 import { Route as AuthenticatedAdminBugsIndexRouteImport } from './routes/_authenticated/admin.bugs.index'
 import { Route as AuthenticatedAdminBugsRefRouteImport } from './routes/_authenticated/admin.bugs.$ref'
+import { Route as AuthenticatedAdminBugsErrorsRouteImport } from './routes/_authenticated/admin.bugs.errors'
 import { Route as AuthenticatedAdminMarketingIndexRouteImport } from './routes/_authenticated/admin.marketing.index'
 import { Route as AuthenticatedAdminMarketingAdsRouteImport } from './routes/_authenticated/admin.marketing.ads'
 import { Route as AuthenticatedAdminMarketingVideosRouteImport } from './routes/_authenticated/admin.marketing.videos'
@@ -591,6 +593,11 @@ const ApiPublicAdEventRoute = ApiPublicAdEventRouteImport.update({
   path: '/api/public/ad-event',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicClientErrorRoute = ApiPublicClientErrorRouteImport.update({
+  id: '/api/public/client-error',
+  path: '/api/public/client-error',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicTrackRoute = ApiPublicTrackRouteImport.update({
   id: '/api/public/track',
   path: '/api/public/track',
@@ -647,6 +654,12 @@ const AuthenticatedAdminBugsRefRoute =
   AuthenticatedAdminBugsRefRouteImport.update({
     id: '/bugs/$ref',
     path: '/bugs/$ref',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminBugsErrorsRoute =
+  AuthenticatedAdminBugsErrorsRouteImport.update({
+    id: '/bugs/errors',
+    path: '/bugs/errors',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminMarketingIndexRoute =
@@ -982,6 +995,7 @@ export interface FileRoutesByFullPath {
   '/p2p/jury': typeof AuthenticatedP2pJuryRoute
   '/ai/coin/$id': typeof AiCoinIdRoute
   '/api/public/ad-event': typeof ApiPublicAdEventRoute
+  '/api/public/client-error': typeof ApiPublicClientErrorRoute
   '/api/public/track': typeof ApiPublicTrackRoute
   '/p2p/seller/$handle': typeof P2pSellerHandleRoute
   '/account/': typeof AuthenticatedAccountIndexRoute
@@ -991,6 +1005,7 @@ export interface FileRoutesByFullPath {
   '/account/p2p/listings': typeof AuthenticatedAccountP2pListingsRoute
   '/account/p2p/trades': typeof AuthenticatedAccountP2pTradesRoute
   '/admin/bugs/$ref': typeof AuthenticatedAdminBugsRefRoute
+  '/admin/bugs/errors': typeof AuthenticatedAdminBugsErrorsRoute
   '/admin/marketing/ads': typeof AuthenticatedAdminMarketingAdsRoute
   '/admin/marketing/videos': typeof AuthenticatedAdminMarketingVideosRoute
   '/admin/plan/lbtc': typeof AuthenticatedAdminPlanLbtcRoute
@@ -1119,6 +1134,7 @@ export interface FileRoutesByTo {
   '/p2p/jury': typeof AuthenticatedP2pJuryRoute
   '/ai/coin/$id': typeof AiCoinIdRoute
   '/api/public/ad-event': typeof ApiPublicAdEventRoute
+  '/api/public/client-error': typeof ApiPublicClientErrorRoute
   '/api/public/track': typeof ApiPublicTrackRoute
   '/p2p/seller/$handle': typeof P2pSellerHandleRoute
   '/account': typeof AuthenticatedAccountIndexRoute
@@ -1128,6 +1144,7 @@ export interface FileRoutesByTo {
   '/account/p2p/listings': typeof AuthenticatedAccountP2pListingsRoute
   '/account/p2p/trades': typeof AuthenticatedAccountP2pTradesRoute
   '/admin/bugs/$ref': typeof AuthenticatedAdminBugsRefRoute
+  '/admin/bugs/errors': typeof AuthenticatedAdminBugsErrorsRoute
   '/admin/marketing/ads': typeof AuthenticatedAdminMarketingAdsRoute
   '/admin/marketing/videos': typeof AuthenticatedAdminMarketingVideosRoute
   '/admin/plan/lbtc': typeof AuthenticatedAdminPlanLbtcRoute
@@ -1263,6 +1280,7 @@ export interface FileRoutesById {
   '/_authenticated/p2p/jury': typeof AuthenticatedP2pJuryRoute
   '/ai/coin/$id': typeof AiCoinIdRoute
   '/api/public/ad-event': typeof ApiPublicAdEventRoute
+  '/api/public/client-error': typeof ApiPublicClientErrorRoute
   '/api/public/track': typeof ApiPublicTrackRoute
   '/p2p/seller/$handle': typeof P2pSellerHandleRoute
   '/_authenticated/account/': typeof AuthenticatedAccountIndexRoute
@@ -1272,6 +1290,7 @@ export interface FileRoutesById {
   '/_authenticated/account/p2p/listings': typeof AuthenticatedAccountP2pListingsRoute
   '/_authenticated/account/p2p/trades': typeof AuthenticatedAccountP2pTradesRoute
   '/_authenticated/admin/bugs/$ref': typeof AuthenticatedAdminBugsRefRoute
+  '/_authenticated/admin/bugs/errors': typeof AuthenticatedAdminBugsErrorsRoute
   '/_authenticated/admin/marketing/ads': typeof AuthenticatedAdminMarketingAdsRoute
   '/_authenticated/admin/marketing/videos': typeof AuthenticatedAdminMarketingVideosRoute
   '/_authenticated/admin/plan_/lbtc': typeof AuthenticatedAdminPlanLbtcRoute
@@ -1407,6 +1426,7 @@ export interface FileRouteTypes {
     | '/p2p/jury'
     | '/ai/coin/$id'
     | '/api/public/ad-event'
+    | '/api/public/client-error'
     | '/api/public/track'
     | '/p2p/seller/$handle'
     | '/account/'
@@ -1416,6 +1436,7 @@ export interface FileRouteTypes {
     | '/account/p2p/listings'
     | '/account/p2p/trades'
     | '/admin/bugs/$ref'
+    | '/admin/bugs/errors'
     | '/admin/marketing/ads'
     | '/admin/marketing/videos'
     | '/admin/plan/lbtc'
@@ -1544,6 +1565,7 @@ export interface FileRouteTypes {
     | '/p2p/jury'
     | '/ai/coin/$id'
     | '/api/public/ad-event'
+    | '/api/public/client-error'
     | '/api/public/track'
     | '/p2p/seller/$handle'
     | '/account'
@@ -1553,6 +1575,7 @@ export interface FileRouteTypes {
     | '/account/p2p/listings'
     | '/account/p2p/trades'
     | '/admin/bugs/$ref'
+    | '/admin/bugs/errors'
     | '/admin/marketing/ads'
     | '/admin/marketing/videos'
     | '/admin/plan/lbtc'
@@ -1687,6 +1710,7 @@ export interface FileRouteTypes {
     | '/_authenticated/p2p/jury'
     | '/ai/coin/$id'
     | '/api/public/ad-event'
+    | '/api/public/client-error'
     | '/api/public/track'
     | '/p2p/seller/$handle'
     | '/_authenticated/account/'
@@ -1696,6 +1720,7 @@ export interface FileRouteTypes {
     | '/_authenticated/account/p2p/listings'
     | '/_authenticated/account/p2p/trades'
     | '/_authenticated/admin/bugs/$ref'
+    | '/_authenticated/admin/bugs/errors'
     | '/_authenticated/admin/marketing/ads'
     | '/_authenticated/admin/marketing/videos'
     | '/_authenticated/admin/plan_/lbtc'
@@ -1802,6 +1827,7 @@ export interface RootRouteChildren {
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   AiCoinIdRoute: typeof AiCoinIdRoute
   ApiPublicAdEventRoute: typeof ApiPublicAdEventRoute
+  ApiPublicClientErrorRoute: typeof ApiPublicClientErrorRoute
   ApiPublicTrackRoute: typeof ApiPublicTrackRoute
   P2pSellerHandleRoute: typeof P2pSellerHandleRoute
   ApiPublicCmcAssetsRoute: typeof ApiPublicCmcAssetsRoute
@@ -2443,6 +2469,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicAdEventRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/client-error': {
+      id: '/api/public/client-error'
+      path: '/api/public/client-error'
+      fullPath: '/api/public/client-error'
+      preLoaderRoute: typeof ApiPublicClientErrorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/track': {
       id: '/api/public/track'
       path: '/api/public/track'
@@ -2511,6 +2544,13 @@ declare module '@tanstack/react-router' {
       path: '/bugs/$ref'
       fullPath: '/admin/bugs/$ref'
       preLoaderRoute: typeof AuthenticatedAdminBugsRefRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/bugs/errors': {
+      id: '/_authenticated/admin/bugs/errors'
+      path: '/bugs/errors'
+      fullPath: '/admin/bugs/errors'
+      preLoaderRoute: typeof AuthenticatedAdminBugsErrorsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/marketing/': {
@@ -2939,6 +2979,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminVideosRoute: typeof AuthenticatedAdminVideosRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
   AuthenticatedAdminBugsRefRoute: typeof AuthenticatedAdminBugsRefRoute
+  AuthenticatedAdminBugsErrorsRoute: typeof AuthenticatedAdminBugsErrorsRoute
   AuthenticatedAdminPlanLbtcRoute: typeof AuthenticatedAdminPlanLbtcRoute
   AuthenticatedAdminBugsIndexRoute: typeof AuthenticatedAdminBugsIndexRoute
 }
@@ -2958,6 +2999,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminVideosRoute: AuthenticatedAdminVideosRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
   AuthenticatedAdminBugsRefRoute: AuthenticatedAdminBugsRefRoute,
+  AuthenticatedAdminBugsErrorsRoute: AuthenticatedAdminBugsErrorsRoute,
   AuthenticatedAdminPlanLbtcRoute: AuthenticatedAdminPlanLbtcRoute,
   AuthenticatedAdminBugsIndexRoute: AuthenticatedAdminBugsIndexRoute,
 }
@@ -3066,6 +3108,7 @@ const rootRouteChildren: RootRouteChildren = {
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   AiCoinIdRoute: AiCoinIdRoute,
   ApiPublicAdEventRoute: ApiPublicAdEventRoute,
+  ApiPublicClientErrorRoute: ApiPublicClientErrorRoute,
   ApiPublicTrackRoute: ApiPublicTrackRoute,
   P2pSellerHandleRoute: P2pSellerHandleRoute,
   ApiPublicCmcAssetsRoute: ApiPublicCmcAssetsRoute,

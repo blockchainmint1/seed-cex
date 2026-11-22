@@ -19,6 +19,7 @@ import { SiteFooter } from "@/components/site/SiteFooter";
 import { DemoBanner } from "@/components/site/DemoBanner";
 import { VisitCounter } from "@/components/site/VisitCounter";
 import { FeedbackButton } from "@/components/qa/FeedbackButton";
+import { ErrorReporter, sendClientError } from "@/components/qa/ErrorReporter";
 import { supabase } from "@/integrations/supabase/client";
 
 function NotFoundComponent() {
@@ -48,6 +49,7 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   const router = useRouter();
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
+    void sendClientError("error", error);
   }, [error]);
 
   return (
@@ -176,6 +178,8 @@ function RootComponent() {
         <HonestMoneyScripts />
         {/* Prelaunch QA: testers/admins only, switch in Admin → Bugs. Rollback = delete this line. */}
         <FeedbackButton />
+        {/* Seeds' own error log (Admin → Bugs → Errors); no outside service. Rollback = delete this line. */}
+        <ErrorReporter />
         {/* Pop-up messages (errors and confirmations) site-wide; without this every toast is silent. */}
         <Toaster position="top-center" closeButton />
       </div>

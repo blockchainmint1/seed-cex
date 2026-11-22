@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import type { MaskBox } from "./capture";
 
 /**
- * The tester reviews the screenshot before it can be attached: form fields are already
+ * The tester reviews the screenshot before it can be attached: form fields, QR codes, addresses, codes and balances are already
  * blacked out, and they drag to black out anything else (balances, addresses, names).
  */
 export function ScreenshotReview({ source, autoMasks, onDone, onCancel }: {
@@ -38,7 +38,7 @@ export function ScreenshotReview({ source, autoMasks, onDone, onCancel }: {
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground">
-        Check the picture before it's attached. {autoMasks ? `${autoMasks} form field${autoMasks === 1 ? " was" : "s were"} blacked out for you. ` : ""}
+        Check the picture before it's attached. {autoMasks ? `${autoMasks} private spot${autoMasks === 1 ? " was" : "s were"} blacked out for you (typing boxes, QR codes, addresses, codes and balances). ` : ""}
         <strong className="text-foreground">Drag over anything else you don't want to share</strong>, like balances, addresses or names.
       </p>
       <canvas

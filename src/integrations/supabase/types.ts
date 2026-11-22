@@ -650,6 +650,98 @@ export type Database = {
         }
         Relationships: []
       }
+      client_error_groups: {
+        Row: {
+          first_seen: string
+          handled_at: string | null
+          handled_by: string | null
+          kind: string
+          last_alert_at: string | null
+          last_seen: string
+          message: string
+          occurrences: number
+          signature: string
+          source: string
+        }
+        Insert: {
+          first_seen?: string
+          handled_at?: string | null
+          handled_by?: string | null
+          kind: string
+          last_alert_at?: string | null
+          last_seen?: string
+          message: string
+          occurrences?: number
+          signature: string
+          source?: string
+        }
+        Update: {
+          first_seen?: string
+          handled_at?: string | null
+          handled_by?: string | null
+          kind?: string
+          last_alert_at?: string | null
+          last_seen?: string
+          message?: string
+          occurrences?: number
+          signature?: string
+          source?: string
+        }
+        Relationships: []
+      }
+      client_errors: {
+        Row: {
+          account_id: string | null
+          app_version: string
+          browser: string
+          created_at: string
+          host: string
+          id: string
+          message: string
+          os: string
+          page_path: string
+          signature: string
+          source: string
+          viewport: string
+        }
+        Insert: {
+          account_id?: string | null
+          app_version?: string
+          browser?: string
+          created_at?: string
+          host?: string
+          id?: string
+          message: string
+          os?: string
+          page_path?: string
+          signature: string
+          source?: string
+          viewport?: string
+        }
+        Update: {
+          account_id?: string | null
+          app_version?: string
+          browser?: string
+          created_at?: string
+          host?: string
+          id?: string
+          message?: string
+          os?: string
+          page_path?: string
+          signature?: string
+          source?: string
+          viewport?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_errors_signature_fkey"
+            columns: ["signature"]
+            isOneToOne: false
+            referencedRelation: "client_error_groups"
+            referencedColumns: ["signature"]
+          },
+        ]
+      }
       coin_videos: {
         Row: {
           added_by: string
@@ -2854,6 +2946,7 @@ export type Database = {
       qa_settings: {
         Row: {
           enabled: boolean
+          error_log_enabled: boolean
           id: number
           recordings_enabled: boolean
           telegram_chat_id: string | null
@@ -2862,6 +2955,7 @@ export type Database = {
         }
         Insert: {
           enabled?: boolean
+          error_log_enabled?: boolean
           id?: number
           recordings_enabled?: boolean
           telegram_chat_id?: string | null
@@ -2870,6 +2964,7 @@ export type Database = {
         }
         Update: {
           enabled?: boolean
+          error_log_enabled?: boolean
           id?: number
           recordings_enabled?: boolean
           telegram_chat_id?: string | null
@@ -4081,6 +4176,7 @@ export type Database = {
         Returns: boolean
       }
       claim_pocket_withdrawal: { Args: { _id: string }; Returns: boolean }
+      client_errors_prune: { Args: never; Returns: undefined }
       custody_snapshot: {
         Args: never
         Returns: {
@@ -4150,6 +4246,22 @@ export type Database = {
       market_snapshots_rollup: { Args: never; Returns: number }
       purge_expired_delegations: { Args: never; Returns: number }
       purge_expired_wallet_challenges: { Args: never; Returns: number }
+      record_client_error: {
+        Args: {
+          _account: string
+          _browser: string
+          _host: string
+          _kind: string
+          _message: string
+          _os: string
+          _page: string
+          _signature: string
+          _source: string
+          _version: string
+          _viewport: string
+        }
+        Returns: string
+      }
       redeem_legacy_claim: { Args: { _token_hash: string }; Returns: string }
       release_delegation_spend: {
         Args: { _amount: number; _id: string }

@@ -85,7 +85,7 @@ export function HmePocketBalances({ addresses, linkId }: { addresses: Record<str
         <thead className="border-y border-border font-mono text-xs text-muted-foreground"><tr><th className="py-3 pr-3">Asset</th><th className="py-3 pr-3">Network</th><th className="py-3 text-right">In pocket</th><th className="py-3 text-right">Receive</th></tr></thead>
         <tbody>{visibleRows.map((r) => <tr key={`${r.symbol}-${r.network}`} className="border-b border-border/60">
           <td className="py-3 pr-3 font-semibold">{r.symbol}</td><td className="py-3 pr-3 text-muted-foreground">{r.network}{"notInHme" in r && r.notInHme ? <span className="ml-2 whitespace-nowrap rounded-sm border border-warn/60 px-1.5 py-0.5 font-mono text-[10px] text-foreground">Not in HME Wallet</span> : null}</td>
-          <td className="py-3 text-right num text-xs">{r.balance === null ? (query.isFetching ? "Checking…" : "Not available") : r.balance.toLocaleString("en-US", { maximumFractionDigits: 8 })}</td>
+          <td data-qa-mask className="py-3 text-right num text-xs">{r.balance === null ? (query.isFetching ? "Checking…" : "Not available") : r.balance.toLocaleString("en-US", { maximumFractionDigits: 8 })}</td>
           <td className="py-2 pl-3 text-right">{"canReceive" in r && r.canReceive === false ? null : <Button variant="ghost" size="icon" title={`Receive ${r.symbol} on ${r.network}`} aria-label={`Receive ${r.symbol} on ${r.network}`} onClick={() => { if (r.address) { setCopied(false); setReceive({ ...r, address: r.address }); } }}><QrCode /></Button>}</td>
         </tr>)}</tbody>
       </table>
@@ -105,7 +105,7 @@ export function HmePocketBalances({ addresses, linkId }: { addresses: Record<str
         <DialogDescription>{receive?.network} · HME trading pocket</DialogDescription>
         {receive ? <>
           <div className="mx-auto bg-accent p-4 text-foreground"><QRCodeSVG value={receive.address} size={192} bgColor="transparent" fgColor="currentColor" /></div>
-          <p className="break-all text-center font-mono text-xs">{receive.address}</p>
+          <p data-qa-mask className="break-all text-center font-mono text-xs">{receive.address}</p>
           <Button variant="outline" onClick={async () => { try { await navigator.clipboard.writeText(receive.address); setCopied(true); } catch { setCopied(false); } }}>{copied ? <Check /> : <Copy />}{copied ? "Copied" : "Copy address"}</Button>
         </> : null}
       </DialogContent>

@@ -64,6 +64,10 @@ export const submitQaReport = createServerFn({ method: "POST" })
       const why = fileProblem(f.kind, f.mime, f.size, s.recordingsEnabled);
       if (why) throw new Error(`${cleanFileName(f.name)}: ${why}`);
     }
+    if (data.files.length) {
+      const { assertQaBucketPrivate } = await import("./qa.server");
+      await assertQaBucketPrivate();
+    }
     const since = new Date(Date.now() - 3600_000).toISOString();
     const { count } = await supabaseAdmin.from("qa_reports").select("id", { count: "exact", head: true }).eq("reporter_id", context.userId).gte("created_at", since);
     if ((count ?? 0) >= QA_REPORTS_PER_HOUR) throw new Error(`That's ${QA_REPORTS_PER_HOUR} reports in the last hour. Please wait a little before sending more.`);

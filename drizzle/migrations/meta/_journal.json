@@ -470,6 +470,13 @@
       "when": 1795367506840,
       "tag": "0066_qa_telegram_group",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1795369403129,
+      "tag": "0067_qa_hide_assignee_client_errors",
+      "breakpoints": true
     }
   ]
 }

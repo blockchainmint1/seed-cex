@@ -56,7 +56,7 @@ function SpotBalances() {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">Estimated value</p>
-            <p className="num mt-1 font-display text-3xl font-extrabold">{balances.isPending ? "…" : fmtUsd(total)}</p>
+            <p data-qa-mask className="num mt-1 font-display text-3xl font-extrabold">{balances.isPending ? "…" : fmtUsd(total)}</p>
             <p className="mt-1 text-xs text-muted-foreground">
               Pocket #{l.account} · confirmed on-chain balances · live market prices, TSD at $1{unpriced ? " · coins without a price aren't counted" : ""}
             </p>
@@ -90,7 +90,7 @@ function SpotBalances() {
                 <span className="font-semibold">{r.asset.symbol}</span>
                 <span className="block text-xs text-muted-foreground">{r.net.label}{withdrawRoute(r.net) !== "hme" ? " · not in HME Wallet" : ""}</span>
               </div>
-              <div className="text-right">
+              <div data-qa-mask className="text-right">
                 <span className="num block">{r.balance == null ? (balances.isFetching ? "Checking…" : "—") : fmtCoin(r.balance)}</span>
                 <span className="num block text-xs text-muted-foreground">{fmtUsd(r.usd)}</span>
               </div>

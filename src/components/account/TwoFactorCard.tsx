@@ -125,7 +125,7 @@ export function TwoFactorCard() {
               <div>
                 <p className="text-xs text-muted-foreground">Setup key</p>
                 <div className="mt-1 flex flex-wrap items-center gap-2">
-                  <code className="min-w-0 break-all rounded-sm bg-muted/50 px-2 py-1 font-mono text-xs">{setup.secret}</code>
+                  <code data-qa-mask className="min-w-0 break-all rounded-sm bg-muted/50 px-2 py-1 font-mono text-xs">{setup.secret}</code>
                   <Button type="button" size="sm" variant="outline" onClick={() => { void navigator.clipboard.writeText(setup.secret); setCopied(true); setTimeout(() => setCopied(false), 1500); }}>
                     <Copy /> {copied ? "Copied" : "Copy"}
                   </Button>

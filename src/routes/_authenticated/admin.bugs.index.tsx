@@ -7,6 +7,7 @@ import { adminListQaReports, adminSetQaSettings, adminSetQaTelegramGroup, type A
 import { QA_CATEGORIES, QA_SEVERITIES, QA_STATUSES, categoryLabel, isOpenReport, qaCsv, refLabel, severityLabel, statusLabel } from "@/lib/qa/qa-rules";
 import { Card, Note, TabTitle, Toggle, inputCls } from "@/components/account/ui";
 import { Loading } from "@/components/admin/ui";
+import { BugsTabs } from "@/components/admin/BugsTabs";
 import { fmtAgo } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/admin/bugs/")({
@@ -92,6 +93,7 @@ function AdminBugs() {
   return (
     <div className="space-y-6">
       <TabTitle title="Bugs & feedback" desc="Reports beta testers send with the Feedback button. Testers only ever see their own." />
+      <BugsTabs />
       {q.isPending ? <Loading /> : q.error ? <Note tone="error">{(q.error as Error).message}</Note> : (
         <>
           <div className="grid gap-3 sm:grid-cols-4">

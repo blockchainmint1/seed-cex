@@ -99,7 +99,7 @@ export function TwoStepResult({ q, amount, symbolIn, symbolOut }: { q: TwoStepQu
         <>
           {c && first && !blocked ? (
             <p className="font-mono text-xs text-muted-foreground">
-              In your pocket: <span className={short ? "text-destructive" : "text-foreground"}>{c.balanceIn == null ? "—" : fmtNum(c.balanceIn)} {symbolIn}</span>
+              In your pocket: <span data-qa-mask className={short ? "text-destructive" : "text-foreground"}>{c.balanceIn == null ? "—" : fmtNum(c.balanceIn)} {symbolIn}</span>
               {" · "}{c.nativeBalance == null ? "—" : fmtNum(c.nativeBalance)} {c.nativeSymbol} for fees
             </p>
           ) : null}

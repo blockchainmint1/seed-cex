@@ -103,3 +103,13 @@ describe("Telegram group posts", () => {
     expect(t).toContain("https://seeds.honest.money/admin/bugs/7");
   });
 });
+
+describe("attachment storage must be private", () => {
+  test("uploads only when the bucket clearly says private", async () => {
+    const { bucketSafeForUploads } = await import("./qa-rules");
+    expect(bucketSafeForUploads({ public: false })).toBe(true);
+    expect(bucketSafeForUploads({ public: true })).toBe(false);
+    expect(bucketSafeForUploads({})).toBe(false);
+    expect(bucketSafeForUploads(null)).toBe(false);
+  });
+});
