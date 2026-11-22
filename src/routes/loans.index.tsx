@@ -65,7 +65,7 @@ function LoansPage() {
             <Sprout className="h-3.5 w-3.5" /> Seeds Lend · private preview
           </p>
           <h1 className="mt-2 font-display text-4xl font-extrabold tracking-tight md:text-5xl">
-            Borrow against your TXC.<br />Lend to real people.
+            Borrow against your crypto.<br />Lend to real people.
           </h1>
           <p className="mt-4 max-w-xl text-muted-foreground">
             Lenders post what they'll lend, borrowers post what they need, and you work out the terms together. Every loan gets its
