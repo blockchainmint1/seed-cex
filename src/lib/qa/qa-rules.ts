@@ -200,3 +200,41 @@ export function qaCsv(rows: QaCsvRow[]): string {
   ].map(cell).join(","));
   return [head.join(","), ...body].join("\n");
 }
+
+// ---- Telegram group posts (Admin → Bugs → Telegram group) ----
+
+/** A Telegram chat id: digits, groups start with "-" (supergroups "-100…"). */
+export const validTelegramChatId = (v: string) => /^-?[0-9]{5,20}$/.test(v);
+export const QA_GROUP_EXCERPT = 600;
+
+const tgEsc = (v: string) => v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const excerpt = (v: string, n: number) => (v.length > n ? `${v.slice(0, n - 1).trimEnd()}…` : v);
+
+/**
+ * New report → group post. Text only: screenshots, files and recordings stay in Seeds'
+ * private storage (the post says how many and links to Admin → Bugs).
+ */
+export function groupReportText(r: {
+  ref: number; category: string; title: string; description: string; expected: string; actual: string; steps: string;
+  pagePath: string; reporter: string; device: string; files: number; link: string;
+}): string {
+  const lines = [
+    `🐞 <b>${refLabel(r.ref)} · ${tgEsc(categoryLabel(r.category))}</b>`,
+    `<b>${tgEsc(r.title)}</b>`,
+    `From ${tgEsc(r.reporter)} · <code>${tgEsc(r.pagePath || "/")}</code>`,
+  ];
+  if (r.device) lines.push(tgEsc(r.device));
+  for (const [label, v] of [["What happened", r.description], ["Expected", r.expected], ["Instead", r.actual], ["Steps", r.steps]] as const)
+    if (v.trim()) lines.push(`\n<b>${label}:</b> ${tgEsc(excerpt(v.trim(), QA_GROUP_EXCERPT))}`);
+  if (r.files) lines.push(`\n📎 ${r.files} attachment${r.files === 1 ? "" : "s"} (open in Seeds)`);
+  lines.push(`\n<a href="${tgEsc(r.link)}">Open ${refLabel(r.ref)} in Admin → Bugs</a>`);
+  return lines.join("\n");
+}
+
+/** Status change (team triage or a tester's retest answer) → one-line group post. */
+export function groupStatusText(r: { ref: number; title: string; from: string; to: string; by: string; link: string }): string {
+  return `🔁 <b>${refLabel(r.ref)}</b> ${tgEsc(statusLabel(r.from))} → <b>${tgEsc(statusLabel(r.to))}</b> (${tgEsc(r.by)})\n${tgEsc(r.title)}\n<a href="${tgEsc(r.link)}">Open in Admin → Bugs</a>`;
+}
+
+/** Link to a report on the site the action happened on. */
+export const reportLink = (origin: string, ref: number) => `${origin.replace(/\/+$/, "")}/admin/bugs/${ref}`;

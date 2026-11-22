@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
-  QA_REPORTS_PER_HOUR, cleanText, describeDevice, duplicateProblem, fileProblem, parseRef, qaCsv, refLabel, retestResult, scrubPagePath, viewportLabel,
+  QA_GROUP_EXCERPT, QA_REPORTS_PER_HOUR, cleanText, groupReportText, groupStatusText, reportLink, validTelegramChatId, describeDevice, duplicateProblem, fileProblem, parseRef, qaCsv, refLabel, retestResult, scrubPagePath, viewportLabel,
 } from "./qa-rules";
 
 describe("page address never keeps codes or tokens", () => {
@@ -73,4 +73,33 @@ test("CSV defuses spreadsheet formulas", () => {
   const line = csv.split("\n")[1]!;
   expect(line).toContain(`"'=HYPERLINK(""x"")"`);
   expect(line).toContain('"a, b"');
+});
+
+describe("Telegram group posts", () => {
+  const base = { ref: 7, category: "bug", title: "Swap <button> & stuck", description: "x".repeat(900), expected: "", actual: "It spins", steps: "1. Open swap",
+    pagePath: "/swap?tab=x", reporter: "Cory", device: "Chrome 147 · Android · 390x844@3", files: 2, link: "https://seeds.honest.money/admin/bugs/7" };
+
+  test("group ids look like Telegram chat ids", () => {
+    expect(validTelegramChatId("-1004268049198")).toBe(true);
+    for (const bad of ["", "abc", "-100abc", "@seeds", "12"]) expect(validTelegramChatId(bad)).toBe(false);
+  });
+
+  test("new report post: escaped, trimmed, counts files without sending them, links to Admin → Bugs", () => {
+    const t = groupReportText(base);
+    expect(t).toContain("QA-0007 · Bug");
+    expect(t).toContain("Swap &lt;button&gt; &amp; stuck");
+    expect(t).not.toContain("<button>");
+    expect(t).toContain(`${"x".repeat(QA_GROUP_EXCERPT - 1)}…`);
+    expect(t).not.toContain("x".repeat(QA_GROUP_EXCERPT));
+    expect(t).toContain("📎 2 attachments");
+    expect(t).not.toContain("Expected:");
+    expect(t).toContain('href="https://seeds.honest.money/admin/bugs/7"');
+  });
+
+  test("status post names both statuses and who moved it", () => {
+    const t = groupStatusText({ ref: 7, title: "Swap stuck", from: "ready_for_retest", to: "verified", by: "Cory retested", link: reportLink("https://seeds.honest.money/", 7) });
+    expect(t).toContain("Ready for retest → <b>Verified</b>");
+    expect(t).toContain("(Cory retested)");
+    expect(t).toContain("https://seeds.honest.money/admin/bugs/7");
+  });
 });

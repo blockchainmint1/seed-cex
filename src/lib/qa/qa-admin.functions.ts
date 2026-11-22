@@ -19,7 +19,7 @@ export const adminListQaReports = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     await requireAdmin(context as never);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { namesFor, qaSettings } = await import("./qa.server");
+    const { namesFor, qaSettings, qaTelegramGroup } = await import("./qa.server");
     const [{ data: reports }, { data: files }, { data: comments }, settings, { data: adminRoles }] = await Promise.all([
       supabaseAdmin.from("qa_reports").select("*").order("created_at", { ascending: false }).limit(2000),
       supabaseAdmin.from("qa_attachments").select("report_id").eq("uploaded", true).limit(10000),
@@ -47,7 +47,7 @@ export const adminListQaReports = createServerFn({ method: "GET" })
       files: fc[r.id] ?? 0, comments: cc[r.id] ?? 0, created_at: r.created_at, updated_at: r.updated_at,
     }));
     const admins = (adminRoles ?? []).map((a) => ({ id: a.user_id, name: names[a.user_id] ?? "Admin" }));
-    return { rows, settings, admins };
+    return { rows, settings: { ...settings, telegramChatId: await qaTelegramGroup() }, admins };
   });
 
 export const adminGetQaReport = createServerFn({ method: "GET" })
@@ -129,6 +129,15 @@ export const adminUpdateQaReport = createServerFn({ method: "POST" })
     const { error } = await supabaseAdmin.from("qa_reports").update(patch as never).eq("id", r.id);
     if (error) throw new Error(error.message.includes("duplicate") ? error.message : "Couldn't save the change.");
     await supabaseAdmin.from("qa_events").insert(events.map((e) => ({ ...e, report_id: r.id, actor_id: context.userId })));
+    if (patch.status) {
+      const { postToQaGroup, namesFor, requestOrigin } = await import("./qa.server");
+      const { groupStatusText, reportLink } = await import("./qa-rules");
+      const { data: info } = await supabaseAdmin.from("qa_reports").select("ref_no, title").eq("id", r.id).maybeSingle();
+      if (info) {
+        const names = await namesFor([context.userId]);
+        await postToQaGroup(groupStatusText({ ref: info.ref_no as number, title: info.title, from: r.status, to: patch.status, by: names[context.userId] ?? "Seeds team", link: reportLink(await requestOrigin(), info.ref_no as number) }));
+      }
+    }
     return { changed: events.length };
   });
 
@@ -153,6 +162,31 @@ export const adminSetQaSettings = createServerFn({ method: "POST" })
     await requireAdmin(context as never);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.from("qa_settings").update({ enabled: data.enabled, recordings_enabled: data.recordingsEnabled, updated_by: context.userId, updated_at: new Date().toISOString() }).eq("id", 1);
+    if (error) throw new Error("Couldn't save the setting.");
+    return { ok: true };
+  });
+
+/**
+ * Which Telegram group gets bug posts (empty = DM admins instead). Saving checks the Seeds bot
+ * can see the group and posts a short "connected" note there, so a typo can't silently drop posts.
+ */
+export const adminSetQaTelegramGroup = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ chatId: z.string().max(30) }).parse(input))
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context as never);
+    const chatId = data.chatId.trim();
+    const { validTelegramChatId } = await import("./qa-rules");
+    if (chatId && !validTelegramChatId(chatId)) throw new Error("A Telegram group id looks like -1001234567890.");
+    if (chatId) {
+      const { telegramConfigured, telegramCall, sendTelegram } = await import("@/lib/telegram.server");
+      if (!telegramConfigured()) throw new Error("Seeds' Telegram bot isn't set up on this site.");
+      try { await telegramCall("getChat", { chat_id: chatId }); }
+      catch { throw new Error("The Seeds bot can't see that group. Add the bot to the group first, then try again."); }
+      await sendTelegram(chatId, "✅ Seeds bug reports will be posted here (Admin → Bugs).").catch(() => undefined);
+    }
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("qa_settings").update({ telegram_chat_id: chatId || null, updated_by: context.userId, updated_at: new Date().toISOString() }).eq("id", 1);
     if (error) throw new Error("Couldn't save the setting.");
     return { ok: true };
   });

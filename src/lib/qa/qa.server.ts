@@ -11,6 +11,34 @@ export async function qaSettings(): Promise<{ enabled: boolean; recordingsEnable
   return { enabled: data?.enabled ?? false, recordingsEnabled: data?.recordings_enabled ?? false };
 }
 
+/** The Telegram group that gets QA posts, or null (then new reports DM verified admins). Admin-only value. */
+export async function qaTelegramGroup(): Promise<string | null> {
+  const { data } = await supabaseAdmin.from("qa_settings").select("telegram_chat_id").eq("id", 1).maybeSingle();
+  return data?.telegram_chat_id ?? null;
+}
+
+/** Best-effort post to the QA group; never throws (a report or triage must not fail because Telegram did). */
+export async function postToQaGroup(text: string): Promise<boolean> {
+  try {
+    const { telegramConfigured, sendTelegram } = await import("@/lib/telegram.server");
+    const chat = await qaTelegramGroup();
+    if (!chat || !telegramConfigured()) return false;
+    await sendTelegram(chat, text);
+    return true;
+  } catch (e) {
+    console.error("QA group post failed:", (e as Error).message);
+    return false;
+  }
+}
+
+/** Origin of the current request (preview or live), for links in group posts. */
+export async function requestOrigin(): Promise<string> {
+  try {
+    const { getRequest } = await import("@tanstack/react-start/server");
+    return new URL(getRequest().url).origin;
+  } catch { return "https://seeds.honest.money"; }
+}
+
 export type QaAttachmentView = { id: string; kind: string; mime: string; fileName: string; size: number; redacted: boolean; url: string | null };
 
 /** Uploaded attachments of these reports, each with a short-lived signed view link. */

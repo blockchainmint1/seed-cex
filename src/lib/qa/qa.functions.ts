@@ -89,11 +89,35 @@ export const submitQaReport = createServerFn({ method: "POST" })
       if (ue || !up) throw new Error("Couldn't prepare an attachment upload.");
       uploads.push({ path, token: up.token });
     }
-    void notifyAdmins(row.ref_no, data.category, title).catch(() => undefined);
+    await announceReport({
+      ref: row.ref_no as number, reporterId: context.userId, category: data.category, title,
+      description: cleanText(data.description, QA_LIMITS.description), expected: cleanText(data.expected, QA_LIMITS.expected),
+      actual: cleanText(data.actual, QA_LIMITS.actual), steps: cleanText(data.steps, QA_LIMITS.steps),
+      pagePath: scrubPagePath(data.pageHref), device: [cleanText(data.browser, 80), cleanText(data.os, 80), cleanText(data.viewport, 40)].filter(Boolean).join(" · "),
+      files: data.files.length,
+    }).catch(() => undefined);
     return { id: row.id, ref: row.ref_no as number, uploads };
   });
 
-/** Telegram heads-up to every admin with verified Telegram. Best-effort: never blocks the report. */
+/**
+ * New report → the QA Telegram group (Admin → Bugs) with the report's text; without a group,
+ * a short DM to every admin with verified Telegram. Best-effort: never blocks the report.
+ */
+async function announceReport(r: {
+  ref: number; reporterId: string; category: string; title: string; description: string; expected: string; actual: string;
+  steps: string; pagePath: string; device: string; files: number;
+}) {
+  const { qaTelegramGroup, postToQaGroup, namesFor, requestOrigin } = await import("./qa.server");
+  if (await qaTelegramGroup()) {
+    const { groupReportText, reportLink } = await import("./qa-rules");
+    const names = await namesFor([r.reporterId]);
+    await postToQaGroup(groupReportText({ ...r, reporter: names[r.reporterId] ?? "A tester", link: reportLink(await requestOrigin(), r.ref) }));
+    return;
+  }
+  await notifyAdmins(r.ref, r.category, r.title);
+}
+
+/** Telegram heads-up to every admin with verified Telegram (used when no QA group is set). */
 async function notifyAdmins(ref: number, category: string, title: string) {
   const { telegramConfigured, sendTelegram } = await import("@/lib/telegram.server");
   if (!telegramConfigured()) return;
@@ -176,6 +200,15 @@ export const retestMyQaReport = createServerFn({ method: "POST" })
     const { data: moved } = await supabaseAdmin.from("qa_reports").update({ status: next }).eq("id", r.id).eq("status", "ready_for_retest").select("id");
     if (!moved?.length) throw new Error("This report changed meanwhile. Refresh and try again.");
     await supabaseAdmin.from("qa_events").insert({ report_id: r.id, actor_id: context.userId, field: "retest", from_value: r.status, to_value: next });
+    {
+      const { postToQaGroup, namesFor, requestOrigin } = await import("./qa.server");
+      const { groupStatusText, reportLink } = await import("./qa-rules");
+      const { data: info } = await supabaseAdmin.from("qa_reports").select("ref_no, title").eq("id", r.id).maybeSingle();
+      if (info) {
+        const names = await namesFor([context.userId]);
+        await postToQaGroup(groupStatusText({ ref: info.ref_no as number, title: info.title, from: r.status, to: next, by: `${names[context.userId] ?? "Tester"} retested`, link: reportLink(await requestOrigin(), info.ref_no as number) }));
+      }
+    }
     const note = cleanText(data.note ?? "", QA_LIMITS.comment);
     if (note) await supabaseAdmin.from("qa_comments").insert({ report_id: r.id, author_id: context.userId, from_team: false, body: note, internal: false });
     return { status: next };
