@@ -9,10 +9,19 @@ import type { PublicClass } from "@/lib/ignite.functions";
 /** One upcoming class on /ignite. */
 export function ClassCard({ c }: { c: PublicClass }) {
   const open = canRegister(c, c.seatsLeft);
+  const soldOut = c.status === "open" && c.seatsLeft <= 0;
   const time = sharedTimeLabel(c.sessions, c.timezone);
   const pct = c.capacity ? Math.min(100, Math.round(((c.capacity - c.seatsLeft) / c.capacity) * 100)) : 0;
   return (
-    <article className="flex flex-col rounded-3xl border border-border bg-card p-6 shadow-glow sm:p-8">
+    <article className="@container relative flex flex-col overflow-hidden rounded-3xl border border-border bg-card p-6 shadow-glow sm:p-8">
+      {/* Sold-out stamp: decoration only, the seat badge above already tells screen readers. */}
+      {soldOut && (
+        <div aria-hidden className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-3">
+          <span className="flex w-[88%] -rotate-[8deg] select-none items-center justify-center rounded-2xl border-[7px] border-primary/80 px-3 py-2 text-center font-display text-[clamp(3rem,15cqw,8.5rem)] font-extrabold uppercase leading-[1.0] tracking-[0.04em] text-primary/85 outline-[3px] outline-offset-[7px] outline-primary/40">
+            Sold out
+          </span>
+        </div>
+      )}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="font-mono text-xs font-medium tracking-[0.14em] text-primary">TO THE MOON CLASS</p>
