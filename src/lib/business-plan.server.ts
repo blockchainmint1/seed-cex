@@ -32,9 +32,9 @@ export const BUSINESS_PLAN: BusinessPlan = {
       summary: "Listing fees today. Everything else is a proposal.",
       blocks: [
         { kind: "table", title: "Money in", head: ["Source", "Price", "Status"], rows: [
-          ["Listing: Seed package", usd(1000), "On /list now"],
-          ["Listing: Sapling package", usd(2500), "On /list now"],
-          ["Listing: Grove package", usd(5000), "On /list now"],
+          ["Listing: Sapling package", usd(1000), "On /list now"],
+          ["Listing: Grove package", usd(2500), "On /list now"],
+          ["Listing: Forest package", usd(5000), "On /list now"],
           ["Trading fees", "None, ever", "Promise on the site"],
           ["Swap fee", "None for now", "Can be revisited"],
           ["To the Moon $400 deposit", "Not income", "Goes back to the student for trading"],
@@ -42,7 +42,7 @@ export const BUSINESS_PLAN: BusinessPlan = {
         { kind: "calc", calc: "listing" },
         { kind: "items", title: "Ideas for more income (none promised anywhere yet)", items: [
           { title: "Yearly listing renewal", body: "Still open: is a listing one-time or yearly? A smaller yearly renewal (for example a third of the package) would turn listings into steady income.", status: "decide" },
-          { title: "Sponsored trading contests", body: "A coin team pays for a contest and puts up the prizes. Seeds runs it and labels it sponsored. Already part of Sapling and Grove, after launch.", status: "proposed" },
+          { title: "Sponsored trading contests", body: "A coin team pays for a contest and puts up the prizes. Seeds runs it and labels it sponsored. Already part of Grove and Forest, after launch.", status: "proposed" },
           { title: "Paid advanced classes", body: "To the Moon stays the free-to-learn front door. A later \"To the Moon Advanced\" or coach-run class could carry a real course fee.", status: "decide" },
           { title: "Extra spotlight weeks", body: "Coin teams can buy more homepage spotlight time beyond their package, always marked sponsored.", status: "proposed" },
         ] },
@@ -133,7 +133,7 @@ export const BUSINESS_PLAN: BusinessPlan = {
           { title: "Real-money divisions later", body: "Only after a lawyer signs off. Real-money contests, with deposits and network fees, are much harder to keep legal than free practice ones.", status: "decide" },
         ] },
         { kind: "items", title: "Prizes", items: [
-          { title: "Sponsored by coin teams", body: "Sapling and Grove listings already include contests. The coin team puts up the prize, Seeds runs it and marks it sponsored. That turns contests into a reason to buy a listing.", status: "live" },
+          { title: "Sponsored by coin teams", body: "Grove and Forest listings already include contests. The coin team puts up the prize, Seeds runs it and marks it sponsored. That turns contests into a reason to buy a listing.", status: "live" },
           { title: "Seeds-funded weekly prize", body: "A small fixed weekly prize, for example $100 in TSD for first, $50 second, $25 third, plus Seeds coins and merch. A fixed amount, never \"up to\".", status: "decide" },
           { title: "Prizes that cost little", body: "A seat in the next To the Moon class, a Founding badge, a coaching session with a Seeds Coach, a spot on the homepage winners wall." },
         ] },
@@ -213,9 +213,9 @@ export const BUSINESS_PLAN: BusinessPlan = {
       summary: "Anyone who brings a paying coin team gets paid, starting with the BitMart list.",
       blocks: [
         { kind: "table", title: "Proposed finder's fee (20%)", head: ["Package", "Price", "Finder gets", "Seeds keeps"], rows: [
-          ["Seed", usd(1000), usd(finderFee("seed")), usd(1000 - finderFee("seed"))],
-          ["Sapling", usd(2500), usd(finderFee("sapling")), usd(2500 - finderFee("sapling"))],
-          ["Grove", usd(5000), usd(finderFee("grove")), usd(5000 - finderFee("grove"))],
+          ["Sapling", usd(1000), usd(finderFee("seed")), usd(1000 - finderFee("seed"))],
+          ["Grove", usd(2500), usd(finderFee("sapling")), usd(2500 - finderFee("sapling"))],
+          ["Forest", usd(5000), usd(finderFee("grove")), usd(5000 - finderFee("grove"))],
         ] },
         { kind: "items", title: "Proposed rules", items: [
           { title: "Paid only after the coin is paid in full and live", body: "Nothing for applications that are declined or never pay." },
@@ -297,7 +297,7 @@ export const BUSINESS_PLAN: BusinessPlan = {
         { kind: "items", title: "How we go after them", items: [
           { title: "Build the list", body: "BitMart's New Listings page goes back years. Take the last 6 months before the shutdown, keep each project's website, X and Telegram, remove duplicates by contract address, and drop any that are dead or already relisted elsewhere. Expect a few hundred real leads.", status: "proposed" },
           { title: "Check they're a fit", body: "Seeds can only list coins it can actually move: does the coin's network work with HME pockets and Seeds' sending? Each lead gets a quick fit check before anyone reaches out.", status: "proposed" },
-          { title: "\"BitMart refugee\" offer", body: "For teams that were live on BitMart: the Seed package with the Sapling extras for the first 90 days, and a free sponsored contest week to bring their holders over. Ends March 31, 2027 to give it urgency.", status: "decide" },
+          { title: "\"BitMart refugee\" offer", body: "For teams that were live on BitMart: the Sapling package with the Grove extras for the first 90 days, and a free sponsored contest week to bring their holders over. Ends March 31, 2027 to give it urgency.", status: "decide" },
           { title: "A page for them", body: "seeds.honest.money/list/bitmart: \"Your exchange shut down. Ours can't freeze your community's coins.\" Same application form, with a box for their old BitMart pair.", status: "proposed" },
           { title: "Then the next one", body: "MEXC, LBank, XT.com, Gate and BingX list many small coins and charge a lot (BingX publishes a 20,000 USDT market-making deposit). Their newest listings are the next list, ready for whenever another exchange stumbles." },
         ] },
@@ -333,7 +333,7 @@ export const BUSINESS_PLAN: BusinessPlan = {
           { title: "Get Seeds listed on CoinMarketCap and CoinGecko", body: "Seeds already has the price feed they ask for. Being listed as an exchange there puts Seeds in front of millions of crypto searchers for free.", status: "proposed" },
           { title: "Founding 1,000", body: "The first 1,000 members who link a wallet get a permanent badge. Scarcity plus pride. We're at the live wallet-link count shown above.", status: "proposed" },
           { title: "Referral leaderboard", body: "Show members how many people their link brought in, with a monthly top-10. Needs click and sign-up counting first.", status: "decide" },
-          { title: "\"How to buy\" pages", body: "Pages like \"How to buy TEXITcoin with no KYC\" and one per listed coin. They show up in Google for years. Already promised in Sapling.", status: "proposed" },
+          { title: "\"How to buy\" pages", body: "Pages like \"How to buy TEXITcoin with no KYC\" and one per listed coin. They show up in Google for years. Already promised in Grove.", status: "proposed" },
           { title: "Launch press release, Nov 30", body: "\"Texas-born exchange opens with no KYC, no trading fees and no custody.\" Send to crypto news sites and Texas business press." },
           { title: "Weekly \"Seeds Live\"", body: "A 30-minute stream walking through the markets and an AI basket with its \"show the work\" tables. Teaching only, never tips." },
           { title: "Public Telegram channel", body: "Launch countdown, new listings, AMAs and class clips. We already run the Seeds alerts bot; this is the public side." },
@@ -374,7 +374,7 @@ export const BUSINESS_PLAN: BusinessPlan = {
           { title: "Coaches: who are the first five?", body: "Ideally picked from the first To the Moon class.", status: "decide" },
           { title: "Weekly league prize: how much, and paid in TSD?", body: "My suggestion: $100 / $50 / $25 in TSD each week, about $700 a month. Unblocks the league launch in January.", status: "decide" },
           { title: "Build order after launch", body: "My pick: 1) weekly league, 2) coin claim page, 3) streamer mode, 4) seller badges and levels.", status: "decide" },
-          { title: "BitMart refugee offer: what and until when?", body: "My suggestion: Seed price with Sapling extras until March 31, 2027.", status: "decide" },
+          { title: "BitMart refugee offer: what and until when?", body: "My suggestion: Sapling price with Grove extras until March 31, 2027.", status: "decide" },
           { title: "Creator budget per month", body: "For example $3,000: ten small-creator try-outs in January, then three or four monthly deals.", status: "decide" },
           { title: "Coin order size", body: "You said thousands; my suggestion is 5,000 for the first order (about $17,000 at the 2,000-coin price list; ask for a bulk quote).", status: "decide" },
           { title: "Who contacts Nathan Chow, and what we offer", body: "A warm intro if anyone knows him; otherwise Bobby on LinkedIn. Offer a paid advisor role.", status: "decide" },

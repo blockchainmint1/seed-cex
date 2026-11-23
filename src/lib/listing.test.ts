@@ -76,7 +76,7 @@ describe("editable prices", () => {
   });
   test("admin prices must be $1–$1,000,000 with at most 2 decimals", () => {
     expect(cleanPrices({ seed: "$1,200", sapling: 2500, grove: "4999.50" })).toEqual({ seed: 1200, sapling: 2500, grove: 4999.5 });
-    expect(() => cleanPrices({ seed: 0, sapling: 2500, grove: 5000 })).toThrow(/Seed price/);
+    expect(() => cleanPrices({ seed: 0, sapling: 2500, grove: 5000 })).toThrow(/Sapling price/);
     expect(() => cleanPrices({ seed: 1000, sapling: 2500.555, grove: 5000 })).toThrow(/2 decimals/);
   });
 });
@@ -88,10 +88,10 @@ describe("promo codes", () => {
     expect(cleanPromoCode(" launch 25 ")).toBe("LAUNCH25");
     expect(cleanPromoCode("ab")).toBeNull();
   });
-  test("20% off Sapling at $2,500 = $2,000", () => {
+  test("20% off Grove at $2,500 = $2,000", () => {
     expect(priceWithPromo(2500, { kind: "percent", value: 20 })).toEqual({ listPriceUsd: 2500, discountUsd: 500, amountUsd: 2000 });
   });
-  test("$500 off Seed at $1,000 = $500; a dollar discount never goes below zero", () => {
+  test("$500 off Sapling at $1,000 = $500; a dollar discount never goes below zero", () => {
     expect(priceWithPromo(1000, { kind: "amount", value: 500 }).amountUsd).toBe(500);
     expect(priceWithPromo(1000, { kind: "amount", value: 5000 })).toEqual({ listPriceUsd: 1000, discountUsd: 1000, amountUsd: 0 });
   });
@@ -106,7 +106,7 @@ describe("promo codes", () => {
     expect(promoProblem(null, "seed", now)).toBe("That code isn't valid.");
     expect(promoProblem(promo({ expiresAt: "2026-11-23T11:59:59Z" }), "seed", now)).toBe("That code has ended.");
     expect(promoProblem(promo({ maxUses: 5, uses: 5 }), "seed", now)).toBe("That code has been used up.");
-    expect(promoProblem(promo({ packages: ["grove"] }), "seed", now)).toBe("That code works only with Grove.");
+    expect(promoProblem(promo({ packages: ["grove"] }), "seed", now)).toBe("That code works only with Forest.");
   });
   test("admin input: percent is at most 100; ticking every package means all", () => {
     const now = Date.parse("2026-11-23T12:00:00Z");

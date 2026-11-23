@@ -4,7 +4,7 @@ import { coinGiveawayBudget, finderFee, listingRevenue } from "./business-plan";
 describe("listing revenue", () => {
   it("prices packages at $1,000 / $2,500 / $5,000", () =>
     expect(listingRevenue({ seed: 1, sapling: 1, grove: 1 }).gross).toBe(8500));
-  it("ten Sapling listings bring $25,000", () => expect(listingRevenue({ sapling: 10 }).gross).toBe(25000));
+  it("ten Grove listings bring $25,000", () => expect(listingRevenue({ sapling: 10 }).gross).toBe(25000));
   it("a 20% finder's fee is $200 / $500 / $1,000", () => {
     expect(finderFee("seed")).toBe(200);
     expect(finderFee("sapling")).toBe(500);

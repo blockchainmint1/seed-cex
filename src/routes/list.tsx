@@ -45,7 +45,7 @@ const WHY: { icon: typeof Wallet; title: string; body: ReactNode }[] = [
   { icon: Coins, title: "No fees on trades from us. Ever.", body: "Seeds charges nothing to buy, sell or trade. Your holders only pay the network’s fee and any outside service’s fee, passed on at cost — we never mark them up." },
   { icon: Ban, title: "No liquidity or market-maker rules", body: "No liquidity deposit, no token allocation, no market-maker contract. You don’t hand tokens to anyone who could dump them on your holders." },
   { icon: Bot, title: "In Seeds AI baskets", body: "Members can add your coin to their Seeds AI baskets, test it on real price history and build plans around it." },
-  { icon: Trophy, title: "Trading contests", body: "Sapling and Grove include trading contests for your coin, to bring new traders in. Contests start after trading goes live." },
+  { icon: Trophy, title: "Trading contests", body: "Grove and Forest include trading contests for your coin, to bring new traders in. Contests start after trading goes live." },
 ];
 
 const compareRows = (prices: ListingPrices): [string, string, string][] => [

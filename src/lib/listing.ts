@@ -25,7 +25,7 @@ export type ListingPackage = {
 export const LISTING_PACKAGES: ListingPackage[] = [
   {
     id: "seed",
-    name: "Seed",
+    name: "Sapling",
     priceUsd: 1000,
     tag: "Get your coin trading",
     markets: 1,
@@ -42,12 +42,12 @@ export const LISTING_PACKAGES: ListingPackage[] = [
   },
   {
     id: "sapling",
-    name: "Sapling",
+    name: "Grove",
     priceUsd: 2500,
     tag: "Bring your community",
     markets: 2,
     features: [
-      "Everything in Seed, plus:",
+      "Everything in Sapling, plus:",
       "A 2nd market (against TXC or USDC)",
       "Homepage spotlight for 14 days",
       "A “How to buy on Seeds” guide page for your community",
@@ -57,12 +57,12 @@ export const LISTING_PACKAGES: ListingPackage[] = [
   },
   {
     id: "grove",
-    name: "Grove",
+    name: "Forest",
     priceUsd: 5000,
     tag: "Full launch",
     markets: 3,
     features: [
-      "Everything in Sapling, plus:",
+      "Everything in Grove, plus:",
       "Up to 3 markets",
       "Homepage spotlight for 30 days, with a launch-week pop-up",
       "Featured in a To the Moon trading class session",
