@@ -239,7 +239,7 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
         ? ` ${unsettled} trade(s) couldn't settle and were cancelled; nothing was sent for those${reason ? ` (${reason})` : ""}.`
         : "") +
       (waiting > 0
-        ? ` ${waiting} trade(s) are waiting for the other side to approve in Telegram (their order was placed before one-tap orders). If they don't within 15 minutes, the trade is cancelled and nothing moves.`
+        ? ` ${waiting} trade(s) are waiting on the other side. If they can't settle, the trade is cancelled and nothing moves.`
         : "") +
       (confirming > 0
         ? ` ${confirming} trade(s) are confirming: the first payment is sent, and the other side is sent once it's confirmed on its network (usually a few minutes).`

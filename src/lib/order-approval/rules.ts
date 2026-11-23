@@ -115,3 +115,34 @@ export function orderTapText(i: {
 function esc(s: string) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
+
+/* ------------------------- orders placed before order taps ------------------------- */
+
+/**
+ * Orders on the book with no placement tap (placed before Nov 23 2026) come off the book so
+ * their owners re-place them with one tap (Bobby: "no old-style taps ever again"). Sample rows
+ * with no owner never pay and are left alone.
+ */
+export function ordersNeedingReapproval(
+  orders: ReadonlyArray<{ id: string; userId: string | null }>,
+  approvedOrderIds: ReadonlySet<string>,
+): string[] {
+  return orders.filter((o) => o.userId != null && !approvedOrderIds.has(o.id)).map((o) => o.id);
+}
+
+export type ReapproveLine = { side: "buy" | "sell"; amount: number; filled: number; price: number; baseSymbol: string; quoteSymbol: string };
+
+/** The Telegram note an owner gets when their pre-tap orders are cancelled. */
+export function reapprovalNote(orders: ReadonlyArray<ReapproveLine>, siteUrl = "https://seeds.honest.money"): string {
+  const n = orders.length;
+  const shown = orders.slice(0, 10).map((o) =>
+    `• ${o.side === "buy" ? "Buy" : "Sell"} ${num(Math.max(0, o.amount - o.filled))} ${esc(o.baseSymbol)} at ${num(o.price)} ${esc(o.quoteSymbol)}`);
+  if (n > 10) shown.push(`• …and ${n - 10} more`);
+  return (
+    `🔁 <b>Please re-place ${n === 1 ? "your open order" : `your ${n} open orders`}</b>\n` +
+    `Seeds now asks for one Telegram tap when you place an order. After that tap it trades on its own until it fills or you cancel it, with no tap per trade.\n\n` +
+    `${n === 1 ? "This order was" : "These orders were"} placed before that change, so Seeds cancelled ${n === 1 ? "it" : "them"}. Nothing was sent and no coins left your pocket.\n` +
+    `${shown.join("\n")}\n\n` +
+    `Re-place ${n === 1 ? "it" : "them"} on Seeds with one tap each: ${siteUrl}/markets`
+  );
+}

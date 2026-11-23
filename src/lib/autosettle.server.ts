@@ -217,8 +217,9 @@ export async function autoSettleTrade(tradeId: string): Promise<AutoLegResult[]>
     const { tradeApprovalOutcome } = await import("./pocket-send/rules");
     const latest = await latestApprovals("trade_leg", tradeId);
     // Orders approved when they were placed (Bobby, Nov 23 2026): that one tap pays this fill,
-    // so nobody is asked to tap after a trade has already happened. Orders placed before then
-    // (no order approval) still get the per-trade tap below.
+    // so nobody is asked to tap after a trade has already happened. An order with no placement
+    // tap (placed before then) never trades: the match is called off, that order comes off the
+    // book for its owner to re-place with one tap, and nobody is blamed (no old-style taps).
     {
       const { fillApprovalFromOrder } = await import("@/lib/order-approval/order-approval.server");
       for (const l of legs) {
@@ -228,6 +229,22 @@ export async function autoSettleTrade(tradeId: string): Promise<AutoLegResult[]>
         if (got.kind === "approved") {
           latest[l.leg] = got.row;
           continue;
+        }
+        if (got.kind === "none") {
+          const reason = "An order in this match was placed before one-tap orders, so it was cancelled for its owner to re-place";
+          await supabaseAdmin.from("trades").update({ status: "timed_out" }).eq("id", tradeId).eq("status", "matched");
+          const { ordersAfterFailedPreflight } = await import("@/lib/order-readiness");
+          const { cancel, restore } = ordersAfterFailedPreflight(
+            { makerId: trade.maker_id, takerId: trade.taker_id, makerOrderId: trade.maker_order_id, takerOrderId: trade.taker_order_id },
+            { fault: "payer", payer: l.payer, receiver: null },
+          );
+          for (const id of cancel) {
+            await supabaseAdmin.from("orders").update({ status: "cancelled", cancel_reason: "reapprove_needed" }).eq("id", id).in("status", ["open", "partial"]);
+          }
+          await restoreFills(restore, Number(trade.amount));
+          await cancelApprovals({ purpose: "trade_leg", refId: tradeId }, `The trade was cancelled: ${reason}`);
+          await fail("cancelled_preflight", l.leg, `${reason}. Nothing was sent.`, { fault: "payer", culprit: null });
+          return [{ leg: l.leg, ok: false, error: `Trade cancelled, nothing was sent: ${reason}` }];
         }
         if (got.kind === "problem") {
           await supabaseAdmin.from("trades").update({ status: "timed_out" }).eq("id", tradeId).eq("status", "matched");

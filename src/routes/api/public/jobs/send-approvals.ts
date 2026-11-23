@@ -17,10 +17,13 @@ export const Route = createFileRoute("/api/public/jobs/send-approvals")({
         const result = await expireDueApprovals();
         const { advanceSettlingTrades } = await import("@/lib/settle/confirm.server");
         const settling = await advanceSettlingTrades().catch((e) => ({ error: e instanceof Error ? e.message : String(e) }));
+        // Orders placed before one-tap approval come off the book; owners re-place them (reapprove.server.ts).
+        const { retireUntappedOrders } = await import("@/lib/order-approval/reapprove.server");
+        const reapprove = await retireUntappedOrders().catch((e) => ({ error: e instanceof Error ? e.message : String(e) }));
         // Orders whose coins left the pocket outside Seeds come off the book (order-cover.server.ts).
         const { checkOrderCover } = await import("@/lib/order-cover.server");
         const cover = await checkOrderCover().catch((e) => ({ error: e instanceof Error ? e.message : String(e) }));
-        return Response.json({ ok: true, ...result, settling, cover });
+        return Response.json({ ok: true, ...result, settling, reapprove, cover });
       },
     },
   },

@@ -181,7 +181,7 @@ export type DerivedFillApproval =
 
 /**
  * One fill of an approved order: record that fill's send approval, taken from the order's tap.
- * "none" = the order predates order taps (the per-trade tap applies).
+ * "none" = the order predates order taps: it never trades (autosettle calls the match off; reapprove.server.ts).
  */
 export async function fillApprovalFromOrder(
   trade: { id: string; side: string; price: number | string; taker_id: string | null; maker_id: string | null; taker_order_id: string | null; maker_order_id: string | null },
