@@ -15,6 +15,9 @@ export const Route = createFileRoute("/api/public/jobs/send-approvals")({
         if (authFailure) return authFailure;
         const { expireDueApprovals } = await import("@/lib/pocket-send/approvals.server");
         const result = await expireDueApprovals();
+        // Approved orders whose tap-time run never placed them (audit O1).
+        const { resumeOrderRequests } = await import("@/lib/order-approval/order-approval.server");
+        const orders = await resumeOrderRequests().catch((e) => ({ error: e instanceof Error ? e.message : String(e) }));
         const { advanceSettlingTrades } = await import("@/lib/settle/confirm.server");
         const settling = await advanceSettlingTrades().catch((e) => ({ error: e instanceof Error ? e.message : String(e) }));
         // Orders placed before one-tap approval come off the book; owners re-place them (reapprove.server.ts).
@@ -23,7 +26,7 @@ export const Route = createFileRoute("/api/public/jobs/send-approvals")({
         // Orders whose coins left the pocket outside Seeds come off the book (order-cover.server.ts).
         const { checkOrderCover } = await import("@/lib/order-cover.server");
         const cover = await checkOrderCover().catch((e) => ({ error: e instanceof Error ? e.message : String(e) }));
-        return Response.json({ ok: true, ...result, settling, reapprove, cover });
+        return Response.json({ ok: true, ...result, orders, settling, reapprove, cover });
       },
     },
   },

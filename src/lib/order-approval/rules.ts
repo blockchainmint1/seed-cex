@@ -146,3 +146,47 @@ export function reapprovalNote(orders: ReadonlyArray<ReapproveLine>, siteUrl = "
     `Re-place ${n === 1 ? "it" : "them"} on Seeds with one tap each: ${siteUrl}/markets`
   );
 }
+
+/* ---------------------- keeping approved orders moving (audit O1–O3) ---------------------- */
+
+/** How long one worker may hold an approved order while placing it before the minute job may take over. */
+export const ORDER_PLACING_LEASE_MS = 2 * 60_000;
+
+export type OrderSweepView = {
+  reqStatus: string;
+  workingUntilMs: number | null;
+  approvalStatus: string | null;
+  approvalExpiresAtMs: number | null;
+  /** The order row (same id as the request) already exists: matching ran. */
+  orderExists: boolean;
+  nowMs: number;
+};
+
+/**
+ * What the minute job does with an order request (audit O1): place an approved one nothing
+ * placed, finish one whose worker died after matching, end one whose approval ran out
+ * (a market order's price protection lapsed), or leave it alone.
+ */
+export function orderSweepAction(v: OrderSweepView): "place" | "finish_placed" | "end" | "wait" {
+  const live = v.approvalStatus === "approved" && v.approvalExpiresAtMs != null && v.approvalExpiresAtMs > v.nowMs;
+  if (v.reqStatus === "pending") {
+    if (v.approvalStatus === "pending") return "wait";
+    return live ? "place" : "end";
+  }
+  if (v.reqStatus === "placing") {
+    if (v.workingUntilMs != null && v.workingUntilMs > v.nowMs) return "wait";
+    if (v.orderExists) return "finish_placed";
+    return live ? "place" : "end";
+  }
+  return "wait";
+}
+
+/**
+ * Audit O2: a fill refused because the order's approval ended (Seeds cancelled it on a revoke or
+ * Telegram change, or its time ran out) or the pocket link changed is not the member's fault, so it
+ * never counts toward the pause. Wrong price, side, coin or cap still do.
+ */
+export function approvalEndedNotMemberFault(a: OrderApprovalView | null, f: FillAsk): boolean {
+  if (!a) return false;
+  return a.status !== "approved" || a.expiresAtMs <= f.nowMs || a.linkId !== f.linkId || a.fromAddress !== f.fromAddress;
+}

@@ -51,7 +51,7 @@ export async function loadActivity(userId: string) {
       id: `o-${o.id}`, kind: "order", at: o.created_at,
       title: `${o.order_type === "market" ? "Market" : "Limit"} ${o.side} ${p?.label ?? o.pair}`,
       detail: `${num(o.filled)} of ${num(o.amount)} ${p?.base ?? ""} filled at ${num(o.price)}`,
-      sent: null, got: null, status: o.cancel_reason === "coins_left_pocket" ? "Cancelled · coins left your pocket" : o.cancel_reason === "reapprove_needed" ? "Cancelled · re-place with one tap" : (ORDER_LABEL[o.status] ?? o.status), tone: orderTone(o.status),
+      sent: null, got: null, status: o.cancel_reason === "coins_left_pocket" ? "Cancelled · coins left your pocket" : o.cancel_reason === "reapprove_needed" ? "Cancelled · re-place with one tap" : o.cancel_reason === "approval_ended" ? "Cancelled · Telegram approval ended" : (ORDER_LABEL[o.status] ?? o.status), tone: orderTone(o.status),
       href: p ? `/trade/${p.slug}` : null, txUrl: null,
     });
   }

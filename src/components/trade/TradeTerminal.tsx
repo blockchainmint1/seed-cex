@@ -211,8 +211,13 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
     const r = request.data;
     if (!waitingFor || !r || r.id !== waitingFor.id) return;
     if (r.status === "pending" || r.status === "placing") return;
+    // Placed and still settling: keep waiting a minute for the result, then point to Activity.
+    if (r.status === "placed" && !r.result && r.decidedAt && Date.now() - Date.parse(r.decidedAt) < 60_000) return;
     setWaitingFor(null);
-    if (r.status === "placed" && r.result) {
+    if (r.status === "placed" && !r.result) {
+      setFormError(null);
+      setReceipt("Your order was placed. Its trades are still settling; see the result on your Activity page.");
+    } else if (r.status === "placed" && r.result) {
       showPlaced(r.result, waitingFor.side);
     } else {
       setReceipt(null);
@@ -220,7 +225,7 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
         r.status === "declined"
           ? "You declined this order in Telegram. Nothing was placed."
           : r.status === "expired"
-            ? "The order wasn't approved in Telegram in time, so nothing was placed."
+            ? (r.error ? `The order wasn't placed: ${r.error} Nothing was sent.` : "The order wasn't approved in Telegram in time, so nothing was placed.")
             : `The order wasn't placed${r.error ? `: ${r.error}` : "."}`,
       );
     }

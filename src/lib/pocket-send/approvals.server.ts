@@ -265,10 +265,24 @@ export async function cancelApprovals(filter: { purpose?: ApprovalPurpose; refId
   if (filter.refId) q = q.eq("ref_id", filter.refId);
   if (filter.linkId) q = q.eq("link_id", filter.linkId);
   const { data } = await q.select(COLS);
+  // Audit O2: an order whose approval ends comes off the book with it.
+  const offBook = new Map<string, number>();
   for (const r of data ?? []) {
     await editApprovalMessage(norm(r), r.purpose === "order"
-      ? `❌ <b>Order approval ended</b>\n${esc(why)}\nNo more trades will be paid from it.`
+      ? `❌ <b>Order approval ended</b>\n${esc(why)}\n${r.meta && (r.meta as Record<string, unknown>)["approved"] === true ? "The order was taken off the book. Nothing more will be paid from it." : "Nothing was placed or sent."}`
       : `❌ <b>Send request closed</b>\n${esc(why)}\nNothing was sent.`);
+    if (r.purpose === "order") {
+      const { continueOrderRequest } = await import("@/lib/order-approval/order-approval.server");
+      if (await continueOrderRequest(norm(r))) offBook.set(r.user_id, (offBook.get(r.user_id) ?? 0) + 1);
+    }
+  }
+  // A revoke or Telegram change takes every resting order down at once: one note to the member's current chat.
+  if (filter.linkId) {
+    const { notifyUser } = await import("@/lib/telegram.server");
+    for (const [userId, n] of offBook) {
+      await notifyUser(userId, "notify_settlement_failed",
+        `⚠ Seeds took ${n} open order${n === 1 ? "" : "s"} off the book\n${esc(why)} Orders need a live Telegram approval, so nothing more will trade or be sent from them. Re-place them on Seeds with one tap each: https://seeds.honest.money/activity`).catch(() => {});
+    }
   }
   return (data ?? []).length;
 }
@@ -452,9 +466,13 @@ export async function expireDueApprovals() {
     .select(COLS);
   const rows = (data ?? []).map(norm);
   for (const r of rows) {
-    await editApprovalMessage(r, r.purpose === "order" && r.meta["approved"] === true
-      ? `⌛ <b>Order approval ended</b>\n${describeRow(r)}\nThe order was taken off the book.`
-      : `⌛ <b>Send request ended</b>\n${describeRow(r)}\nIt wasn't approved in time, so nothing was sent.`);
+    if (r.purpose === "order") {
+      // The right words for what the order was (a finished market order keeps its "done" message).
+      const { orderApprovalExpired } = await import("@/lib/order-approval/order-approval.server");
+      await orderApprovalExpired(r).catch((e) => console.error("[send-approval] order expiry failed", r.id, e));
+      continue;
+    }
+    await editApprovalMessage(r, `⌛ <b>Send request ended</b>\n${describeRow(r)}\nIt wasn't approved in time, so nothing was sent.`);
     await continueAfter(r);
   }
   return { expired: rows.length };

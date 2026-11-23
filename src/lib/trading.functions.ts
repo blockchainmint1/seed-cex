@@ -165,7 +165,7 @@ export const getMyOrderRequest = createServerFn({ method: "GET" })
     if (!r) return null;
     return {
       id: r.id, status: r.status, orderType: r.order_type, side: r.side, amount: Number(r.amount), price: Number(r.price),
-      error: r.error, result: (r.result ?? null) as unknown as OrderPlacedResult | null,
+      error: r.error, decidedAt: r.decided_at, result: (r.result ?? null) as unknown as OrderPlacedResult | null,
     };
   });
 

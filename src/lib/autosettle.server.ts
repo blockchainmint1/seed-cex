@@ -230,8 +230,13 @@ export async function autoSettleTrade(tradeId: string): Promise<AutoLegResult[]>
           latest[l.leg] = got.row;
           continue;
         }
-        if (got.kind === "none") {
-          const reason = "An order in this match was placed before one-tap orders, so it was cancelled for its owner to re-place";
+        // An order with no live tap of its own (placed before one-tap orders, or its approval ended
+        // on a revoke / Telegram change): the match is called off, that order comes off the book,
+        // the other side keeps its place, and nobody gets a strike (audit O2).
+        if (got.kind === "none" || (got.kind === "problem" && got.notMemberFault)) {
+          const reason = got.kind === "none"
+            ? "An order in this match was placed before one-tap orders, so it was cancelled for its owner to re-place"
+            : "An order in this match no longer had a live Telegram approval, so it was taken off the book";
           await supabaseAdmin.from("trades").update({ status: "timed_out" }).eq("id", tradeId).eq("status", "matched");
           const { ordersAfterFailedPreflight } = await import("@/lib/order-readiness");
           const { cancel, restore } = ordersAfterFailedPreflight(
@@ -239,7 +244,8 @@ export async function autoSettleTrade(tradeId: string): Promise<AutoLegResult[]>
             { fault: "payer", payer: l.payer, receiver: null },
           );
           for (const id of cancel) {
-            await supabaseAdmin.from("orders").update({ status: "cancelled", cancel_reason: "reapprove_needed" }).eq("id", id).in("status", ["open", "partial"]);
+            await supabaseAdmin.from("orders").update({ status: "cancelled", cancel_reason: got.kind === "none" ? "reapprove_needed" : "approval_ended" })
+              .eq("id", id).in("status", ["open", "partial"]);
           }
           await restoreFills(restore, Number(trade.amount));
           await cancelApprovals({ purpose: "trade_leg", refId: tradeId }, `The trade was cancelled: ${reason}`);

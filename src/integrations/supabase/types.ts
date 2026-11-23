@@ -2420,6 +2420,7 @@ export type Database = {
           slippage_pct: number | null
           status: string
           user_id: string
+          working_until: string | null
         }
         Insert: {
           amount: number
@@ -2435,6 +2436,7 @@ export type Database = {
           slippage_pct?: number | null
           status?: string
           user_id: string
+          working_until?: string | null
         }
         Update: {
           amount?: number
@@ -2450,6 +2452,7 @@ export type Database = {
           slippage_pct?: number | null
           status?: string
           user_id?: string
+          working_until?: string | null
         }
         Relationships: []
       }

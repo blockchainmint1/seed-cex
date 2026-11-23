@@ -60,3 +60,41 @@ describe("orders placed before order taps", () => {
     expect(text).toContain("Nothing was sent");
   });
 });
+
+describe("audit O1: the minute job keeps approved orders moving", () => {
+  const base = { reqStatus: "pending", workingUntilMs: null, approvalStatus: "approved", approvalExpiresAtMs: 10_000, orderExists: false, nowMs: 1_000 };
+  test("an approved order nobody placed gets placed", async () => {
+    const { orderSweepAction } = await import("./rules");
+    expect(orderSweepAction(base)).toBe("place");
+  });
+  test("a tap still waiting is left alone", async () => {
+    const { orderSweepAction } = await import("./rules");
+    expect(orderSweepAction({ ...base, approvalStatus: "pending" })).toBe("wait");
+  });
+  test("a market order whose 5 minutes ran out is ended, not placed late", async () => {
+    const { orderSweepAction } = await import("./rules");
+    expect(orderSweepAction({ ...base, approvalExpiresAtMs: 500 })).toBe("end");
+  });
+  test("a worker still inside its lease is left alone", async () => {
+    const { orderSweepAction } = await import("./rules");
+    expect(orderSweepAction({ ...base, reqStatus: "placing", workingUntilMs: 2_000 })).toBe("wait");
+  });
+  test("a dead worker that already matched is finished, never matched twice", async () => {
+    const { orderSweepAction } = await import("./rules");
+    expect(orderSweepAction({ ...base, reqStatus: "placing", workingUntilMs: 500, orderExists: true })).toBe("finish_placed");
+  });
+  test("a dead worker that never matched is retried", async () => {
+    const { orderSweepAction } = await import("./rules");
+    expect(orderSweepAction({ ...base, reqStatus: "placing", workingUntilMs: 500 })).toBe("place");
+  });
+});
+
+describe("audit O2: an ended approval is not the member's fault", () => {
+  test("cancelled by Seeds, expired or relinked → no strike; wrong price → strike", async () => {
+    const { approvalEndedNotMemberFault } = await import("./rules");
+    expect(approvalEndedNotMemberFault({ ...approval, status: "cancelled" }, fill)).toBe(true);
+    expect(approvalEndedNotMemberFault({ ...approval, expiresAtMs: 500 }, fill)).toBe(true);
+    expect(approvalEndedNotMemberFault(approval, { ...fill, linkId: "l2" })).toBe(true);
+    expect(approvalEndedNotMemberFault(approval, { ...fill, price: 0.2 })).toBe(false);
+  });
+});
