@@ -82,7 +82,7 @@ export function KeyIdentityCard({ showJoin = true }: { showJoin?: boolean }) {
 
       {showJoin && !d.hmeMember ? (
         <div className="mt-5 space-y-3 border-t border-border pt-4">
-          <p className="text-sm text-foreground"><b>Join Honest.Money (optional).</b> You get Flight School, referrals and one login across the Honest.Money ecosystem, and your membership email comes with it, which withdrawals need. Your coins, pocket number and history stay exactly where they are, and you can still sign in with your coin.</p>
+          <p className="text-sm text-foreground"><b>Join Honest.Money (optional).</b> You get To the Moon, referrals and one login across the Honest.Money ecosystem, and your membership email comes with it, which withdrawals need. Your coins, pocket number and history stay exactly where they are, and you can still sign in with your coin.</p>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={joinHonestMoney}>Join with Honest.Money</Button>
             <Button asChild variant="ghost"><a href="https://honest.money" target="_blank" rel="noreferrer">Become a member</a></Button>

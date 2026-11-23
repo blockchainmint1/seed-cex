@@ -15,7 +15,7 @@ function secret() {
 
 const COPY = {
   weekly: { ask: "Stop weekly updates?", what: "You'll stop getting the Monday summary of your Seeds activity.", done: "We won't send you weekly updates anymore. You can turn them back on any time from your profile." },
-  ignite: { ask: "Stop Flight School class news?", what: "You'll stop getting emails about new Seeds Flight School classes. If you already have a seat, emails about your class still come.", done: "We won't email you about new Flight School classes anymore." },
+  ignite: { ask: "Stop To the Moon class news?", what: "You'll stop getting emails about new Seeds To the Moon classes. If you already have a seat, emails about your class still come.", done: "We won't email you about new To the Moon classes anymore." },
 } as const;
 
 async function optOut(token: string | null): Promise<"weekly" | "ignite" | null> {

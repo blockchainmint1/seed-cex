@@ -8,7 +8,7 @@ import { RegistrationFlow } from "@/components/ignite/RegistrationFlow";
 import { InterestForm, ParticipationGuide } from "@/components/ignite/ClassBits";
 import { BobbyLetter } from "@/components/ignite/BobbyLetter";
 
-export const Route = createFileRoute("/flight-school_/$slug")({
+export const Route = createFileRoute("/to-the-moon_/$slug")({
   // Each published class is listed in /sitemap.xml by the sitemap route itself.
   staticData: { sitemap: false },
   loader: async ({ params }) => {
@@ -18,10 +18,10 @@ export const Route = createFileRoute("/flight-school_/$slug")({
   },
   head: ({ loaderData }) => {
     const c = loaderData?.cls;
-    if (!c) return { meta: [{ title: "Class not found — Seeds Flight School" }, { name: "robots", content: "noindex" }] };
+    if (!c) return { meta: [{ title: "Class not found — Seeds To the Moon" }, { name: "robots", content: "noindex" }] };
     const dates = dateRangeLabel(c.sessions, c.timezone);
-    const title = `${c.name} — Seeds Flight School crypto trading class`;
-    const desc = `${c.name}: a live Seeds Flight School crypto trading class with ${c.instructorName}, ${dates}. ${priceLine(c)}${c.minersFree && c.feeUsd > 0 ? ", class free for HME miners" : ""}.`;
+    const title = `${c.name} — Seeds To the Moon crypto trading class`;
+    const desc = `${c.name}: a live Seeds To the Moon crypto trading class with ${c.instructorName}, ${dates}. ${priceLine(c)}${c.minersFree && c.feeUsd > 0 ? ", class free for HME miners" : ""}.`;
     return {
       meta: [
         { title }, { name: "description", content: desc },
@@ -34,7 +34,7 @@ export const Route = createFileRoute("/flight-school_/$slug")({
     <div className="ignite-theme min-h-screen"><div className="mx-auto max-w-7xl px-5 py-20">
       <h1 className="font-display text-4xl">That class isn't on the calendar</h1>
       <p className="mt-3 text-muted-foreground">It may have finished, or the link is mistyped.</p>
-      <Link to="/flight-school" className="seed-btn mt-6 inline-flex w-auto justify-center px-6">See upcoming classes</Link>
+      <Link to="/to-the-moon" className="seed-btn mt-6 inline-flex w-auto justify-center px-6">See upcoming classes</Link>
     </div></div>
   ),
   component: ClassPage,
@@ -63,8 +63,8 @@ function ClassPage() {
     <div className="ignite-theme seed-lines min-h-screen overflow-x-clip pb-28 lg:pb-0">
       <div className="mx-auto grid max-w-7xl gap-12 px-5 pt-6 pb-16 lg:grid-cols-[1.15fr_1fr] lg:gap-16 lg:pt-16">
         <section>
-          <Link to="/flight-school" className="text-sm font-semibold text-primary underline-offset-4 hover:underline">← All Flight School classes</Link>
-          <p className="mt-6 font-mono text-xs font-medium tracking-[0.14em] text-primary">FLIGHT SCHOOL · {c.name.toUpperCase()}</p>
+          <Link to="/to-the-moon" className="text-sm font-semibold text-primary underline-offset-4 hover:underline">← All To the Moon classes</Link>
+          <p className="mt-6 font-mono text-xs font-medium tracking-[0.14em] text-primary">TO THE MOON · {c.name.toUpperCase()}</p>
           <h1 className="mt-4 font-display text-5xl font-bold leading-[1.05] tracking-[-0.03em] sm:text-6xl">{c.tagline || `${c.name}: live crypto trading class`}</h1>
           <ul className="mt-8 flex flex-wrap gap-2">
             {[priceLine(c), ...(c.minersFree && c.feeUsd > 0 ? ["Free for HME miners"] : []), `${c.capacity} seats`].map((b) => (

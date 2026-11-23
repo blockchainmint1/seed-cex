@@ -146,7 +146,7 @@ export function Mono({ children }: { children: React.ReactNode }) {
 function Footer({ kind, unsubscribeUrl }: { kind: FooterKind; unsubscribeUrl?: string }) {
   const link = { color: C.stone, textDecoration: "underline" };
   const reason = kind === "interest"
-    ? "You're receiving this because you asked to hear about Seeds Flight School classes, or started registering for one."
+    ? "You're receiving this because you asked to hear about Seeds To the Moon classes, or started registering for one."
     : kind === "peer"
     ? "A Seeds member asked us to send you this payment link. If you don't know them, ignore this email. Nothing happens unless you pay."
     : kind === "security"

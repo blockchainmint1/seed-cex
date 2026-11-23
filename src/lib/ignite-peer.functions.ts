@@ -155,7 +155,7 @@ export const startPeerCheckout = createServerFn({ method: "POST" })
     let inv;
     try {
       inv = await createInvoice({
-        amount: Number(reg.amount_usd), order_id: `ignite-peer-${link.id}`, description: `Seeds Flight School ${cls.name} seat for ${shortName(reg.full_name)} (Peer Pay)`,
+        amount: Number(reg.amount_usd), order_id: `ignite-peer-${link.id}`, description: `Seeds To the Moon ${cls.name} seat for ${shortName(reg.full_name)} (Peer Pay)`,
         redirect_url: `${safeOrigin(data.origin)}/pay/${data.token}?paid=1`, buyer_email: payerEmail, expires_in_seconds: 3600,
       });
     } catch (e) {
@@ -169,7 +169,7 @@ export const startPeerCheckout = createServerFn({ method: "POST" })
     ]);
     if (link.payer_id !== context.userId) {
       const { notifyUser } = await import("./telegram.server");
-      await notifyUser(reg.user_id, "notify_p2p", `👀 ${(payer?.display_name || "Your friend").slice(0, 60)} opened your Peer Pay link and is paying for your Flight School seat.`);
+      await notifyUser(reg.user_id, "notify_p2p", `👀 ${(payer?.display_name || "Your friend").slice(0, 60)} opened your Peer Pay link and is paying for your To the Moon seat.`);
     }
     return { checkoutUrl: inv.checkout_url };
   });

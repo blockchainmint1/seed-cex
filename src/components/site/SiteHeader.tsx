@@ -10,7 +10,7 @@ import { SiteLogo } from "@/components/site/SiteLogo";
 
 const about = [
   { label: "How it works", to: "/how-it-works" as const },
-  { label: "Flight School classes", to: "/flight-school" as const },
+  { label: "To the Moon classes", to: "/to-the-moon" as const },
   { label: "Texas Stable Dollar", to: "/tsd" as const },
   { label: "Manifesto", to: "/manifesto" as const },
   { label: "No KYC", to: "/about/kyc" as const },

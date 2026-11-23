@@ -76,7 +76,7 @@ function Overview() {
           <div className="min-w-0 max-w-2xl">
             <p className="text-sm font-semibold text-foreground">Join Honest.Money — optional</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Get Flight School, referrals and one login across the Honest.Money ecosystem. Your membership email comes with it, which withdrawals need. Your coins, {l ? `pocket #${l.account}` : "pocket"} and history stay exactly where they are, and you can keep signing in with {keyKind ? keyThing(keyKind) : "your key"}.
+              Get To the Moon, referrals and one login across the Honest.Money ecosystem. Your membership email comes with it, which withdrawals need. Your coins, {l ? `pocket #${l.account}` : "pocket"} and history stay exactly where they are, and you can keep signing in with {keyKind ? keyThing(keyKind) : "your key"}.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">

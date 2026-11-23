@@ -18,9 +18,9 @@ export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
     meta: [
       { title: "Admin Console — Seeds" },
-      { name: "description", content: "Operator view of Seeds: Flight School registrations, accounts, orders and trades, Seeds AI, admin access and withdrawal settings." },
+      { name: "description", content: "Operator view of Seeds: To the Moon registrations, accounts, orders and trades, Seeds AI, admin access and withdrawal settings." },
       { property: "og:title", content: "Admin Console — Seeds" },
-      { property: "og:description", content: "Operator view of Seeds: Flight School registrations, accounts, orders and trades, Seeds AI, admin access and withdrawal settings." },
+      { property: "og:description", content: "Operator view of Seeds: To the Moon registrations, accounts, orders and trades, Seeds AI, admin access and withdrawal settings." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex" },
@@ -31,9 +31,9 @@ export const Route = createFileRoute("/_authenticated/admin")({
 
 const NAV = [
   { to: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
-  { to: "/admin/ignite", label: "Flight School registrants", icon: Flame },
-  { to: "/admin/ignite-classes", label: "Flight School classes", icon: CalendarDays },
-  { to: "/admin/ignite-interest", label: "Flight School interest list", icon: Inbox },
+  { to: "/admin/ignite", label: "To the Moon registrants", icon: Flame },
+  { to: "/admin/ignite-classes", label: "To the Moon classes", icon: CalendarDays },
+  { to: "/admin/ignite-interest", label: "To the Moon interest list", icon: Inbox },
   { to: "/admin/accounts", label: "Accounts", icon: Users },
   { to: "/admin/affiliates", label: "Affiliates", icon: Share2 },
   { to: "/admin/markets", label: "Orders & trades", icon: CandlestickChart },

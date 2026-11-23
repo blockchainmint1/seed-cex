@@ -61,7 +61,7 @@ function AdminUsersPage() {
   async function toggle(u: AdminUserRow) {
     const grant = !u.isAdmin;
     const ok = window.confirm(grant
-      ? `Give ${u.name} admin access?\n\nThey'll be able to see every member's details, Flight School payments and trades, and give admin access to others. They and the other admins get an email.`
+      ? `Give ${u.name} admin access?\n\nThey'll be able to see every member's details, To the Moon payments and trades, and give admin access to others. They and the other admins get an email.`
       : `Remove ${u.name}'s admin access?\n\nThey'll lose the admin console right away. They get an email.`);
     if (!ok) return;
     setBusy(u.id);

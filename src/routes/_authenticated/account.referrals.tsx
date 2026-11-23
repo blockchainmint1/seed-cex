@@ -32,7 +32,7 @@ function ReferralsTab() {
 
   return (
     <div className="space-y-5">
-      <TabTitle title="Referrals" desc="Share your link. Friends sign up for Honest.Money through it — so it counts as your referral — and land on the Seeds Flight School class page." />
+      <TabTitle title="Referrals" desc="Share your link. Friends sign up for Honest.Money through it — so it counts as your referral — and land on the Seeds To the Moon class page." />
       {q.isPending ? (
         <p className="text-sm text-muted-foreground">Getting your invite link…</p>
       ) : !url ? (

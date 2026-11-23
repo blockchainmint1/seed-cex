@@ -18,7 +18,7 @@ describe("who may advertise", () => {
 
 describe("links", () => {
   test("Seeds pages and https addresses are allowed", () => {
-    expect(safeAdLink("/flight-school/spark")).toBe("/flight-school/spark");
+    expect(safeAdLink("/to-the-moon/spark")).toBe("/to-the-moon/spark");
     expect(safeAdLink("https://texitcoin.org/build")).toBe("https://texitcoin.org/build");
   });
   test("unsafe links are refused", () => {
@@ -67,12 +67,12 @@ describe("unsold spots", () => {
     expect(shown.map((s) => s.house)).toEqual([false, true, true]);
     expect(shown.map(adLabel)).toEqual(["Sponsored", "From Seeds", "From Seeds"]);
   });
-  test("Seeds' notes link only to Seeds pages, and the Flight School note ends after the class", () => {
+  test("Seeds' notes link only to Seeds pages, and the To the Moon note ends after the class", () => {
     for (const s of ["home_spotlight", "coin_side", "coin_banner"] as const) {
       for (const h of houseAds(s, NOW)) expect(h.link.startsWith("/")).toBe(true);
     }
     const after = Date.parse("2026-12-06T00:00:00Z");
-    expect(houseAds("home_spotlight", after).some((h) => h.link.startsWith("/flight-school"))).toBe(false);
+    expect(houseAds("home_spotlight", after).some((h) => h.link.startsWith("/to-the-moon"))).toBe(false);
     expect(houseAds("coin_banner", after)).toEqual([]);
   });
 });

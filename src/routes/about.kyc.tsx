@@ -84,7 +84,7 @@ function NoKyc() {
             <><B>Government ID.</B> No passport, licence or national ID number, and no upload of either.</>,
             <><B>Face checks.</B> No selfie, no liveness test, no &ldquo;turn your head slowly&rdquo; video.</>,
             <><B>Proof of address.</B> No utility bill, no bank statement, no postcode to match against a document.</>,
-            <><B>Bank and card numbers.</B> Seeds takes no card payments. Flight School class payments go through NectarPay.</>,
+            <><B>Bank and card numbers.</B> Seeds takes no card payments. To the Moon class payments go through NectarPay.</>,
             <><B>Source-of-funds paperwork.</B> No pay slips, no letters, no questionnaires about where your money came from.</>,
             <><B>Tax identifiers.</B> No SSN, no NI number, no &ldquo;tax ID&rdquo; field.</>,
             <><B>Your recovery phrase or your Honest.Money password.</B> Those never come to us. Anyone who asks for them is a scammer.</>,
@@ -133,7 +133,7 @@ function NoKyc() {
             "The public keys and addresses of the trading pocket you linked, so we can show balances and deposit addresses.",
             "Trading records: orders, trades, settlements, prices, sizes and times.",
             "P2P records: your seller profile (handle, bio, country, languages, hours, score, feedback), your ads, trade chats and any files either side uploads in a dispute.",
-            "For the Flight School class only: your full name, email, country and phone number, so we can run the class. That is contact information for an event, not an identity check.",
+            "For the To the Moon class only: your full name, email, country and phone number, so we can run the class. That is contact information for an event, not an identity check.",
             "Site analytics: pages, referring website, country (worked out from your IP address by our host, which we don't keep) and rough device type, with no IP address or name. Kept 90 days in detail, and Seeds\u2019 own anonymous visit counts for a year.",
           ]}
         />
@@ -166,7 +166,7 @@ function NoKyc() {
             items={[
               <><B>Blockchain network fees.</B> Every on-chain transfer pays its own network. Those fees go to the network, not to us, and we don&rsquo;t subsidise or refund them.</>,
               <><B>Partner bridge and swap fees.</B> Cross-chain routes use partners such as TSD Bridge and THORChain. Their fees are shown to you in the quote before you confirm, and Seeds refuses a quote whose fee comes in higher than what you were shown.</>,
-              <><B>The Flight School class.</B> The class has a price and you pay it to us. That is tuition for teaching, not a charge for trading.</>,
+              <><B>The To the Moon class.</B> The class has a price and you pay it to us. That is tuition for teaching, not a charge for trading.</>,
             ]}
           />
           <p>

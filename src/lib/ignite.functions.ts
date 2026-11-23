@@ -111,8 +111,8 @@ export const startIgniteCheckout = createServerFn({ method: "POST" })
     const regId = await saveRegistration(context.userId, data, cls, price, "nectarpay", existing?.id ?? null);
     const inv = await createInvoice({
       amount: price.totalUsd, order_id: `ignite-${regId}`,
-      description: `Seeds Flight School: ${cls.name} seat${price.feeUsd - price.minerDiscountUsd > 0 ? " (class fee + trade deposit)" : " (trade deposit)"}`,
-      redirect_url: `${origin}/flight-school/confirmed`, buyer_email: data.email.trim().toLowerCase(), expires_in_seconds: 3600,
+      description: `Seeds To the Moon: ${cls.name} seat${price.feeUsd - price.minerDiscountUsd > 0 ? " (class fee + trade deposit)" : " (trade deposit)"}`,
+      redirect_url: `${origin}/to-the-moon/confirmed`, buyer_email: data.email.trim().toLowerCase(), expires_in_seconds: 3600,
     });
     await supabaseAdmin.from("ignite_registrations").update({ invoice_id: inv.id, checkout_url: inv.checkout_url, invoice_expires_at: inv.expires_at }).eq("id", regId);
     return { checkoutUrl: inv.checkout_url };

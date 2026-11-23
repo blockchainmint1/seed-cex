@@ -20,7 +20,7 @@ const columns: { heading: string; links: FooterLink[] }[] = [
     links: [
       { label: "Help center", to: "/help" },
       { label: "FAQ", to: "/help/faq" },
-      { label: "Flight School", to: "/flight-school" },
+      { label: "To the Moon", to: "/to-the-moon" },
       { label: "How it works", to: "/how-it-works" },
       { label: "Manifesto", to: "/manifesto" },
       { label: "API", to: "/api" },

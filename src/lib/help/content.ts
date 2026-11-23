@@ -16,7 +16,7 @@ export const HELP_CATEGORIES: HelpCategory[] = [
   { id: "p2p", title: "P2P marketplace", blurb: "Buying and selling directly with other members." },
   { id: "swaps", title: "Swaps", blurb: "Cross-chain swaps through THORChain and Maya, and TSD routes." },
   { id: "ai", title: "Seeds AI", blurb: "Testing basket plans against real price history." },
-  { id: "more", title: "Flight School, listings & developers", blurb: "The Flight School class, listing a coin and the API." },
+  { id: "more", title: "To the Moon, listings & developers", blurb: "The To the Moon class, listing a coin and the API." },
 ];
 
 export function categoryOf(id: HelpCategoryId): HelpCategory {
@@ -117,7 +117,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
   {
     slug: "setup-guide",
     title: "The setup guide, step by step",
-    summary: "Seven short steps: your name, two-factor, linking HME Wallet, network fees, alerts and the Flight School class. Skip any time; restart from your account.",
+    summary: "Seven short steps: your name, two-factor, linking HME Wallet, network fees, alerts and the To the Moon class. Skip any time; restart from your account.",
     category: "start",
     keywords: ["onboarding", "welcome", "getting started", "first time"],
     blocks: [
@@ -129,7 +129,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
         "**Link HME Wallet.** Connect a separate trading pocket, not your savings.",
         "**Network fees.** Get a little ETH ready: about **$10 on Ethereum** and **$1 on Base**.",
         "**Alerts.** Optionally connect Telegram for alerts and one-tap approvals.",
-        "**Flight School class.** Reserve a seat in the live class, if you'd like.",
+        "**To the Moon class.** Reserve a seat in the live class, if you'd like.",
       ] },
       { p: "Use **Back**, **Continue** and **Finish** to move around, or **Skip setup** to leave. The last screen, **All set**, shows what's done and what's left." },
       { h: "Open it again" },
@@ -147,12 +147,12 @@ export const HELP_ARTICLES: HelpArticle[] = [
     blocks: [
       { p: "The red banner at the top of every page reads **DEMO MODE ONLY — ACCOUNT SETUP & WALLET LINK ONLY — TRADING IS NOT LIVE — USE AT YOUR OWN RISK**." },
       { h: "Works today" },
-      { list: ["Signing in and the setup guide", "Two-factor and Telegram alerts", "Linking your HME Wallet trading pocket and seeing your balances", "Markets, prices and charts", "Seeds AI plan testing", "Flight School class registration"] },
+      { list: ["Signing in and the setup guide", "Two-factor and Telegram alerts", "Linking your HME Wallet trading pocket and seeing your balances", "Markets, prices and charts", "Seeds AI plan testing", "To the Moon class registration"] },
       { h: "Opens at launch" },
       { list: ["Order-book trading", "The P2P marketplace", "Cross-chain swaps (currently a small staff-only test)"] },
-      { note: "Launch is planned for **November 30, 2026**, the first day of the Flight School class." },
+      { note: "Launch is planned for **November 30, 2026**, the first day of the To the Moon class." },
     ],
-    links: [{ label: "Launch details", to: "/coming-soon" }, { label: "Flight School classes", to: "/flight-school" }],
+    links: [{ label: "Launch details", to: "/coming-soon" }, { label: "To the Moon classes", to: "/to-the-moon" }],
     related: ["what-is-seeds", "ignite"],
   },
 
@@ -286,14 +286,14 @@ export const HELP_ARTICLES: HelpArticle[] = [
   {
     slug: "invite-friends",
     title: "Invite friends",
-    summary: "Share your invite link. Friends join Honest.Money under your referral and land on the Flight School class page.",
+    summary: "Share your invite link. Friends join Honest.Money under your referral and land on the To the Moon class page.",
     category: "account",
     keywords: ["referral", "invite", "share", "affiliate", "link"],
     blocks: [
       { steps: [
         "Go to Account → **Referrals**.",
         "Tap **Copy link** (or **Share** on a phone). Your link looks like **seeds.honest.money/invite/yourcode**.",
-        "Send it to friends. When they join Honest.Money through it, the membership counts as your referral, and they land on the Flight School page.",
+        "Send it to friends. When they join Honest.Money through it, the membership counts as your referral, and they land on the To the Moon page.",
       ] },
     ],
     links: [{ label: "My invite link", to: "/account/referrals" }],
@@ -883,13 +883,13 @@ export const HELP_ARTICLES: HelpArticle[] = [
   /* ----------------------------- ignite, listing, api ------------------------- */
   {
     slug: "ignite",
-    title: "Flight School classes",
+    title: "To the Moon classes",
     summary: "Live crypto trading classes from Seeds, run regularly. Each class has its own page with dates, seats left, instructor and price. Free for HME miners.",
     category: "more",
-    keywords: ["flight school", "ignite", "class", "course", "register", "seat", "spark", "first class", "liftoff", "miner", "nectarpay", "peer pay"],
+    keywords: ["to the moon", "flight school", "ignite", "class", "course", "register", "seat", "spark", "first class", "liftoff", "miner", "nectarpay", "peer pay"],
     blocks: [
       { list: [
-        "**Classes:** the Flight School page lists every upcoming class. Each one has its own page with its dates, times, instructor, agenda and seats left. Sessions are recorded.",
+        "**Classes:** the To the Moon page lists every upcoming class. Each one has its own page with its dates, times, instructor, agenda and seats left. Sessions are recorded.",
         "**Price:** a class fee plus a trade deposit, shown on the class page. The trade deposit is your own money and comes back to you during class to trade with.",
         "**HME miners attend free:** sign in with Honest.Money and Seeds checks your account for active mining hash power. If you mine, the class fee comes off automatically. The trade deposit still applies.",
         "**Every seat includes** a free Cold Storage Coin, the recording to watch any time, and the option to attend again later with the same instructor.",
@@ -897,14 +897,14 @@ export const HELP_ARTICLES: HelpArticle[] = [
       ] },
       { h: "Reserve a seat" },
       { steps: [
-        "Open **Flight School**, pick a class and fill in your details.",
+        "Open **To the Moon**, pick a class and fill in your details.",
         "Pay in crypto with **NectarPay** (BTC, TXC, TSD, USDC, ETH, LTC, DOGE, ISK or ZCU), or use **Peer Pay** to let someone else cover it.",
         "Crypto payments show as pending until they're confirmed on the blockchain. The confirmation page checks by itself, and you'll get an email. It's fine to close it.",
       ] },
       { note: "Paid too little, paid twice, or need to switch classes? Email support@honest.money before paying again.", tone: "info" },
-      { p: "No class fits your dates? Leave your email on the Flight School page and we'll tell you when a new class opens. Signing up for a class doesn't open or fund an exchange account." },
+      { p: "No class fits your dates? Leave your email on the To the Moon page and we'll tell you when a new class opens. Signing up for a class doesn't open or fund an exchange account." },
     ],
-    links: [{ label: "Reserve a seat", to: "/flight-school" }],
+    links: [{ label: "Reserve a seat", to: "/to-the-moon" }],
     related: ["invite-friends", "demo-mode"],
   },
   {
@@ -917,7 +917,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       { list: [
         "**Seed:** a TSD market, P2P, Seeds AI eligibility, a safety check, an announcement, a \"New\" badge for 14 days and a public price feed.",
         "**Sapling:** everything in Seed, plus a second market (TXC or USDC), a 14-day homepage spotlight, a how-to-buy guide, a live AMA and one trading contest.",
-        "**Grove:** everything in Sapling, up to three markets, a 30-day spotlight plus a launch-week pop-up, a feature in a Flight School session, priority setup with a named contact, monthly reports for three months and three monthly contests.",
+        "**Grove:** everything in Sapling, up to three markets, a 30-day spotlight plus a launch-week pop-up, a feature in a To the Moon session, priority setup with a named contact, monthly reports for three months and three monthly contests.",
       ] },
       { steps: ["Apply on the List page and pay in crypto through NectarPay (a promo code, if you have one, goes in the form).", "Seeds reviews the coin.", "If accepted, Seeds sets it up. If declined, your payment is refunded in full.", "Your market opens."] },
       { p: "No trading-volume minimums, no liquidity deposits and no market-maker requirements. Declined applicants get their payment back in full. Current prices are on the List page." },
@@ -977,7 +977,7 @@ export const HELP_FAQS: HelpFaq[] = [
   { category: "swaps", q: "What happens if the price moves during a swap?", a: "Seeds re-checks the price right before sending. If it slips past the limit, THORChain or Maya refunds you instead of delivering a worse price.", article: "swaps" },
   { category: "ai", q: "Does Seeds AI trade with my money?", a: "Only if you're a beta tester and switch on real buying for a plan, and even then only after you confirm each day's trades. Everyone else's locked plans run on paper with optional daily Telegram notes.", article: "save-plan" },
   { category: "ai", q: "How far back do Seeds AI tests go?", a: "You choose, with **Going back** (or a start and end date). Results always show the period they cover.", article: "seeds-ai" },
-  { category: "more", q: "When is the next Flight School class?", a: "Flight School classes run regularly. The Flight School page lists every upcoming class with its dates, price and seats left. HME miners attend free.", article: "ignite" },
+  { category: "more", q: "When is the next To the Moon class?", a: "To the Moon classes run regularly. The To the Moon page lists every upcoming class with its dates, price and seats left. HME miners attend free.", article: "ignite" },
   { category: "more", q: "How can my project list a coin?", a: "Apply on the List page, which shows the current package prices. You pay in crypto when you apply; if Seeds declines the coin, you get the full payment back.", article: "list-coin" },
 ];
 

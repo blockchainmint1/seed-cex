@@ -161,7 +161,7 @@ export function PlanView({ plan, live }: { plan: BusinessPlan; live: PlanLive })
               <Stat label="Days to launch" value={String(days)} />
               <Stat label="Members" value={String(live.members)} />
               <Stat label="Wallets linked" value={String(live.linkedWallets)} tone="good" />
-              <Stat label="Flight School seats paid" value={`${live.igniteSeats} / ${live.igniteCapacity}`} />
+              <Stat label="To the Moon seats paid" value={`${live.igniteSeats} / ${live.igniteCapacity}`} />
               <Stat label="Listing applications" value={String(live.listingApplications)} tone={live.listingApplications ? undefined : "warn"} />
               <Stat label="Coins listed" value={String(live.listingsLive)} />
             </div>

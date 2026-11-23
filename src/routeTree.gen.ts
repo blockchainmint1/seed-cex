@@ -16,7 +16,6 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as BrandRouteImport } from './routes/brand'
 import { Route as ComingSoonRouteImport } from './routes/coming-soon'
 import { Route as CustodyRouteImport } from './routes/custody'
-import { Route as FlightSchoolRouteImport } from './routes/flight-school'
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
 import { Route as IgniteRouteImport } from './routes/ignite'
 import { Route as KeySigninRouteImport } from './routes/key-signin'
@@ -33,6 +32,7 @@ import { Route as SsoRouteImport } from './routes/sso'
 import { Route as StatsRouteImport } from './routes/stats'
 import { Route as SwapRouteImport } from './routes/swap'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as ToTheMoonRouteImport } from './routes/to-the-moon'
 import { Route as TsdRouteImport } from './routes/tsd'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticated/account'
@@ -47,8 +47,6 @@ import { Route as AboutAdsRouteImport } from './routes/about.ads'
 import { Route as AboutKycRouteImport } from './routes/about.kyc'
 import { Route as AiIndexRouteImport } from './routes/ai.index'
 import { Route as ApiIndexRouteImport } from './routes/api/index'
-import { Route as FlightSchoolSlugRouteImport } from './routes/flight-school_.$slug'
-import { Route as FlightSchoolConfirmedRouteImport } from './routes/flight-school_.confirmed'
 import { Route as HelpIndexRouteImport } from './routes/help.index'
 import { Route as HelpSlugRouteImport } from './routes/help.$slug'
 import { Route as HelpFaqRouteImport } from './routes/help.faq'
@@ -63,6 +61,8 @@ import { Route as PayTokenRouteImport } from './routes/pay.$token'
 import { Route as ProofCodeRouteImport } from './routes/proof.code'
 import { Route as RegisterConfirmedRouteImport } from './routes/register_.confirmed'
 import { Route as SwapTokensRouteImport } from './routes/swap_.tokens'
+import { Route as ToTheMoonSlugRouteImport } from './routes/to-the-moon_.$slug'
+import { Route as ToTheMoonConfirmedRouteImport } from './routes/to-the-moon_.confirmed'
 import { Route as TradeBtcTsdRouteImport } from './routes/trade.btc-tsd'
 import { Route as TradeEthTsdRouteImport } from './routes/trade.eth-tsd'
 import { Route as TradeHexTsdRouteImport } from './routes/trade.hex-tsd'
@@ -199,11 +199,6 @@ const CustodyRoute = CustodyRouteImport.update({
   path: '/custody',
   getParentRoute: () => rootRouteImport,
 } as any)
-const FlightSchoolRoute = FlightSchoolRouteImport.update({
-  id: '/flight-school',
-  path: '/flight-school',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const HowItWorksRoute = HowItWorksRouteImport.update({
   id: '/how-it-works',
   path: '/how-it-works',
@@ -284,6 +279,11 @@ const TermsRoute = TermsRouteImport.update({
   path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ToTheMoonRoute = ToTheMoonRouteImport.update({
+  id: '/to-the-moon',
+  path: '/to-the-moon',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TsdRoute = TsdRouteImport.update({
   id: '/tsd',
   path: '/tsd',
@@ -355,16 +355,6 @@ const ApiIndexRoute = ApiIndexRouteImport.update({
   path: '/api/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const FlightSchoolSlugRoute = FlightSchoolSlugRouteImport.update({
-  id: '/flight-school_/$slug',
-  path: '/flight-school/$slug',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FlightSchoolConfirmedRoute = FlightSchoolConfirmedRouteImport.update({
-  id: '/flight-school_/confirmed',
-  path: '/flight-school/confirmed',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const HelpIndexRoute = HelpIndexRouteImport.update({
   id: '/help/',
   path: '/help/',
@@ -433,6 +423,16 @@ const RegisterConfirmedRoute = RegisterConfirmedRouteImport.update({
 const SwapTokensRoute = SwapTokensRouteImport.update({
   id: '/swap_/tokens',
   path: '/swap/tokens',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ToTheMoonSlugRoute = ToTheMoonSlugRouteImport.update({
+  id: '/to-the-moon_/$slug',
+  path: '/to-the-moon/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ToTheMoonConfirmedRoute = ToTheMoonConfirmedRouteImport.update({
+  id: '/to-the-moon_/confirmed',
+  path: '/to-the-moon/confirmed',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TradeBtcTsdRoute = TradeBtcTsdRouteImport.update({
@@ -994,7 +994,6 @@ export interface FileRoutesByFullPath {
   '/brand': typeof BrandRoute
   '/coming-soon': typeof ComingSoonRoute
   '/custody': typeof CustodyRoute
-  '/flight-school': typeof FlightSchoolRoute
   '/how-it-works': typeof HowItWorksRoute
   '/ignite': typeof IgniteRoute
   '/key-signin': typeof KeySigninRoute
@@ -1011,6 +1010,7 @@ export interface FileRoutesByFullPath {
   '/stats': typeof StatsRoute
   '/swap': typeof SwapRoute
   '/terms': typeof TermsRoute
+  '/to-the-moon': typeof ToTheMoonRoute
   '/tsd': typeof TsdRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/account': typeof AuthenticatedAccountRouteWithChildren
@@ -1023,8 +1023,6 @@ export interface FileRoutesByFullPath {
   '/welcome': typeof AuthenticatedWelcomeRoute
   '/about/ads': typeof AboutAdsRoute
   '/about/kyc': typeof AboutKycRoute
-  '/flight-school/$slug': typeof FlightSchoolSlugRoute
-  '/flight-school/confirmed': typeof FlightSchoolConfirmedRoute
   '/help/$slug': typeof HelpSlugRoute
   '/help/faq': typeof HelpFaqRoute
   '/ignite/$slug': typeof IgniteSlugRoute
@@ -1035,6 +1033,8 @@ export interface FileRoutesByFullPath {
   '/proof/code': typeof ProofCodeRoute
   '/register/confirmed': typeof RegisterConfirmedRoute
   '/swap/tokens': typeof SwapTokensRoute
+  '/to-the-moon/$slug': typeof ToTheMoonSlugRoute
+  '/to-the-moon/confirmed': typeof ToTheMoonConfirmedRoute
   '/trade/btc-tsd': typeof TradeBtcTsdRoute
   '/trade/eth-tsd': typeof TradeEthTsdRoute
   '/trade/hex-tsd': typeof TradeHexTsdRoute
@@ -1150,7 +1150,6 @@ export interface FileRoutesByTo {
   '/brand': typeof BrandRoute
   '/coming-soon': typeof ComingSoonRoute
   '/custody': typeof CustodyRoute
-  '/flight-school': typeof FlightSchoolRoute
   '/how-it-works': typeof HowItWorksRoute
   '/ignite': typeof IgniteRoute
   '/key-signin': typeof KeySigninRoute
@@ -1167,6 +1166,7 @@ export interface FileRoutesByTo {
   '/stats': typeof StatsRoute
   '/swap': typeof SwapRoute
   '/terms': typeof TermsRoute
+  '/to-the-moon': typeof ToTheMoonRoute
   '/tsd': typeof TsdRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/activity': typeof AuthenticatedActivityRoute
@@ -1177,8 +1177,6 @@ export interface FileRoutesByTo {
   '/welcome': typeof AuthenticatedWelcomeRoute
   '/about/ads': typeof AboutAdsRoute
   '/about/kyc': typeof AboutKycRoute
-  '/flight-school/$slug': typeof FlightSchoolSlugRoute
-  '/flight-school/confirmed': typeof FlightSchoolConfirmedRoute
   '/help/$slug': typeof HelpSlugRoute
   '/help/faq': typeof HelpFaqRoute
   '/ignite/$slug': typeof IgniteSlugRoute
@@ -1189,6 +1187,8 @@ export interface FileRoutesByTo {
   '/proof/code': typeof ProofCodeRoute
   '/register/confirmed': typeof RegisterConfirmedRoute
   '/swap/tokens': typeof SwapTokensRoute
+  '/to-the-moon/$slug': typeof ToTheMoonSlugRoute
+  '/to-the-moon/confirmed': typeof ToTheMoonConfirmedRoute
   '/trade/btc-tsd': typeof TradeBtcTsdRoute
   '/trade/eth-tsd': typeof TradeEthTsdRoute
   '/trade/hex-tsd': typeof TradeHexTsdRoute
@@ -1303,7 +1303,6 @@ export interface FileRoutesById {
   '/brand': typeof BrandRoute
   '/coming-soon': typeof ComingSoonRoute
   '/custody': typeof CustodyRoute
-  '/flight-school': typeof FlightSchoolRoute
   '/how-it-works': typeof HowItWorksRoute
   '/ignite': typeof IgniteRoute
   '/key-signin': typeof KeySigninRoute
@@ -1320,6 +1319,7 @@ export interface FileRoutesById {
   '/stats': typeof StatsRoute
   '/swap': typeof SwapRoute
   '/terms': typeof TermsRoute
+  '/to-the-moon': typeof ToTheMoonRoute
   '/tsd': typeof TsdRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/_authenticated/account': typeof AuthenticatedAccountRouteWithChildren
@@ -1332,8 +1332,6 @@ export interface FileRoutesById {
   '/_authenticated/welcome': typeof AuthenticatedWelcomeRoute
   '/about/ads': typeof AboutAdsRoute
   '/about/kyc': typeof AboutKycRoute
-  '/flight-school_/$slug': typeof FlightSchoolSlugRoute
-  '/flight-school_/confirmed': typeof FlightSchoolConfirmedRoute
   '/help/$slug': typeof HelpSlugRoute
   '/help/faq': typeof HelpFaqRoute
   '/ignite_/$slug': typeof IgniteSlugRoute
@@ -1344,6 +1342,8 @@ export interface FileRoutesById {
   '/proof/code': typeof ProofCodeRoute
   '/register_/confirmed': typeof RegisterConfirmedRoute
   '/swap_/tokens': typeof SwapTokensRoute
+  '/to-the-moon_/$slug': typeof ToTheMoonSlugRoute
+  '/to-the-moon_/confirmed': typeof ToTheMoonConfirmedRoute
   '/trade/btc-tsd': typeof TradeBtcTsdRoute
   '/trade/eth-tsd': typeof TradeEthTsdRoute
   '/trade/hex-tsd': typeof TradeHexTsdRoute
@@ -1461,7 +1461,6 @@ export interface FileRouteTypes {
     | '/brand'
     | '/coming-soon'
     | '/custody'
-    | '/flight-school'
     | '/how-it-works'
     | '/ignite'
     | '/key-signin'
@@ -1478,6 +1477,7 @@ export interface FileRouteTypes {
     | '/stats'
     | '/swap'
     | '/terms'
+    | '/to-the-moon'
     | '/tsd'
     | '/.well-known/oauth-protected-resource'
     | '/account'
@@ -1490,8 +1490,6 @@ export interface FileRouteTypes {
     | '/welcome'
     | '/about/ads'
     | '/about/kyc'
-    | '/flight-school/$slug'
-    | '/flight-school/confirmed'
     | '/help/$slug'
     | '/help/faq'
     | '/ignite/$slug'
@@ -1502,6 +1500,8 @@ export interface FileRouteTypes {
     | '/proof/code'
     | '/register/confirmed'
     | '/swap/tokens'
+    | '/to-the-moon/$slug'
+    | '/to-the-moon/confirmed'
     | '/trade/btc-tsd'
     | '/trade/eth-tsd'
     | '/trade/hex-tsd'
@@ -1617,7 +1617,6 @@ export interface FileRouteTypes {
     | '/brand'
     | '/coming-soon'
     | '/custody'
-    | '/flight-school'
     | '/how-it-works'
     | '/ignite'
     | '/key-signin'
@@ -1634,6 +1633,7 @@ export interface FileRouteTypes {
     | '/stats'
     | '/swap'
     | '/terms'
+    | '/to-the-moon'
     | '/tsd'
     | '/.well-known/oauth-protected-resource'
     | '/activity'
@@ -1644,8 +1644,6 @@ export interface FileRouteTypes {
     | '/welcome'
     | '/about/ads'
     | '/about/kyc'
-    | '/flight-school/$slug'
-    | '/flight-school/confirmed'
     | '/help/$slug'
     | '/help/faq'
     | '/ignite/$slug'
@@ -1656,6 +1654,8 @@ export interface FileRouteTypes {
     | '/proof/code'
     | '/register/confirmed'
     | '/swap/tokens'
+    | '/to-the-moon/$slug'
+    | '/to-the-moon/confirmed'
     | '/trade/btc-tsd'
     | '/trade/eth-tsd'
     | '/trade/hex-tsd'
@@ -1769,7 +1769,6 @@ export interface FileRouteTypes {
     | '/brand'
     | '/coming-soon'
     | '/custody'
-    | '/flight-school'
     | '/how-it-works'
     | '/ignite'
     | '/key-signin'
@@ -1786,6 +1785,7 @@ export interface FileRouteTypes {
     | '/stats'
     | '/swap'
     | '/terms'
+    | '/to-the-moon'
     | '/tsd'
     | '/.well-known/oauth-protected-resource'
     | '/_authenticated/account'
@@ -1798,8 +1798,6 @@ export interface FileRouteTypes {
     | '/_authenticated/welcome'
     | '/about/ads'
     | '/about/kyc'
-    | '/flight-school_/$slug'
-    | '/flight-school_/confirmed'
     | '/help/$slug'
     | '/help/faq'
     | '/ignite_/$slug'
@@ -1810,6 +1808,8 @@ export interface FileRouteTypes {
     | '/proof/code'
     | '/register_/confirmed'
     | '/swap_/tokens'
+    | '/to-the-moon_/$slug'
+    | '/to-the-moon_/confirmed'
     | '/trade/btc-tsd'
     | '/trade/eth-tsd'
     | '/trade/hex-tsd'
@@ -1927,7 +1927,6 @@ export interface RootRouteChildren {
   BrandRoute: typeof BrandRoute
   ComingSoonRoute: typeof ComingSoonRoute
   CustodyRoute: typeof CustodyRoute
-  FlightSchoolRoute: typeof FlightSchoolRoute
   HowItWorksRoute: typeof HowItWorksRoute
   IgniteRoute: typeof IgniteRoute
   KeySigninRoute: typeof KeySigninRoute
@@ -1944,12 +1943,11 @@ export interface RootRouteChildren {
   StatsRoute: typeof StatsRoute
   SwapRoute: typeof SwapRoute
   TermsRoute: typeof TermsRoute
+  ToTheMoonRoute: typeof ToTheMoonRoute
   TsdRoute: typeof TsdRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   AboutAdsRoute: typeof AboutAdsRoute
   AboutKycRoute: typeof AboutKycRoute
-  FlightSchoolSlugRoute: typeof FlightSchoolSlugRoute
-  FlightSchoolConfirmedRoute: typeof FlightSchoolConfirmedRoute
   HelpSlugRoute: typeof HelpSlugRoute
   HelpFaqRoute: typeof HelpFaqRoute
   IgniteSlugRoute: typeof IgniteSlugRoute
@@ -1960,6 +1958,8 @@ export interface RootRouteChildren {
   ProofCodeRoute: typeof ProofCodeRoute
   RegisterConfirmedRoute: typeof RegisterConfirmedRoute
   SwapTokensRoute: typeof SwapTokensRoute
+  ToTheMoonSlugRoute: typeof ToTheMoonSlugRoute
+  ToTheMoonConfirmedRoute: typeof ToTheMoonConfirmedRoute
   TradeBtcTsdRoute: typeof TradeBtcTsdRoute
   TradeEthTsdRoute: typeof TradeEthTsdRoute
   TradeHexTsdRoute: typeof TradeHexTsdRoute
@@ -2078,13 +2078,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CustodyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/flight-school': {
-      id: '/flight-school'
-      path: '/flight-school'
-      fullPath: '/flight-school'
-      preLoaderRoute: typeof FlightSchoolRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/how-it-works': {
       id: '/how-it-works'
       path: '/how-it-works'
@@ -2197,6 +2190,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/to-the-moon': {
+      id: '/to-the-moon'
+      path: '/to-the-moon'
+      fullPath: '/to-the-moon'
+      preLoaderRoute: typeof ToTheMoonRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tsd': {
       id: '/tsd'
       path: '/tsd'
@@ -2295,20 +2295,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/flight-school_/$slug': {
-      id: '/flight-school_/$slug'
-      path: '/flight-school/$slug'
-      fullPath: '/flight-school/$slug'
-      preLoaderRoute: typeof FlightSchoolSlugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/flight-school_/confirmed': {
-      id: '/flight-school_/confirmed'
-      path: '/flight-school/confirmed'
-      fullPath: '/flight-school/confirmed'
-      preLoaderRoute: typeof FlightSchoolConfirmedRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/help/': {
       id: '/help/'
       path: '/help'
@@ -2405,6 +2391,20 @@ declare module '@tanstack/react-router' {
       path: '/swap/tokens'
       fullPath: '/swap/tokens'
       preLoaderRoute: typeof SwapTokensRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/to-the-moon_/$slug': {
+      id: '/to-the-moon_/$slug'
+      path: '/to-the-moon/$slug'
+      fullPath: '/to-the-moon/$slug'
+      preLoaderRoute: typeof ToTheMoonSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/to-the-moon_/confirmed': {
+      id: '/to-the-moon_/confirmed'
+      path: '/to-the-moon/confirmed'
+      fullPath: '/to-the-moon/confirmed'
+      preLoaderRoute: typeof ToTheMoonConfirmedRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/trade/btc-tsd': {
@@ -3307,7 +3307,6 @@ const rootRouteChildren: RootRouteChildren = {
   BrandRoute: BrandRoute,
   ComingSoonRoute: ComingSoonRoute,
   CustodyRoute: CustodyRoute,
-  FlightSchoolRoute: FlightSchoolRoute,
   HowItWorksRoute: HowItWorksRoute,
   IgniteRoute: IgniteRoute,
   KeySigninRoute: KeySigninRoute,
@@ -3324,13 +3323,12 @@ const rootRouteChildren: RootRouteChildren = {
   StatsRoute: StatsRoute,
   SwapRoute: SwapRoute,
   TermsRoute: TermsRoute,
+  ToTheMoonRoute: ToTheMoonRoute,
   TsdRoute: TsdRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   AboutAdsRoute: AboutAdsRoute,
   AboutKycRoute: AboutKycRoute,
-  FlightSchoolSlugRoute: FlightSchoolSlugRoute,
-  FlightSchoolConfirmedRoute: FlightSchoolConfirmedRoute,
   HelpSlugRoute: HelpSlugRoute,
   HelpFaqRoute: HelpFaqRoute,
   IgniteSlugRoute: IgniteSlugRoute,
@@ -3341,6 +3339,8 @@ const rootRouteChildren: RootRouteChildren = {
   ProofCodeRoute: ProofCodeRoute,
   RegisterConfirmedRoute: RegisterConfirmedRoute,
   SwapTokensRoute: SwapTokensRoute,
+  ToTheMoonSlugRoute: ToTheMoonSlugRoute,
+  ToTheMoonConfirmedRoute: ToTheMoonConfirmedRoute,
   TradeBtcTsdRoute: TradeBtcTsdRoute,
   TradeEthTsdRoute: TradeEthTsdRoute,
   TradeHexTsdRoute: TradeHexTsdRoute,

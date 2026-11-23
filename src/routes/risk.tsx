@@ -45,7 +45,7 @@ const toc = [
   { id: "service", label: "Service changes and shutdown" },
   { id: "legal", label: "Legal and regulatory" },
   { id: "tax", label: "Taxes" },
-  { id: "advice", label: "No advice, and the Flight School class" },
+  { id: "advice", label: "No advice, and the To the Moon class" },
   { id: "info", label: "Data and information" },
   { id: "privacy", label: "Public blockchains and privacy" },
   { id: "you", label: "Your responsibilities" },
@@ -193,7 +193,7 @@ function RiskPage() {
                 Only trade with money you can afford to lose completely, without it changing your
                 rent, your bills, your debts or your family&rsquo;s plans. Do not borrow to trade.
                 Do not trade money you were saving for something specific. Past price rises,
-                including any you hear about in the Flight School class or from other members, tell you
+                including any you hear about in the To the Moon class or from other members, tell you
                 nothing reliable about the future.
               </p>
               <Callout>
@@ -557,7 +557,7 @@ function RiskPage() {
                   <><B>Honest.Money</B> for sign-in and profiles. If it is down, you cannot sign in to Seeds.</>,
                   <><B>HME Wallet</B> (mobile.honest.money) for your keys, trading pockets and approvals.</>,
                   <><B>TSD Swap</B> for issuing and redeeming TSD, and for converting BTC, LTC and ETH in the background.</>,
-                  <><B>NectarPay</B> for Flight School class payments.</>,
+                  <><B>NectarPay</B> for To the Moon class payments.</>,
                   <><B>Amazon Web Services</B> for email and for Seeds&rsquo; half of locked-balance keys.</>,
                   <><B>Telegram</B> for alerts. Alerts can arrive late or not at all; do not rely on them alone.</>,
                   <><B>Blockchain servers and price sources</B>, ours and others&rsquo;, for balances, confirmations and prices.</>,
@@ -604,17 +604,17 @@ function RiskPage() {
               </p>
             </Section>
 
-            <Section id="advice" n={21} title="No advice, and the Flight School class">
+            <Section id="advice" n={21} title="No advice, and the To the Moon class">
               <p>
                 Nothing on Seeds &mdash; pages, prices, charts, statistics, emails, Telegram
-                alerts, member chats, the Manifesto, or anything said in the Flight School class &mdash;
+                alerts, member chats, the Manifesto, or anything said in the To the Moon class &mdash;
                 is financial, investment, legal or tax advice. We do not know your situation and do
                 not recommend any coin or trade.
               </p>
-              <Sub title="About the Flight School class">
+              <Sub title="About the To the Moon class">
                 <List
                   items={[
-                    "Flight School is education. It does not promise any profit, income or result.",
+                    "To the Moon is education. It does not promise any profit, income or result.",
                     "The $400 registration deposit is returned to you during the class for trading activity. Once it is returned as trading funds, it carries all the risks on this page and can lose value or be lost.",
                     "Examples, strategies and stories shared in class are for learning. Results others got may not happen for you.",
                     "Refunds of class payments are handled by hand through NectarPay and are not automatic.",

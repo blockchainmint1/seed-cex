@@ -36,14 +36,14 @@ export function IgniteReminder() {
       <Flame aria-hidden className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
       <div className="min-w-0 flex-1">
         <p className="font-semibold text-foreground">
-          {started ? "Your Flight School seat isn't reserved yet" : "Here for the Flight School class?"}
+          {started ? "Your To the Moon seat isn't reserved yet" : "Here for the To the Moon class?"}
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
           {started
             ? "You started registering but haven't finished paying. Linking a wallet doesn't reserve a seat."
             : `Signing in and linking a wallet doesn't reserve a seat. The next class, ${next?.name}, runs ${next?.dates}; ${seats.data.seatsLeft} of ${seats.data.capacity} seats left.`}
         </p>
-        <Link to={mine.data.regClass ? "/flight-school/$slug" : next ? "/flight-school/$slug" : "/flight-school"} params={{ slug: mine.data.regClass?.slug ?? next?.slug ?? "" }} className="mt-3 inline-flex rounded-md bg-action px-4 py-2 text-sm font-semibold text-action-foreground">
+        <Link to={mine.data.regClass ? "/to-the-moon/$slug" : next ? "/to-the-moon/$slug" : "/to-the-moon"} params={{ slug: mine.data.regClass?.slug ?? next?.slug ?? "" }} className="mt-3 inline-flex rounded-md bg-action px-4 py-2 text-sm font-semibold text-action-foreground">
           {started ? "Finish registration" : "Reserve your seat"}
         </Link>
       </div>

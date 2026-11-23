@@ -16,11 +16,11 @@ export const BUSINESS_PLAN: BusinessPlan = {
       title: "The short version",
       summary: "What Seeds is, who it's for, and how it pays its way.",
       blocks: [
-        { kind: "text", text: "Seeds is the Honest Money Ecosystem's exchange. Members trade from their own HME Wallet pocket, Seeds never holds their coins, there's no KYC, and Seeds never charges a trading fee. Trading opens on November 30, 2026, the same day the first Flight School class starts." },
-        { kind: "text", text: "Because trades are free, Seeds can't pay partners a cut of trading fees the way other exchanges do. Growth comes from seven plays, all in this plan: P2P sellers who pick up where LocalBitcoins left off, weekly trading competitions, trading creators who stream on Seeds, coin teams stranded by BitMart's shutdown, affiliates who bring those teams, Seeds coins handed out at events, and a public voice from inside the exchange world saying why non-custodial matters. Flight School stays the front door for beginners. Money comes in from coin teams paying to list." },
+        { kind: "text", text: "Seeds is the Honest Money Ecosystem's exchange. Members trade from their own HME Wallet pocket, Seeds never holds their coins, there's no KYC, and Seeds never charges a trading fee. Trading opens on November 30, 2026, the same day the first To the Moon class starts." },
+        { kind: "text", text: "Because trades are free, Seeds can't pay partners a cut of trading fees the way other exchanges do. Growth comes from seven plays, all in this plan: P2P sellers who pick up where LocalBitcoins left off, weekly trading competitions, trading creators who stream on Seeds, coin teams stranded by BitMart's shutdown, affiliates who bring those teams, Seeds coins handed out at events, and a public voice from inside the exchange world saying why non-custodial matters. To the Moon stays the front door for beginners. Money comes in from coin teams paying to list." },
         { kind: "items", title: "Who we're for", items: [
           { title: "The Honest Money family", body: "TEXITcoin holders and miners, ZCU and ISK members, and HME Wallet users. They already have the wallet Seeds needs, so they're the fastest to start.", status: "live" },
-          { title: "Curious beginners", body: "People who want to learn to trade but are scared of losing coins to an exchange. Flight School is built for them." },
+          { title: "Curious beginners", body: "People who want to learn to trade but are scared of losing coins to an exchange. To the Moon is built for them." },
           { title: "Active traders tired of KYC and frozen accounts", body: "They want their keys, no ID uploads and no fees. Our message is aimed straight at them." },
           { title: "Coin teams", body: "Small and mid-sized projects that can't afford $25,000+ listings elsewhere. They're our paying customers, and every one brings its own community." },
         ] },
@@ -37,13 +37,13 @@ export const BUSINESS_PLAN: BusinessPlan = {
           ["Listing: Grove package", usd(5000), "On /list now"],
           ["Trading fees", "None, ever", "Promise on the site"],
           ["Swap fee", "None for now", "Can be revisited"],
-          ["Flight School $400 deposit", "Not income", "Goes back to the student for trading"],
+          ["To the Moon $400 deposit", "Not income", "Goes back to the student for trading"],
         ] },
         { kind: "calc", calc: "listing" },
         { kind: "items", title: "Ideas for more income (none promised anywhere yet)", items: [
           { title: "Yearly listing renewal", body: "Still open: is a listing one-time or yearly? A smaller yearly renewal (for example a third of the package) would turn listings into steady income.", status: "decide" },
           { title: "Sponsored trading contests", body: "A coin team pays for a contest and puts up the prizes. Seeds runs it and labels it sponsored. Already part of Sapling and Grove, after launch.", status: "proposed" },
-          { title: "Paid advanced classes", body: "Flight School stays the free-to-learn front door. A later \"Flight School Advanced\" or coach-run class could carry a real course fee.", status: "decide" },
+          { title: "Paid advanced classes", body: "To the Moon stays the free-to-learn front door. A later \"To the Moon Advanced\" or coach-run class could carry a real course fee.", status: "decide" },
           { title: "Extra spotlight weeks", body: "Coin teams can buy more homepage spotlight time beyond their package, always marked sponsored.", status: "proposed" },
         ] },
       ],
@@ -59,18 +59,18 @@ export const BUSINESS_PLAN: BusinessPlan = {
         ] },
         { kind: "table", title: "The path every member takes", head: ["Step", "Where it happens", "Status"], rows: [
           ["1. Hears about Seeds", "Creator, coach, coin team, event, invite link, search", "Mixed"],
-          ["2. Lands on Seeds", "Homepage with the Flight School pop-up, /coming-soon, /list", "Built"],
+          ["2. Lands on Seeds", "Homepage with the To the Moon pop-up, /coming-soon, /list", "Built"],
           ["3. Joins", "Signs in with Honest.Money", "Live"],
           ["4. Sets up", "Welcome guide: name, two-factor, wallet link, Telegram", "Built"],
-          ["5. Learns", "Flight School class", "Live (first class Nov 30)"],
+          ["5. Learns", "To the Moon class", "Live (first class Nov 30)"],
           ["6. First trade", "Order book, P2P desk, swaps", "Opens Nov 30"],
           ["7. Brings a friend", "Invite link and QR on Account → Referrals", "Live (no counts yet)"],
         ] },
         { kind: "table", title: "Calendar", head: ["When", "Focus", "Notes"], rows: [
-          ["Now → Nov 30, 2026", "Fill the first Flight School class", "Telegram, email, homepage pop-up, creator shout-outs"],
-          ["Nov 30 – Dec 4, 2026", "Launch week + Flight School", "Launch announcement, daily class clips (with permission)"],
+          ["Now → Nov 30, 2026", "Fill the first To the Moon class", "Telegram, email, homepage pop-up, creator shout-outs"],
+          ["Nov 30 – Dec 4, 2026", "Launch week + To the Moon", "Launch announcement, daily class clips (with permission)"],
           ["December 2026", "First coin listings + BitMart list", "Personally invite 10–20 HME coin teams; build the BitMart lead list; recruit the first 50 P2P sellers; long-list 100 creators"],
-          ["Jan 2027", "Second Flight School class, first coaches, first weekly league", "League runs every Monday from here; 10 creator try-out streams; first coin order (5,000)"],
+          ["Jan 2027", "Second To the Moon class, first coaches, first weekly league", "League runs every Monday from here; 10 creator try-out streams; first coin order (5,000)"],
           ["Jan 31, 2027", "BitMart closes for good", "Big push of the BitMart refugee offer the same week"],
           ["Feb 1–3, 2027", "Consensus Hong Kong", "Optional; far away, mostly a business crowd"],
           ["May 4–6, 2027", "Consensus, Miami Beach", "About 15,000 people (organizer's figure)"],
@@ -135,7 +135,7 @@ export const BUSINESS_PLAN: BusinessPlan = {
         { kind: "items", title: "Prizes", items: [
           { title: "Sponsored by coin teams", body: "Sapling and Grove listings already include contests. The coin team puts up the prize, Seeds runs it and marks it sponsored. That turns contests into a reason to buy a listing.", status: "live" },
           { title: "Seeds-funded weekly prize", body: "A small fixed weekly prize, for example $100 in TSD for first, $50 second, $25 third, plus Seeds coins and merch. A fixed amount, never \"up to\".", status: "decide" },
-          { title: "Prizes that cost little", body: "A seat in the next Flight School class, a Founding badge, a coaching session with a Seeds Coach, a spot on the homepage winners wall." },
+          { title: "Prizes that cost little", body: "A seat in the next To the Moon class, a Founding badge, a coaching session with a Seeds Coach, a spot on the homepage winners wall." },
         ] },
         { kind: "items", title: "Marketing the heck out of it", items: [
           { title: "Every week has a story", body: "Monday kick-off post, Wednesday leaderboard update, Friday \"last 48 hours\", Sunday-night live finish, Monday winner interview. Five posts a week for free." },
@@ -181,26 +181,26 @@ export const BUSINESS_PLAN: BusinessPlan = {
         { kind: "items", title: "What we can offer (since there's no fee to share)", items: [
           { title: "Finder's fee on listings", body: `If a creator brings a coin team that pays and goes live, they get ${usd(finderFee("seed"))} / ${usd(finderFee("sapling"))} / ${usd(finderFee("grove"))} (20%). Same deal as any listing affiliate.`, status: "proposed" },
           { title: "Flat paid sponsorships", body: "A fixed fee per video, stream or post. Simple, and we know the cost up front.", status: "decide" },
-          { title: "A guest spot in Flight School", body: "Teach one session. They get exposure, we get their audience in the room.", status: "proposed" },
+          { title: "A guest spot in To the Moon", body: "Teach one session. They get exposure, we get their audience in the room.", status: "proposed" },
           { title: "Creator trading contests", body: "A creator hosts a contest for their followers, prizes from a coin team. After launch.", status: "proposed" },
           { title: "Early access", body: "First look at new Seeds features to make content about." },
         ] },
         { kind: "items", title: "Rules for every paid creator", items: [
           { title: "Say it's paid", body: "US rules (the FTC) require paid creators to clearly say so, like \"#ad\" or \"paid partnership\", shown on screen and said out loud on streams. Put it in every agreement. In 2022 the SEC fined Kim Kardashian $1.26 million for hiding a $250,000 crypto promotion fee." },
           { title: "No return promises, no signals", body: "They can teach and show Seeds. They can't promise profits or tell people what to buy." },
-          { title: "Tracked with their own invite link", body: "Each creator shares seeds.honest.money/invite/{code}. Flight School sign-ups already save the code; Seeds doesn't count clicks or HME sign-ups yet.", status: "decide" },
+          { title: "Tracked with their own invite link", body: "Each creator shares seeds.honest.money/invite/{code}. To the Moon sign-ups already save the code; Seeds doesn't count clicks or HME sign-ups yet.", status: "decide" },
         ] },
       ],
     },
     {
       id: "coaches",
       title: "Trading coaches",
-      summary: "Turn Flight School graduates and outside coaches into teachers who use Seeds as their classroom.",
+      summary: "Turn To the Moon graduates and outside coaches into teachers who use Seeds as their classroom.",
       blocks: [
         { kind: "items", items: [
-          { title: "Seeds Coach program", body: "Coaches finish Flight School, agree to our rules, and get a \"Seeds Coach\" badge. They run their own classes at their own price and teach on Seeds.", status: "proposed" },
-          { title: "What coaches get", body: "The Flight School lesson material, a listing in a coach directory, their own invite link, early features, and the listing finder's fee for coin teams they bring.", status: "proposed" },
-          { title: "Start small", body: "Five coaches after the first Flight School class, chosen by Bobby. Grow only once those five work out." },
+          { title: "Seeds Coach program", body: "Coaches finish To the Moon, agree to our rules, and get a \"Seeds Coach\" badge. They run their own classes at their own price and teach on Seeds.", status: "proposed" },
+          { title: "What coaches get", body: "The To the Moon lesson material, a listing in a coach directory, their own invite link, early features, and the listing finder's fee for coin teams they bring.", status: "proposed" },
+          { title: "Start small", body: "Five coaches after the first To the Moon class, chosen by Bobby. Grow only once those five work out." },
           { title: "Hard rules", body: "Coaches never hold students' coins, never trade for them, and never promise returns. Seeds stays out of the money between coach and student." },
           { title: "Local meetups", body: "Coaches host \"Seeds Circles\" in their city, starting in Texas. Cheap, personal, and great for trust.", status: "proposed" },
         ] },
@@ -238,7 +238,7 @@ export const BUSINESS_PLAN: BusinessPlan = {
         { kind: "text", text: "The copper Seeds coin from the homepage becomes a giveaway. The front has the Seeds mark. The back has a QR code and a code under a scratch-off. Scan it, join with Honest.Money, link your wallet, and the coin is claimed. Every code is unique, so we know exactly which event and which handout brought each member in." },
         { kind: "note", tone: "warn", text: "The coin must not hold any crypto or a private key. In December 2013 the US Treasury's FinCEN told Casascius, the maker of physical bitcoins with coins loaded inside, that it was acting as an unregistered money transmitter, and it stopped making them (reported by WIRED and The Verge). A claim code with a capped reward avoids that, but get a lawyer to check any reward before we hand out a single coin." },
         { kind: "items", title: "What claiming gets you", items: [
-          { title: "Start with no-money rewards", body: "A \"Founding member\" badge, priority for the next Flight School class, and an entry in a launch trading contest. No crypto has to move.", status: "proposed" },
+          { title: "Start with no-money rewards", body: "A \"Founding member\" badge, priority for the next To the Moon class, and an entry in a launch trading contest. No crypto has to move.", status: "proposed" },
           { title: "A small TSD welcome later, maybe", body: "Seeds can only send coins out on PulseChain today, so a TSD reward would need new sending support or a person sending by hand. One per HME member, with a total cap.", status: "decide" },
         ] },
         { kind: "table", title: "What coins cost (one maker's price list, checked Nov 19, 2026)", head: ["Coin size", "500 coins", "1,000 coins", "2,000 coins"], rows: [
@@ -250,7 +250,7 @@ export const BUSINESS_PLAN: BusinessPlan = {
         { kind: "calc", calc: "coins" },
         { kind: "table", title: "The coin onboarding: scan to first trade in about 10 minutes", head: ["Step", "What the person sees", "Status"], rows: [
           ["1. Scan", "seeds.honest.money/coin/{code}: \"You found a Seeds coin\" with the coin's number and the event it came from", "Not built"],
-          ["2. Join", "Sign in with Honest.Money; the claim code is remembered across tabs (same as Flight School)", "Sign-in live"],
+          ["2. Join", "Sign in with Honest.Money; the claim code is remembered across tabs (same as To the Moon)", "Sign-in live"],
           ["3. Set up", "A shortened welcome guide: wallet link, two-factor, Telegram", "Guide built"],
           ["4. Claim", "Coin marked claimed; Founding badge, auto-entry into the next weekly league, and the coin promotion", "Not built"],
           ["5. First trade", "Guided first swap or P2P buy, with the network-fee step", "Pieces built"],
@@ -258,7 +258,7 @@ export const BUSINESS_PLAN: BusinessPlan = {
         ] },
         { kind: "items", title: "The coin-only promotion", items: [
           { title: "Coin holders' league", body: "A weekly contest only for people who claimed a coin, with a bigger prize than the regular league. Gives people a reason to scan the same day.", status: "proposed" },
-          { title: "Free Flight School seat for the best coin holder", body: "Top coin-holder in the league each month wins a free Flight School seat. Skill-based and free to enter, never a raffle." },
+          { title: "Free To the Moon seat for the best coin holder", body: "Top coin-holder in the league each month wins a free To the Moon seat. Skill-based and free to enter, never a raffle." },
           { title: "Numbered and collectible", body: "Each coin is numbered (\"#0042 of 5,000, Bitcoin 2027\"). The claim page shows the coin's number and event. People keep and show off the low numbers.", status: "proposed" },
         ] },
         { kind: "items", title: "Who hands them out", items: [
@@ -269,9 +269,9 @@ export const BUSINESS_PLAN: BusinessPlan = {
         { kind: "items", title: "Where to hand them out", items: [
           { title: "Big shows, without a booth", body: "Side events, meetups and hallways at Bitcoin 2027 and Consensus (Miami). A team of 3–4 in Seeds shirts can hand out hundreds a day." },
           { title: "Texas and HME events", body: "TEXITcoin meetups and Texas crypto events are home turf and cheap to attend." },
-          { title: "Every Flight School graduate", body: "Give each graduate 10 coins to hand to friends. Their code ties every claim back to them." },
+          { title: "Every To the Moon graduate", body: "Give each graduate 10 coins to hand to friends. Their code ties every claim back to them." },
           { title: "Seed packets too", body: "Real seed packets with a QR code: \"Plant a seed.\" Very cheap, on brand, and people keep them.", status: "proposed" },
-          { title: "Then everywhere", body: "Once the scan-to-trade path works at events: coffee shops and gun shows in Texas, college campuses, gold and coin shops, farmers' markets (\"seeds\"), and in every Flight School student's pocket." },
+          { title: "Then everywhere", body: "Once the scan-to-trade path works at events: coffee shops and gun shows in Texas, college campuses, gold and coin shops, farmers' markets (\"seeds\"), and in every To the Moon student's pocket." },
         ] },
         { kind: "items", title: "Then sell them retail", items: [
           { title: "Collector coins, no crypto inside", body: "Sell the same coins as collectibles: $20–$30 for a single, sets for events, gold and silver editions later. Sold empty, it's merch, which keeps it simple.", status: "proposed" },
@@ -314,7 +314,7 @@ export const BUSINESS_PLAN: BusinessPlan = {
         { kind: "items", title: "How to approach him", items: [
           { title: "Lead with his story, not ours", body: "He watched an exchange freeze customers' money without being asked. The message: \"You saw first-hand why people shouldn't have to trust an exchange with their coins. We built one that can't hold them.\"" },
           { title: "Small first ask", body: "A 30-minute recorded conversation (\"What I learned running a big exchange\") for Seeds Live. No endorsement script. If it goes well, ask for a quote, then an advisor role." },
-          { title: "What he could get", body: "A paid advisor role with a fixed fee, a guest session in Flight School, a speaking slot at our event table. Paid means disclosed: anything he says about Seeds must say he's paid.", status: "decide" },
+          { title: "What he could get", body: "A paid advisor role with a fixed fee, a guest session in To the Moon, a speaking slot at our event table. Paid means disclosed: anything he says about Seeds must say he's paid.", status: "decide" },
           { title: "Who reaches out", body: "A warm intro beats a cold message: ask HME and our coin-team network who knows him. Otherwise a short, respectful note on LinkedIn from Bobby.", status: "decide" },
         ] },
         { kind: "items", title: "Watch-outs", items: [
@@ -339,9 +339,9 @@ export const BUSINESS_PLAN: BusinessPlan = {
           { title: "Public Telegram channel", body: "Launch countdown, new listings, AMAs and class clips. We already run the Seeds alerts bot; this is the public side." },
           { title: "Coin community kits", body: "Every listed coin gets banners, a how-to-buy link and ready-made posts for its own Telegram. Their community becomes our marketing." },
           { title: "HME cross-promotion", body: "Ask HME for a Seeds spot in HME Wallet and the honest.money newsletter. Ours is the ecosystem's exchange.", status: "decide" },
-          { title: "Spanish-language Seeds", body: "Spanish-speaking countries use a lot of crypto and get little help. Translate the homepage, Flight School and No KYC pages first.", status: "proposed" },
+          { title: "Spanish-language Seeds", body: "Spanish-speaking countries use a lot of crypto and get little help. Translate the homepage, To the Moon and No KYC pages first.", status: "proposed" },
           { title: "Security bug bounty", body: "Pay people who find security holes. It protects members, and \"we pay hackers to check us\" builds trust.", status: "decide" },
-          { title: "Graduation stories", body: "Short videos of Flight School students, only with their permission, about learning, never about profits." },
+          { title: "Graduation stories", body: "Short videos of To the Moon students, only with their permission, about learning, never about profits." },
         ] },
       ],
     },
@@ -371,7 +371,7 @@ export const BUSINESS_PLAN: BusinessPlan = {
           { title: "Listings: one-time or yearly?", body: "Changes the income picture a lot.", status: "decide" },
           { title: "Coins: which size and which first event?", body: "Bitcoin 2027 (July) is my pick for the big one; a Texas event first to test the scan-to-trade path.", status: "decide" },
           { title: "Claim reward: badge only, or a small TSD amount too?", body: "Badge-only can start right away; TSD needs a lawyer and new sending support.", status: "decide" },
-          { title: "Coaches: who are the first five?", body: "Ideally picked from the first Flight School class.", status: "decide" },
+          { title: "Coaches: who are the first five?", body: "Ideally picked from the first To the Moon class.", status: "decide" },
           { title: "Weekly league prize: how much, and paid in TSD?", body: "My suggestion: $100 / $50 / $25 in TSD each week, about $700 a month. Unblocks the league launch in January.", status: "decide" },
           { title: "Build order after launch", body: "My pick: 1) weekly league, 2) coin claim page, 3) streamer mode, 4) seller badges and levels.", status: "decide" },
           { title: "BitMart refugee offer: what and until when?", body: "My suggestion: Seed price with Sapling extras until March 31, 2027.", status: "decide" },

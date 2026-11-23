@@ -16,10 +16,10 @@ export const Route = createFileRoute("/_authenticated/admin/ignite-interest")({
   staticData: { sitemap: false },
   head: () => ({
     meta: [
-      { title: "Flight School interest list — Seeds admin" },
-      { name: "description", content: "People who want to hear about new Flight School classes, including everyone who registered but didn't pay." },
-      { property: "og:title", content: "Flight School interest list — Seeds admin" },
-      { property: "og:description", content: "Email people about new Flight School classes." },
+      { title: "To the Moon interest list — Seeds admin" },
+      { name: "description", content: "People who want to hear about new To the Moon classes, including everyone who registered but didn't pay." },
+      { property: "og:title", content: "To the Moon interest list — Seeds admin" },
+      { property: "og:description", content: "Email people about new To the Moon classes." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -27,7 +27,7 @@ export const Route = createFileRoute("/_authenticated/admin/ignite-interest")({
   component: InterestPage,
 });
 
-const SOURCE: Record<string, string> = { unpaid_registration: "Registered, didn't pay", registration: "Registered", signup: "Signed up on /flight-school", admin: "Added by admin" };
+const SOURCE: Record<string, string> = { unpaid_registration: "Registered, didn't pay", registration: "Registered", signup: "Signed up on /to-the-moon", admin: "Added by admin" };
 
 function InterestPage() {
   const qc = useQueryClient();
@@ -63,7 +63,7 @@ function InterestPage() {
   const d = q.data ?? [];
   return (
     <div className="space-y-5">
-      <TabTitle title="Flight School interest list" desc={<>Not tied to any class. Everyone who registered but didn't pay is here, plus anyone who signed up on <Link to="/flight-school" className="text-primary underline">/flight-school</Link>. Email them when you add a class.</>} />
+      <TabTitle title="To the Moon interest list" desc={<>Not tied to any class. Everyone who registered but didn't pay is here, plus anyone who signed up on <Link to="/to-the-moon" className="text-primary underline">/to-the-moon</Link>. Email them when you add a class.</>} />
       {q.isPending ? <Loading /> : q.error ? <p role="alert" className="text-sm text-destructive">{(q.error as Error).message}</p> : (
         <>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -178,11 +178,11 @@ function InterestComposer({ open, recipients, classes, onClose, onSend }: {
         }}>
           <label className="block"><span className={fieldLabel}>Button links to</span>
             <select className={`${inputCls} mt-1`} value={slug} onChange={(e) => setSlug(e.target.value)}>
-              <option value="">All upcoming classes (/flight-school)</option>
-              {classes.map((c) => <option key={c.slug} value={c.slug}>{c.name} (/flight-school/{c.slug})</option>)}
+              <option value="">All upcoming classes (/to-the-moon)</option>
+              {classes.map((c) => <option key={c.slug} value={c.slug}>{c.name} (/to-the-moon/{c.slug})</option>)}
             </select>
           </label>
-          <label className="block"><span className={fieldLabel}>Subject</span><input className={`${inputCls} mt-1`} value={subject} maxLength={140} onChange={(e) => setSubject(e.target.value)} placeholder="A new Flight School class just opened" /></label>
+          <label className="block"><span className={fieldLabel}>Subject</span><input className={`${inputCls} mt-1`} value={subject} maxLength={140} onChange={(e) => setSubject(e.target.value)} placeholder="A new To the Moon class just opened" /></label>
           <label className="block"><span className={fieldLabel}>Message</span>
             <textarea className={`${inputCls} mt-1 min-h-40`} value={body} maxLength={BODY_MAX + 200} onChange={(e) => setBody(e.target.value)} placeholder={"Hi {first},\n\nSpark runs December 5–6, 1–5 PM Central…"} />
             <span className="mt-1 block text-xs text-muted-foreground">Type {"{first}"} to greet each person by name. Leave a blank line between paragraphs.</span>

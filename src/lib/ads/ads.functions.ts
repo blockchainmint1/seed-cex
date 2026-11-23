@@ -107,7 +107,7 @@ export const saveAd = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await requireAdmin(context as never);
     const link = safeAdLink(data.link);
-    if (!link) throw new Error("The link must be a Seeds page (like /flight-school) or an https:// address.");
+    if (!link) throw new Error("The link must be a Seeds page (like /to-the-moon) or an https:// address.");
     const starts = new Date(data.starts_at).toISOString();
     const ends = data.ends_at ? new Date(data.ends_at).toISOString() : null;
     if (ends && Date.parse(ends) <= Date.parse(starts)) throw new Error("The end has to be after the start.");

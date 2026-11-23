@@ -7,14 +7,14 @@ import { useSession } from "@/hooks/use-session";
 import { getIgniteConfirmation } from "@/lib/ignite.functions";
 import { RECORDING_NOTE, paidInLabel, inviteLabel } from "@/lib/ignite-registration";
 
-export const Route = createFileRoute("/flight-school_/confirmed")({
+export const Route = createFileRoute("/to-the-moon_/confirmed")({
   staticData: { sitemap: false },
   head: () => ({
     meta: [
-      { title: "Your Flight School seat is reserved — Seeds" },
-      { name: "description", content: "Confirmation for your Seeds Flight School class seat: dates, next steps and your referral link." },
-      { property: "og:title", content: "Your Flight School seat is reserved — Seeds" },
-      { property: "og:description", content: "Confirmation for your Seeds Flight School class seat." },
+      { title: "Your To the Moon seat is reserved — Seeds" },
+      { name: "description", content: "Confirmation for your Seeds To the Moon class seat: dates, next steps and your referral link." },
+      { property: "og:title", content: "Your To the Moon seat is reserved — Seeds" },
+      { property: "og:description", content: "Confirmation for your Seeds To the Moon class seat." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex,nofollow" },
@@ -54,8 +54,8 @@ function ConfirmedPage() {
       <Shell>
         <Card>
           <h1 className="font-display text-3xl">Sign in to see your seat</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Your Flight School confirmation is tied to your Honest.Money account.</p>
-          <Link to="/auth" search={{ redirect: "/flight-school/confirmed" }} className="seed-btn mt-6 inline-flex justify-center">Sign in with Honest.Money</Link>
+          <p className="mt-2 text-sm text-muted-foreground">Your To the Moon confirmation is tied to your Honest.Money account.</p>
+          <Link to="/auth" search={{ redirect: "/to-the-moon/confirmed" }} className="seed-btn mt-6 inline-flex justify-center">Sign in with Honest.Money</Link>
         </Card>
       </Shell>
     );
@@ -73,8 +73,8 @@ function ConfirmedPage() {
           <h1 className="font-display text-3xl">{d.state === "none" ? "You haven't reserved a seat yet" : "Your checkout closed before payment arrived"}</h1>
           <p className="mt-2 text-sm text-muted-foreground">{d.state === "expired" ? "No money was taken. You can start a fresh checkout any time." : "See the upcoming classes and pick the one that suits you."}</p>
           {d.cls && d.state === "expired"
-            ? <Link to="/flight-school/$slug" params={{ slug: d.cls.slug }} hash="reserve" className="seed-btn mt-6 inline-flex justify-center">Back to {d.cls.name}</Link>
-            : <Link to="/flight-school" className="seed-btn mt-6 inline-flex justify-center">See upcoming classes</Link>}
+            ? <Link to="/to-the-moon/$slug" params={{ slug: d.cls.slug }} hash="reserve" className="seed-btn mt-6 inline-flex justify-center">Back to {d.cls.name}</Link>
+            : <Link to="/to-the-moon" className="seed-btn mt-6 inline-flex justify-center">See upcoming classes</Link>}
         </Card>
       </Shell>
     );
@@ -114,7 +114,7 @@ function ConfirmedPage() {
       <p className="font-mono text-xs font-medium tracking-[0.14em] text-primary">SEAT RESERVED</p>
       <h1 className="mt-4 font-display text-5xl leading-[1.05] tracking-tight sm:text-6xl">Thank you, {d.firstName}. You're in.</h1>
       <p className="mt-5 max-w-2xl text-lg text-muted-foreground">
-        Your seat in {d.cls ? `Flight School: ${d.cls.name}` : "Flight School"} is reserved{d.paidBy ? ` — ${d.paidBy} paid for it through Peer Pay` : ""}. We can't wait to see you in class.
+        Your seat in {d.cls ? `To the Moon: ${d.cls.name}` : "To the Moon"} is reserved{d.paidBy ? ` — ${d.paidBy} paid for it through Peer Pay` : ""}. We can't wait to see you in class.
       </p>
 
       <Card className="mt-10">
@@ -152,8 +152,8 @@ function ConfirmedPage() {
       <div className="mt-10 flex flex-wrap gap-3">
         <Link to="/" className="seed-btn-ghost inline-flex w-auto justify-center px-6">Explore Seeds</Link>
         {d.cls
-          ? <Link to="/flight-school/$slug" params={{ slug: d.cls.slug }} className="seed-btn-ghost inline-flex w-auto justify-center px-6"><CalendarDays className="mr-2 size-4" aria-hidden />Class details</Link>
-          : <Link to="/flight-school" className="seed-btn-ghost inline-flex w-auto justify-center px-6"><CalendarDays className="mr-2 size-4" aria-hidden />Class details</Link>}
+          ? <Link to="/to-the-moon/$slug" params={{ slug: d.cls.slug }} className="seed-btn-ghost inline-flex w-auto justify-center px-6"><CalendarDays className="mr-2 size-4" aria-hidden />Class details</Link>
+          : <Link to="/to-the-moon" className="seed-btn-ghost inline-flex w-auto justify-center px-6"><CalendarDays className="mr-2 size-4" aria-hidden />Class details</Link>}
       </div>
     </Shell>
   );

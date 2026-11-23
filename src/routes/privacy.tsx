@@ -11,7 +11,7 @@ export const Route = createFileRoute("/privacy")({
       {
         name: "description",
         content:
-          "What Seeds collects, why, who sees it and how long we keep it: Honest.Money sign-in, trading pockets, P2P, Flight School registration, alerts, cookies and analytics.",
+          "What Seeds collects, why, who sees it and how long we keep it: Honest.Money sign-in, trading pockets, P2P, To the Moon registration, alerts, cookies and analytics.",
       },
       { property: "og:title", content: "Privacy Policy — Seeds" },
       {
@@ -32,7 +32,7 @@ const toc: TocItem[] = [
   { id: "pocket", label: "Your trading pocket" },
   { id: "trading", label: "Trading records" },
   { id: "p2p", label: "P2P marketplace" },
-  { id: "ignite", label: "Flight School registration and Peer Pay" },
+  { id: "ignite", label: "To the Moon registration and Peer Pay" },
   { id: "alerts", label: "Email and Telegram" },
   { id: "api", label: "Bots and API keys" },
   { id: "public", label: "What is public" },
@@ -98,7 +98,7 @@ function Privacy() {
             <><B>Your recovery phrase.</B> Seeds will never ask for it &mdash; not on the site, not by email, not on Telegram. Anyone who asks is a scammer.</>,
             <><B>The keys to your savings.</B> HME Wallet keeps your savings separate from your trading pocket, and Seeds never receives keys to savings.</>,
             <><B>Your Honest.Money password or sign-in codes.</B> You enter those on Honest.Money, not on Seeds.</>,
-            <><B>Card or bank numbers.</B> Seeds doesn&rsquo;t take card payments. Flight School payments go through NectarPay.</>,
+            <><B>Card or bank numbers.</B> Seeds doesn&rsquo;t take card payments. To the Moon payments go through NectarPay.</>,
             <><B>Identity documents.</B> No passport, no selfie, no proof of address. See <Link to="/about/kyc" className={linkCls}>No KYC</Link> for why we never need them.</>,
           ]}
         />
@@ -205,8 +205,8 @@ function Privacy() {
         </p>
       </Section>
 
-      <Section id="ignite" n={8} title="Flight School registration and Peer Pay">
-        <p>When you register for the Flight School class, we collect:</p>
+      <Section id="ignite" n={8} title="To the Moon registration and Peer Pay">
+        <p>When you register for the To the Moon class, we collect:</p>
         <List
           items={[
             "your full name, email, country and phone number;",
@@ -273,7 +273,7 @@ function Privacy() {
             "To sign you in and keep your account secure.",
             "To match orders, settle trades and show your balances and history.",
             "To run the P2P marketplace, including chats, reputation, safety limits and disputes.",
-            "To take Flight School registrations and confirm payments.",
+            "To take To the Moon registrations and confirm payments.",
             "To send the emails and alerts you asked for, plus security notices.",
             "To prevent fraud, abuse, double-spends and attacks, and to investigate problems.",
             "To understand how the site is used and fix what's broken.",
@@ -291,10 +291,10 @@ function Privacy() {
         <p>We share only what each service needs to do its part:</p>
         <List
           items={[
-            <><B>Honest.Money</B> &mdash; runs sign-in and profiles. We tell Honest.Money about some events, such as a confirmed Flight School seat, so your membership and referrals stay up to date. See also section 14 about the Honest.Money script.</>,
+            <><B>Honest.Money</B> &mdash; runs sign-in and profiles. We tell Honest.Money about some events, such as a confirmed To the Moon seat, so your membership and referrals stay up to date. See also section 14 about the Honest.Money script.</>,
             <><B>HME Wallet</B> (mobile.honest.money) &mdash; receives trade approval requests and pocket links.</>,
             <><B>TSD Swap</B> &mdash; issues TSD and handles background conversion of BTC, LTC and ETH. Receives the addresses and amounts for those conversions.</>,
-            <><B>NectarPay</B> &mdash; processes Flight School payments. Receives the amount, our order number and the payer&rsquo;s email.</>,
+            <><B>NectarPay</B> &mdash; processes To the Moon payments. Receives the amount, our order number and the payer&rsquo;s email.</>,
             <><B>Amazon Web Services</B> &mdash; delivers our emails (your address and the message) and holds Seeds&rsquo; half of locked-balance keys (it sees only the data being signed, not who you are).</>,
             <><B>Telegram</B> &mdash; delivers alerts you turned on.</>,
             <><B>The Honest.Money help widget</B> (help.honest.money) &mdash; receives whatever you type into the help chat.</>,
@@ -322,13 +322,13 @@ function Privacy() {
           />
         </Sub>
         <Sub title="Saved by the Honest.Money script">
-          <p>Seeds&rsquo; public information pages (such as the homepage, Flight School and these policies) load a small script from Honest.Money that tracks referrals across the ecosystem. It never runs on your Account, Admin, sign-in, trading, swap, P2P or wallet pages. It:</p>
+          <p>Seeds&rsquo; public information pages (such as the homepage, To the Moon and these policies) load a small script from Honest.Money that tracks referrals across the ecosystem. It never runs on your Account, Admin, sign-in, trading, swap, P2P or wallet pages. It:</p>
           <List
             items={[
               <>saves a <B>referral cookie</B> (&ldquo;hm_ref&rdquo;) for 30 days when you arrive through someone&rsquo;s referral link, shared across honest.money sites;</>,
               <>saves a <B>random visitor ID</B> in your browser;</>,
               "tells Honest.Money once per visit which Seeds page you opened, along with the visitor ID and any referral code;",
-              <>when you submit a form on Seeds that includes an email address &mdash; such as the Flight School registration form &mdash; <B>sends that email address</B> and the referral code to Honest.Money so the referral can be credited.</>,
+              <>when you submit a form on Seeds that includes an email address &mdash; such as the To the Moon registration form &mdash; <B>sends that email address</B> and the referral code to Honest.Money so the referral can be credited.</>,
             ]}
           />
         </Sub>

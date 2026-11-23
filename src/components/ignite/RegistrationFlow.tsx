@@ -63,11 +63,11 @@ export function RegistrationFlow({ cls }: { cls: PublicClass }) {
         <p className="text-xs font-semibold uppercase tracking-widest text-primary">Seat confirmed</p>
         <h2 className="mt-2 font-display text-3xl">You're in, {((n) => n.charAt(0).toUpperCase() + n.slice(1))(reg.full_name.trim().split(/\s+/)[0] ?? "")}.</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          {sameClass ? "Your seat in this class is paid" : `You have a paid seat in ${regClass?.name ?? "another Flight School class"}${regClass ? ` (${regClass.dates})` : ""}`}
+          {sameClass ? "Your seat in this class is paid" : `You have a paid seat in ${regClass?.name ?? "another To the Moon class"}${regClass ? ` (${regClass.dates})` : ""}`}
           {paidWith ? ` (${paidWith})` : ""}{mine.data?.peer?.state === "paid" && mine.data.peer.payerName ? `, paid by ${mine.data.peer.payerName} through Peer Pay` : ""}. We'll send reminders to {reg.email}.
         </p>
         {!sameClass && <p className="mt-2 text-sm text-muted-foreground">Want to switch to {cls.name} instead? Email <a className="font-semibold text-primary underline-offset-4 hover:underline" href="mailto:support@honest.money">support@honest.money</a> and we'll move your seat.</p>}
-        <Link to="/flight-school/confirmed" className="seed-btn mt-6 inline-flex justify-center">See your confirmation & referral link</Link>
+        <Link to="/to-the-moon/confirmed" className="seed-btn mt-6 inline-flex justify-center">See your confirmation & referral link</Link>
       </div>
     );
   }
@@ -76,7 +76,7 @@ export function RegistrationFlow({ cls }: { cls: PublicClass }) {
       <div className="rounded-3xl border border-border bg-card p-6 shadow-glow sm:p-8">
         <h2 className="font-display text-3xl">{cls.seatsLeft <= 0 && cls.status === "open" ? "Fully reserved" : "Registration is closed"}</h2>
         <p className="mt-2 text-sm text-muted-foreground">{cls.name} isn't taking new seats. Leave your email and we'll tell you when the next class opens.</p>
-        <Link to="/flight-school" hash="interest" className="seed-btn mt-6 inline-flex justify-center">Tell me about the next class</Link>
+        <Link to="/to-the-moon" hash="interest" className="seed-btn mt-6 inline-flex justify-center">Tell me about the next class</Link>
       </div>
     );
   }
@@ -165,7 +165,7 @@ export function RegistrationFlow({ cls }: { cls: PublicClass }) {
         <div>
           <h2 ref={headingRef} tabIndex={-1} className="font-display text-3xl">Review & payment</h2>
           <dl className="mt-5 divide-y divide-border rounded-2xl border border-border text-sm">
-            <Row k="Class" v={`Flight School: ${cls.name}`} />
+            <Row k="Class" v={`To the Moon: ${cls.name}`} />
             <Row k="Dates" v={dates} />
             <Row k="Sessions" v={sessionsLabel(cls.sessions)} />
             <Row k="Time" v={time ?? <span className="block">{sessionLines(cls.sessions, cls.timezone).map((l) => <span key={l} className="block">{l}</span>)}</span>} />

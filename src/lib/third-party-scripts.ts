@@ -6,10 +6,10 @@
  * page from one where they ran is a full page load (see HonestMoneyScripts).
  */
 const PUBLIC_EXACT = new Set([
-  "/", "/flight-school", "/flight-school/confirmed", "/coming-soon", "/list", "/manifesto", "/terms", "/privacy",
+  "/", "/to-the-moon", "/to-the-moon/confirmed", "/coming-soon", "/list", "/manifesto", "/terms", "/privacy",
   "/risk", "/custody", "/how-it-works", "/brand", "/stats", "/tsd", "/proof/code", "/api",
 ]);
-const PUBLIC_PREFIXES = ["/about/", "/flight-school/"];
+const PUBLIC_PREFIXES = ["/about/", "/to-the-moon/"];
 
 export function thirdPartyScriptsAllowed(pathname: string): boolean {
   const p = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;

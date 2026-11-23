@@ -6,12 +6,12 @@ export type PeerPayRequestProps = { registrantName: string; amount: number; payU
 export function PeerPayRequestEmail(p: PeerPayRequestProps) {
   return (
     <Layout
-      preview={`${p.registrantName} asked you to pay their ${usd(p.amount)} Flight School seat. The link works until ${when(p.expiresAt)}.`}
+      preview={`${p.registrantName} asked you to pay their ${usd(p.amount)} To the Moon seat. The link works until ${when(p.expiresAt)}.`}
       eyebrow="Peer Pay request"
-      title={`${p.registrantName} asked you to pay their Flight School seat.`}
+      title={`${p.registrantName} asked you to pay their To the Moon seat.`}
       footer="peer"
     >
-      <P>{p.registrantName} reserved a seat in Flight School, the Seeds crypto trading class, and asked you to pay the deposit for them. If you pay, the seat is theirs. You don't get a seat or any access to their account.</P>
+      <P>{p.registrantName} reserved a seat in To the Moon, the Seeds crypto trading class, and asked you to pay the deposit for them. If you pay, the seat is theirs. You don't get a seat or any access to their account.</P>
       <Details rows={[
         ["For", p.registrantName],
         ["Amount", usd(p.amount)],

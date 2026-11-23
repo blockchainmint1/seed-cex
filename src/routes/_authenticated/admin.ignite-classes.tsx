@@ -16,10 +16,10 @@ export const Route = createFileRoute("/_authenticated/admin/ignite-classes")({
   staticData: { sitemap: false },
   head: () => ({
     meta: [
-      { title: "Flight School classes — Seeds admin" },
-      { name: "description", content: "Create and edit Flight School classes: instructor, photo, seats, price, schedule, agenda and requirements." },
-      { property: "og:title", content: "Flight School classes — Seeds admin" },
-      { property: "og:description", content: "Manage Seeds Flight School classes." },
+      { title: "To the Moon classes — Seeds admin" },
+      { name: "description", content: "Create and edit To the Moon classes: instructor, photo, seats, price, schedule, agenda and requirements." },
+      { property: "og:title", content: "To the Moon classes — Seeds admin" },
+      { property: "og:description", content: "Manage Seeds To the Moon classes." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -33,7 +33,7 @@ type Form = Omit<ClassInput, "sessions" | "benefits"> & { sessions: SessionRow[]
 
 const STATUS_HELP: Record<string, string> = {
   draft: "Hidden from the public. Only admins see it.",
-  open: "Shown on /flight-school and taking registrations.",
+  open: "Shown on /to-the-moon and taking registrations.",
   closed: "Shown, but not taking registrations.",
   done: "Finished. Hidden from upcoming classes.",
 };
@@ -75,7 +75,7 @@ function ClassesPage() {
 
   return (
     <div className="space-y-5">
-      <TabTitle title="Flight School classes" desc="Every class gets its own page at /flight-school/<address>. Prices here are what checkout charges."
+      <TabTitle title="To the Moon classes" desc="Every class gets its own page at /to-the-moon/<address>. Prices here are what checkout charges."
         right={editing ? null : <Button size="sm" onClick={() => setEditing("new")}><Plus /> New class</Button>} />
       {notice ? <Note tone="ok">{notice}</Note> : null}
       {editing ? (
@@ -93,7 +93,7 @@ function ClassesPage() {
                 const p = classPrice(c, "unknown");
                 return (
                   <tr key={c.id} className="border-b border-border/50 last:border-0">
-                    <td className="px-3 py-2"><span className="font-semibold">{c.name}</span><span className="block font-mono text-xs text-muted-foreground">/flight-school/{c.slug}</span></td>
+                    <td className="px-3 py-2"><span className="font-semibold">{c.name}</span><span className="block font-mono text-xs text-muted-foreground">/to-the-moon/{c.slug}</span></td>
                     <td className="px-3 py-2"><span className="rounded-sm bg-muted px-1.5 py-0.5 font-mono text-[10px] uppercase">{c.status}</span></td>
                     <td className="px-3 py-2 text-xs">{dateRangeLabel(c.sessions, c.timezone)}</td>
                     <td className="px-3 py-2 text-xs">{c.instructorName}</td>
@@ -101,7 +101,7 @@ function ClassesPage() {
                     <td className="px-3 py-2 text-xs">{c.confirmed} paid · {c.held} held / {c.capacity}</td>
                     <td className="px-3 py-2 text-right">
                       <div className="flex justify-end gap-1.5">
-                        {c.status !== "draft" ? <Button asChild size="sm" variant="ghost" className="h-7 px-2"><Link to="/flight-school/$slug" params={{ slug: c.slug }} target="_blank"><ExternalLink /> Page</Link></Button> : null}
+                        {c.status !== "draft" ? <Button asChild size="sm" variant="ghost" className="h-7 px-2"><Link to="/to-the-moon/$slug" params={{ slug: c.slug }} target="_blank"><ExternalLink /> Page</Link></Button> : null}
                         <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => setEditing(c)}>Edit</Button>
                       </div>
                     </td>
@@ -135,7 +135,7 @@ function ClassEditor({ initial, onDone }: { initial: AdminClass | null; onDone: 
     setErr(null);
     const { input, bad } = toInput(f);
     if (bad) { setErrors({ sessions: "Fill in a date, start and end for every session." }); return; }
-    if (f.status === "open" && initial?.status !== "open" && !window.confirm(`Open ${f.name} to the public? It shows on /flight-school and starts taking payments right away.`)) return;
+    if (f.status === "open" && initial?.status !== "open" && !window.confirm(`Open ${f.name} to the public? It shows on /to-the-moon and starts taking payments right away.`)) return;
     setBusy("save");
     try {
       const r = await save({ data: { id: initial?.id ?? null, input } });
@@ -168,7 +168,7 @@ function ClassEditor({ initial, onDone }: { initial: AdminClass | null; onDone: 
       <div className="grid gap-4 md:grid-cols-2">
         <label className="block"><span className={fieldLabel}>Class name</span><input className={`${inputCls} mt-1`} value={f.name} maxLength={60} onChange={(e) => set("name", e.target.value)} placeholder="Spark" /><E k="name" /></label>
         <label className="block"><span className={fieldLabel}>Page address</span>
-          <div className="mt-1 flex items-center gap-1"><span className="font-mono text-xs text-muted-foreground">/flight-school/</span><input className={inputCls} value={f.slug} maxLength={40} onChange={(e) => set("slug", e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))} placeholder="spark" /></div>
+          <div className="mt-1 flex items-center gap-1"><span className="font-mono text-xs text-muted-foreground">/to-the-moon/</span><input className={inputCls} value={f.slug} maxLength={40} onChange={(e) => set("slug", e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))} placeholder="spark" /></div>
           <span className="mt-1 block text-xs text-muted-foreground">Lowercase letters, numbers and dashes. Don't change it once people have the link.</span><E k="slug" />
         </label>
         <label className="block md:col-span-2"><span className={fieldLabel}>One-line pitch (optional)</span><input className={`${inputCls} mt-1`} value={f.tagline} maxLength={200} onChange={(e) => set("tagline", e.target.value)} placeholder="Two afternoons, one weekend: wallet to first trade." /><E k="tagline" /></label>

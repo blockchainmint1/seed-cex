@@ -17,7 +17,7 @@ export type IgniteClassPublic = {
 
 export const CLASS_STATUSES = ["draft", "open", "closed", "done"] as const;
 export type ClassStatus = (typeof CLASS_STATUSES)[number];
-/** Paths under /flight-school that a class can never take. */
+/** Paths under /to-the-moon that a class can never take. */
 export const RESERVED_SLUGS = ["confirmed", "classes", "interest"] as const;
 export const SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 

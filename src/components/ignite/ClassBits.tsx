@@ -15,7 +15,7 @@ export function ClassCard({ c }: { c: PublicClass }) {
     <article className="flex flex-col rounded-3xl border border-border bg-card p-6 shadow-glow sm:p-8">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="font-mono text-xs font-medium tracking-[0.14em] text-primary">FLIGHT SCHOOL CLASS</p>
+          <p className="font-mono text-xs font-medium tracking-[0.14em] text-primary">TO THE MOON CLASS</p>
           <h3 className="mt-2 font-display text-3xl">{c.name}</h3>
           {c.tagline && <p className="mt-1 text-muted-foreground">{c.tagline}</p>}
         </div>
@@ -35,7 +35,7 @@ export function ClassCard({ c }: { c: PublicClass }) {
           <p className="font-display text-2xl">{usd0(c.feeUsd + c.depositUsd)}</p>
           <p className="text-sm text-muted-foreground">{priceLine(c)}{c.minersFree && c.feeUsd > 0 ? " · class free for HME miners" : ""}</p>
         </div>
-        <Link to="/flight-school/$slug" params={{ slug: c.slug }} className="seed-btn inline-flex w-auto justify-center px-6">{open ? "See class & reserve" : "See class"}</Link>
+        <Link to="/to-the-moon/$slug" params={{ slug: c.slug }} className="seed-btn inline-flex w-auto justify-center px-6">{open ? "See class & reserve" : "See class"}</Link>
       </div>
     </article>
   );
@@ -64,7 +64,7 @@ export function InterestForm({ compact = false }: { compact?: boolean }) {
   );
 }
 
-/** What to bring and how the trade deposit works (shared by /flight-school and each class page). */
+/** What to bring and how the trade deposit works (shared by /to-the-moon and each class page). */
 export function ParticipationGuide({ depositUsd }: { depositUsd: number }) {
   const dep = depositUsd > 0 ? usd0(depositUsd) : null;
   return (

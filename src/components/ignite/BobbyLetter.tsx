@@ -109,10 +109,10 @@ export function BobbyLetter() {
           </div>
         </div>
 
-        <a href="#reserve" className="seed-btn mt-10 w-auto">Reserve my Flight School seat</a>
+        <a href="#reserve" className="seed-btn mt-10 w-auto">Reserve my To the Moon seat</a>
 
         <p className="mt-6 text-xs text-muted-foreground">
-          This letter explains why we’re running Flight School. It isn’t a promise of profit. Crypto prices go up and down, and
+          This letter explains why we’re running To the Moon. It isn’t a promise of profit. Crypto prices go up and down, and
           you can lose money. The funding plan above describes how Bobby’s own contribution is intended to be used; your $400 is your own trading money.
           Competition rules, prizes and final class details will be published separately before the program begins.
         </p>
