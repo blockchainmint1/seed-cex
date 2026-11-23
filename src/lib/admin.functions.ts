@@ -356,19 +356,25 @@ export const getAdminIgnite = createServerFn({ method: "GET" })
  */
 export const moveIgniteSeat = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { id: string; classId: string }) => {
+  .inputValidator((d: { id: string; classId: string; confirmDraft?: boolean }) => {
     if (!/^[0-9a-f-]{36}$/i.test(d?.id ?? "") || !/^[0-9a-f-]{36}$/i.test(d?.classId ?? "")) throw new Error("Bad id");
-    return { id: d.id, classId: d.classId };
+    return { id: d.id, classId: d.classId, confirmDraft: d.confirmDraft === true };
   })
   .handler(async ({ data, context }) => {
     await requireAdmin(context as never);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { loadClass } = await import("./ignite-classes.server");
+    const { loadClass, seatsHeldByClass } = await import("./ignite-classes.server");
+    const { seatMoveProblem } = await import("./ignite-classes");
     const cls = await loadClass({ id: data.classId }, true);
     if (!cls) throw new Error("Class not found.");
-    const { data: cur } = await supabaseAdmin.from("ignite_registrations").select("status, class_id, invoice_expires_at").eq("id", data.id).maybeSingle();
+    const { data: cur } = await supabaseAdmin.from("ignite_registrations").select("status, class_id, user_id, invoice_expires_at").eq("id", data.id).maybeSingle();
     if (!cur) throw new Error("Registration not found.");
     if (cur.status === "canceled") throw new Error("This seat was cancelled.");
+    if (cur.class_id === cls.id) throw new Error(`They're already in ${cls.name}.`);
+    // Auditor K4: never into a finished or full class; a draft only with the admin's explicit OK.
+    const held = (await seatsHeldByClass(cur.user_id)).get(cls.id) ?? 0;
+    const problem = seatMoveProblem({ name: cls.name, status: cls.status, endsAt: cls.ends_at, capacity: cls.capacity }, held, data.confirmDraft);
+    if (problem) throw new Error(problem);
     if (cur.status !== "confirmed" && cur.invoice_expires_at && new Date(cur.invoice_expires_at).getTime() > Date.now())
       throw new Error("They have a checkout open. Wait for it to finish or run out (about an hour).");
     const { error } = await supabaseAdmin.from("ignite_registrations").update({ class_id: cls.id, updated_at: new Date().toISOString() }).eq("id", data.id);

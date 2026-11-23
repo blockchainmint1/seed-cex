@@ -20,10 +20,11 @@ export function peerSecret() {
 }
 
 const minerCache = new Map<string, { at: number; v: MinerStatus }>();
-/** Miner status, remembered for 5 minutes per member (finished values only). */
+/** Miner status per member: a firm answer is remembered 5 minutes, "unknown" only 30 seconds (minerCacheMs). */
 export async function cachedMinerStatus(userId: string): Promise<MinerStatus> {
+  const { minerCacheMs } = await import("./ignite-classes");
   const hit = minerCache.get(userId);
-  if (hit && Date.now() - hit.at < 5 * 60_000) return hit.v;
+  if (hit && Date.now() - hit.at < minerCacheMs(hit.v)) return hit.v;
   const { minerStatusFor } = await import("./ignite-classes.server");
   const { status } = await minerStatusFor(userId);
   minerCache.set(userId, { at: Date.now(), v: status });

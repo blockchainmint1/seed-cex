@@ -351,9 +351,13 @@ function IgniteAdminPage() {
                   <select className={`${inputCls} mt-1`} value={detail.classId ?? ""} disabled={busy === "move"} onChange={async (e) => {
                     const to = e.target.value;
                     const name = className.get(to);
-                    if (!to || to === detail.classId || !window.confirm(`Move ${detail.fullName}'s seat to ${name}? What they paid stays the same.`)) return;
+                    const isDraft = d.classes.find((c) => c.id === to)?.status === "draft";
+                    const ask = isDraft
+                      ? `${name} is still a draft (hidden from the public). Move ${detail.fullName}'s seat there anyway? What they paid stays the same.`
+                      : `Move ${detail.fullName}'s seat to ${name}? What they paid stays the same.`;
+                    if (!to || to === detail.classId || !window.confirm(ask)) return;
                     setBusy("move");
-                    try { const r = await move({ data: { id: detail.id, classId: to } }); setNotice({ tone: "ok", text: `${detail.fullName} moved to ${r.className}.` }); setDetail({ ...detail, classId: to }); await reload(); }
+                    try { const r = await move({ data: { id: detail.id, classId: to, confirmDraft: isDraft } }); setNotice({ tone: "ok", text: `${detail.fullName} moved to ${r.className}.` }); setDetail({ ...detail, classId: to }); await reload(); }
                     catch (err) { setNotice({ tone: "error", text: (err as Error).message }); }
                     finally { setBusy(null); }
                   }}>

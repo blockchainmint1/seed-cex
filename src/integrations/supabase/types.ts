@@ -2675,6 +2675,33 @@ export type Database = {
         }
         Relationships: []
       }
+      miner_check_health: {
+        Row: {
+          fails_in_a_row: number
+          id: string
+          last_fail_at: string | null
+          last_fail_reason: string | null
+          last_ok_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          fails_in_a_row?: number
+          id?: string
+          last_fail_at?: string | null
+          last_fail_reason?: string | null
+          last_ok_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          fails_in_a_row?: number
+          id?: string
+          last_fail_at?: string | null
+          last_fail_reason?: string | null
+          last_ok_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       nectarpay_events: {
         Row: {
           event_id: string

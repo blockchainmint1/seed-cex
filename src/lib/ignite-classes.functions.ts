@@ -129,6 +129,15 @@ export const checkIgniteMiner = createServerFn({ method: "POST" })
     return minerStatusFor(data.userId);
   });
 
+/** Admin: when Honest.Money's miner check last answered properly, and its last failure (auditor K1). */
+export const getMinerCheckHealth = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await requireAdmin(context as never);
+    const { minerCheckHealth } = await import("./ignite-classes.server");
+    return minerCheckHealth();
+  });
+
 // ---- Interest list ----
 
 /** Public: "tell me about new classes". Stores the email only; IP-capped; no email is sent. */

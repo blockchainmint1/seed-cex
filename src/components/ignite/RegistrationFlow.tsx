@@ -180,7 +180,7 @@ export function RegistrationFlow({ cls }: { cls: PublicClass }) {
           {cls.minersFree && price.feeUsd > 0 && quote && quote.miner !== "miner" && (
             <p className="mt-3 rounded-2xl border border-border px-4 py-3 text-sm text-muted-foreground">
               {quote.miner === "unknown"
-                ? "HME miners attend free. We couldn't confirm mining hash power on your Honest.Money account right now. Mining? Try again in a few minutes, or email support@honest.money before paying."
+                ? "HME miners attend free. We didn't find mining hash power on your Honest.Money account, so the regular class fee is shown. If you do mine, email support@honest.money before paying and we'll waive it."
                 : "HME miners attend free. Your Honest.Money account doesn't show any active mining hash power."}
             </p>
           )}

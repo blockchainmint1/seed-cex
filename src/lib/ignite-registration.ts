@@ -104,7 +104,7 @@ export const SEAT_NOTICE_GRACE_MS = 2 * 60_000;
 export const SEAT_NOTICE_GIVE_UP_MS = 3 * 86_400_000;
 /**
  * A confirmed seat whose email/Telegram/Honest.Money report never finished (the payment notice
- * was cut off after the seat was marked paid — mvforlife34, Nov 23 2026) is picked up again here.
+ * was cut off after the seat was marked paid — one member, Nov 23 2026) is picked up again here.
  */
 export function seatNoticesDue(row: { status: string; confirmed_at: string | null; notices_done_at: string | null }, now: number): boolean {
   if (row.status !== "confirmed" || row.notices_done_at || !row.confirmed_at) return false;

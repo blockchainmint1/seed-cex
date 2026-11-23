@@ -288,3 +288,43 @@ export function utcToZoned(iso: string, tz: string): { date: string; time: strin
     .formatToParts(new Date(iso)).map((x) => [x.type, x.value]));
   return { date: `${p.year}-${p.month}-${p.day}`, time: `${String(+p.hour! % 24).padStart(2, "0")}:${p.minute}` };
 }
+
+// ---- Miner check health (auditor K1) ----
+
+/** How long a member's miner answer is remembered: a firm yes/no 5 minutes, "unknown" only 30 seconds. */
+export function minerCacheMs(status: MinerStatus): number {
+  return status === "unknown" ? 30_000 : 5 * 60_000;
+}
+
+/** A failed check goes to the error log at most once every 5 minutes, so an outage is one entry, not thousands. */
+export const MINER_FAIL_LOG_EVERY_MS = 5 * 60_000;
+export function shouldLogMinerFailure(lastFailAt: string | null | undefined, now = Date.now()): boolean {
+  if (!lastFailAt) return true;
+  const t = new Date(lastFailAt).getTime();
+  return !Number.isFinite(t) || now - t >= MINER_FAIL_LOG_EVERY_MS;
+}
+
+/** Admin view: is the miner check healthy? "down" when the latest answer was a failure. */
+export function minerCheckState(h: { lastOkAt: string | null; lastFailAt: string | null }): "ok" | "down" | "never" {
+  if (!h.lastOkAt && !h.lastFailAt) return "never";
+  if (!h.lastFailAt) return "ok";
+  if (!h.lastOkAt) return "down";
+  return new Date(h.lastFailAt).getTime() > new Date(h.lastOkAt).getTime() ? "down" : "ok";
+}
+
+// ---- Admin seat moves (auditor K4) ----
+
+/**
+ * Why an admin can't move a seat into this class, or null. Finished classes (status done or already
+ * ended) and full ones are refused; a closed class with room is allowed (admins may still seat people); a draft needs the admin's explicit OK (confirmDraft).
+ * `heldByOthers` = seats already held in the target class, not counting this member.
+ */
+export function seatMoveProblem(
+  target: { name: string; status: string; endsAt: string | null; capacity: number },
+  heldByOthers: number, confirmDraft: boolean, now = Date.now(),
+): string | null {
+  if (target.status === "done" || (target.endsAt && new Date(target.endsAt).getTime() <= now)) return `${target.name} has already finished.`;
+  if (heldByOthers >= target.capacity) return `${target.name} is full (${target.capacity} of ${target.capacity} seats taken).`;
+  if (target.status === "draft" && !confirmDraft) return `${target.name} is still a draft. Confirm to move the seat anyway.`;
+  return null;
+}

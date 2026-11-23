@@ -3,9 +3,9 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ExternalLink, Plus, Trash2, Upload } from "lucide-react";
-import { getAdminIgniteClasses, saveIgniteClass, uploadIgnitePhoto } from "@/lib/ignite-classes.functions";
+import { getAdminIgniteClasses, getMinerCheckHealth, saveIgniteClass, uploadIgnitePhoto } from "@/lib/ignite-classes.functions";
 import {
-  CLASS_STATUSES, DEFAULT_AGENDA, DEFAULT_BENEFITS, TIMEZONES, classPrice, dateRangeLabel, photoSrc, usd0, utcToZoned, zonedToUtc,
+  CLASS_STATUSES, DEFAULT_AGENDA, minerCheckState, DEFAULT_BENEFITS, TIMEZONES, classPrice, dateRangeLabel, photoSrc, usd0, utcToZoned, zonedToUtc,
   type AgendaItem, type ClassInput, type IgniteClassPublic,
 } from "@/lib/ignite-classes";
 import { Note, TabTitle, fieldLabel, inputCls } from "@/components/account/ui";
@@ -78,6 +78,7 @@ function ClassesPage() {
       <TabTitle title="To the Moon classes" desc="Every class gets its own page at /to-the-moon/<address>. Prices here are what checkout charges."
         right={editing ? null : <Button size="sm" onClick={() => setEditing("new")}><Plus /> New class</Button>} />
       {notice ? <Note tone="ok">{notice}</Note> : null}
+      <MinerCheckStatus />
       {editing ? (
         <ClassEditor initial={editing === "new" ? null : editing} onDone={(msg) => { setEditing(null); if (msg) setNotice(msg); }} />
       ) : q.isPending ? <Loading /> : q.error || !q.data ? <p role="alert" className="text-sm text-destructive">{(q.error as Error | null)?.message ?? "Couldn't load classes."}</p> : (
@@ -253,5 +254,33 @@ function ClassEditor({ initial, onDone }: { initial: AdminClass | null; onDone: 
         <Button type="button" variant="ghost" onClick={() => onDone()} disabled={busy === "save"}>Cancel</Button>
       </div>
     </form>
+  );
+}
+
+function ago(iso: string): string {
+  const m = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000));
+  if (m < 1) return "just now";
+  if (m < 60) return `${m} min ago`;
+  const h = Math.round(m / 60);
+  return h < 48 ? `${h} h ago` : `${Math.round(h / 24)} days ago`;
+}
+
+/** Auditor K1: show when Honest.Money's miner check last worked, so a broken check is noticed the same day. */
+function MinerCheckStatus() {
+  const fetchHealth = useServerFn(getMinerCheckHealth);
+  const q = useQuery({ queryKey: ["admin-miner-check-health"], queryFn: () => fetchHealth(), retry: false, refetchInterval: 60_000 });
+  if (!q.data) return null;
+  const h = q.data;
+  const state = minerCheckState(h);
+  if (state === "never") return <Note tone="info">Miner check: no member has been checked yet since this status started recording.</Note>;
+  if (state === "ok") {
+    return <Note tone="ok">Miner check working: Honest.Money last answered {h.lastOkAt ? ago(h.lastOkAt) : "—"}.</Note>;
+  }
+  return (
+    <Note tone="warn">
+      <strong>Miner check isn't answering.</strong> Last failure {h.lastFailAt ? ago(h.lastFailAt) : ""} ({h.lastFailReason ?? "unknown reason"}
+      {h.failsInARow > 1 ? `, ${h.failsInARow} in a row` : ""}). Last good answer: {h.lastOkAt ? ago(h.lastOkAt) : "never"}.
+      Until it works again, miners see the full class fee. Mark them by hand on the To the Moon seats page.
+    </Note>
   );
 }
