@@ -8,6 +8,7 @@ import { checkListingPromo, getListingPrices, getMyListingApplications, startLis
 import { DEFAULT_PRICES, LISTING_NETWORKS, PAYMENT_LABEL, packageById, pricedPackages, type ListingPrices, type PackageId, type PaymentStatus } from "@/lib/listing";
 import { LAUNCH_DATE_LABEL } from "@/lib/launch";
 import { shownEmail } from "@/lib/key-signin/rules";
+import { storedSignupRef } from "@/lib/referral-capture";
 
 const TITLE = "List on Seeds — bring your community, keep your holders safe";
 const desc = (from: number) => `List your coin on Seeds from ${usd(from)}. No trading-volume minimum, no liquidity or market-maker requirements, and no Seeds fee on trades, ever. Holders keep their coins in their own wallets.`;
@@ -303,7 +304,7 @@ function ApplySection({ pkg, setPkg, prices, paidId }: { pkg: PackageId; setPkg:
     const f = Object.fromEntries(new FormData(form).entries());
     setBusy(true); setErr(null); setDone(null);
     try {
-      const r = await submit({ data: { ...f, package: pkg, promoCode: quote?.code ?? (codeText.trim() || null), origin: window.location.origin } });
+      const r = await submit({ data: { ...f, package: pkg, promoCode: quote?.code ?? (codeText.trim() || null), origin: window.location.origin, ref: storedSignupRef() } });
       qc.invalidateQueries({ queryKey: ["my-listing-apps"] });
       if (r.checkoutUrl) { window.location.assign(r.checkoutUrl); return; }
       form.reset(); setQuote(null); setCodeText("");

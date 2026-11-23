@@ -1827,6 +1827,7 @@ export type Database = {
           payment_status: string
           promo_code: string | null
           promo_code_id: string | null
+          ref_code: string | null
           reviewed_by: string | null
           status: string
           ticker: string
@@ -1862,6 +1863,7 @@ export type Database = {
           payment_status?: string
           promo_code?: string | null
           promo_code_id?: string | null
+          ref_code?: string | null
           reviewed_by?: string | null
           status?: string
           ticker: string
@@ -1897,6 +1899,7 @@ export type Database = {
           payment_status?: string
           promo_code?: string | null
           promo_code_id?: string | null
+          ref_code?: string | null
           reviewed_by?: string | null
           status?: string
           ticker?: string
@@ -5323,8 +5326,14 @@ export type Database = {
           code_lc: string
           ignite_paid: number
           ignite_started: number
+          ignite_usd: number
           link_seen_at: string
+          listing_usd: number
+          listings_paid: number
+          listings_started: number
           owner_id: string
+          setup_done: number
+          setup_linked: number
           signups_all: number
           signups_since: number
           swap_usd: number

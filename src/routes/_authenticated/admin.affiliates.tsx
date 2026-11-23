@@ -48,7 +48,7 @@ function AdminAffiliates() {
       />
       {q.isPending ? <Loading /> : q.error ? <Note tone="error">{(q.error as Error).message}</Note> : (
         <>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-5">
             <Stat label={`New members · ${days}d`} value={num(q.data.totals.membersPeriod)} />
             <Stat label={`Referred · ${days}d`} value={num(q.data.totals.referredPeriod)} tone="good" />
             <Stat label={`Invite clicks · ${days}d`} value={num(q.data.totals.clicksPeriod)} />
@@ -56,14 +56,16 @@ function AdminAffiliates() {
             <Stat label="Members, all time" value={num(q.data.totals.membersAll)} />
             <Stat label="Referred, all time" value={num(q.data.totals.referredAll)} />
             <Stat label="Opened their invite link" value={num(q.data.totals.linksOpened)} />
-            <Stat label="To the Moon seats paid via a code" value={num(q.data.totals.ignitePaidByRef)} />
+            <Stat label="Class seats paid via invites" value={`${num(q.data.totals.ignitePaidByRef)} · ${usd(q.data.totals.igniteUsdByRef)}`} tone="good" />
+            <Stat label="Listings paid via invites" value={`${num(q.data.totals.listingsPaidByRef)} · ${usd(q.data.totals.listingUsdByRef)}`} tone="good" />
+            <Stat label="Referred members set up" value={`${num(q.data.totals.setupLinkedByRef)} of ${num(q.data.totals.referredAll)}`} />
           </div>
           <JoinChart series={q.data.series} />
           <AffiliateTable rows={q.data.affiliates} days={days} newMembers={q.data.totals.membersPeriod} />
         </>
       )}
       <p className="text-xs text-muted-foreground">
-        Open a row to see the members that code brought in (all time). A sign-up counts as referred when the member joins Seeds with someone’s code within 7 days (first code wins). Clicks count people opening seeds.honest.money/invite/… links — link previews and repeat clicks within 10 minutes don’t count. Traded = exchange trades (called-off matches left out); swapped = finished swaps. TSD is read live from each member’s trading pocket.
+        Open a row to see the members that code brought in (all time). A sign-up counts as referred when the member joins Seeds with someone’s code within 7 days (first code wins). Clicks count people opening seeds.honest.money/invite/… links — link previews and repeat clicks within 10 minutes don’t count. Traded = exchange trades (called-off matches left out); swapped = finished swaps. TSD is read live from each member’s trading pocket. Set up = linked a wallet (the smaller number finished the setup guide). Class seats and listings are credited to the invite code the buyer used at checkout, or else the code they joined Seeds with — never their own code; dollars are the price paid (class amounts include the trade deposit), and refunded listings don’t count. Figures are for watching who shares, not for paying anyone.
       </p>
     </div>
   );
@@ -121,7 +123,7 @@ function AffiliateTable({ rows, days, newMembers }: { rows: Row[]; days: number;
   const onSort = (k: ColKey) => setSort((s) => (s.key === k ? { key: k, dir: s.dir === "asc" ? "desc" : "asc" } : { key: k, dir: k === "name" ? "asc" : "desc" }));
   const toggle = (k: string) => setOpen((o) => { const n = new Set(o); if (n.has(k)) n.delete(k); else n.add(k); return n; });
   const h = (label: string, k: ColKey, align: "left" | "right" = "right") => <SortHeader label={label} k={k} sort={sort} onSort={onSort} align={align} />;
-  const COLS = 9;
+  const COLS = 11;
 
   return (
     <Panel
@@ -141,7 +143,7 @@ function AffiliateTable({ rows, days, newMembers }: { rows: Row[]; days: number;
         </div>
       }
     >
-      <table className="w-full min-w-[62rem] text-sm">
+      <table className="w-full min-w-[74rem] text-sm">
         <thead className="font-mono text-[10px] tracking-[0.14em] text-muted-foreground uppercase">
           <tr className="border-b border-border">
             {h("Member / code", "name", "left")}
@@ -151,8 +153,10 @@ function AffiliateTable({ rows, days, newMembers }: { rows: Row[]; days: number;
             {h("Active", "activeMembers")}
             {h("Traded", "tradedValue")}
             {h("Swapped", "swapUsd")}
+            {h("Set up", "setupLinked")}
             {h("TSD held", "tsd")}
-            {h("To the Moon paid", "ignitePaid")}
+            {h("Class seats", "igniteUsd")}
+            {h("Listings", "listingUsd")}
           </tr>
         </thead>
         <tbody>
@@ -188,13 +192,15 @@ function AffiliateTable({ rows, days, newMembers }: { rows: Row[]; days: number;
                   <td className="num px-3 py-2 text-right">{num(r.activeMembers)}</td>
                   <td className="num px-3 py-2 text-right">{usd(r.tradedValue)}<div className="text-xs text-muted-foreground">{num(r.trades)} trades</div></td>
                   <td className="num px-3 py-2 text-right">{usd(r.swapUsd)}<div className="text-xs text-muted-foreground">{num(r.swaps)} swaps</div></td>
+                  <td className="num px-3 py-2 text-right">{r.signupsAll === 0 ? "—" : <>{num(r.setupLinked)}<div className="text-xs text-muted-foreground">{num(r.setupDone)} finished guide</div></>}</td>
                   <td className="num px-3 py-2 text-right">{r.signupsAll === 0 ? "—" : tsdQ.isPending ? "…" : tsd(t)}</td>
-                  <td className="num px-3 py-2 text-right">{num(r.ignitePaid)}{r.igniteStarted > r.ignitePaid ? <div className="text-xs text-muted-foreground">{num(r.igniteStarted - r.ignitePaid)} unpaid</div> : null}</td>
+                  <td className="num px-3 py-2 text-right">{r.igniteStarted === 0 ? "—" : <>{usd(r.igniteUsd)}<div className="text-xs text-muted-foreground">{num(r.ignitePaid)} paid{r.igniteStarted > r.ignitePaid ? ` · ${num(r.igniteStarted - r.ignitePaid)} unpaid` : ""}</div></>}</td>
+                  <td className="num px-3 py-2 text-right">{r.listingsStarted === 0 ? "—" : <>{usd(r.listingUsd)}<div className="text-xs text-muted-foreground">{num(r.listingsPaid)} paid{r.listingsStarted > r.listingsPaid ? ` · ${num(r.listingsStarted - r.listingsPaid)} not paid` : ""}</div></>}</td>
                 </tr>
                 {on ? (
                   <tr className="border-b border-border">
                     <td colSpan={COLS} className="bg-muted/10 p-0">
-                      {r.signupsAll === 0 ? <p className="px-6 py-3 text-sm text-muted-foreground">Nobody has joined with this code yet.</p> : <MembersList days={days} code={r.code} />}
+                      {r.signupsAll === 0 ? <p className="px-6 py-3 text-sm text-muted-foreground">Nobody has joined Seeds with this code yet{r.igniteStarted || r.listingsStarted ? " — its class seats or listings came from people who used the link at checkout" : ""}.</p> : <MembersList days={days} code={r.code} />}
                     </td>
                   </tr>
                 ) : null}

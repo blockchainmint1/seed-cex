@@ -77,8 +77,9 @@ export const submitListingApplication = createServerFn({ method: "POST" })
     app: cleanApplication(d ?? {}),
     promoCode: d?.promoCode ? cleanPromoCode(d.promoCode) ?? "__bad__" : null,
     origin: typeof d?.origin === "string" ? d.origin : "",
+    ref: typeof d?.ref === "string" ? d.ref : null,
   }))
-  .handler(async ({ data: { app: data, promoCode, origin }, context }) => {
+  .handler(async ({ data: { app: data, promoCode, origin, ref }, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { livePrices, openListingCheckout, tellListingAdmins } = await import("./listing-pay.server");
     const since = new Date(Date.now() - 24 * 3600_000).toISOString();
@@ -100,13 +101,22 @@ export const submitListingApplication = createServerFn({ method: "POST" })
     }
     const price = priceWithPromo(listPrice, promo);
 
+    // Affiliate credit (Admin → Affiliates only; never changes the price): the invite code this
+    // browser came with, else the code the applicant joined with, never their own.
+    const [{ data: joined }, { data: own }] = await Promise.all([
+      supabaseAdmin.from("referrals").select("code").eq("user_id", context.userId).maybeSingle(),
+      supabaseAdmin.from("referral_codes").select("code").eq("user_id", context.userId).maybeSingle(),
+    ]);
+    const { purchaseRefCode } = await import("./affiliates");
+    const refCode = purchaseRefCode({ browserCode: ref, joinedCode: joined?.code ?? null, ownCode: own?.code ?? null });
+
     const { data: row, error } = await supabaseAdmin.from("listing_applications").insert({
       user_id: context.userId, package: data.package, coin_name: data.coinName, ticker: data.ticker, network: data.network,
       contract: data.contract, website: data.website, community: data.community, contact_name: data.contactName,
       contact_email: data.contactEmail, contact_telegram: data.contactTelegram, notes: data.notes,
       list_price_usd: price.listPriceUsd, discount_usd: price.discountUsd, amount_usd: price.amountUsd,
       promo_code_id: promo?.id ?? null, promo_code: promo ? promoCode : null,
-      payment_status: price.amountUsd > 0 ? "unpaid" : "free",
+      payment_status: price.amountUsd > 0 ? "unpaid" : "free", ref_code: refCode,
     }).select("id").single();
     if (error || !row) {
       if (promo) await supabaseAdmin.rpc("release_listing_promo", { _id: promo.id });

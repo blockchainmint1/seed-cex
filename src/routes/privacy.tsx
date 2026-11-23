@@ -317,7 +317,7 @@ function Privacy() {
               <><B>Your light or dark mode choice.</B></>,
               <><B>The page you were on before signing in</B>, for up to 24 hours, so we can bring you back to it.</>,
               <><B>A random visit number</B> for our own visit counter (see Site analytics). It is kept only until you close the browser tab.</>,
-              <><B>The invite code you arrived with</B> (&ldquo;seeds_ref&rdquo;), for 30 days, when you open someone&rsquo;s Seeds invite link &mdash; so if you join, Seeds can show which member invited you. The first code is kept; nothing else about the visit is saved.</>,
+              <><B>The invite code you arrived with</B> (&ldquo;seeds_ref&rdquo;), for 30 days, when you open someone&rsquo;s Seeds invite link &mdash; so if you join, reserve a class seat or apply to list a coin, Seeds can show which member invited you. The first code is kept; nothing else about the visit is saved.</>,
             ]}
           />
         </Sub>

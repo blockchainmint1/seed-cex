@@ -36,7 +36,8 @@ describe("invite clicks", () => {
 
 const row = (p: Partial<AffiliateRow>): AffiliateRow => ({
   code: "a", ownerId: null, ownerName: null, linkSeenAt: null, clicksAll: 0, clicksPeriod: 0, signupsAll: 0, signupsPeriod: 0,
-  activeMembers: 0, trades: 0, tradedValue: 0, swaps: 0, swapUsd: 0, ignitePaid: 0, igniteStarted: 0, ...p,
+  activeMembers: 0, trades: 0, tradedValue: 0, swaps: 0, swapUsd: 0, ignitePaid: 0, igniteStarted: 0, igniteUsd: 0,
+  setupLinked: 0, setupDone: 0, listingsPaid: 0, listingsStarted: 0, listingUsd: 0, ...p,
 });
 
 describe("dashboard", () => {
@@ -76,5 +77,32 @@ describe("matching invite codes to their owners", () => {
   test("a broken answer gives nothing", () => {
     expect(codesFromMemberCheck([cory], null).size).toBe(0);
     expect(codesFromMemberCheck([cory], { results: [{ result: "found", hmeId: cory, username: "bad code!", status: "APPROVED" }] }).size).toBe(0);
+  });
+});
+
+import { purchaseRefCode } from "./affiliates";
+describe("crediting class seats and listings to an affiliate", () => {
+  test("the invite code used at checkout wins", () => {
+    expect(purchaseRefCode({ browserCode: "fletch", joinedCode: "sjms73", ownCode: null })).toBe("fletch");
+  });
+  test("no code at checkout: the code the buyer joined Seeds with", () => {
+    expect(purchaseRefCode({ browserCode: null, joinedCode: "sjms73", ownCode: null })).toBe("sjms73");
+  });
+  test("nobody is credited for buying with their own code (any letter case)", () => {
+    expect(purchaseRefCode({ browserCode: "Cory", joinedCode: null, ownCode: "cory" })).toBeNull();
+    expect(purchaseRefCode({ browserCode: "cory", joinedCode: "sjms73", ownCode: "cory" })).toBe("sjms73");
+  });
+  test("a malformed code is ignored", () => {
+    expect(purchaseRefCode({ browserCode: "bad code!", joinedCode: null, ownCode: null })).toBeNull();
+  });
+});
+
+describe("new dashboard sorts", () => {
+  test("class dollars, listing dollars and set-up members can be sorted", () => {
+    expect(affiliateSort("igniteUsd")).toBe("igniteUsd");
+    expect(affiliateSort("listingUsd")).toBe("listingUsd");
+    expect(affiliateSort("setupLinked")).toBe("setupLinked");
+    const rows = [row({ code: "a", listingUsd: 10_000 }), row({ code: "b", listingUsd: 50_000 })];
+    expect(sortAffiliates(rows, "listingUsd").map((r) => r.code)).toEqual(["b", "a"]);
   });
 });

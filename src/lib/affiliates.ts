@@ -54,9 +54,12 @@ export type AffiliateRow = {
   code: string; ownerId: string | null; ownerName: string | null; linkSeenAt: string | null;
   clicksAll: number; clicksPeriod: number; signupsAll: number; signupsPeriod: number;
   activeMembers: number; trades: number; tradedValue: number; swaps: number; swapUsd: number;
-  ignitePaid: number; igniteStarted: number;
+  ignitePaid: number; igniteStarted: number; igniteUsd: number;
+  /** Members this code brought in who linked a wallet / finished the setup guide. */
+  setupLinked: number; setupDone: number;
+  listingsPaid: number; listingsStarted: number; listingUsd: number;
 };
-export const AFFILIATE_SORTS = ["signupsPeriod", "signupsAll", "clicksPeriod", "tradedValue", "swapUsd", "activeMembers", "ignitePaid"] as const;
+export const AFFILIATE_SORTS = ["signupsPeriod", "signupsAll", "clicksPeriod", "tradedValue", "swapUsd", "activeMembers", "ignitePaid", "igniteUsd", "setupLinked", "listingUsd"] as const;
 export type AffiliateSort = (typeof AFFILIATE_SORTS)[number];
 export const affiliateSort = (v: unknown): AffiliateSort =>
   (AFFILIATE_SORTS as readonly string[]).includes(String(v)) ? (v as AffiliateSort) : "signupsPeriod";
@@ -65,6 +68,17 @@ export const affiliateSort = (v: unknown): AffiliateSort =>
 export function sortAffiliates(rows: AffiliateRow[], key: AffiliateSort): AffiliateRow[] {
   return [...rows].sort((a, b) =>
     (b[key] - a[key]) || (b.signupsAll - a.signupsAll) || (b.clicksAll - a.clicksAll) || a.code.localeCompare(b.code));
+}
+
+/**
+ * The invite code to credit a purchase (class seat, coin listing) to: the code this browser
+ * arrived with, else the code the buyer joined Seeds with. Never the buyer's own code
+ * (any letter case). Mirrors the attribution in the admin_affiliates database function.
+ */
+export function purchaseRefCode(o: { browserCode: unknown; joinedCode: string | null; ownCode: string | null }): string | null {
+  const own = o.ownCode?.toLowerCase() ?? null;
+  const ok = (c: string | null) => (c && c.toLowerCase() !== own ? c : null);
+  return ok(cleanCode(o.browserCode)) ?? ok(cleanCode(o.joinedCode));
 }
 
 /** An affiliate is "sharing" in a period when their link was clicked or brought someone in. */

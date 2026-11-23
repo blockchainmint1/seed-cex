@@ -67,14 +67,16 @@ export const getAdminAffiliates = createServerFn({ method: "POST" })
       supabaseAdmin.from("referrals").select("recorded_at").gte("recorded_at", chartFrom).limit(20_000),
     ]);
     if (aff.error) throw new Error("Couldn't load affiliates.");
-    type Raw = { code_lc: string; code: string; owner_id: string | null; link_seen_at: string | null; clicks_all: number; clicks_since: number; signups_all: number; signups_since: number; active_members: number; trades: number; traded_value: number | string; swaps: number; swap_usd: number | string; ignite_paid: number; ignite_started: number };
+    type Raw = { code_lc: string; code: string; owner_id: string | null; link_seen_at: string | null; clicks_all: number; clicks_since: number; signups_all: number; signups_since: number; active_members: number; trades: number; traded_value: number | string; swaps: number; swap_usd: number | string; ignite_paid: number; ignite_started: number; ignite_usd: number | string; setup_linked: number; setup_done: number; listings_paid: number; listings_started: number; listing_usd: number | string };
     const raw = (aff.data ?? []) as Raw[];
     const names = await namesFor([...new Set(raw.map((r) => r.owner_id).filter((x): x is string => !!x))]);
     const rows: AffiliateRow[] = raw.map((r) => ({
       code: r.code, ownerId: r.owner_id, ownerName: r.owner_id ? names.get(r.owner_id) ?? null : null, linkSeenAt: r.link_seen_at,
       clicksAll: Number(r.clicks_all), clicksPeriod: Number(r.clicks_since), signupsAll: Number(r.signups_all), signupsPeriod: Number(r.signups_since),
       activeMembers: Number(r.active_members), trades: Number(r.trades), tradedValue: Number(r.traded_value), swaps: Number(r.swaps), swapUsd: Number(r.swap_usd),
-      ignitePaid: Number(r.ignite_paid), igniteStarted: Number(r.ignite_started),
+      ignitePaid: Number(r.ignite_paid), igniteStarted: Number(r.ignite_started), igniteUsd: Number(r.ignite_usd),
+      setupLinked: Number(r.setup_linked), setupDone: Number(r.setup_done),
+      listingsPaid: Number(r.listings_paid), listingsStarted: Number(r.listings_started), listingUsd: Number(r.listing_usd),
     }));
     const perDay = new Map<string, { day: string; total: number; referred: number }>();
     const bump = (iso: string, k: "total" | "referred") => {
@@ -93,6 +95,10 @@ export const getAdminAffiliates = createServerFn({ method: "POST" })
         sharingPeriod: rows.filter(isSharing).length,
         linksOpened: rows.filter((r) => r.linkSeenAt).length,
         ignitePaidByRef: rows.reduce((s, r) => s + r.ignitePaid, 0),
+        igniteUsdByRef: rows.reduce((s, r) => s + r.igniteUsd, 0),
+        listingsPaidByRef: rows.reduce((s, r) => s + r.listingsPaid, 0),
+        listingUsdByRef: rows.reduce((s, r) => s + r.listingUsd, 0),
+        setupLinkedByRef: rows.reduce((s, r) => s + r.setupLinked, 0),
       },
       series: fillDays([...perDay.values()], chartDays),
       affiliates: sortAffiliates(rows, data.sort),
