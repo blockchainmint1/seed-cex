@@ -60,3 +60,92 @@ describe("apply limit", () => {
     expect(canApply(3)).toBe(false);
   });
 });
+
+import {
+  DEFAULT_PRICES, applicationIdFromOrderId, checkoutBlock, cleanPrices, cleanPromoCode, cleanPromoInput, listingInvoicePaid,
+  listingOrderId, paymentActionAllowed, priceWithPromo, pricesFromRows, promoLabel, promoProblem, refundNeeded, type Promo,
+} from "./listing";
+
+describe("editable prices", () => {
+  test("defaults are $1,000 / $2,500 / $5,000", () => {
+    expect(DEFAULT_PRICES).toEqual({ seed: 1000, sapling: 2500, grove: 5000 });
+  });
+  test("stored prices replace the defaults; broken or missing rows fall back", () => {
+    expect(pricesFromRows([{ package: "seed", price_usd: "750" }, { package: "grove", price_usd: 0 }])).toEqual({ seed: 750, sapling: 2500, grove: 5000 });
+    expect(pricesFromRows(null)).toEqual(DEFAULT_PRICES);
+  });
+  test("admin prices must be $1–$1,000,000 with at most 2 decimals", () => {
+    expect(cleanPrices({ seed: "$1,200", sapling: 2500, grove: "4999.50" })).toEqual({ seed: 1200, sapling: 2500, grove: 4999.5 });
+    expect(() => cleanPrices({ seed: 0, sapling: 2500, grove: 5000 })).toThrow(/Seed price/);
+    expect(() => cleanPrices({ seed: 1000, sapling: 2500.555, grove: 5000 })).toThrow(/2 decimals/);
+  });
+});
+
+const promo = (p: Partial<Promo> = {}): Promo => ({ code: "LAUNCH", kind: "percent", value: 20, packages: null, maxUses: null, uses: 0, expiresAt: null, active: true, ...p });
+
+describe("promo codes", () => {
+  test("codes ignore case and spaces", () => {
+    expect(cleanPromoCode(" launch 25 ")).toBe("LAUNCH25");
+    expect(cleanPromoCode("ab")).toBeNull();
+  });
+  test("20% off Sapling at $2,500 = $2,000", () => {
+    expect(priceWithPromo(2500, { kind: "percent", value: 20 })).toEqual({ listPriceUsd: 2500, discountUsd: 500, amountUsd: 2000 });
+  });
+  test("$500 off Seed at $1,000 = $500; a dollar discount never goes below zero", () => {
+    expect(priceWithPromo(1000, { kind: "amount", value: 500 }).amountUsd).toBe(500);
+    expect(priceWithPromo(1000, { kind: "amount", value: 5000 })).toEqual({ listPriceUsd: 1000, discountUsd: 1000, amountUsd: 0 });
+  });
+  test("100% off is free, and a balance under $1 is waived", () => {
+    expect(priceWithPromo(5000, { kind: "percent", value: 100 }).amountUsd).toBe(0);
+    expect(priceWithPromo(1000, { kind: "amount", value: 999.5 })).toEqual({ listPriceUsd: 1000, discountUsd: 1000, amountUsd: 0 });
+  });
+  test("paused, ended, used-up and wrong-package codes are refused", () => {
+    const now = Date.parse("2026-11-23T12:00:00Z");
+    expect(promoProblem(promo(), "seed", now)).toBeNull();
+    expect(promoProblem(promo({ active: false }), "seed", now)).toBe("That code isn't valid.");
+    expect(promoProblem(null, "seed", now)).toBe("That code isn't valid.");
+    expect(promoProblem(promo({ expiresAt: "2026-11-23T11:59:59Z" }), "seed", now)).toBe("That code has ended.");
+    expect(promoProblem(promo({ maxUses: 5, uses: 5 }), "seed", now)).toBe("That code has been used up.");
+    expect(promoProblem(promo({ packages: ["grove"] }), "seed", now)).toBe("That code works only with Grove.");
+  });
+  test("admin input: percent is at most 100; ticking every package means all", () => {
+    const now = Date.parse("2026-11-23T12:00:00Z");
+    expect(() => cleanPromoInput({ code: "BIG", kind: "percent", value: 101 }, now)).toThrow(/100/);
+    expect(cleanPromoInput({ code: "all3", kind: "amount", value: 250, packages: ["seed", "sapling", "grove"] }, now).packages).toBeNull();
+    expect(() => cleanPromoInput({ code: "OLD", kind: "percent", value: 10, expiresAt: "2026-11-01" }, now)).toThrow(/future/);
+  });
+  test("labels", () => {
+    expect(promoLabel({ kind: "percent", value: 25 })).toBe("25% off");
+    expect(promoLabel({ kind: "amount", value: 500 })).toBe("$500 off");
+  });
+});
+
+describe("NectarPay payment", () => {
+  const id = "0b4f3a8e-1c2d-4e5f-8a9b-0c1d2e3f4a5b";
+  test("order id round-trips and nothing else is read as a listing", () => {
+    expect(applicationIdFromOrderId(listingOrderId(id))).toBe(id);
+    expect(applicationIdFromOrderId(`ignite-${id}`)).toBeNull();
+  });
+  test("an invoice counts only when confirmed, for at least the amount due, and for this application", () => {
+    const app = { id, amount_usd: 2000 };
+    expect(listingInvoicePaid({ status: "confirmed", fiat_amount: 2000, order_id: listingOrderId(id) }, app)).toBe(true);
+    expect(listingInvoicePaid({ status: "confirmed", fiat_amount: 1999, order_id: listingOrderId(id) }, app)).toBe(false);
+    expect(listingInvoicePaid({ status: "pending", fiat_amount: 2000, order_id: listingOrderId(id) }, app)).toBe(false);
+    expect(listingInvoicePaid({ status: "confirmed", fiat_amount: 2000, order_id: `ignite-${id}` }, app)).toBe(false);
+  });
+  test("checkout opens right after applying (status new), but never for paid, free, part-paid or declined", () => {
+    expect(checkoutBlock({ status: "new", payment_status: "unpaid", amount_usd: 1000 })).toBeNull();
+    expect(checkoutBlock({ status: "new", payment_status: "pending", amount_usd: 1000 })).toBeNull();
+    expect(checkoutBlock({ status: "new", payment_status: "paid", amount_usd: 1000 })).toMatch(/already paid/);
+    expect(checkoutBlock({ status: "new", payment_status: "free", amount_usd: 0 })).toMatch(/Nothing to pay/);
+    expect(checkoutBlock({ status: "new", payment_status: "underpaid", amount_usd: 1000 })).toMatch(/part of your payment/);
+    expect(checkoutBlock({ status: "declined", payment_status: "unpaid", amount_usd: 1000 })).toMatch(/declined/);
+  });
+  test("a paid application that is declined needs a refund by hand", () => {
+    expect(refundNeeded({ status: "declined", payment_status: "paid" })).toBe(true);
+    expect(refundNeeded({ status: "declined", payment_status: "refunded" })).toBe(false);
+    expect(paymentActionAllowed("mark_refunded", "paid")).toBe(true);
+    expect(paymentActionAllowed("mark_refunded", "unpaid")).toBe(false);
+    expect(paymentActionAllowed("mark_paid", "paid")).toBe(false);
+  });
+});

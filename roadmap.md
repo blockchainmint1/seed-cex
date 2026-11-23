@@ -390,3 +390,10 @@
 - [x] S4 AWS identifiers out of the public Vault record (Bobby: take them out)
 - [ ] CloudTrail alarms for the Vault KMS key — script written (seeds-vault-key-alarms.sh); blocked: Bobby runs it in CloudShell
 - [ ] Auditor review of S1–S4 fixes before publish (blocked: auditor)
+
+## Listings: editable prices, promo codes, NectarPay (Nov 23)
+- [x] Admin edits Seed/Sapling/Grove prices; /list, recruiting AI facts and goal math use the live prices
+- [x] Promo codes (percent or $ off, packages, max uses, end date, pause) in Admin → Listings
+- [x] Coin teams pay through NectarPay right after applying (Bobby: right after applying); declined coins refunded by hand
+- [x] Auditor note + tests
+- [ ] A real NectarPay test payment for a listing, and auditor review, before publishing (blocked: needs Bobby / auditor)

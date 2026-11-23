@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-// NectarPay signed invoice events (nectar-pay.com/api §6). Settle only on invoice.confirmed, re-checked against the API.
+// NectarPay signed invoice events (nectar-pay.com/api §6) for Ignite seats and coin listings. Settle only on invoice.confirmed, re-checked against the API.
 export const Route = createFileRoute("/api/public/nectarpay/webhook")({
   staticData: { sitemap: false },
   server: {
@@ -22,6 +22,13 @@ export const Route = createFileRoute("/api/public/nectarpay/webhook")({
         if (dup && !webhookNeedsWork(ev.type)) return Response.json({ ok: true, duplicate: true });
 
         try {
+          // Listing checkouts are remembered in listing_invoices (or named listing-<id> by NectarPay); everything else is Ignite.
+          const { listingApplicationForInvoice, processListingInvoiceEvent } = await import("@/lib/listing-pay.server");
+          const appId = await listingApplicationForInvoice(ev.data.invoice_id, ev.type);
+          if (appId) {
+            const result = await processListingInvoiceEvent(ev.type, appId, { invoice_id: ev.data.invoice_id, chain: ev.data.chain, paid_amount_usd: ev.data.paid_amount_usd });
+            return Response.json({ ok: true, result });
+          }
           const { processIgniteInvoiceEvent } = await import("@/lib/ignite-confirm.server");
           const result = await processIgniteInvoiceEvent(ev.type, { invoice_id: ev.data.invoice_id, chain: ev.data.chain, paid_amount_usd: ev.data.paid_amount_usd });
           return Response.json({ ok: true, result });

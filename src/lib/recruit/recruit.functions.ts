@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireAdmin } from "@/lib/admin-guard";
-import { LISTING_PACKAGES, packageById } from "@/lib/listing";
+import { PACKAGE_IDS } from "@/lib/listing";
 import {
   AI_DRAFTS_PER_DAY, CHANNELS, GOAL_BY, LEAD_EXCHANGES, STAGES, canMoveStage, dedupeKey, listingGoal, perMonthToGoal,
   outreachProblems, parsePastedLeads, scoreLead, stageAfterSend, type Channel, type ScoreReason, type Source, type Stage,
@@ -46,13 +46,15 @@ export const getRecruitOverview = createServerFn({ method: "GET" })
       db.from("recruit_messages").select("id", head).eq("ai_written", true).gte("created_at", since),
       db.from("recruit_messages").select("id", head).eq("status", "sent"),
       db.from("listing_applications").select("id", head),
-      db.from("listing_applications").select("package").eq("status", "live").limit(10_000),
+      db.from("listing_applications").select("package, amount_usd, payment_status").eq("status", "live").limit(10_000),
     ]);
     const approved = await db.from("listing_applications").select("id", head).eq("status", "approved");
     const liveRows = live.data ?? [];
     // Paid = live on Seeds, plus leads an admin moved to Paid that aren't live yet.
     const paidCount = liveRows.length + (Object.fromEntries(stageCounts).paid ?? 0);
-    const earnedUsd = liveRows.reduce((s, r) => s + (packageById(r.package)?.priceUsd ?? 0), 0);
+    // What teams actually paid (after promo codes); refunded listings count nothing.
+    const earnedUsd = liveRows.reduce((s, r) => s + (r.payment_status === "paid" ? Number(r.amount_usd) : 0), 0);
+    const prices = await (await import("@/lib/listing-pay.server")).livePrices();
     return {
       stages: Object.fromEntries(stageCounts) as Record<Stage, number>,
       total: total.count ?? 0,
@@ -64,7 +66,7 @@ export const getRecruitOverview = createServerFn({ method: "GET" })
       approvedWaiting: approved.count ?? 0,
       earnedUsd,
       goal: (() => {
-        const g = listingGoal(paidCount, LISTING_PACKAGES.map((p) => p.priceUsd));
+        const g = listingGoal(paidCount, PACKAGE_IDS.map((id) => prices[id]));
         return { ...g, by: GOAL_BY, perMonth: perMonthToGoal(g.remaining, Date.now(), GOAL_BY) };
       })(),
       exchanges: LEAD_EXCHANGES.map((e) => ({ ...e })),

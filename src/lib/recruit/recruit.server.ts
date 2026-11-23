@@ -6,7 +6,7 @@
 import { safeUrl } from "@/lib/markets/coin-research";
 import { PAIRS } from "@/lib/chains";
 import { SWAP_COINS } from "@/lib/xchain/assets";
-import { LISTING_PACKAGES } from "@/lib/listing";
+import { pricedPackages, type ListingPrices } from "@/lib/listing";
 import { LAUNCH_DATE_LABEL } from "@/lib/launch";
 import { CHANNEL_MAX, LEAD_EXCHANGES, chainFromCmc, chainName, isCoinTeam, type Channel } from "./recruit-rules";
 
@@ -130,15 +130,14 @@ export function keepTeam(c: Candidate, onSeeds: Set<string>): "keep" | "on_seeds
 
 /* ------------------------------- AI messages ------------------------------- */
 
-const pkg = LISTING_PACKAGES.map((p) => `${p.name} $${p.priceUsd.toLocaleString("en-US")} (${p.tag.toLowerCase()})`).join(", ");
-
-const PITCH = `About Seeds (use only these facts):
+/** The facts the AI may use, with the live package prices (admins can change them). */
+const pitch = (prices: ListingPrices) => `About Seeds (use only these facts):
 - Seeds (seeds.honest.money) is a crypto exchange in the Honest.Money ecosystem (honest.money). Trading opens ${LAUNCH_DATE_LABEL}.
 - Members keep their own keys. Seeds never holds their coins.
 - Holders pay no Seeds fees on trades, ever. They only pay network fees and outside services' fees, and Seeds never marks those up.
 - No trading-volume requirement, no market-maker or liquidity deposit.
 - A listed coin trades against TSD (Seeds' dollar coin), which members can swap for the other coins Seeds supports. Listed coins are open to the Seeds AI basket builder.
-- Coin teams pay a one-off listing package: ${pkg}. The application is free; payment is only asked after Seeds accepts the coin.
+- Coin teams pay a one-off listing package: ${pricedPackages(prices).map((p) => `${p.name} $${p.priceUsd.toLocaleString("en-US")} (${p.tag.toLowerCase()})`).join(", ")}. They pay in crypto when they apply; if Seeds declines the coin, the payment is refunded in full.
 - Apply at https://seeds.honest.money/list`;
 
 const RULES = `You write first-contact outreach from the Seeds team to a crypto coin team, inviting them to list on Seeds.
@@ -190,7 +189,7 @@ export async function writeDraft(f: DraftFacts, channel: Channel, sender: string
   const { generateResponse } = await import("@lovable.dev/ai-gateway");
   const res = await generateResponse({
     model: "openai/gpt-6.1-sol",
-    instructions: `${RULES}\n\n${PITCH}\n\n${FORMAT[channel]}`,
+    instructions: `${RULES}\n\n${pitch(await (await import("@/lib/listing-pay.server")).livePrices())}\n\n${FORMAT[channel]}`,
     input: facts,
     max_output_tokens: 900,
     reasoning: { effort: "low" },

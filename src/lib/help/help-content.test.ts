@@ -70,9 +70,13 @@ describe("help facts match Seeds' own rules", () => {
     }
   });
 
-  test("listing package prices match /list", () => {
+  test("listing help names each package but points to /list for prices (admins can change them)", () => {
     const t = text("list-coin");
-    for (const p of LISTING_PACKAGES) expect(t).toContain(`**${p.name} — ${money(p.priceUsd)}:**`);
+    for (const p of LISTING_PACKAGES) {
+      expect(t).toContain(`**${p.name}:**`);
+      expect(t).not.toContain(`${p.name} — ${money(p.priceUsd)}`);
+    }
+    expect(t).toContain("Current prices are on the List page");
   });
 
   test("network fee suggestions match the setup guide", () => {

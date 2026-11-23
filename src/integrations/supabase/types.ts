@@ -1594,9 +1594,38 @@ export type Database = {
           },
         ]
       }
+      listing_admin_events: {
+        Row: {
+          actor: string
+          application_id: string | null
+          created_at: string
+          detail: Json
+          id: number
+          kind: string
+        }
+        Insert: {
+          actor: string
+          application_id?: string | null
+          created_at?: string
+          detail?: Json
+          id?: number
+          kind: string
+        }
+        Update: {
+          actor?: string
+          application_id?: string | null
+          created_at?: string
+          detail?: Json
+          id?: number
+          kind?: string
+        }
+        Relationships: []
+      }
       listing_applications: {
         Row: {
           admin_note: string | null
+          amount_usd: number
+          checkout_url: string | null
           coin_name: string
           community: string | null
           contact_email: string
@@ -1604,10 +1633,23 @@ export type Database = {
           contact_telegram: string | null
           contract: string | null
           created_at: string
+          discount_usd: number
           id: string
+          invoice_expires_at: string | null
+          invoice_id: string | null
+          list_price_usd: number
           network: string
           notes: string | null
           package: string
+          paid_amount_usd: number | null
+          paid_asset: string | null
+          paid_at: string | null
+          paid_chain: string | null
+          paid_invoice_id: string | null
+          payment_note: string | null
+          payment_status: string
+          promo_code: string | null
+          promo_code_id: string | null
           reviewed_by: string | null
           status: string
           ticker: string
@@ -1617,6 +1659,8 @@ export type Database = {
         }
         Insert: {
           admin_note?: string | null
+          amount_usd?: number
+          checkout_url?: string | null
           coin_name: string
           community?: string | null
           contact_email: string
@@ -1624,10 +1668,23 @@ export type Database = {
           contact_telegram?: string | null
           contract?: string | null
           created_at?: string
+          discount_usd?: number
           id?: string
+          invoice_expires_at?: string | null
+          invoice_id?: string | null
+          list_price_usd?: number
           network: string
           notes?: string | null
           package: string
+          paid_amount_usd?: number | null
+          paid_asset?: string | null
+          paid_at?: string | null
+          paid_chain?: string | null
+          paid_invoice_id?: string | null
+          payment_note?: string | null
+          payment_status?: string
+          promo_code?: string | null
+          promo_code_id?: string | null
           reviewed_by?: string | null
           status?: string
           ticker: string
@@ -1637,6 +1694,8 @@ export type Database = {
         }
         Update: {
           admin_note?: string | null
+          amount_usd?: number
+          checkout_url?: string | null
           coin_name?: string
           community?: string | null
           contact_email?: string
@@ -1644,16 +1703,135 @@ export type Database = {
           contact_telegram?: string | null
           contract?: string | null
           created_at?: string
+          discount_usd?: number
           id?: string
+          invoice_expires_at?: string | null
+          invoice_id?: string | null
+          list_price_usd?: number
           network?: string
           notes?: string | null
           package?: string
+          paid_amount_usd?: number | null
+          paid_asset?: string | null
+          paid_at?: string | null
+          paid_chain?: string | null
+          paid_invoice_id?: string | null
+          payment_note?: string | null
+          payment_status?: string
+          promo_code?: string | null
+          promo_code_id?: string | null
           reviewed_by?: string | null
           status?: string
           ticker?: string
           updated_at?: string
           user_id?: string
           website?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_applications_promo_code_id_fkey"
+            columns: ["promo_code_id"]
+            isOneToOne: false
+            referencedRelation: "listing_promo_codes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      listing_invoices: {
+        Row: {
+          amount_usd: number
+          application_id: string
+          created_at: string
+          invoice_id: string
+        }
+        Insert: {
+          amount_usd: number
+          application_id: string
+          created_at?: string
+          invoice_id: string
+        }
+        Update: {
+          amount_usd?: number
+          application_id?: string
+          created_at?: string
+          invoice_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_invoices_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "listing_applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      listing_prices: {
+        Row: {
+          package: string
+          price_usd: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          package: string
+          price_usd: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          package?: string
+          price_usd?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      listing_promo_codes: {
+        Row: {
+          active: boolean
+          code: string
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          kind: string
+          max_uses: number | null
+          note: string | null
+          packages: string[] | null
+          updated_at: string
+          uses: number
+          value: number
+        }
+        Insert: {
+          active?: boolean
+          code: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          kind: string
+          max_uses?: number | null
+          note?: string | null
+          packages?: string[] | null
+          updated_at?: string
+          uses?: number
+          value: number
+        }
+        Update: {
+          active?: boolean
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          kind?: string
+          max_uses?: number | null
+          note?: string | null
+          packages?: string[] | null
+          updated_at?: string
+          uses?: number
+          value?: number
         }
         Relationships: []
       }
@@ -4837,6 +5015,14 @@ export type Database = {
         Args: { _id: string; _user_id: string }
         Returns: boolean
       }
+      claim_listing_promo: {
+        Args: { _code: string; _package: string }
+        Returns: {
+          id: string
+          kind: string
+          value: number
+        }[]
+      }
       claim_pocket_spend_lock: {
         Args: { _token: string; _ttl_seconds: number; _user: string }
         Returns: boolean
@@ -4934,6 +5120,7 @@ export type Database = {
         Args: { _amount: number; _id: string }
         Returns: undefined
       }
+      release_listing_promo: { Args: { _id: string }; Returns: undefined }
       release_pocket_spend_lock: {
         Args: { _token: string; _user: string }
         Returns: undefined

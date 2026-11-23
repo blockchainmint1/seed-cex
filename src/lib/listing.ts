@@ -1,7 +1,10 @@
 /**
  * List on Seeds (pure, tested): the three listing packages and the rules for
- * an application. Prices are Bobby's (Nov 18 2026): $1,000 / $2,500 / $5,000,
- * paid by the coin's team — never by traders.
+ * an application. Starting prices are Bobby's (Nov 18 2026): $1,000 / $2,500 / $5,000,
+ * paid by the coin's team — never by traders. Admins can change prices
+ * (listing_prices); the numbers here are only the fallback when that read fails.
+ * Payment: NectarPay checkout right after applying (Bobby, Nov 23 2026); a
+ * declined coin is refunded by hand.
  */
 
 export type PackageId = "seed" | "sapling" | "grove";
@@ -155,3 +158,169 @@ export function cleanApplication(raw: Record<string, unknown>): ListingApplicati
 export function canApply(sentInLast24h: number): boolean {
   return sentInLast24h < APPLY_LIMIT_PER_DAY;
 }
+
+// ---------------------------------------------------------------------------
+// Prices (admin-editable) and promo codes
+// ---------------------------------------------------------------------------
+
+export type ListingPrices = Record<PackageId, number>;
+export const PACKAGE_IDS: PackageId[] = ["seed", "sapling", "grove"];
+export const DEFAULT_PRICES: ListingPrices = Object.fromEntries(LISTING_PACKAGES.map((p) => [p.id, p.priceUsd])) as ListingPrices;
+export const MIN_PRICE_USD = 1;
+export const MAX_PRICE_USD = 1_000_000;
+
+/** Dollars to the cent. */
+export const cents = (n: number) => Math.round(n * 100) / 100;
+
+/** Prices from listing_prices rows; any missing or broken row falls back to the default. */
+export function pricesFromRows(rows: { package: string; price_usd: number | string }[] | null | undefined): ListingPrices {
+  const out = { ...DEFAULT_PRICES };
+  for (const r of rows ?? []) {
+    const n = Number(r.price_usd);
+    if ((PACKAGE_IDS as string[]).includes(r.package) && Number.isFinite(n) && n >= MIN_PRICE_USD && n <= MAX_PRICE_USD) out[r.package as PackageId] = cents(n);
+  }
+  return out;
+}
+
+/** Packages with the live price in place of the fallback. */
+export const pricedPackages = (prices: ListingPrices): ListingPackage[] => LISTING_PACKAGES.map((p) => ({ ...p, priceUsd: prices[p.id] }));
+
+/** Checks an admin's new prices. Throws a plain-English message on the first problem. */
+export function cleanPrices(raw: Record<string, unknown>): ListingPrices {
+  const out = {} as ListingPrices;
+  for (const id of PACKAGE_IDS) {
+    const n = Number(typeof raw[id] === "string" ? String(raw[id]).replace(/[$,\s]/g, "") : raw[id]);
+    const name = packageById(id)!.name;
+    if (!Number.isFinite(n) || n < MIN_PRICE_USD || n > MAX_PRICE_USD) throw new Error(`${name} price must be between $${MIN_PRICE_USD} and $${MAX_PRICE_USD.toLocaleString("en-US")}.`);
+    if (Math.abs(cents(n) - n) > 1e-9) throw new Error(`${name} price can have at most 2 decimals.`);
+    out[id] = cents(n);
+  }
+  return out;
+}
+
+export type PromoKind = "percent" | "amount";
+export type Promo = {
+  code: string; kind: PromoKind; value: number; packages: PackageId[] | null;
+  maxUses: number | null; uses: number; expiresAt: string | null; active: boolean;
+};
+
+export const PROMO_CODE_RE = /^[A-Z0-9_-]{3,24}$/;
+/** How a member types a code: case and spaces don't matter. Null when it can't be a code. */
+export function cleanPromoCode(v: unknown): string | null {
+  const s = typeof v === "string" ? v.trim().toUpperCase().replace(/\s+/g, "") : "";
+  return PROMO_CODE_RE.test(s) ? s : null;
+}
+
+/** Checks a new promo code from an admin. Throws a plain-English message on the first problem. */
+export function cleanPromoInput(raw: Record<string, unknown>, nowMs = Date.now()) {
+  const code = cleanPromoCode(raw.code);
+  if (!code) throw new Error("A code is 3–24 letters, numbers, dashes or underscores.");
+  const kind = raw.kind === "percent" || raw.kind === "amount" ? raw.kind : null;
+  if (!kind) throw new Error("Pick percent off or dollars off.");
+  const value = Number(raw.value);
+  if (!Number.isFinite(value) || value <= 0) throw new Error("Enter how much the code takes off.");
+  if (kind === "percent" && value > 100) throw new Error("Percent off can't be more than 100.");
+  if (kind === "amount" && value > MAX_PRICE_USD) throw new Error("That's more than any package costs.");
+  if (Math.abs(cents(value) - value) > 1e-9) throw new Error("Use at most 2 decimals.");
+  const pk = Array.isArray(raw.packages) ? [...new Set(raw.packages.map(String))] : [];
+  if (pk.some((p) => !(PACKAGE_IDS as string[]).includes(p))) throw new Error("Unknown package.");
+  const packages = pk.length === 0 || pk.length === PACKAGE_IDS.length ? null : (pk as PackageId[]);
+  const mu = raw.maxUses == null || raw.maxUses === "" ? null : Number(raw.maxUses);
+  if (mu != null && (!Number.isInteger(mu) || mu < 1 || mu > 100_000)) throw new Error("Uses must be a whole number from 1 to 100,000, or blank for no limit.");
+  let expiresAt: string | null = null;
+  if (typeof raw.expiresAt === "string" && raw.expiresAt.trim()) {
+    const t = new Date(raw.expiresAt).getTime();
+    if (!Number.isFinite(t)) throw new Error("That end date doesn't look right.");
+    if (t <= nowMs) throw new Error("The end date has to be in the future.");
+    expiresAt = new Date(t).toISOString();
+  }
+  const note = typeof raw.note === "string" ? raw.note.trim().slice(0, 300) || null : null;
+  return { code, kind: kind as PromoKind, value: cents(value), packages, maxUses: mu, expiresAt, note };
+}
+
+/** Why a code can't be used for this package right now, or null when it can. */
+export function promoProblem(p: Promo | null, pkg: PackageId, nowMs = Date.now()): string | null {
+  if (!p || !p.active) return "That code isn't valid.";
+  if (p.expiresAt && new Date(p.expiresAt).getTime() <= nowMs) return "That code has ended.";
+  if (p.maxUses != null && p.uses >= p.maxUses) return "That code has been used up.";
+  if (p.packages && !p.packages.includes(pkg)) {
+    const names = p.packages.map((id) => packageById(id)?.name ?? id).join(" or ");
+    return `That code works only with ${names}.`;
+  }
+  return null;
+}
+
+/**
+ * What the team pays. Discount never exceeds the price; a balance under $1 is
+ * waived (a checkout for a few cents isn't worth anyone's network fee).
+ */
+export function priceWithPromo(priceUsd: number, promo: { kind: PromoKind; value: number } | null) {
+  const list = cents(priceUsd);
+  if (!promo) return { listPriceUsd: list, discountUsd: 0, amountUsd: list };
+  const raw = promo.kind === "percent" ? (list * Math.min(promo.value, 100)) / 100 : promo.value;
+  let discountUsd = cents(Math.min(list, Math.max(0, raw)));
+  let amountUsd = cents(list - discountUsd);
+  if (amountUsd < 1) { discountUsd = list; amountUsd = 0; }
+  return { listPriceUsd: list, discountUsd, amountUsd };
+}
+
+/** How a code reads on screen: "20% off" or "$500 off". */
+export const promoLabel = (p: { kind: PromoKind; value: number }) =>
+  p.kind === "percent" ? `${p.value}% off` : `$${p.value.toLocaleString("en-US", { maximumFractionDigits: 2 })} off`;
+
+// ---------------------------------------------------------------------------
+// Payment (NectarPay)
+// ---------------------------------------------------------------------------
+
+export const PAYMENT_STATUSES = ["unpaid", "pending", "underpaid", "paid", "free", "refunded"] as const;
+export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
+export const CHECKOUT_MINUTES = 60;
+
+/** NectarPay order id for an application's checkout. */
+export const listingOrderId = (applicationId: string) => `listing-${applicationId}`;
+/** The application an order id names, or null. */
+export function applicationIdFromOrderId(orderId: string | null | undefined): string | null {
+  const m = /^listing-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i.exec(orderId ?? "");
+  return m ? m[1]!.toLowerCase() : null;
+}
+
+/** NectarPay says this invoice is paid in full for this application. */
+export function listingInvoicePaid(inv: { status: string; fiat_amount: number | string; order_id?: string | null }, app: { id: string; amount_usd: number | string }) {
+  return ["confirmed", "overpaid"].includes(inv.status)
+    && Number(inv.fiat_amount) >= Number(app.amount_usd) - 0.005
+    && applicationIdFromOrderId(inv.order_id) === app.id.toLowerCase();
+}
+
+/** Only these may become "paid" from a payment notice. */
+export const PAYABLE_STATUSES = ["unpaid", "pending", "underpaid"] as const;
+
+/**
+ * Why the team can't open a checkout now, or null. An underpaid checkout is
+ * finished by hand (a second full invoice would charge them twice).
+ */
+export function checkoutBlock(app: { status: string; payment_status: string; amount_usd: number | string }): string | null {
+  if (Number(app.amount_usd) <= 0 || app.payment_status === "free") return "Nothing to pay — your promo code covers it.";
+  if (app.payment_status === "paid") return "This application is already paid.";
+  if (app.payment_status === "refunded") return "This payment was refunded.";
+  if (app.payment_status === "underpaid") return "We got part of your payment. Reply to our email or write to support@honest.money and we'll sort out the rest.";
+  if (app.status === "declined") return "This application was declined, so there's nothing to pay.";
+  return null;
+}
+
+/** A live checkout worth sending the team back to (at least a minute left). */
+export const checkoutStillOpen = (expiresAt: string | null | undefined, nowMs = Date.now()) =>
+  !!expiresAt && new Date(expiresAt).getTime() > nowMs + 60_000;
+
+/** A paid application that was declined: someone has to send the money back. */
+export const refundNeeded = (app: { status: string; payment_status: string }) => app.status === "declined" && app.payment_status === "paid";
+
+/** Admin hand actions on a payment. */
+export type PaymentAction = "mark_paid" | "mark_refunded";
+export function paymentActionAllowed(action: PaymentAction, paymentStatus: string): boolean {
+  if (action === "mark_paid") return (PAYABLE_STATUSES as readonly string[]).includes(paymentStatus);
+  return paymentStatus === "paid";
+}
+
+export const PAYMENT_LABEL: Record<PaymentStatus, string> = {
+  unpaid: "Not paid", pending: "Waiting for payment", underpaid: "Part paid", paid: "Paid", free: "Free (promo)", refunded: "Refunded",
+};

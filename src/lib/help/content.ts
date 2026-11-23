@@ -910,17 +910,17 @@ export const HELP_ARTICLES: HelpArticle[] = [
   {
     slug: "list-coin",
     title: "List your coin on Seeds",
-    summary: "Three packages: Seed $1,000, Sapling $2,500, Grove $5,000. Applying is free, and you pay only if accepted.",
+    summary: "Three packages: Seed, Sapling and Grove. You pay in crypto when you apply, and get it all back if Seeds declines the coin.",
     category: "more",
     keywords: ["listing", "list", "token", "project", "coin team", "package", "seed", "sapling", "grove"],
     blocks: [
       { list: [
-        "**Seed — $1,000:** a TSD market, P2P, Seeds AI eligibility, a safety check, an announcement, a \"New\" badge for 14 days and a public price feed.",
-        "**Sapling — $2,500:** everything in Seed, plus a second market (TXC or USDC), a 14-day homepage spotlight, a how-to-buy guide, a live AMA and one trading contest.",
-        "**Grove — $5,000:** everything in Sapling, up to three markets, a 30-day spotlight plus a launch-week pop-up, a feature in an Ignite session, priority setup with a named contact, monthly reports for three months and three monthly contests.",
+        "**Seed:** a TSD market, P2P, Seeds AI eligibility, a safety check, an announcement, a \"New\" badge for 14 days and a public price feed.",
+        "**Sapling:** everything in Seed, plus a second market (TXC or USDC), a 14-day homepage spotlight, a how-to-buy guide, a live AMA and one trading contest.",
+        "**Grove:** everything in Sapling, up to three markets, a 30-day spotlight plus a launch-week pop-up, a feature in an Ignite session, priority setup with a named contact, monthly reports for three months and three monthly contests.",
       ] },
-      { steps: ["Apply on the List page.", "Seeds reviews the coin.", "If accepted, you get payment details and Seeds sets it up.", "Your market opens."] },
-      { p: "No trading-volume minimums, no liquidity deposits and no market-maker requirements. Declined applicants pay nothing." },
+      { steps: ["Apply on the List page and pay in crypto through NectarPay (a promo code, if you have one, goes in the form).", "Seeds reviews the coin.", "If accepted, Seeds sets it up. If declined, your payment is refunded in full.", "Your market opens."] },
+      { p: "No trading-volume minimums, no liquidity deposits and no market-maker requirements. Declined applicants get their payment back in full. Current prices are on the List page." },
     ],
     links: [{ label: "List on Seeds", to: "/list" }],
     related: ["fees"],
@@ -978,7 +978,7 @@ export const HELP_FAQS: HelpFaq[] = [
   { category: "ai", q: "Does Seeds AI trade with my money?", a: "Only if you're a beta tester and switch on real buying for a plan, and even then only after you confirm each day's trades. Everyone else's locked plans run on paper with optional daily Telegram notes.", article: "save-plan" },
   { category: "ai", q: "How far back do Seeds AI tests go?", a: "You choose, with **Going back** (or a start and end date). Results always show the period they cover.", article: "seeds-ai" },
   { category: "more", q: "When is the Ignite class?", a: "November 30 to December 4, 2026, 5:00 to 6:30 PM CST every day: five live 90-minute sessions, recorded. A $400 deposit reserves one of 100 seats.", article: "ignite" },
-  { category: "more", q: "How can my project list a coin?", a: "Apply on the List page. Packages are $1,000, $2,500 and $5,000. Applying is free, and you only pay if accepted.", article: "list-coin" },
+  { category: "more", q: "How can my project list a coin?", a: "Apply on the List page, which shows the current package prices. You pay in crypto when you apply; if Seeds declines the coin, you get the full payment back.", article: "list-coin" },
 ];
 
 /** The guides shown first on /help. */
