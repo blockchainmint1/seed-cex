@@ -18,7 +18,9 @@ export const startHmeLink = createServerFn({ method: "POST" })
       recipient_priv_ciphertext: await encryptDelegatedKey(kp.priv, `link-request:${challengeId}`), recipient_pubkey: kp.pub, expires_at: expires,
     });
     if (error) throw new Error("Could not start link");
-    const origin = new URL(data.origin).origin;
+    // The manifest HME Wallet scans must live on a Seeds host, never a browser-sent look-alike.
+    const { safeOrigin } = await import("./safe-origin");
+    const origin = safeOrigin((() => { try { return new URL(String(data?.origin ?? "")).origin; } catch { return ""; } })());
     return { manifestUrl: `${origin}/api/public/hme-link/manifest/${challengeId}`, expiresAt: expires };
   });
 

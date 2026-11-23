@@ -52,7 +52,9 @@ async function newKeyRequest(originIn: string, kind: z.infer<typeof kindSchema>,
     ip_hash: ipHash(requestIp(getRequest().headers)), expires_at: expiresAt, link_user_id: linkUserId,
   });
   if (error) throw new Error("Couldn't start. Try again.");
-  const origin = new URL(originIn).origin;
+  // The manifest the Seeds Key page / Vault fetches must live on a Seeds host, never a browser-sent look-alike.
+  const { safeOrigin } = await import("../safe-origin");
+  const origin = safeOrigin(new URL(originIn).origin);
   const manifestUrl = `${origin}/api/public/key-signin/manifest/${id}`;
   const base = (process.env.SEEDS_KEY_URL ?? "").trim().replace(/\/+$/, "");
   const keyPageUrl = /^https:\/\/[a-z0-9.-]+(:\d+)?(\/.*)?$/i.test(base)

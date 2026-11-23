@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { safeOrigin } from "./safe-origin";
 import { DEPOSIT_USD, SEAT_CAPACITY, cleanRefCode, inviteUrl, seatsLeft, validateDetails, normalizeEmail, type Details } from "./ignite-registration";
 import { emailsLeft, peerLinkState, peerToken, selfCheckoutBlock } from "./ignite-peer";
 
@@ -51,7 +52,7 @@ export const startIgniteCheckout = createServerFn({ method: "POST" })
   .inputValidator((d: Details & { origin: string; ref?: string | null }) => d)
   .handler(async ({ data, context }) => {
     if (Object.keys(validateDetails(data)).length) throw new Error("Please check your details.");
-    const origin = /^https:\/\/[a-z0-9.-]+$/i.test(data.origin) || data.origin.startsWith("http://localhost") ? data.origin : "https://seeds.honest.money";
+    const origin = safeOrigin(data.origin); // Seeds' own hosts only (review P1 sweep)
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { createInvoice, nectarpayConfigured } = await import("./nectarpay.server");
     if (!nectarpayConfigured()) throw new Error("Crypto checkout isn't open yet.");
