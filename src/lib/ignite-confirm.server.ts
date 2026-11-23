@@ -2,7 +2,7 @@
 // Called by the signed NectarPay webhook and by the payment re-check, so a
 // missed webhook can't strand a paid seat. Both paths re-read the invoice from
 // the NectarPay API and confirm with a compare-and-set, so notices fire once.
-import { CONFIRMABLE_STATUSES, canConfirmSeat, invoiceBelongs, invoiceSettled, paidInLabel, inviteUrl } from "./ignite-registration";
+import { CONFIRMABLE_STATUSES, canConfirmSeat, invoiceBelongs, invoiceSettled, paidInLabel, inviteUrl, registrationIdFromOrderId } from "./ignite-registration";
 
 type EventData = { invoice_id: string; chain?: string | null; paid_amount_usd?: number | null };
 const REG_COLS = "id, user_id, status, hm_member_id, email, full_name, amount_usd, payment_method, invoice_id, ref_code";
@@ -14,7 +14,27 @@ export async function processIgniteInvoiceEvent(type: string, data: EventData): 
   // Peer Pay invoices are also remembered on the link, so a payment on an older checkout is never lost.
   const { data: peer } = await supabaseAdmin.from("ignite_peer_links").select("id, registration_id, status, payer_name, payer_hm_member_id").eq("invoice_id", data.invoice_id).maybeSingle();
   if (!reg && peer) ({ data: reg } = await supabaseAdmin.from("ignite_registrations").select(REG_COLS).eq("id", peer.registration_id).maybeSingle());
+  // A seat remembers only its newest checkout. A payment on an earlier checkout for the same seat
+  // (member opened a new one later) is found through the order id NectarPay itself reports for
+  // that invoice — never the order id in the notice body (Russ, Nov 23 2026).
+  let earlierCheckout = false;
+  if (!reg && !peer && type === "invoice.confirmed") {
+    const regId = registrationIdFromOrderId((await getInvoice(data.invoice_id)).order_id);
+    if (regId) ({ data: reg } = await supabaseAdmin.from("ignite_registrations").select(REG_COLS).eq("id", regId).maybeSingle());
+    earlierCheckout = !!reg;
+  }
   if (!reg) return "ignored";
+
+  if (earlierCheckout && reg.status === "confirmed") {
+    // Paid twice (an earlier checkout and the newest one): flag for a refund, never a second seat.
+    const inv = await getInvoice(data.invoice_id);
+    if (["confirmed", "overpaid"].includes(inv.status) && invoiceBelongs(inv.order_id, reg.id, null)) {
+      console.error("[ignite] second payment on an earlier checkout needs refund", { registration: reg.id, invoice: data.invoice_id });
+      const { notifyUser } = await import("@/lib/telegram.server");
+      await notifyUser(reg.user_id, "notify_p2p", "⚠️ A second payment arrived for your Ignite seat, which was already paid. Contact support@honest.money so it can be refunded.");
+    }
+    return "duplicate_payment";
+  }
 
   if (type === "invoice.confirmed" && reg.status === "confirmed" && peer && peer.status !== "paid" && peer.status !== "paid_duplicate") {
     // Seat was already paid another way; flag this second payment for a refund.
@@ -50,6 +70,8 @@ export async function processIgniteInvoiceEvent(type: string, data: EventData): 
   const now = new Date().toISOString();
   const { data: won } = await supabaseAdmin.from("ignite_registrations").update({
     status: "confirmed", confirmed_at: now, updated_at: now,
+    // The checkout that was actually paid (an earlier one can be paid after a newer one was opened).
+    ...(earlierCheckout ? { invoice_id: data.invoice_id, checkout_url: null } : {}),
     paid_chain: data.chain ?? inv.chain ?? null, paid_amount_usd: data.paid_amount_usd ?? null, paid_asset: paidAsset,
   }).eq("id", reg.id).in("status", [...CONFIRMABLE_STATUSES]).select("id");
   if (!won?.length) return "noop"; // the other path confirmed it first

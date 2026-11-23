@@ -69,6 +69,15 @@ export function invoiceSettled(inv: { status: string; fiat_amount: number | stri
   return ["confirmed", "overpaid"].includes(inv.status) && Number(inv.fiat_amount) >= Number(amountUsd);
 }
 
+/**
+ * The seat an invoice was opened for, read from NectarPay's order id `ignite-<registration>`
+ * (Peer Pay invoices, `ignite-peer-<link>`, are found through their link instead). Null otherwise.
+ */
+export function registrationIdFromOrderId(orderId: string | null | undefined): string | null {
+  const m = /^ignite-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i.exec(orderId ?? "");
+  return m ? m[1]!.toLowerCase() : null;
+}
+
 /** The invoice was opened by Seeds for this seat: `ignite-<registration>` or `ignite-peer-<link>`. */
 export function invoiceBelongs(orderId: string | null | undefined, registrationId: string, peerLinkId: string | null) {
   if (!orderId) return false;

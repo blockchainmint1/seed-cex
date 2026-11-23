@@ -28,3 +28,13 @@ describe("seat cancel rules", () => {
   it("a confirmed seat can be cancelled by an admin", () => expect(canCancelSeat("confirmed")).toBe(true));
   it("an already-cancelled seat can't be cancelled twice", () => expect(canCancelSeat("canceled")).toBe(false));
 });
+
+describe("payment on an earlier checkout", () => {
+  it("a seat's own order id names the seat; Peer Pay and other ids don't", async () => {
+    const { registrationIdFromOrderId } = await import("./ignite-registration");
+    expect(registrationIdFromOrderId("ignite-1c0055db-f485-4607-a279-331afa03e0cb")).toBe("1c0055db-f485-4607-a279-331afa03e0cb");
+    expect(registrationIdFromOrderId("ignite-peer-f873f02c-cb43-4bd4-b18a-471f6cee4fef")).toBeNull();
+    expect(registrationIdFromOrderId("list-1c0055db-f485-4607-a279-331afa03e0cb")).toBeNull();
+    expect(registrationIdFromOrderId(null)).toBeNull();
+  });
+});
