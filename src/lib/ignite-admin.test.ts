@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { filterIgniteRows, paragraphs, personalize, reminderBlock, sortIgniteRows, validateMessage, REMINDER_COOLDOWN_HOURS } from "./ignite-admin";
+import { filterIgniteRows, hideBlock, paragraphs, personalize, reminderBlock, sortIgniteRows, validateMessage, REMINDER_COOLDOWN_HOURS } from "./ignite-admin";
 
 const NOW = Date.parse("2026-11-18T20:00:00Z");
 
@@ -60,5 +60,20 @@ describe("registrant table", () => {
   });
   test("sorting by status puts paid seats first", () => {
     expect(sortIgniteRows(rows, "status", "asc").map((r) => r.status)).toEqual(["confirmed", "expired", "canceled"]);
+  });
+});
+
+describe("hiding sign-ups from the Registrants list", () => {
+  test("paid and short-paid seats can never be hidden", () => {
+    expect(hideBlock("confirmed", null, NOW)).not.toBeNull();
+    expect(hideBlock("underpaid", null, NOW)).not.toBeNull();
+  });
+  test("cancelled and old unpaid sign-ups can be hidden", () => {
+    expect(hideBlock("canceled", null, NOW)).toBeNull();
+    expect(hideBlock("pending", new Date(NOW - 60_000).toISOString(), NOW)).toBeNull();
+    expect(hideBlock("pending", null, NOW)).toBeNull();
+  });
+  test("someone paying right now stays on the list", () => {
+    expect(hideBlock("pending", new Date(NOW + 60_000).toISOString(), NOW)).toBe("They have a checkout open right now.");
   });
 });

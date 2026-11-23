@@ -11,6 +11,16 @@ export const BODY_MAX = 4000;
 /** Seats that still owe the deposit. Confirmed and cancelled seats never get a payment reminder. */
 export const REMINDABLE = ["pending", "underpaid", "expired"] as const;
 
+/**
+ * Why an admin can't hide this sign-up from the Registrants list, or null when they can.
+ * Hiding only tidies the list: nothing is deleted, and paid or open-checkout seats always stay visible.
+ */
+export function hideBlock(status: string, invoiceExpiresAt: string | null, now = Date.now()): string | null {
+  if (status !== "pending" && status !== "canceled") return "Only unpaid or cancelled sign-ups can be hidden.";
+  if (status === "pending" && invoiceExpiresAt && Date.parse(invoiceExpiresAt) > now) return "They have a checkout open right now.";
+  return null;
+}
+
 /** Why a payment reminder can't go out right now, or null when it can. */
 export function reminderBlock(status: string, lastReminderAt: string | null, now = Date.now()): string | null {
   if (status === "confirmed") return "Already paid.";

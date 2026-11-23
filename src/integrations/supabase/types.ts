@@ -1515,6 +1515,7 @@ export type Database = {
           email: string
           fee_usd: number | null
           full_name: string
+          hidden_at: string | null
           hm_member_id: string | null
           id: string
           invoice_expires_at: string | null
@@ -1543,6 +1544,7 @@ export type Database = {
           email: string
           fee_usd?: number | null
           full_name: string
+          hidden_at?: string | null
           hm_member_id?: string | null
           id?: string
           invoice_expires_at?: string | null
@@ -1571,6 +1573,7 @@ export type Database = {
           email?: string
           fee_usd?: number | null
           full_name?: string
+          hidden_at?: string | null
           hm_member_id?: string | null
           id?: string
           invoice_expires_at?: string | null

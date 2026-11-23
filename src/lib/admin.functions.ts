@@ -291,6 +291,7 @@ export type AdminIgniteRow = {
   amountUsd: number;
   minerDiscountUsd: number;
   minerMark: boolean | null;
+  hidden: boolean;
 };
 
 export type AdminIgniteClass = { id: string; slug: string; name: string; status: string; capacity: number; held: number; confirmed: number; dates: string; time: string | null; feeUsd: number; depositUsd: number };
@@ -304,7 +305,7 @@ export const getAdminIgnite = createServerFn({ method: "GET" })
     const { dateRangeLabel, sharedTimeLabel } = await import("./ignite-classes");
     const [{ data: regs }, { data: links }, { data: mails }, { data: classRows }, held, { data: marks }] = await Promise.all([
       supabaseAdmin.from("ignite_registrations")
-        .select("id, user_id, class_id, amount_usd, miner_discount_usd, full_name, email, country_code, phone, status, payment_method, paid_asset, paid_chain, paid_amount_usd, invoice_id, ref_code, hm_member_id, created_at, confirmed_at, marketing_opt_in")
+        .select("id, user_id, class_id, amount_usd, miner_discount_usd, full_name, email, country_code, phone, status, payment_method, paid_asset, paid_chain, paid_amount_usd, invoice_id, ref_code, hm_member_id, created_at, confirmed_at, marketing_opt_in, hidden_at")
         .order("created_at", { ascending: false }),
       supabaseAdmin.from("ignite_peer_links").select("registration_id, payer_name, status").eq("status", "paid"),
       supabaseAdmin.from("ignite_admin_emails").select("registration_id, kind, subject, status, sent_at").order("sent_at", { ascending: false }).limit(2000),
@@ -330,7 +331,7 @@ export const getAdminIgnite = createServerFn({ method: "GET" })
       lastReminderAt: mailsBy.get(r.id)?.find((m) => m.kind === "reminder" && m.status === "sent")?.sentAt ?? null,
       emails: (mailsBy.get(r.id) ?? []).slice(0, 10),
       classId: r.class_id, userId: r.user_id, amountUsd: Number(r.amount_usd), minerDiscountUsd: Number(r.miner_discount_usd ?? 0),
-      minerMark: markBy.get(r.user_id) ?? null,
+      minerMark: markBy.get(r.user_id) ?? null, hidden: !!r.hidden_at,
     }));
     const confirmed = rows.filter((r) => r.status === "confirmed").length;
     const classes: AdminIgniteClass[] = (classRows ?? []).map((row) => {
@@ -344,8 +345,8 @@ export const getAdminIgnite = createServerFn({ method: "GET" })
     return {
       classes,
       confirmed,
-      pending: rows.filter((r) => r.status === "pending" || r.status === "underpaid").length,
-      canceled: rows.filter((r) => r.status === "canceled").length,
+      pending: rows.filter((r) => !r.hidden && (r.status === "pending" || r.status === "underpaid")).length,
+      canceled: rows.filter((r) => !r.hidden && r.status === "canceled").length,
       rows,
     };
   });
@@ -381,6 +382,34 @@ export const moveIgniteSeat = createServerFn({ method: "POST" })
     if (error) throw new Error("Couldn't move the seat.");
     console.info("[ignite] seat moved by admin", { registration: data.id, from: cur.class_id, to: cls.id, by: context.userId });
     return { ok: true, className: cls.name };
+  });
+
+/**
+ * Hides or un-hides a sign-up on the admin Registrants list. Tidying only: nothing is deleted
+ * (emails, interest list and history stay), paid seats and open checkouts can't be hidden,
+ * and the database un-hides a row by itself if it is ever paid.
+ */
+export const setIgniteSeatHidden = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string; hidden: boolean }) => {
+    if (!/^[0-9a-f-]{36}$/i.test(d?.id ?? "")) throw new Error("Bad registration id");
+    return { id: d.id, hidden: d.hidden === true };
+  })
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context as never);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { hideBlock } = await import("./ignite-admin");
+    const { data: cur } = await supabaseAdmin.from("ignite_registrations").select("status, invoice_expires_at").eq("id", data.id).maybeSingle();
+    if (!cur) throw new Error("Registration not found.");
+    if (data.hidden) {
+      const block = hideBlock(cur.status, cur.invoice_expires_at);
+      if (block) throw new Error(block);
+    }
+    const q = supabaseAdmin.from("ignite_registrations").update({ hidden_at: data.hidden ? new Date().toISOString() : null }).eq("id", data.id);
+    const { error } = await (data.hidden ? q.in("status", ["pending", "canceled"]) : q);
+    if (error) throw new Error("Couldn't update the list.");
+    console.info("[ignite] registrant visibility changed by admin", { registration: data.id, hidden: data.hidden, by: context.userId });
+    return { ok: true };
   });
 
 /** Cancels a seat (test or refund). Frees the seat; the money itself is refunded in NectarPay by hand. */

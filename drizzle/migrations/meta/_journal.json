@@ -645,6 +645,20 @@
       "when": 1795463831600,
       "tag": "0091_miner_check_health",
       "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "7",
+      "when": 1795465829686,
+      "tag": "0092_ignite_hidden_registrations",
+      "breakpoints": true
+    },
+    {
+      "idx": 93,
+      "version": "7",
+      "when": 1795465855661,
+      "tag": "0093_ignite_hidden_unhide_on_pay",
+      "breakpoints": true
     }
   ]
 }

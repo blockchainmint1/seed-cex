@@ -83,7 +83,7 @@ export async function saveRegistration(userId: string, d: Details & { ref?: stri
   let id = existingId;
   if (id) {
     const { error } = await supabaseAdmin.from("ignite_registrations")
-      .update({ ...fields, status: "pending", ...(method === "nectarpay" ? { payment_method: method } : {}) })
+      .update({ ...fields, status: "pending", hidden_at: null, ...(method === "nectarpay" ? { payment_method: method } : {}) })
       .eq("id", id).not("status", "in", "(confirmed,underpaid)");
     if (error) throw new Error("Couldn't save your registration.");
   } else {

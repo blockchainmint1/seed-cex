@@ -3,8 +3,8 @@ import { MoonTabs } from "@/components/admin/MoonTabs";
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Download, Mail, Search, Send, X } from "lucide-react";
-import { cancelIgniteSeat, moveIgniteSeat, type AdminIgniteRow } from "@/lib/admin.functions";
+import { Download, Eye, EyeOff, Mail, Search, Send, X } from "lucide-react";
+import { cancelIgniteSeat, moveIgniteSeat, setIgniteSeatHidden, type AdminIgniteRow } from "@/lib/admin.functions";
 import { checkIgniteMiner, setIgniteMinerMark } from "@/lib/ignite-classes.functions";
 import { sendIgniteMessage, sendIgniteReminders } from "@/lib/ignite-admin.functions";
 import { BODY_MAX, MAX_RECIPIENTS, REMINDABLE, filterIgniteRows, reminderBlock, sortIgniteRows, validateMessage, type SortKey } from "@/lib/ignite-admin";
@@ -72,6 +72,8 @@ function IgniteAdminPage() {
   const message = useServerFn(sendIgniteMessage);
   const cancel = useServerFn(cancelIgniteSeat);
   const move = useServerFn(moveIgniteSeat);
+  const setHidden = useServerFn(setIgniteSeatHidden);
+  const [showHidden, setShowHidden] = useState(false);
   const markMiner = useServerFn(setIgniteMinerMark);
   const checkMiner = useServerFn(checkIgniteMiner);
   const [classFilter, setClassFilter] = useState<string>("all");
@@ -87,7 +89,9 @@ function IgniteAdminPage() {
   const d = q.data;
 
   const className = useMemo(() => new Map((d?.classes ?? []).map((c) => [c.id, c.name])), [d]);
-  const inClass = useMemo(() => (d ? (classFilter === "all" ? d.rows : d.rows.filter((r) => r.classId === classFilter)) : []), [d, classFilter]);
+  const classRows = useMemo(() => (d ? (classFilter === "all" ? d.rows : d.rows.filter((r) => r.classId === classFilter)) : []), [d, classFilter]);
+  const hiddenCount = classRows.filter((r) => r.hidden).length;
+  const inClass = useMemo(() => (showHidden ? classRows : classRows.filter((r) => !r.hidden)), [classRows, showHidden]);
   const rows = useMemo(() => sortIgniteRows(filterIgniteRows(inClass, search, filter), sort.key, sort.dir), [inClass, search, filter, sort]);
   const selClass = d?.classes.find((c) => c.id === classFilter) ?? null;
   const paidInClass = inClass.filter((r) => r.status === "confirmed");
@@ -109,6 +113,20 @@ function IgniteAdminPage() {
     try {
       const r = await remind({ data: { ids: list.map((x) => x.id) } });
       setNotice({ tone: r.failed.length ? "error" : r.sent.length ? "ok" : "warn", text: summary(r, "Payment link") });
+      await reload();
+    } catch (e) {
+      setNotice({ tone: "error", text: (e as Error).message });
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function onHide(r: AdminIgniteRow, hidden: boolean) {
+    setBusy(r.id);
+    setNotice(null);
+    try {
+      await setHidden({ data: { id: r.id, hidden } });
+      setNotice({ tone: "ok", text: hidden ? `${r.fullName} is hidden from this list. Nothing was deleted; "Show hidden" brings them back.` : `${r.fullName} is back on the list.` });
       await reload();
     } catch (e) {
       setNotice({ tone: "error", text: (e as Error).message });
@@ -196,6 +214,13 @@ function IgniteAdminPage() {
                   </button>
                 ))}
               </div>
+              {hiddenCount ? (
+                <button type="button" aria-pressed={showHidden} onClick={() => setShowHidden((v) => !v)}
+                  className="inline-flex items-center gap-1 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
+                  {showHidden ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                  {showHidden ? `Hide ${hiddenCount} old sign-ups` : `Show hidden (${hiddenCount})`}
+                </button>
+              ) : null}
               <div className="ml-auto flex flex-wrap gap-2">
                 <Button size="sm" variant="outline" onClick={downloadCsv} disabled={!rows.length}><Download /> CSV</Button>
               </div>
@@ -246,7 +271,7 @@ function IgniteAdminPage() {
                         <td className="px-3 py-2 text-muted-foreground">{r.email}</td>
                         <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{r.phone}</td>
                         <td className="px-3 py-2 text-xs">{r.classId ? className.get(r.classId) ?? "—" : "—"}{r.minerDiscountUsd > 0 ? <span className="block text-primary">miner: fee waived</span> : null}</td>
-                        <td className="px-3 py-2"><span className={`rounded-sm px-1.5 py-0.5 font-mono text-[10px] uppercase ${chip.cls}`}>{chip.label}</span></td>
+                        <td className="px-3 py-2"><span className={`rounded-sm px-1.5 py-0.5 font-mono text-[10px] uppercase ${chip.cls}`}>{chip.label}</span>{r.hidden ? <span className="ml-1 text-[10px] text-muted-foreground">hidden</span> : null}</td>
                         <td className="px-3 py-2 text-xs">{paidLabel(r)}{r.payerName ? <span className="block text-muted-foreground">by {r.payerName}</span> : null}</td>
                         <td className="px-3 py-2 text-xs text-muted-foreground">{r.refCode ?? "—"}</td>
                         <td className="px-3 py-2 text-xs text-muted-foreground">{fmtAgo(r.createdAt)}</td>
@@ -257,6 +282,15 @@ function IgniteAdminPage() {
                             {(REMINDABLE as readonly string[]).includes(r.status) ? (
                               <Button size="sm" variant="outline" className="h-7 px-2" disabled={!!block || busy === "remind"} title={block ?? "Email a link to finish paying"} onClick={() => sendReminders([r])}>
                                 <Send /> Payment link
+                              </Button>
+                            ) : null}
+                            {r.hidden ? (
+                              <Button size="sm" variant="ghost" className="h-7 px-2" disabled={busy === r.id} onClick={() => onHide(r, false)} title="Put back on the list">
+                                <Eye /> Unhide
+                              </Button>
+                            ) : r.status === "pending" || r.status === "canceled" ? (
+                              <Button size="sm" variant="ghost" className="h-7 px-2" disabled={busy === r.id} onClick={() => onHide(r, true)} title="Tidy the list. Nothing is deleted.">
+                                <EyeOff /> Hide
                               </Button>
                             ) : null}
                             {r.status !== "canceled" ? (
