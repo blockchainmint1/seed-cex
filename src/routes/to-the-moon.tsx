@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getIgniteClasses } from "@/lib/ignite.functions";
 import { DEFAULT_AGENDA, DEFAULT_BENEFITS, upcomingClasses } from "@/lib/ignite-classes";
 import { ClassCard, InterestForm, ParticipationGuide } from "@/components/ignite/ClassBits";
+import { MoonRocket } from "@/components/ignite/MoonRocket";
 
 export const Route = createFileRoute("/to-the-moon")({
   staticData: { sitemap: true },
@@ -42,20 +43,25 @@ function IgniteHome() {
   return (
     <div className="ignite-theme seed-lines min-h-screen overflow-x-clip">
       <div className="mx-auto max-w-7xl px-5 pt-6 pb-16 lg:pt-16">
-        <section className="max-w-3xl">
-          <p className="font-mono text-xs font-medium tracking-[0.14em] text-primary">SEEDS TO THE MOON</p>
-          <h1 className="mt-5 font-display text-5xl font-bold leading-[1.05] tracking-[-0.03em] sm:text-6xl lg:text-[4.25rem]">
-            Learn crypto trading live, then do it for real.
-          </h1>
-          <p className="mt-6 max-w-xl text-lg text-muted-foreground">
-            To the Moon is the live crypto trading class from Seeds, the non-custodial exchange powered by the Honest Money Ecosystem. Small groups, a real instructor, and your own trade deposit to practice with.
-          </p>
-          <ul className="mt-8 flex flex-wrap gap-2">
-            {["Free Cold Storage Coin", "Recordings any time", "Free for HME miners"].map((b) => (
-              <li key={b} className="rounded-full border border-primary/40 px-4 py-2 text-sm font-semibold">{b}</li>
-            ))}
-          </ul>
-          <a href="#classes" className="seed-btn mt-8 w-auto">See upcoming classes</a>
+        <section className="grid items-center gap-x-10 gap-y-12 lg:grid-cols-[minmax(0,1fr)_21rem] xl:grid-cols-[minmax(0,1fr)_25rem]">
+          <div className="max-w-3xl">
+            <p className="font-mono text-xs font-medium tracking-[0.14em] text-primary">SEEDS TO THE MOON</p>
+            <h1 className="mt-5 font-display text-5xl font-bold leading-[1.05] tracking-[-0.03em] sm:text-6xl lg:text-[4.25rem]">
+              Learn crypto trading live, then do it for real.
+            </h1>
+            <p className="mt-6 max-w-xl text-lg text-muted-foreground">
+              To the Moon is the live crypto trading class from Seeds, the non-custodial exchange powered by the Honest Money Ecosystem. Small groups, a real instructor, and your own trade deposit to practice with.
+            </p>
+            <ul className="mt-8 flex flex-wrap gap-2">
+              {["Free Cold Storage Coin", "Recordings any time", "Free for HME miners"].map((b) => (
+                <li key={b} className="rounded-full border border-primary/40 px-4 py-2 text-sm font-semibold">{b}</li>
+              ))}
+            </ul>
+            <a href="#classes" className="seed-btn mt-8 w-auto">See upcoming classes</a>
+          </div>
+          {/* Phones and tablets keep the full-width headline; the rocket fills the
+              empty right half of the hero on desktop only. */}
+          <MoonRocket className="hidden w-full justify-self-end lg:block" />
         </section>
 
         <section id="classes" className="mt-16 scroll-mt-20">

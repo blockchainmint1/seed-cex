@@ -438,3 +438,20 @@
     background: linear-gradient(90deg, var(--background) 0%, color-mix(in oklab, var(--background) 75%, transparent) 26%, transparent 42%);
   }
 }
+
+/* To the Moon hero rocket: a slow drift and a flame that breathes. The global
+   reduced-motion rule above stops both after one short pass. */
+@keyframes rocket-drift {
+  0%, 100% { transform: translateY(6px); }
+  50% { transform: translateY(-10px); }
+}
+@keyframes rocket-flicker {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(0.86); }
+}
+.rocket-float { animation: rocket-drift 7s ease-in-out infinite; }
+.rocket-flame {
+  animation: rocket-flicker 1.5s ease-in-out infinite;
+  transform-box: view-box;
+  transform-origin: 220px 328px;
+}
