@@ -610,6 +610,20 @@
       "when": 1795451124890,
       "tag": "0086_affiliate_tracking",
       "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1795452896873,
+      "tag": "0087_referral_code_checks",
+      "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1795453196678,
+      "tag": "0088_referral_codes_viewed_at",
+      "breakpoints": true
     }
   ]
 }

@@ -58,3 +58,23 @@ describe("dashboard", () => {
     expect(s).toEqual([{ day: "2026-11-21", total: 0, referred: 0 }, { day: "2026-11-22", total: 3, referred: 1 }, { day: "2026-11-23", total: 0, referred: 0 }]);
   });
 });
+
+import { codesFromMemberCheck } from "./affiliates";
+describe("matching invite codes to their owners", () => {
+  const cory = "11111111-1111-1111-1111-111111111111";
+  test("an approved member found by id gets their username as code", () => {
+    const m = codesFromMemberCheck([cory], { results: [{ result: "found", hmeId: cory, username: "cryptocoryency", status: "APPROVED" }] });
+    expect(m.get(cory)).toBe("cryptocoryency");
+  });
+  test("a member who isn't approved gets no code", () => {
+    expect(codesFromMemberCheck([cory], { results: [{ result: "found", hmeId: cory, username: "cory", status: "PENDING" }] }).size).toBe(0);
+  });
+  test("an email-only or different-id match never pins a code", () => {
+    expect(codesFromMemberCheck([cory], { results: [{ result: "found_by_email_different_id", hmeId: cory, username: "cory", status: "APPROVED" }] }).size).toBe(0);
+    expect(codesFromMemberCheck([cory], { results: [{ result: "found", hmeId: "someone-else", username: "cory", status: "APPROVED" }] }).size).toBe(0);
+  });
+  test("a broken answer gives nothing", () => {
+    expect(codesFromMemberCheck([cory], null).size).toBe(0);
+    expect(codesFromMemberCheck([cory], { results: [{ result: "found", hmeId: cory, username: "bad code!", status: "APPROVED" }] }).size).toBe(0);
+  });
+});

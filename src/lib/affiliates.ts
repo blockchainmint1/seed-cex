@@ -69,3 +69,25 @@ export function sortAffiliates(rows: AffiliateRow[], key: AffiliateSort): Affili
 
 /** An affiliate is "sharing" in a period when their link was clicked or brought someone in. */
 export const isSharing = (r: Pick<AffiliateRow, "clicksPeriod" | "signupsPeriod">) => r.clicksPeriod > 0 || r.signupsPeriod > 0;
+
+/** Members asked about in one Honest.Money member-check call (the hub accepts up to 1,000 rows). */
+export const CODE_CHECK_BATCH = 500;
+
+/**
+ * Invite codes from a member-check answer, keyed by the Honest.Money member id we asked about.
+ * A code counts only for an exact id match ("found"), an approved member, and a valid code
+ * (the code is their Honest.Money username). Anything else — not found, matched by email,
+ * different id, not approved — gives no code, so a code is never pinned on the wrong member.
+ */
+export function codesFromMemberCheck(askedIds: readonly string[], answer: unknown): Map<string, string> {
+  const asked = new Set(askedIds);
+  const out = new Map<string, string>();
+  const results = (answer as { results?: unknown } | null)?.results;
+  if (!Array.isArray(results)) return out;
+  for (const r of results as { result?: unknown; hmeId?: unknown; username?: unknown; status?: unknown }[]) {
+    if (r?.result !== "found" || r.status !== "APPROVED" || typeof r.hmeId !== "string" || !asked.has(r.hmeId)) continue;
+    const code = cleanCode(r.username);
+    if (code) out.set(r.hmeId, code);
+  }
+  return out;
+}

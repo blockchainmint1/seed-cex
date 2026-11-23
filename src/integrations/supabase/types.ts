@@ -3914,6 +3914,29 @@ export type Database = {
         }
         Relationships: []
       }
+      referral_code_checks: {
+        Row: {
+          checked_at: string
+          user_id: string
+        }
+        Insert: {
+          checked_at?: string
+          user_id: string
+        }
+        Update: {
+          checked_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_code_checks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       referral_codes: {
         Row: {
           code: string
@@ -3921,6 +3944,7 @@ export type Database = {
           first_seen_at: string
           last_seen_at: string
           user_id: string
+          viewed_at: string | null
         }
         Insert: {
           code: string
@@ -3928,6 +3952,7 @@ export type Database = {
           first_seen_at?: string
           last_seen_at?: string
           user_id: string
+          viewed_at?: string | null
         }
         Update: {
           code?: string
@@ -3935,6 +3960,7 @@ export type Database = {
           first_seen_at?: string
           last_seen_at?: string
           user_id?: string
+          viewed_at?: string | null
         }
         Relationships: [
           {
@@ -5211,6 +5237,13 @@ export type Database = {
         }[]
       }
       market_snapshots_rollup: { Args: never; Returns: number }
+      members_due_for_code_check: {
+        Args: { _limit: number }
+        Returns: {
+          hm_member_id: string
+          user_id: string
+        }[]
+      }
       purge_expired_delegations: { Args: never; Returns: number }
       purge_expired_wallet_challenges: { Args: never; Returns: number }
       record_client_error: {

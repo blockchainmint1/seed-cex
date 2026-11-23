@@ -179,7 +179,7 @@ function AffiliateTable({ rows, days, newMembers }: { rows: Row[]; days: number;
                 <tr onClick={() => toggle(r.code)} className={`cursor-pointer border-b border-border hover:bg-muted/40 ${on ? "bg-primary/10" : ""}`}>
                   <td className="px-3 py-2">
                     <RowToggle open={on} label={r.code} onToggle={() => toggle(r.code)} />
-                    <span className="font-semibold text-foreground">{r.ownerName ?? (r.ownerId ? "Seeds member" : "Not on Seeds yet")}</span>
+                    <span className="font-semibold text-foreground">{r.ownerName ?? (r.ownerId ? "Seeds member" : "No Seeds member matched")}</span>
                     <div className="pl-6 font-mono text-xs text-muted-foreground">{r.code}{r.linkSeenAt ? ` · link opened ${fmtAgo(r.linkSeenAt)}` : ""}</div>
                   </td>
                   <td className="num px-3 py-2 text-right">{num(r.clicksPeriod)}<div className="text-xs text-muted-foreground">{num(r.clicksAll)} all</div></td>

@@ -50,3 +50,24 @@ export async function hmeReferralCode(memberId: string | null | undefined): Prom
     return null;
   }
 }
+
+/**
+ * Many members' Honest.Money affiliate codes in one member-check call (Admin → Affiliates owner matching).
+ * Returns null when the hub couldn't be asked (so nobody is marked checked); otherwise hmeId → code.
+ */
+export async function hmeReferralCodes(memberIds: string[]): Promise<Map<string, string> | null> {
+  if (!memberIds.length) return new Map();
+  try {
+    const res = await fetch("https://honest.money/api/public/minetxc/member-check", {
+      method: "POST", headers: ecosystemHeaders(),
+      body: JSON.stringify({ members: memberIds.map((id, i) => ({ ref: `seeds-code-${i}`, hmeId: id })) }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) { console.warn("[affiliates] member-check refused", res.status); return null; }
+    const { codesFromMemberCheck } = await import("./affiliates");
+    return codesFromMemberCheck(memberIds, await res.json());
+  } catch (e) {
+    console.warn("[affiliates] member-check failed", e instanceof Error ? e.message : e);
+    return null;
+  }
+}

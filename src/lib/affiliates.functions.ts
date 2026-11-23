@@ -49,6 +49,9 @@ export const getAdminAffiliates = createServerFn({ method: "POST" })
   .inputValidator((d: { days?: number; sort?: string }) => ({ days: periodDays(d?.days), sort: affiliateSort(d?.sort) }))
   .handler(async ({ data, context }) => {
     await requireAdmin(context as never);
+    // Match codes to owners first (only members not checked in the last day, so usually nothing to do).
+    const { syncReferralOwners } = await import("./affiliates.server");
+    await syncReferralOwners(200);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const from = since(data.days);
     const chartDays = Math.min(data.days, 90);
@@ -88,7 +91,7 @@ export const getAdminAffiliates = createServerFn({ method: "POST" })
         referredAll: refAll.count ?? 0, referredPeriod: refPeriod.count ?? 0,
         clicksPeriod: rows.reduce((s, r) => s + r.clicksPeriod, 0),
         sharingPeriod: rows.filter(isSharing).length,
-        linksOpened: rows.filter((r) => r.ownerId).length,
+        linksOpened: rows.filter((r) => r.linkSeenAt).length,
         ignitePaidByRef: rows.reduce((s, r) => s + r.ignitePaid, 0),
       },
       series: fillDays([...perDay.values()], chartDays),
