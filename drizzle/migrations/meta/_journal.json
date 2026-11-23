@@ -631,6 +631,13 @@
       "when": 1795457207249,
       "tag": "0089_ignite_seat_notices",
       "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "7",
+      "when": 1795460645180,
+      "tag": "0090_ignite_classes",
+      "breakpoints": true
     }
   ]
 }

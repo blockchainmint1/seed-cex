@@ -286,22 +286,33 @@ export type AdminIgniteRow = {
   lastEmailedAt: string | null;
   lastReminderAt: string | null;
   emails: { kind: string; subject: string; status: string; sentAt: string }[];
+  classId: string | null;
+  userId: string;
+  amountUsd: number;
+  minerDiscountUsd: number;
+  minerMark: boolean | null;
 };
+
+export type AdminIgniteClass = { id: string; slug: string; name: string; status: string; capacity: number; held: number; confirmed: number; dates: string; time: string | null; feeUsd: number; depositUsd: number };
 
 export const getAdminIgnite = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await requireAdmin(context as never);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { SEAT_CAPACITY } = await import("./ignite-registration");
-    const { SCHEDULE_DATES, SCHEDULE_TIME, DEPOSIT_USD } = await import("./ignite-registration");
-    const [{ data: regs }, { data: links }, { data: mails }] = await Promise.all([
+    const { CLASS_COLS, toPublic, seatsHeldByClass } = await import("./ignite-classes.server");
+    const { dateRangeLabel, sharedTimeLabel } = await import("./ignite-classes");
+    const [{ data: regs }, { data: links }, { data: mails }, { data: classRows }, held, { data: marks }] = await Promise.all([
       supabaseAdmin.from("ignite_registrations")
-        .select("id, full_name, email, country_code, phone, status, payment_method, paid_asset, paid_chain, paid_amount_usd, invoice_id, ref_code, hm_member_id, created_at, confirmed_at, marketing_opt_in")
+        .select("id, user_id, class_id, amount_usd, miner_discount_usd, full_name, email, country_code, phone, status, payment_method, paid_asset, paid_chain, paid_amount_usd, invoice_id, ref_code, hm_member_id, created_at, confirmed_at, marketing_opt_in")
         .order("created_at", { ascending: false }),
       supabaseAdmin.from("ignite_peer_links").select("registration_id, payer_name, status").eq("status", "paid"),
       supabaseAdmin.from("ignite_admin_emails").select("registration_id, kind, subject, status, sent_at").order("sent_at", { ascending: false }).limit(2000),
+      supabaseAdmin.from("ignite_classes").select(CLASS_COLS).order("starts_at", { ascending: true, nullsFirst: false }),
+      seatsHeldByClass(),
+      supabaseAdmin.from("ignite_miner_marks").select("user_id, is_miner"),
     ]);
+    const markBy = new Map((marks ?? []).map((m) => [m.user_id, m.is_miner]));
     const payer = new Map((links ?? []).map((l) => [l.registration_id, l.payer_name]));
     const mailsBy = new Map<string, { kind: string; subject: string; status: string; sentAt: string }[]>();
     for (const m of mails ?? []) {
@@ -318,18 +329,52 @@ export const getAdminIgnite = createServerFn({ method: "GET" })
       lastEmailedAt: mailsBy.get(r.id)?.find((m) => m.status === "sent")?.sentAt ?? null,
       lastReminderAt: mailsBy.get(r.id)?.find((m) => m.kind === "reminder" && m.status === "sent")?.sentAt ?? null,
       emails: (mailsBy.get(r.id) ?? []).slice(0, 10),
+      classId: r.class_id, userId: r.user_id, amountUsd: Number(r.amount_usd), minerDiscountUsd: Number(r.miner_discount_usd ?? 0),
+      minerMark: markBy.get(r.user_id) ?? null,
     }));
     const confirmed = rows.filter((r) => r.status === "confirmed").length;
+    const classes: AdminIgniteClass[] = (classRows ?? []).map((row) => {
+      const c = toPublic(row as never);
+      return {
+        id: c.id, slug: c.slug, name: c.name, status: c.status, capacity: c.capacity, held: held.get(c.id) ?? 0,
+        confirmed: rows.filter((r) => r.classId === c.id && r.status === "confirmed").length,
+        dates: dateRangeLabel(c.sessions, c.timezone), time: sharedTimeLabel(c.sessions, c.timezone), feeUsd: c.feeUsd, depositUsd: c.depositUsd,
+      };
+    });
     return {
-      capacity: SEAT_CAPACITY,
-      schedule: { dates: SCHEDULE_DATES, time: SCHEDULE_TIME },
-      deposit: DEPOSIT_USD,
+      classes,
       confirmed,
-      seatsLeft: Math.max(0, SEAT_CAPACITY - confirmed),
       pending: rows.filter((r) => r.status === "pending" || r.status === "underpaid").length,
       canceled: rows.filter((r) => r.status === "canceled").length,
       rows,
     };
+  });
+
+/**
+ * Moves a seat to another class (e.g. a paid member who can't make their dates). Admin only;
+ * the amount already paid stays as it was. Unpaid seats can't move while a checkout is open.
+ */
+export const moveIgniteSeat = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string; classId: string }) => {
+    if (!/^[0-9a-f-]{36}$/i.test(d?.id ?? "") || !/^[0-9a-f-]{36}$/i.test(d?.classId ?? "")) throw new Error("Bad id");
+    return { id: d.id, classId: d.classId };
+  })
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context as never);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { loadClass } = await import("./ignite-classes.server");
+    const cls = await loadClass({ id: data.classId }, true);
+    if (!cls) throw new Error("Class not found.");
+    const { data: cur } = await supabaseAdmin.from("ignite_registrations").select("status, class_id, invoice_expires_at").eq("id", data.id).maybeSingle();
+    if (!cur) throw new Error("Registration not found.");
+    if (cur.status === "canceled") throw new Error("This seat was cancelled.");
+    if (cur.status !== "confirmed" && cur.invoice_expires_at && new Date(cur.invoice_expires_at).getTime() > Date.now())
+      throw new Error("They have a checkout open. Wait for it to finish or run out (about an hour).");
+    const { error } = await supabaseAdmin.from("ignite_registrations").update({ class_id: cls.id, updated_at: new Date().toISOString() }).eq("id", data.id);
+    if (error) throw new Error("Couldn't move the seat.");
+    console.info("[ignite] seat moved by admin", { registration: data.id, from: cur.class_id, to: cls.id, by: context.userId });
+    return { ok: true, className: cls.name };
   });
 
 /** Cancels a seat (test or refund). Frees the seat; the money itself is refunded in NectarPay by hand. */

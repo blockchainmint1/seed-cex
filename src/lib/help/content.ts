@@ -152,7 +152,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       { list: ["Order-book trading", "The P2P marketplace", "Cross-chain swaps (currently a small staff-only test)"] },
       { note: "Launch is planned for **November 30, 2026**, the first day of the Ignite class." },
     ],
-    links: [{ label: "Launch details", to: "/coming-soon" }, { label: "Ignite class", to: "/ignite" }],
+    links: [{ label: "Launch details", to: "/coming-soon" }, { label: "Ignite classes", to: "/ignite" }],
     related: ["what-is-seeds", "ignite"],
   },
 
@@ -883,26 +883,26 @@ export const HELP_ARTICLES: HelpArticle[] = [
   /* ----------------------------- ignite, listing, api ------------------------- */
   {
     slug: "ignite",
-    title: "The Ignite class",
-    summary: "Five live 90-minute sessions, November 30 to December 4, 2026, 5:00–6:30 PM CST, led by Bobby Gray. 100 seats, $400 reservation deposit.",
+    title: "Ignite classes",
+    summary: "Live crypto trading classes from Seeds, run regularly. Each class has its own page with dates, seats left, instructor and price. Free for HME miners.",
     category: "more",
-    keywords: ["ignite", "class", "course", "register", "seat", "bobby gray", "nectarpay", "peer pay"],
+    keywords: ["ignite", "class", "course", "register", "seat", "spark", "first class", "miner", "nectarpay", "peer pay"],
     blocks: [
       { list: [
-        "**When:** November 30 to December 4, 2026, every day from 5:00 to 6:30 PM CST. Sessions are recorded.",
-        "**Seats:** 100. The page shows how many are left.",
-        "**Deposit:** $400 to reserve a seat. The Ignite page explains how it's used during the class.",
-        "**Led by** Bobby Gray, founder of the Honest Money Ecosystem.",
+        "**Classes:** the Ignite page lists every upcoming class. Each one has its own page with its dates, times, instructor, agenda and seats left. Sessions are recorded.",
+        "**Price:** a class fee plus a trade deposit, shown on the class page. The trade deposit is your own money and comes back to you during class to trade with.",
+        "**HME miners attend free:** sign in with Honest.Money and Seeds checks your account for active mining hash power. If you mine, the class fee comes off automatically. The trade deposit still applies.",
+        "**Every seat includes** a free Cold Storage Coin, the recording to watch any time, and the option to attend again later with the same instructor.",
         "**Covers:** wallet setup, getting money into TSD, buying and selling on Seeds, and the ecosystem's tools.",
       ] },
       { h: "Reserve a seat" },
       { steps: [
-        "Open **Ignite** and fill in your details.",
-        "Pay the $400 deposit in crypto with **NectarPay** (BTC, TXC, TSD, USDC, ETH, LTC, DOGE, ISK or ZCU), or use **Peer Pay** to let someone else cover it.",
+        "Open **Ignite**, pick a class and fill in your details.",
+        "Pay in crypto with **NectarPay** (BTC, TXC, TSD, USDC, ETH, LTC, DOGE, ISK or ZCU), or use **Peer Pay** to let someone else cover it.",
         "Crypto payments show as pending until they're confirmed on the blockchain. The confirmation page checks by itself, and you'll get an email. It's fine to close it.",
       ] },
-      { note: "Paid too little or paid twice? Ask at help.honest.money before paying again.", tone: "info" },
-      { p: "Signing up for the class doesn't open or fund an exchange account." },
+      { note: "Paid too little, paid twice, or need to switch classes? Email support@honest.money before paying again.", tone: "info" },
+      { p: "No class fits your dates? Leave your email on the Ignite page and we'll tell you when a new class opens. Signing up for a class doesn't open or fund an exchange account." },
     ],
     links: [{ label: "Reserve a seat", to: "/ignite" }],
     related: ["invite-friends", "demo-mode"],
@@ -977,7 +977,7 @@ export const HELP_FAQS: HelpFaq[] = [
   { category: "swaps", q: "What happens if the price moves during a swap?", a: "Seeds re-checks the price right before sending. If it slips past the limit, THORChain or Maya refunds you instead of delivering a worse price.", article: "swaps" },
   { category: "ai", q: "Does Seeds AI trade with my money?", a: "Only if you're a beta tester and switch on real buying for a plan, and even then only after you confirm each day's trades. Everyone else's locked plans run on paper with optional daily Telegram notes.", article: "save-plan" },
   { category: "ai", q: "How far back do Seeds AI tests go?", a: "You choose, with **Going back** (or a start and end date). Results always show the period they cover.", article: "seeds-ai" },
-  { category: "more", q: "When is the Ignite class?", a: "November 30 to December 4, 2026, 5:00 to 6:30 PM CST every day: five live 90-minute sessions, recorded. A $400 deposit reserves one of 100 seats.", article: "ignite" },
+  { category: "more", q: "When is the next Ignite class?", a: "Ignite classes run regularly. The Ignite page lists every upcoming class with its dates, price and seats left. HME miners attend free.", article: "ignite" },
   { category: "more", q: "How can my project list a coin?", a: "Apply on the List page, which shows the current package prices. You pay in crypto when you apply; if Seeds declines the coin, you get the full payment back.", article: "list-coin" },
 ];
 

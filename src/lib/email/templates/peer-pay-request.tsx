@@ -6,7 +6,7 @@ export type PeerPayRequestProps = { registrantName: string; amount: number; payU
 export function PeerPayRequestEmail(p: PeerPayRequestProps) {
   return (
     <Layout
-      preview={`${p.registrantName} asked you to pay their ${usd(p.amount)} Ignite seat deposit. The link works until ${when(p.expiresAt)}.`}
+      preview={`${p.registrantName} asked you to pay their ${usd(p.amount)} Ignite seat. The link works until ${when(p.expiresAt)}.`}
       eyebrow="Peer Pay request"
       title={`${p.registrantName} asked you to pay their Ignite seat.`}
       footer="peer"

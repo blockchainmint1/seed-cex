@@ -49,6 +49,7 @@ import { Route as ApiIndexRouteImport } from './routes/api/index'
 import { Route as HelpIndexRouteImport } from './routes/help.index'
 import { Route as HelpSlugRouteImport } from './routes/help.$slug'
 import { Route as HelpFaqRouteImport } from './routes/help.faq'
+import { Route as IgniteSlugRouteImport } from './routes/ignite_.$slug'
 import { Route as IgniteConfirmedRouteImport } from './routes/ignite_.confirmed'
 import { Route as InviteCodeRouteImport } from './routes/invite.$code'
 import { Route as LoansIndexRouteImport } from './routes/loans.index'
@@ -85,6 +86,8 @@ import { Route as AuthenticatedAdminAdsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedAdminAffiliatesRouteImport } from './routes/_authenticated/admin.affiliates'
 import { Route as AuthenticatedAdminAiRouteImport } from './routes/_authenticated/admin.ai'
 import { Route as AuthenticatedAdminIgniteRouteImport } from './routes/_authenticated/admin.ignite'
+import { Route as AuthenticatedAdminIgniteClassesRouteImport } from './routes/_authenticated/admin.ignite-classes'
+import { Route as AuthenticatedAdminIgniteInterestRouteImport } from './routes/_authenticated/admin.ignite-interest'
 import { Route as AuthenticatedAdminListingsRouteImport } from './routes/_authenticated/admin.listings'
 import { Route as AuthenticatedAdminMarketingRouteImport } from './routes/_authenticated/admin.marketing'
 import { Route as AuthenticatedAdminMarketsRouteImport } from './routes/_authenticated/admin.markets'
@@ -124,6 +127,7 @@ import { Route as ApiPublicEmailWeeklyRouteImport } from './routes/api/public/em
 import { Route as ApiPublicHmeLinkRevokeRouteImport } from './routes/api/public/hme-link/revoke'
 import { Route as ApiPublicHmeLinkSubmitRouteImport } from './routes/api/public/hme-link/submit'
 import { Route as ApiPublicHmeLinkTradesRouteImport } from './routes/api/public/hme-link/trades'
+import { Route as ApiPublicIgnitePhotoIdRouteImport } from './routes/api/public/ignite-photo.$id'
 import { Route as ApiPublicJobsAiDailyRouteImport } from './routes/api/public/jobs/ai-daily'
 import { Route as ApiPublicJobsLoansRouteImport } from './routes/api/public/jobs/loans'
 import { Route as ApiPublicJobsMarketSnapshotRouteImport } from './routes/api/public/jobs/market-snapshot'
@@ -358,6 +362,11 @@ const HelpFaqRoute = HelpFaqRouteImport.update({
   path: '/help/faq',
   getParentRoute: () => rootRouteImport,
 } as any)
+const IgniteSlugRoute = IgniteSlugRouteImport.update({
+  id: '/ignite_/$slug',
+  path: '/ignite/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IgniteConfirmedRoute = IgniteConfirmedRouteImport.update({
   id: '/ignite_/confirmed',
   path: '/ignite/confirmed',
@@ -546,6 +555,18 @@ const AuthenticatedAdminIgniteRoute =
   AuthenticatedAdminIgniteRouteImport.update({
     id: '/ignite',
     path: '/ignite',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminIgniteClassesRoute =
+  AuthenticatedAdminIgniteClassesRouteImport.update({
+    id: '/ignite-classes',
+    path: '/ignite-classes',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminIgniteInterestRoute =
+  AuthenticatedAdminIgniteInterestRouteImport.update({
+    id: '/ignite-interest',
+    path: '/ignite-interest',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminListingsRoute =
@@ -761,6 +782,11 @@ const ApiPublicHmeLinkSubmitRoute = ApiPublicHmeLinkSubmitRouteImport.update({
 const ApiPublicHmeLinkTradesRoute = ApiPublicHmeLinkTradesRouteImport.update({
   id: '/api/public/hme-link/trades',
   path: '/api/public/hme-link/trades',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicIgnitePhotoIdRoute = ApiPublicIgnitePhotoIdRouteImport.update({
+  id: '/api/public/ignite-photo/$id',
+  path: '/api/public/ignite-photo/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicJobsAiDailyRoute = ApiPublicJobsAiDailyRouteImport.update({
@@ -980,6 +1006,7 @@ export interface FileRoutesByFullPath {
   '/about/kyc': typeof AboutKycRoute
   '/help/$slug': typeof HelpSlugRoute
   '/help/faq': typeof HelpFaqRoute
+  '/ignite/$slug': typeof IgniteSlugRoute
   '/ignite/confirmed': typeof IgniteConfirmedRoute
   '/invite/$code': typeof InviteCodeRoute
   '/markets/$slug': typeof MarketsSlugRoute
@@ -1017,6 +1044,8 @@ export interface FileRoutesByFullPath {
   '/admin/affiliates': typeof AuthenticatedAdminAffiliatesRoute
   '/admin/ai': typeof AuthenticatedAdminAiRoute
   '/admin/ignite': typeof AuthenticatedAdminIgniteRoute
+  '/admin/ignite-classes': typeof AuthenticatedAdminIgniteClassesRoute
+  '/admin/ignite-interest': typeof AuthenticatedAdminIgniteInterestRoute
   '/admin/listings': typeof AuthenticatedAdminListingsRoute
   '/admin/marketing': typeof AuthenticatedAdminMarketingRouteWithChildren
   '/admin/markets': typeof AuthenticatedAdminMarketsRoute
@@ -1053,6 +1082,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hme-link/revoke': typeof ApiPublicHmeLinkRevokeRoute
   '/api/public/hme-link/submit': typeof ApiPublicHmeLinkSubmitRoute
   '/api/public/hme-link/trades': typeof ApiPublicHmeLinkTradesRouteWithChildren
+  '/api/public/ignite-photo/$id': typeof ApiPublicIgnitePhotoIdRoute
   '/api/public/jobs/ai-daily': typeof ApiPublicJobsAiDailyRoute
   '/api/public/jobs/loans': typeof ApiPublicJobsLoansRoute
   '/api/public/jobs/market-snapshot': typeof ApiPublicJobsMarketSnapshotRoute
@@ -1127,6 +1157,7 @@ export interface FileRoutesByTo {
   '/about/kyc': typeof AboutKycRoute
   '/help/$slug': typeof HelpSlugRoute
   '/help/faq': typeof HelpFaqRoute
+  '/ignite/$slug': typeof IgniteSlugRoute
   '/ignite/confirmed': typeof IgniteConfirmedRoute
   '/invite/$code': typeof InviteCodeRoute
   '/markets/$slug': typeof MarketsSlugRoute
@@ -1162,6 +1193,8 @@ export interface FileRoutesByTo {
   '/admin/affiliates': typeof AuthenticatedAdminAffiliatesRoute
   '/admin/ai': typeof AuthenticatedAdminAiRoute
   '/admin/ignite': typeof AuthenticatedAdminIgniteRoute
+  '/admin/ignite-classes': typeof AuthenticatedAdminIgniteClassesRoute
+  '/admin/ignite-interest': typeof AuthenticatedAdminIgniteInterestRoute
   '/admin/listings': typeof AuthenticatedAdminListingsRoute
   '/admin/markets': typeof AuthenticatedAdminMarketsRoute
   '/admin/plan': typeof AuthenticatedAdminPlanRoute
@@ -1197,6 +1230,7 @@ export interface FileRoutesByTo {
   '/api/public/hme-link/revoke': typeof ApiPublicHmeLinkRevokeRoute
   '/api/public/hme-link/submit': typeof ApiPublicHmeLinkSubmitRoute
   '/api/public/hme-link/trades': typeof ApiPublicHmeLinkTradesRouteWithChildren
+  '/api/public/ignite-photo/$id': typeof ApiPublicIgnitePhotoIdRoute
   '/api/public/jobs/ai-daily': typeof ApiPublicJobsAiDailyRoute
   '/api/public/jobs/loans': typeof ApiPublicJobsLoansRoute
   '/api/public/jobs/market-snapshot': typeof ApiPublicJobsMarketSnapshotRoute
@@ -1275,6 +1309,7 @@ export interface FileRoutesById {
   '/about/kyc': typeof AboutKycRoute
   '/help/$slug': typeof HelpSlugRoute
   '/help/faq': typeof HelpFaqRoute
+  '/ignite_/$slug': typeof IgniteSlugRoute
   '/ignite_/confirmed': typeof IgniteConfirmedRoute
   '/invite/$code': typeof InviteCodeRoute
   '/markets/$slug': typeof MarketsSlugRoute
@@ -1312,6 +1347,8 @@ export interface FileRoutesById {
   '/_authenticated/admin/affiliates': typeof AuthenticatedAdminAffiliatesRoute
   '/_authenticated/admin/ai': typeof AuthenticatedAdminAiRoute
   '/_authenticated/admin/ignite': typeof AuthenticatedAdminIgniteRoute
+  '/_authenticated/admin/ignite-classes': typeof AuthenticatedAdminIgniteClassesRoute
+  '/_authenticated/admin/ignite-interest': typeof AuthenticatedAdminIgniteInterestRoute
   '/_authenticated/admin/listings': typeof AuthenticatedAdminListingsRoute
   '/_authenticated/admin/marketing': typeof AuthenticatedAdminMarketingRouteWithChildren
   '/_authenticated/admin/markets': typeof AuthenticatedAdminMarketsRoute
@@ -1348,6 +1385,7 @@ export interface FileRoutesById {
   '/api/public/hme-link/revoke': typeof ApiPublicHmeLinkRevokeRoute
   '/api/public/hme-link/submit': typeof ApiPublicHmeLinkSubmitRoute
   '/api/public/hme-link/trades': typeof ApiPublicHmeLinkTradesRouteWithChildren
+  '/api/public/ignite-photo/$id': typeof ApiPublicIgnitePhotoIdRoute
   '/api/public/jobs/ai-daily': typeof ApiPublicJobsAiDailyRoute
   '/api/public/jobs/loans': typeof ApiPublicJobsLoansRoute
   '/api/public/jobs/market-snapshot': typeof ApiPublicJobsMarketSnapshotRoute
@@ -1426,6 +1464,7 @@ export interface FileRouteTypes {
     | '/about/kyc'
     | '/help/$slug'
     | '/help/faq'
+    | '/ignite/$slug'
     | '/ignite/confirmed'
     | '/invite/$code'
     | '/markets/$slug'
@@ -1463,6 +1502,8 @@ export interface FileRouteTypes {
     | '/admin/affiliates'
     | '/admin/ai'
     | '/admin/ignite'
+    | '/admin/ignite-classes'
+    | '/admin/ignite-interest'
     | '/admin/listings'
     | '/admin/marketing'
     | '/admin/markets'
@@ -1499,6 +1540,7 @@ export interface FileRouteTypes {
     | '/api/public/hme-link/revoke'
     | '/api/public/hme-link/submit'
     | '/api/public/hme-link/trades'
+    | '/api/public/ignite-photo/$id'
     | '/api/public/jobs/ai-daily'
     | '/api/public/jobs/loans'
     | '/api/public/jobs/market-snapshot'
@@ -1573,6 +1615,7 @@ export interface FileRouteTypes {
     | '/about/kyc'
     | '/help/$slug'
     | '/help/faq'
+    | '/ignite/$slug'
     | '/ignite/confirmed'
     | '/invite/$code'
     | '/markets/$slug'
@@ -1608,6 +1651,8 @@ export interface FileRouteTypes {
     | '/admin/affiliates'
     | '/admin/ai'
     | '/admin/ignite'
+    | '/admin/ignite-classes'
+    | '/admin/ignite-interest'
     | '/admin/listings'
     | '/admin/markets'
     | '/admin/plan'
@@ -1643,6 +1688,7 @@ export interface FileRouteTypes {
     | '/api/public/hme-link/revoke'
     | '/api/public/hme-link/submit'
     | '/api/public/hme-link/trades'
+    | '/api/public/ignite-photo/$id'
     | '/api/public/jobs/ai-daily'
     | '/api/public/jobs/loans'
     | '/api/public/jobs/market-snapshot'
@@ -1720,6 +1766,7 @@ export interface FileRouteTypes {
     | '/about/kyc'
     | '/help/$slug'
     | '/help/faq'
+    | '/ignite_/$slug'
     | '/ignite_/confirmed'
     | '/invite/$code'
     | '/markets/$slug'
@@ -1757,6 +1804,8 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/affiliates'
     | '/_authenticated/admin/ai'
     | '/_authenticated/admin/ignite'
+    | '/_authenticated/admin/ignite-classes'
+    | '/_authenticated/admin/ignite-interest'
     | '/_authenticated/admin/listings'
     | '/_authenticated/admin/marketing'
     | '/_authenticated/admin/markets'
@@ -1793,6 +1842,7 @@ export interface FileRouteTypes {
     | '/api/public/hme-link/revoke'
     | '/api/public/hme-link/submit'
     | '/api/public/hme-link/trades'
+    | '/api/public/ignite-photo/$id'
     | '/api/public/jobs/ai-daily'
     | '/api/public/jobs/loans'
     | '/api/public/jobs/market-snapshot'
@@ -1863,6 +1913,7 @@ export interface RootRouteChildren {
   AboutKycRoute: typeof AboutKycRoute
   HelpSlugRoute: typeof HelpSlugRoute
   HelpFaqRoute: typeof HelpFaqRoute
+  IgniteSlugRoute: typeof IgniteSlugRoute
   IgniteConfirmedRoute: typeof IgniteConfirmedRoute
   InviteCodeRoute: typeof InviteCodeRoute
   MarketsSlugRoute: typeof MarketsSlugRoute
@@ -1901,6 +1952,7 @@ export interface RootRouteChildren {
   ApiPublicHmeLinkRevokeRoute: typeof ApiPublicHmeLinkRevokeRoute
   ApiPublicHmeLinkSubmitRoute: typeof ApiPublicHmeLinkSubmitRoute
   ApiPublicHmeLinkTradesRoute: typeof ApiPublicHmeLinkTradesRouteWithChildren
+  ApiPublicIgnitePhotoIdRoute: typeof ApiPublicIgnitePhotoIdRoute
   ApiPublicJobsAiDailyRoute: typeof ApiPublicJobsAiDailyRoute
   ApiPublicJobsLoansRoute: typeof ApiPublicJobsLoansRoute
   ApiPublicJobsMarketSnapshotRoute: typeof ApiPublicJobsMarketSnapshotRoute
@@ -2218,6 +2270,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HelpFaqRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/ignite_/$slug': {
+      id: '/ignite_/$slug'
+      path: '/ignite/$slug'
+      fullPath: '/ignite/$slug'
+      preLoaderRoute: typeof IgniteSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/ignite_/confirmed': {
       id: '/ignite_/confirmed'
       path: '/ignite/confirmed'
@@ -2468,6 +2527,20 @@ declare module '@tanstack/react-router' {
       path: '/ignite'
       fullPath: '/admin/ignite'
       preLoaderRoute: typeof AuthenticatedAdminIgniteRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/ignite-classes': {
+      id: '/_authenticated/admin/ignite-classes'
+      path: '/ignite-classes'
+      fullPath: '/admin/ignite-classes'
+      preLoaderRoute: typeof AuthenticatedAdminIgniteClassesRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/ignite-interest': {
+      id: '/_authenticated/admin/ignite-interest'
+      path: '/ignite-interest'
+      fullPath: '/admin/ignite-interest'
+      preLoaderRoute: typeof AuthenticatedAdminIgniteInterestRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/listings': {
@@ -2741,6 +2814,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/hme-link/trades'
       fullPath: '/api/public/hme-link/trades'
       preLoaderRoute: typeof ApiPublicHmeLinkTradesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/ignite-photo/$id': {
+      id: '/api/public/ignite-photo/$id'
+      path: '/api/public/ignite-photo/$id'
+      fullPath: '/api/public/ignite-photo/$id'
+      preLoaderRoute: typeof ApiPublicIgnitePhotoIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/jobs/ai-daily': {
@@ -3070,6 +3150,8 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminAffiliatesRoute: typeof AuthenticatedAdminAffiliatesRoute
   AuthenticatedAdminAiRoute: typeof AuthenticatedAdminAiRoute
   AuthenticatedAdminIgniteRoute: typeof AuthenticatedAdminIgniteRoute
+  AuthenticatedAdminIgniteClassesRoute: typeof AuthenticatedAdminIgniteClassesRoute
+  AuthenticatedAdminIgniteInterestRoute: typeof AuthenticatedAdminIgniteInterestRoute
   AuthenticatedAdminListingsRoute: typeof AuthenticatedAdminListingsRoute
   AuthenticatedAdminMarketingRoute: typeof AuthenticatedAdminMarketingRouteWithChildren
   AuthenticatedAdminMarketsRoute: typeof AuthenticatedAdminMarketsRoute
@@ -3090,6 +3172,8 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminAffiliatesRoute: AuthenticatedAdminAffiliatesRoute,
   AuthenticatedAdminAiRoute: AuthenticatedAdminAiRoute,
   AuthenticatedAdminIgniteRoute: AuthenticatedAdminIgniteRoute,
+  AuthenticatedAdminIgniteClassesRoute: AuthenticatedAdminIgniteClassesRoute,
+  AuthenticatedAdminIgniteInterestRoute: AuthenticatedAdminIgniteInterestRoute,
   AuthenticatedAdminListingsRoute: AuthenticatedAdminListingsRoute,
   AuthenticatedAdminMarketingRoute:
     AuthenticatedAdminMarketingRouteWithChildren,
@@ -3186,6 +3270,7 @@ const rootRouteChildren: RootRouteChildren = {
   AboutKycRoute: AboutKycRoute,
   HelpSlugRoute: HelpSlugRoute,
   HelpFaqRoute: HelpFaqRoute,
+  IgniteSlugRoute: IgniteSlugRoute,
   IgniteConfirmedRoute: IgniteConfirmedRoute,
   InviteCodeRoute: InviteCodeRoute,
   MarketsSlugRoute: MarketsSlugRoute,
@@ -3224,6 +3309,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHmeLinkRevokeRoute: ApiPublicHmeLinkRevokeRoute,
   ApiPublicHmeLinkSubmitRoute: ApiPublicHmeLinkSubmitRoute,
   ApiPublicHmeLinkTradesRoute: ApiPublicHmeLinkTradesRouteWithChildren,
+  ApiPublicIgnitePhotoIdRoute: ApiPublicIgnitePhotoIdRoute,
   ApiPublicJobsAiDailyRoute: ApiPublicJobsAiDailyRoute,
   ApiPublicJobsLoansRoute: ApiPublicJobsLoansRoute,
   ApiPublicJobsMarketSnapshotRoute: ApiPublicJobsMarketSnapshotRoute,

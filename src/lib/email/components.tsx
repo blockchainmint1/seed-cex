@@ -30,7 +30,7 @@ export const C = {
 const FONT = "Manrope, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 const NUM: React.CSSProperties = { fontVariantNumeric: "tabular-nums", fontFeatureSettings: "'tnum'" };
 
-export type FooterKind = "security" | "transactional" | "weekly" | "peer";
+export type FooterKind = "security" | "transactional" | "weekly" | "peer" | "interest";
 
 export function Layout(props: {
   preview: string;
@@ -145,7 +145,9 @@ export function Mono({ children }: { children: React.ReactNode }) {
 
 function Footer({ kind, unsubscribeUrl }: { kind: FooterKind; unsubscribeUrl?: string }) {
   const link = { color: C.stone, textDecoration: "underline" };
-  const reason = kind === "peer"
+  const reason = kind === "interest"
+    ? "You're receiving this because you asked to hear about Seeds Ignite classes, or started registering for one."
+    : kind === "peer"
     ? "A Seeds member asked us to send you this payment link. If you don't know them, ignore this email. Nothing happens unless you pay."
     : kind === "security"
     ? "You're receiving this because it's about the security of your Seeds account. These emails can't be turned off."
@@ -159,8 +161,8 @@ function Footer({ kind, unsubscribeUrl }: { kind: FooterKind; unsubscribeUrl?: s
       </Text>
       <Text style={{ margin: "0 0 12px", fontSize: 13, lineHeight: "19px", color: C.stone }}>
         {reason}{" "}
-        {kind !== "security" && kind !== "peer" ? <Link href={`${SITE}/account/alerts`} style={link}>Email settings</Link> : null}
-        {unsubscribeUrl ? <>{" · "}<Link href={unsubscribeUrl} style={link}>Unsubscribe from weekly updates</Link></> : null}
+        {kind !== "security" && kind !== "peer" && kind !== "interest" ? <Link href={`${SITE}/account/alerts`} style={link}>Email settings</Link> : null}
+        {unsubscribeUrl ? <>{" · "}<Link href={unsubscribeUrl} style={link}>{kind === "interest" ? "Unsubscribe from class news" : "Unsubscribe from weekly updates"}</Link></> : null}
       </Text>
       <Hr style={{ borderColor: C.line, margin: "16px 0" }} />
       <Text style={{ margin: "0 0 6px", fontSize: 13, lineHeight: "19px", fontWeight: 500, color: C.forest }}>

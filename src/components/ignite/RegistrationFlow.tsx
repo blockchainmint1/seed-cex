@@ -5,13 +5,15 @@ import { useServerFn } from "@tanstack/react-start";
 import { useSession } from "@/hooks/use-session";
 import { getMyIgnite, startIgniteCheckout } from "@/lib/ignite.functions";
 import { PeerPayPanel } from "./PeerPayPanel";
-import { SCHEDULE_DATES, SCHEDULE_SESSIONS, SCHEDULE_TIME, RECORDING_NOTE, DEPOSIT_USD, paidInLabel, validateDetails, type Details, type Errors } from "@/lib/ignite-registration";
+import { RECORDING_NOTE, paidInLabel, validateDetails, type Details, type Errors } from "@/lib/ignite-registration";
+import { canRegister, classPrice, dateRangeLabel, sessionLines, sessionsLabel, sharedTimeLabel, usd0 } from "@/lib/ignite-classes";
+import type { PublicClass } from "@/lib/ignite.functions";
 
 const COUNTRY_CODES = ["+1", "+44", "+61", "+64", "+353", "+49", "+33", "+34", "+39", "+31", "+41", "+46", "+47", "+45", "+52", "+55", "+57", "+27", "+234", "+254", "+971", "+65", "+60", "+63", "+91", "+81", "+82"];
 
 type Step = "details" | "review";
 
-export function RegistrationFlow() {
+export function RegistrationFlow({ cls }: { cls: PublicClass }) {
   const here = useLocation({ select: (l) => l.href });
   const [step, setStep] = useState<Step>("details");
   const [details, setDetails] = useState<Details>({ fullName: "", email: "", countryCode: "+1", phone: "", marketingOptIn: false });
@@ -21,7 +23,7 @@ export function RegistrationFlow() {
   const { user, loading } = useSession();
   const fetchMine = useServerFn(getMyIgnite);
   const checkout = useServerFn(startIgniteCheckout);
-  const mine = useQuery({ queryKey: ["ignite", user?.id], queryFn: () => fetchMine(), enabled: !!user, refetchInterval: (q) => (q.state.data?.registration?.status === "pending" || q.state.data?.peer?.state === "active" ? 15000 : false) });
+  const mine = useQuery({ queryKey: ["ignite", user?.id, cls.id], queryFn: () => fetchMine({ data: { classId: cls.id } }), enabled: !!user, refetchInterval: (q) => (q.state.data?.registration?.status === "pending" || q.state.data?.peer?.state === "active" ? 15000 : false) });
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
   const prefilled = useRef(false);
@@ -37,35 +39,60 @@ export function RegistrationFlow() {
     setPaying(true); setPayError(null);
     try {
       const ref = (window as unknown as { honestMoney?: { ref?: () => string | null } }).honestMoney?.ref?.() || new URLSearchParams(window.location.search).get("ref");
-      const { checkoutUrl } = await checkout({ data: { ...details, origin: window.location.origin, ref } });
+      const { checkoutUrl } = await checkout({ data: { ...details, origin: window.location.origin, ref, classId: cls.id } });
       window.location.href = checkoutUrl;
     } catch (e) { setPayError(e instanceof Error ? e.message : "Checkout failed"); setPaying(false); }
   };
 
+  const dates = dateRangeLabel(cls.sessions, cls.timezone);
+  const time = sharedTimeLabel(cls.sessions, cls.timezone);
+  const open = canRegister(cls, cls.seatsLeft);
+  // Display only: checkout re-prices on the server. Before sign-in we can't know miner status.
+  const quote = mine.data?.quote ?? null;
+  const price = quote?.price ?? classPrice(cls, "unknown");
+  const fee = price.feeUsd - price.minerDiscountUsd;
+
   if (loading) return <div className="rounded-3xl border border-border bg-card p-8 shadow-glow text-sm text-muted-foreground">Loading…</div>;
+  const reg = user ? mine.data?.registration : null;
+  const regClass = user ? mine.data?.regClass : null;
+  if (reg?.status === "confirmed") {
+    const paidWith = paidInLabel(reg.paid_asset, reg.paid_chain);
+    const sameClass = regClass?.id === cls.id;
+    return (
+      <div className="rounded-3xl border border-border bg-card p-6 shadow-glow sm:p-8" role="status">
+        <p className="text-xs font-semibold uppercase tracking-widest text-primary">Seat confirmed</p>
+        <h2 className="mt-2 font-display text-3xl">You're in, {((n) => n.charAt(0).toUpperCase() + n.slice(1))(reg.full_name.trim().split(/\s+/)[0] ?? "")}.</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {sameClass ? "Your seat in this class is paid" : `You have a paid seat in ${regClass?.name ?? "another Ignite class"}${regClass ? ` (${regClass.dates})` : ""}`}
+          {paidWith ? ` (${paidWith})` : ""}{mine.data?.peer?.state === "paid" && mine.data.peer.payerName ? `, paid by ${mine.data.peer.payerName} through Peer Pay` : ""}. We'll send reminders to {reg.email}.
+        </p>
+        {!sameClass && <p className="mt-2 text-sm text-muted-foreground">Want to switch to {cls.name} instead? Email <a className="font-semibold text-primary underline-offset-4 hover:underline" href="mailto:support@honest.money">support@honest.money</a> and we'll move your seat.</p>}
+        <Link to="/ignite/confirmed" className="seed-btn mt-6 inline-flex justify-center">See your confirmation & referral link</Link>
+      </div>
+    );
+  }
+  if (!open) {
+    return (
+      <div className="rounded-3xl border border-border bg-card p-6 shadow-glow sm:p-8">
+        <h2 className="font-display text-3xl">{cls.seatsLeft <= 0 && cls.status === "open" ? "Fully reserved" : "Registration is closed"}</h2>
+        <p className="mt-2 text-sm text-muted-foreground">{cls.name} isn't taking new seats. Leave your email and we'll tell you when the next class opens.</p>
+        <Link to="/ignite" hash="interest" className="seed-btn mt-6 inline-flex justify-center">Tell me about the next class</Link>
+      </div>
+    );
+  }
   if (!user) {
     return (
       <div className="rounded-3xl border border-border bg-card p-6 shadow-glow sm:p-8">
         <h2 className="font-display text-3xl">Reserve your seat</h2>
+        <p className="mt-2 text-sm text-muted-foreground">{cls.name} · {dates}.{cls.minersFree && cls.feeUsd > 0 ? " HME miners attend free: sign in and we check for you." : ""}</p>
         <p className="mt-2 text-sm text-muted-foreground">Sign in with your Honest.Money account to reserve. Your seat, receipt and class reminders stay tied to your HME profile. New to Honest.Money? You can create a free account in the same step.</p>
         <Link to="/auth" search={{ redirect: here }} className="seed-btn mt-6 inline-flex justify-center">Sign in with Honest.Money</Link>
       </div>
     );
   }
-  const reg = mine.data?.registration;
   const peerActive = mine.data?.peer?.state === "active";
   const peerCheckoutOpen = reg?.payment_method === "peer" && !!reg.invoice_expires_at && new Date(reg.invoice_expires_at).getTime() > Date.now() + 60_000 && reg.status === "pending";
-  if (reg?.status === "confirmed") {
-    const paidWith = paidInLabel(reg.paid_asset, reg.paid_chain);
-    return (
-      <div className="rounded-3xl border border-border bg-card p-6 shadow-glow sm:p-8" role="status">
-        <p className="text-xs font-semibold uppercase tracking-widest text-primary">Seat confirmed</p>
-        <h2 className="mt-2 font-display text-3xl">You're in, {((n) => n.charAt(0).toUpperCase() + n.slice(1))(reg.full_name.trim().split(/\s+/)[0] ?? "")}.</h2>
-        <p className="mt-2 text-sm text-muted-foreground">Payment confirmed{paidWith ? ` (${paidWith})` : ""}{mine.data?.peer?.state === "paid" && mine.data.peer.payerName ? `, paid by ${mine.data.peer.payerName} through Peer Pay` : ""}. Ignite runs {SCHEDULE_DATES}, {SCHEDULE_TIME.replace(/^Daily/, "daily")}. We'll send reminders to {reg.email}.</p>
-        <Link to="/ignite/confirmed" className="seed-btn mt-6 inline-flex justify-center">See your confirmation & referral link</Link>
-      </div>
-    );
-  }
+  const otherClassOpen = !!reg && reg.status === "pending" && !!reg.invoice_expires_at && new Date(reg.invoice_expires_at).getTime() > Date.now() && (reg.class_id !== cls.id || Number(reg.amount_usd) !== price.totalUsd);
 
   const update = <K extends keyof Details>(k: K, v: Details[K]) => {
     const next = { ...details, [k]: v };
@@ -138,17 +165,31 @@ export function RegistrationFlow() {
         <div>
           <h2 ref={headingRef} tabIndex={-1} className="font-display text-3xl">Review & payment</h2>
           <dl className="mt-5 divide-y divide-border rounded-2xl border border-border text-sm">
-            <Row k="Item" v="Ignite class reservation" />
-            <Row k="Quantity" v="1" />
-            <Row k="Dates" v={SCHEDULE_DATES} />
-            <Row k="Sessions" v={SCHEDULE_SESSIONS} />
-            <Row k="Time" v={SCHEDULE_TIME} />
-            <Row k="Deposit" v={<strong className="text-base">${DEPOSIT_USD} USD</strong>} />
+            <Row k="Class" v={`Ignite: ${cls.name}`} />
+            <Row k="Dates" v={dates} />
+            <Row k="Sessions" v={sessionsLabel(cls.sessions)} />
+            <Row k="Time" v={time ?? <span className="block">{sessionLines(cls.sessions, cls.timezone).map((l) => <span key={l} className="block">{l}</span>)}</span>} />
+            {price.feeUsd > 0 && (
+              <Row k="Class fee" v={price.minerDiscountUsd > 0
+                ? <span><s className="text-muted-foreground">{usd0(price.feeUsd)}</s> <strong className="text-primary">Free: you're an HME miner</strong></span>
+                : usd0(fee)} />
+            )}
+            {price.depositUsd > 0 && <Row k="Trade deposit" v={usd0(price.depositUsd)} />}
+            <Row k="Total" v={mine.isPending ? "Checking…" : <strong className="text-base">{usd0(price.totalUsd)} USD</strong>} />
           </dl>
-          <p className="mt-3 rounded-2xl border border-primary/40 bg-primary/5 px-4 py-3 text-sm">
-            <span className="font-semibold">Returned during class:</span>{" "}
-            <span className="text-muted-foreground">{`your $${DEPOSIT_USD} deposit comes back to you during the class for trading activity, so you can trade with it.`}</span>
-          </p>
+          {cls.minersFree && price.feeUsd > 0 && quote && quote.miner !== "miner" && (
+            <p className="mt-3 rounded-2xl border border-border px-4 py-3 text-sm text-muted-foreground">
+              {quote.miner === "unknown"
+                ? "HME miners attend free. We couldn't confirm mining hash power on your Honest.Money account right now. Mining? Try again in a few minutes, or email support@honest.money before paying."
+                : "HME miners attend free. Your Honest.Money account doesn't show any active mining hash power."}
+            </p>
+          )}
+          {price.depositUsd > 0 && (
+            <p className="mt-3 rounded-2xl border border-primary/40 bg-primary/5 px-4 py-3 text-sm">
+              <span className="font-semibold">Returned during class:</span>{" "}
+              <span className="text-muted-foreground">{`your ${usd0(price.depositUsd)} trade deposit comes back to you during the class, so you can trade with it.`}</span>
+            </p>
+          )}
           <p className="mt-2 text-xs text-muted-foreground">{RECORDING_NOTE}</p>
           <div className="mt-4 rounded-2xl border border-border p-4 text-sm">
             <div className="flex items-start justify-between gap-3">
@@ -161,13 +202,13 @@ export function RegistrationFlow() {
             </div>
           </div>
           <p className="mt-4 text-sm text-muted-foreground">
-            This payment is a reservation deposit for the Ignite class. It is returned to you during the class for trading activity, and it does not open, fund, or grant ownership in a Seeds exchange account.
+            This payment reserves your seat in {cls.name}.{price.depositUsd > 0 ? " The trade deposit is returned to you during the class for trading activity." : ""} It does not open, fund, or grant ownership in a Seeds exchange account.
           </p>
 
           {reg && (reg.status === "underpaid" || (reg.status === "pending" && !!reg.invoice_expires_at && new Date(reg.invoice_expires_at).getTime() > Date.now())) && (
             <div className="mt-5 rounded-2xl border border-warning/40 bg-warning/5 p-4" role="status">
               <p className="text-sm font-semibold text-warning">{reg.status === "underpaid" ? "Payment arrived short" : "Payment pending"}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{reg.status === "underpaid" ? "We received less than the deposit. Contact help before paying again." : "Crypto payments stay pending until confirmed on-chain. This page updates by itself."}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{reg.status === "underpaid" ? "We received less than your seat costs. Contact support@honest.money before paying again." : otherClassOpen ? `You have a checkout open for ${mine.data?.regClass?.name ?? "another class"} at a different price. Finish it, or wait for it to run out (about an hour).` : "Crypto payments stay pending until confirmed on-chain. This page updates by itself."}</p>
             </div>
           )}
           {!mine.data?.cryptoOpen && (
@@ -177,9 +218,9 @@ export function RegistrationFlow() {
             </div>
           )}
           <div className="mt-4 grid gap-3">
-            <button type="button" className="seed-btn" disabled={!mine.data?.cryptoOpen || paying || peerActive || peerCheckoutOpen} onClick={pay}>{paying ? "Opening checkout…" : reg?.status === "pending" && reg.payment_method === "nectarpay" && reg.checkout_url && !!reg.invoice_expires_at && new Date(reg.invoice_expires_at).getTime() > Date.now() + 60_000 ? "Continue crypto payment (NectarPay)" : `Pay $${DEPOSIT_USD} with crypto (NectarPay)`}</button>
+            <button type="button" className="seed-btn" disabled={!mine.data?.cryptoOpen || mine.isPending || paying || peerActive || peerCheckoutOpen || otherClassOpen} onClick={pay}>{paying ? "Opening checkout…" : !otherClassOpen && reg?.status === "pending" && reg.payment_method === "nectarpay" && reg.checkout_url && !!reg.invoice_expires_at && new Date(reg.invoice_expires_at).getTime() > Date.now() + 60_000 ? "Continue crypto payment (NectarPay)" : `Pay ${usd0(price.totalUsd)} with crypto (NectarPay)`}</button>
             {(peerActive || peerCheckoutOpen) && <p className="text-xs text-muted-foreground">{peerCheckoutOpen ? "Your friend has a checkout open. Paying yourself is paused until it finishes or expires." : "Paying yourself is paused while your Peer Pay link is on, so your seat can't be paid twice. Cancel the link to pay yourself."}</p>}
-            <PeerPayPanel details={details} peer={mine.data?.peer} cryptoOpen={!!mine.data?.cryptoOpen} onChanged={() => { void mine.refetch(); }} />
+            <PeerPayPanel details={details} peer={mine.data?.peer} cryptoOpen={!!mine.data?.cryptoOpen && !otherClassOpen} classId={cls.id} amountUsd={mine.isPending ? null : price.totalUsd} onChanged={() => { void mine.refetch(); }} />
             {payError && <p className="text-sm text-destructive" role="alert">{payError}</p>}
             <p className="text-xs text-muted-foreground">BTC, TXC, TSD, USDC, ETH, LTC, DOGE, ISK or ZCU — paid straight to Seeds' own wallet through NectarPay.</p>
           </div>

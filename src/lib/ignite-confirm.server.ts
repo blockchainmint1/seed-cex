@@ -63,7 +63,18 @@ export async function processIgniteInvoiceEvent(type: string, data: EventData): 
   }
 
   const inv = await getInvoice(data.invoice_id);
-  if (!invoiceSettled(inv, reg.amount_usd) || !invoiceBelongs(inv.order_id, reg.id, peer?.id ?? null)) return "unverified";
+  if (!invoiceBelongs(inv.order_id, reg.id, peer?.id ?? null)) return "unverified";
+  if (!invoiceSettled(inv, reg.amount_usd)) {
+    // Paid in full for a smaller amount than the seat now costs (e.g. an older checkout from before
+    // the member switched class). Never drop it silently: hold it as underpaid for staff to sort out.
+    if (["confirmed", "overpaid"].includes(inv.status)) {
+      console.error("[ignite] paid checkout is below the seat price — review by hand", { registration: reg.id, invoice: data.invoice_id, paid: inv.fiat_amount, price: reg.amount_usd });
+      await supabaseAdmin.from("ignite_registrations").update({ status: "underpaid", updated_at: new Date().toISOString(), invoice_id: data.invoice_id })
+        .eq("id", reg.id).in("status", ["pending", "expired"]);
+      return "underpaid";
+    }
+    return "unverified";
+  }
   // NectarPay names the chain, not the coin: read the asset back off the chain itself.
   const { resolvePaidAsset } = await import("./ignite-asset.server");
   const paidAsset = await resolvePaidAsset(inv.chain ?? data.chain, inv.address);
@@ -114,7 +125,7 @@ export async function sendSeatNotices(regId: string): Promise<boolean> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   try {
     const { data: reg } = await supabaseAdmin.from("ignite_registrations")
-      .select("id, user_id, status, hm_member_id, email, full_name, amount_usd, ref_code, paid_asset, paid_chain, confirmed_at, notices_done_at")
+      .select("id, user_id, class_id, status, hm_member_id, email, full_name, amount_usd, fee_usd, miner_discount_usd, deposit_usd, ref_code, paid_asset, paid_chain, confirmed_at, notices_done_at")
       .eq("id", regId).maybeSingle();
     if (!reg || reg.status !== "confirmed" || reg.notices_done_at) return false;
     const { data: peer } = await supabaseAdmin.from("ignite_peer_links").select("payer_name, payer_hm_member_id")
@@ -126,6 +137,11 @@ export async function sendSeatNotices(regId: string): Promise<boolean> {
       return !!data?.length;
     };
 
+    const { loadClass, toPublic } = await import("./ignite-classes.server");
+    const { dateRangeLabel, sharedTimeLabel, sessionLines, firstSessionShort } = await import("./ignite-classes");
+    const clsRow = reg.class_id ? await loadClass({ id: reg.class_id }, true) : null;
+    const cls = clsRow ? toPublic(clsRow) : null;
+    const when = cls ? firstSessionShort(cls.sessions, cls.timezone) : null;
     const { hmeReferralCode, sendHubEvent } = await import("@/lib/hme-hub.server");
     const code = await hmeReferralCode(reg.hm_member_id);
     const { emailUser } = await import("@/lib/email/send.server");
@@ -133,18 +149,22 @@ export async function sendSeatNotices(regId: string): Promise<boolean> {
       name: ((n) => n.charAt(0).toUpperCase() + n.slice(1))(reg.full_name.trim().split(/\s+/)[0] || r.name), amount: Number(reg.amount_usd), paidBy: payerName,
       paidWith: paidInLabel(reg.paid_asset, reg.paid_chain),
       confirmedAt: reg.confirmed_at ?? new Date().toISOString(), timezone: r.timezone, referralUrl: code ? inviteUrl(code) : null,
+      className: cls?.name ?? "Ignite", classSlug: cls?.slug ?? null,
+      dates: cls ? dateRangeLabel(cls.sessions, cls.timezone) : "To be announced",
+      time: cls ? (sharedTimeLabel(cls.sessions, cls.timezone) ?? sessionLines(cls.sessions, cls.timezone).join("; ")) : "To be announced",
+      feeUsd: Number(reg.fee_usd ?? 0), minerDiscountUsd: Number(reg.miner_discount_usd ?? 0), depositUsd: Number(reg.deposit_usd ?? reg.amount_usd),
     }), { dedupe: reg.id, to: reg.email });
 
     if (await claim("ignite:telegram-confirmed")) {
       const { notifyUser } = await import("@/lib/telegram.server");
       await notifyUser(reg.user_id, "notify_p2p", payerName
-        ? `✅ ${payerName} paid your Seeds Ignite seat. You're confirmed. See you Nov 30, 5:00 PM CST.`
-        : "✅ Your Seeds Ignite seat is confirmed. See you Nov 30, 5:00 PM CST.");
+        ? `✅ ${payerName} paid your Seeds Ignite seat${cls ? ` in ${cls.name}` : ""}. You're confirmed.${when ? ` See you ${when}.` : ""}`
+        : `✅ Your Seeds Ignite seat${cls ? ` in ${cls.name}` : ""} is confirmed.${when ? ` See you ${when}.` : ""}`);
     }
     if (await claim("ignite:hub-purchase")) {
       await sendHubEvent({
         event: "purchase", member_id: reg.hm_member_id, email: reg.email, ref: reg.ref_code,
-        metadata: { product: "ignite_seat", amount_usd: Number(reg.amount_usd), ...(peer ? { paid_by: "peer", payer_member_id: peer.payer_hm_member_id } : {}) },
+        metadata: { product: "ignite_seat", class: cls?.slug ?? null, amount_usd: Number(reg.amount_usd), ...(peer ? { paid_by: "peer", payer_member_id: peer.payer_hm_member_id } : {}) },
       });
     }
     if (emailed === "failed") return false; // claim was freed; the minute job tries again

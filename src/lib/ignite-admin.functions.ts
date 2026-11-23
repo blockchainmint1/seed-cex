@@ -32,37 +32,39 @@ export const sendIgniteReminders = createServerFn({ method: "POST" })
     const { sesConfigured } = await import("./email/ses.server");
     if (!sesConfigured()) throw new Error("Email isn't set up right now.");
     const { reminderBlock } = await import("./ignite-admin");
-    const { DEPOSIT_USD, SCHEDULE_DATES, SCHEDULE_TIME, SEAT_CAPACITY, seatsLeft } = await import("./ignite-registration");
     const { deliver } = await import("./email/send.server");
+    const { publicClasses } = await import("./ignite-classes.server");
+    const { canRegister, dateRangeLabel, sharedTimeLabel, sessionLines } = await import("./ignite-classes");
 
-    const [{ data: regs }, { data: logs }, { count: held }] = await Promise.all([
-      supabaseAdmin.from("ignite_registrations").select("id, full_name, email, status").in("id", data.ids),
+    const [{ data: regs }, { data: logs }, classes] = await Promise.all([
+      supabaseAdmin.from("ignite_registrations").select("id, full_name, email, status, class_id, amount_usd").in("id", data.ids),
       supabaseAdmin.from("ignite_admin_emails").select("registration_id, sent_at").eq("kind", "reminder").eq("status", "sent").in("registration_id", data.ids).order("sent_at", { ascending: false }),
-      supabaseAdmin.from("ignite_registrations").select("id", { count: "exact", head: true })
-        .or(`status.eq.confirmed,and(status.in.(pending,underpaid),invoice_expires_at.gt.${new Date().toISOString()})`),
+      publicClasses(),
     ]);
     const last = new Map<string, string>();
     for (const l of logs ?? []) if (!last.has(l.registration_id)) last.set(l.registration_id, l.sent_at);
-    const left = seatsLeft(held ?? 0, SEAT_CAPACITY);
+    const byId = new Map(classes.map((c) => [c.id, c]));
     const out: SendResult = { sent: [], skipped: [], failed: [] };
-    if (left === 0) {
-      for (const r of regs ?? []) out.skipped.push({ name: r.full_name, reason: "The class is full." });
-      return out;
-    }
     await inChunks(regs ?? [], 8, async (r) => {
       const block = reminderBlock(r.status, last.get(r.id) ?? null);
       if (block) { out.skipped.push({ name: r.full_name, reason: block }); return; }
+      const cls = r.class_id ? byId.get(r.class_id) : undefined;
+      if (!cls || !canRegister(cls, cls.seatsLeft)) { out.skipped.push({ name: r.full_name, reason: cls ? `${cls.name} is full or closed. Add them to a new class from the interest list.` : "Their class isn't open." }); return; }
       const first = r.full_name.trim().split(/\s+/)[0] || "there";
       let status: "sent" | "failed" = "sent";
       try {
-        await deliver(r.email, "ignite-reminder", { name: first, amount: DEPOSIT_USD, dates: SCHEDULE_DATES, time: SCHEDULE_TIME, seatsLeft: left });
+        await deliver(r.email, "ignite-reminder", {
+          name: first, amount: Number(r.amount_usd), dates: dateRangeLabel(cls.sessions, cls.timezone),
+          time: sharedTimeLabel(cls.sessions, cls.timezone) ?? sessionLines(cls.sessions, cls.timezone).join("; "),
+          seatsLeft: cls.seatsLeft, className: cls.name, classSlug: cls.slug,
+        });
         out.sent.push(r.full_name);
       } catch (e) {
         console.error("[ignite-admin] reminder failed", r.id, e);
         status = "failed";
         out.failed.push(r.full_name);
       }
-      await supabaseAdmin.from("ignite_admin_emails").insert({ registration_id: r.id, kind: "reminder", subject: "Finish reserving your Ignite seat", to_email: r.email, sent_by: context.userId, status });
+      await supabaseAdmin.from("ignite_admin_emails").insert({ registration_id: r.id, kind: "reminder", subject: `Finish reserving your seat in ${cls.name}`, to_email: r.email, sent_by: context.userId, status });
     });
     console.info("[ignite-admin] reminders", { by: context.userId, sent: out.sent.length, skipped: out.skipped.length, failed: out.failed.length });
     return out;

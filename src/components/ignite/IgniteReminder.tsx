@@ -5,7 +5,6 @@ import { useServerFn } from "@tanstack/react-start";
 import { Flame, X } from "lucide-react";
 import { useSession } from "@/hooks/use-session";
 import { getIgniteSeats, getMyIgnite } from "@/lib/ignite.functions";
-import { SCHEDULE_DATES, SCHEDULE_START_UTC } from "@/lib/ignite-registration";
 
 const DISMISS_KEY = "seeds-ignite-reminder-dismissed";
 
@@ -22,15 +21,15 @@ export function IgniteReminder() {
   useEffect(() => {
     try { setDismissed(localStorage.getItem(DISMISS_KEY) === "1"); } catch { setDismissed(false); }
   }, []);
-  const open = Date.now() < new Date(SCHEDULE_START_UTC).getTime();
-  const mine = useQuery({ queryKey: ["ignite", user?.id], queryFn: () => fetchMine(), enabled: !!user && open });
-  const seats = useQuery({ queryKey: ["ignite-seats"], queryFn: () => fetchSeats(), enabled: !!user && open });
+  const mine = useQuery({ queryKey: ["ignite", user?.id], queryFn: () => fetchMine(), enabled: !!user });
+  const seats = useQuery({ queryKey: ["ignite-seats"], queryFn: () => fetchSeats(), enabled: !!user });
 
-  if (!open || dismissed || !mine.data || !seats.data) return null;
+  if (dismissed || !mine.data || !seats.data) return null;
+  const next = seats.data.next;
   const reg = mine.data.registration;
   if (reg?.status === "confirmed" || reg?.status === "canceled") return null;
   const started = !!reg;
-  if (!started && seats.data.seatsLeft <= 0) return null;
+  if (!started && !next) return null;
 
   return (
     <div role="status" className="mb-6 flex items-start gap-3 rounded-md border border-primary/50 bg-primary/10 p-4">
@@ -42,9 +41,9 @@ export function IgniteReminder() {
         <p className="mt-1 text-sm text-muted-foreground">
           {started
             ? "You started registering but haven't finished paying. Linking a wallet doesn't reserve a seat."
-            : `Signing in and linking a wallet doesn't reserve a seat. Ignite runs ${SCHEDULE_DATES}; ${seats.data.seatsLeft} of ${seats.data.capacity} seats left.`}
+            : `Signing in and linking a wallet doesn't reserve a seat. The next class, ${next?.name}, runs ${next?.dates}; ${seats.data.seatsLeft} of ${seats.data.capacity} seats left.`}
         </p>
-        <Link to="/ignite" className="mt-3 inline-flex rounded-md bg-action px-4 py-2 text-sm font-semibold text-action-foreground">
+        <Link to={mine.data.regClass ? "/ignite/$slug" : next ? "/ignite/$slug" : "/ignite"} params={{ slug: mine.data.regClass?.slug ?? next?.slug ?? "" }} className="mt-3 inline-flex rounded-md bg-action px-4 py-2 text-sm font-semibold text-action-foreground">
           {started ? "Finish registration" : "Reserve your seat"}
         </Link>
       </div>

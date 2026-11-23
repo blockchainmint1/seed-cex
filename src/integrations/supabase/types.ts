@@ -1255,6 +1255,157 @@ export type Database = {
           },
         ]
       }
+      ignite_classes: {
+        Row: {
+          agenda: Json
+          benefits: Json
+          capacity: number
+          created_at: string
+          deposit_usd: number
+          ends_at: string | null
+          fee_usd: number
+          id: string
+          instructor_bio: string | null
+          instructor_name: string
+          instructor_photo_url: string | null
+          location: string
+          miners_free: boolean
+          name: string
+          requirements: string | null
+          sessions: Json
+          slug: string
+          starts_at: string | null
+          status: string
+          tagline: string | null
+          timezone: string
+          updated_at: string
+        }
+        Insert: {
+          agenda?: Json
+          benefits?: Json
+          capacity?: number
+          created_at?: string
+          deposit_usd?: number
+          ends_at?: string | null
+          fee_usd?: number
+          id?: string
+          instructor_bio?: string | null
+          instructor_name?: string
+          instructor_photo_url?: string | null
+          location?: string
+          miners_free?: boolean
+          name: string
+          requirements?: string | null
+          sessions?: Json
+          slug: string
+          starts_at?: string | null
+          status?: string
+          tagline?: string | null
+          timezone?: string
+          updated_at?: string
+        }
+        Update: {
+          agenda?: Json
+          benefits?: Json
+          capacity?: number
+          created_at?: string
+          deposit_usd?: number
+          ends_at?: string | null
+          fee_usd?: number
+          id?: string
+          instructor_bio?: string | null
+          instructor_name?: string
+          instructor_photo_url?: string | null
+          location?: string
+          miners_free?: boolean
+          name?: string
+          requirements?: string | null
+          sessions?: Json
+          slug?: string
+          starts_at?: string | null
+          status?: string
+          tagline?: string | null
+          timezone?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ignite_interest: {
+        Row: {
+          created_at: string
+          email: string
+          full_name: string | null
+          id: string
+          last_emailed_at: string | null
+          registration_id: string | null
+          source: string
+          unsubscribed_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          full_name?: string | null
+          id?: string
+          last_emailed_at?: string | null
+          registration_id?: string | null
+          source: string
+          unsubscribed_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          full_name?: string | null
+          id?: string
+          last_emailed_at?: string | null
+          registration_id?: string | null
+          source?: string
+          unsubscribed_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ignite_interest_registration_id_fkey"
+            columns: ["registration_id"]
+            isOneToOne: false
+            referencedRelation: "ignite_registrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ignite_miner_marks: {
+        Row: {
+          is_miner: boolean
+          note: string | null
+          set_at: string
+          set_by: string
+          user_id: string
+        }
+        Insert: {
+          is_miner: boolean
+          note?: string | null
+          set_at?: string
+          set_by: string
+          user_id: string
+        }
+        Update: {
+          is_miner?: boolean
+          note?: string | null
+          set_at?: string
+          set_by?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ignite_miner_marks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ignite_peer_emails: {
         Row: {
           id: string
@@ -1356,16 +1507,20 @@ export type Database = {
         Row: {
           amount_usd: number
           checkout_url: string | null
+          class_id: string | null
           confirmed_at: string | null
           country_code: string
           created_at: string
+          deposit_usd: number | null
           email: string
+          fee_usd: number | null
           full_name: string
           hm_member_id: string | null
           id: string
           invoice_expires_at: string | null
           invoice_id: string | null
           marketing_opt_in: boolean
+          miner_discount_usd: number | null
           notices_done_at: string | null
           paid_amount_usd: number | null
           paid_asset: string | null
@@ -1380,16 +1535,20 @@ export type Database = {
         Insert: {
           amount_usd: number
           checkout_url?: string | null
+          class_id?: string | null
           confirmed_at?: string | null
           country_code: string
           created_at?: string
+          deposit_usd?: number | null
           email: string
+          fee_usd?: number | null
           full_name: string
           hm_member_id?: string | null
           id?: string
           invoice_expires_at?: string | null
           invoice_id?: string | null
           marketing_opt_in?: boolean
+          miner_discount_usd?: number | null
           notices_done_at?: string | null
           paid_amount_usd?: number | null
           paid_asset?: string | null
@@ -1404,16 +1563,20 @@ export type Database = {
         Update: {
           amount_usd?: number
           checkout_url?: string | null
+          class_id?: string | null
           confirmed_at?: string | null
           country_code?: string
           created_at?: string
+          deposit_usd?: number | null
           email?: string
+          fee_usd?: number | null
           full_name?: string
           hm_member_id?: string | null
           id?: string
           invoice_expires_at?: string | null
           invoice_id?: string | null
           marketing_opt_in?: boolean
+          miner_discount_usd?: number | null
           notices_done_at?: string | null
           paid_amount_usd?: number | null
           paid_asset?: string | null
@@ -1425,7 +1588,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "ignite_registrations_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "ignite_classes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       key_signin_alarm: {
         Row: {

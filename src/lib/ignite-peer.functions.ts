@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { DEPOSIT_USD, normalizeEmail, validateDetails, type Details } from "./ignite-registration";
+import { normalizeEmail, validateDetails, type Details } from "./ignite-registration";
 import { PEER_TOKEN_RE, emailsLeft, invoiceLive, peerCheckoutBlock, peerLinkExpiry, peerLinkState, peerToken, peerTokenHash, safeOrigin, shortName } from "./ignite-peer";
 
 const firstName = (n: string) => n.trim().split(/\s+/)[0] || "your friend";
@@ -9,34 +9,23 @@ const DAY_AGO = () => new Date(Date.now() - 86_400_000).toISOString();
 /** Saves the registrant's details and issues a fresh 7-day Peer Pay link (retiring any earlier one). */
 export const createPeerLink = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: Details & { origin: string }) => d)
+  .inputValidator((d: Details & { origin: string; classId: string }) => d)
   .handler(async ({ data, context }) => {
     if (Object.keys(validateDetails(data)).length) throw new Error("Please check your details.");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { peerSecret } = await import("./ignite.server");
+    const { peerSecret, priceSeat, saveRegistration, switchBlock } = await import("./ignite.server");
     const { nectarpayConfigured } = await import("./nectarpay.server");
     if (!nectarpayConfigured()) throw new Error("Crypto checkout isn't open yet.");
     const secret = peerSecret();
     const now = new Date();
-    const details = {
-      full_name: data.fullName.trim(), email: normalizeEmail(data.email), country_code: data.countryCode,
-      phone: data.phone.replace(/[\s\-().]/g, ""), marketing_opt_in: !!data.marketingOptIn, updated_at: now.toISOString(),
-    };
-    const { data: existing } = await supabaseAdmin.from("ignite_registrations").select("id, status").eq("user_id", context.userId).maybeSingle();
+    const { data: existing } = await supabaseAdmin.from("ignite_registrations").select("id, status, class_id, amount_usd, invoice_expires_at").eq("user_id", context.userId).maybeSingle();
     if (existing?.status === "confirmed") throw new Error("Your seat is already confirmed.");
     if (existing?.status === "underpaid") throw new Error("A payment for your seat arrived short. Contact help before anyone pays again.");
-    let regId = existing?.id;
-    if (regId) {
-      await supabaseAdmin.from("ignite_registrations").update(details).eq("id", regId);
-    } else {
-      const { data: prof } = await supabaseAdmin.from("profiles").select("hm_member_id").eq("id", context.userId).maybeSingle();
-      const { data: row, error } = await supabaseAdmin.from("ignite_registrations").insert({
-        user_id: context.userId, hm_member_id: prof?.hm_member_id ?? null, ...details,
-        amount_usd: DEPOSIT_USD, status: "pending", payment_method: "peer",
-      }).select("id").single();
-      if (error || !row) throw new Error("Couldn't save your registration.");
-      regId = row.id;
-    }
+    // The friend pays what this member's seat costs, worked out now (class fee, any miner waiver, deposit).
+    const { cls, price } = await priceSeat(context.userId, String(data.classId ?? ""));
+    const sw = switchBlock(existing ?? null, cls.id, price.totalUsd, cls.name);
+    if (sw) throw new Error(sw);
+    const regId = await saveRegistration(context.userId, data, cls, price, "peer", existing?.id ?? null);
     await supabaseAdmin.from("ignite_peer_links").update({ status: "replaced", updated_at: now.toISOString() }).eq("registration_id", regId).eq("status", "active");
     const id = crypto.randomUUID();
     const token = peerToken(secret, id);
@@ -71,13 +60,13 @@ export const emailPeerLink = createServerFn({ method: "POST" })
     if (!link || peerLinkState(link) !== "active") throw new Error("Create a Peer Pay link first.");
     const { count } = await supabaseAdmin.from("ignite_peer_emails").select("id", { count: "exact", head: true }).eq("registrant_id", context.userId).gte("sent_at", DAY_AGO());
     if (emailsLeft(count ?? 0) === 0) throw new Error("You've sent 3 emails today. Copy the link and send it yourself, or try again tomorrow.");
-    const { data: reg } = await supabaseAdmin.from("ignite_registrations").select("full_name").eq("id", link.registration_id).single();
+    const { data: reg } = await supabaseAdmin.from("ignite_registrations").select("full_name, amount_usd").eq("id", link.registration_id).single();
     const { error: logErr } = await supabaseAdmin.from("ignite_peer_emails").insert({ link_id: link.id, registrant_id: context.userId, to_email: to });
     if (logErr) throw new Error("Couldn't send right now. Try again.");
     const { deliver } = await import("./email/send.server");
     try {
       await deliver(to, "peer-pay-request", {
-        registrantName: (reg?.full_name ?? "A Seeds member").slice(0, 60), amount: DEPOSIT_USD,
+        registrantName: (reg?.full_name ?? "A Seeds member").slice(0, 60), amount: Number(reg?.amount_usd ?? 0),
         payUrl: `${safeOrigin(data.origin)}/pay/${peerToken(peerSecret(), link.id)}`, expiresAt: link.expires_at,
       });
     } catch (e) {
@@ -102,12 +91,22 @@ export const getPeerLinkPublic = createServerFn({ method: "GET" })
     const link = await findLink(data.token);
     if (!link) return { found: false as const };
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: reg } = await supabaseAdmin.from("ignite_registrations").select("full_name, status, invoice_id, updated_at, payment_method").eq("id", link.registration_id).single();
+    const { data: reg } = await supabaseAdmin.from("ignite_registrations").select("full_name, status, invoice_id, updated_at, payment_method, amount_usd, class_id").eq("id", link.registration_id).single();
     // A friend's payment whose NectarPay notice never arrived is picked up here too.
     const { reconcileIgniteRegistration } = await import("./ignite-confirm.server");
     const caughtUp = reg?.payment_method === "peer" && (await reconcileIgniteRegistration(reg));
     const state = reg?.status === "confirmed" || caughtUp ? "paid" : peerLinkState(link);
-    return { found: true as const, forName: shortName(reg?.full_name ?? ""), amount: DEPOSIT_USD, state, expiresAt: link.expires_at };
+    let cls: { name: string; dates: string; time: string | null } | null = null;
+    if (reg?.class_id) {
+      const { loadClass, toPublic } = await import("./ignite-classes.server");
+      const row = await loadClass({ id: reg.class_id }, true);
+      if (row) {
+        const c = toPublic(row);
+        const { dateRangeLabel, sharedTimeLabel } = await import("./ignite-classes");
+        cls = { name: c.name, dates: dateRangeLabel(c.sessions, c.timezone), time: sharedTimeLabel(c.sessions, c.timezone) };
+      }
+    }
+    return { found: true as const, forName: shortName(reg?.full_name ?? ""), amount: Number(reg?.amount_usd ?? 0), cls, state, expiresAt: link.expires_at };
   });
 
 /** Signed-in Honest.Money member opens a NectarPay checkout for someone else's seat. */
@@ -122,7 +121,7 @@ export const startPeerCheckout = createServerFn({ method: "POST" })
     const { seatsFull } = await import("./ignite.server");
     if (!nectarpayConfigured()) throw new Error("Crypto checkout isn't open yet.");
     const [{ data: reg }, { data: payer }] = await Promise.all([
-      supabaseAdmin.from("ignite_registrations").select("id, user_id, full_name, status, payment_method, invoice_id, checkout_url, invoice_expires_at").eq("id", link.registration_id).single(),
+      supabaseAdmin.from("ignite_registrations").select("id, user_id, class_id, amount_usd, full_name, status, payment_method, invoice_id, checkout_url, invoice_expires_at").eq("id", link.registration_id).single(),
       supabaseAdmin.from("profiles").select("display_name, hm_member_id").eq("id", context.userId).maybeSingle(),
     ]);
     if (!reg) throw new Error("Payment link not found.");
@@ -133,7 +132,11 @@ export const startPeerCheckout = createServerFn({ method: "POST" })
     // Same payer, checkout still open: send them back to it.
     if (reg.payment_method === "peer" && link.payer_id === context.userId && reg.checkout_url && reg.invoice_id === link.invoice_id && invoiceLive(reg.invoice_expires_at))
       return { checkoutUrl: reg.checkout_url };
-    if (await seatsFull(reg.user_id)) throw new Error("Ignite is fully reserved.");
+    const { loadClass } = await import("./ignite-classes.server");
+    const cls = reg.class_id ? await loadClass({ id: reg.class_id }, true) : null;
+    if (!cls) throw new Error("This seat's class couldn't be found. Ask your friend to make a new link.");
+    if (await seatsFull(reg.user_id, cls.id, cls.capacity)) throw new Error(`${cls.name} is fully reserved.`);
+    if (!(Number(reg.amount_usd) >= 1)) throw new Error("This link has no amount to pay.");
 
     // Claim the seat's checkout slot atomically so two people can't open checkouts at once.
     const nowIso = new Date().toISOString();
@@ -152,7 +155,7 @@ export const startPeerCheckout = createServerFn({ method: "POST" })
     let inv;
     try {
       inv = await createInvoice({
-        amount: DEPOSIT_USD, order_id: `ignite-peer-${link.id}`, description: `Seeds Ignite seat for ${shortName(reg.full_name)} (Peer Pay)`,
+        amount: Number(reg.amount_usd), order_id: `ignite-peer-${link.id}`, description: `Seeds Ignite ${cls.name} seat for ${shortName(reg.full_name)} (Peer Pay)`,
         redirect_url: `${safeOrigin(data.origin)}/pay/${data.token}?paid=1`, buyer_email: payerEmail, expires_in_seconds: 3600,
       });
     } catch (e) {

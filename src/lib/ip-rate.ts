@@ -16,6 +16,8 @@ export const IP_LIMITS = {
   adEvent: 40,
   /** AWS alarm page: posts per minute from one connection that name Seeds' alarm topic (real alarms are a handful a day). */
   awsAlarm: 20,
+  /** Ignite "tell me about new classes" sign-ups per minute from one connection. */
+  igniteInterest: 6,
 } as const;
 
 /** Start of the current one-minute window. */

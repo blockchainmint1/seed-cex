@@ -48,7 +48,8 @@ export function unsubscribeUrl(userId: string): string {
 export async function deliver<K extends TemplateName>(to: string, name: K, props: TemplateProps[K], opts: { subjectPrefix?: string } = {}) {
   if (isPlaceholderEmail(to)) throw new Error("No deliverable email on this account");
   const r = await renderTemplate(name, props);
-  const unsub = name === "weekly-update" ? (props as TemplateProps["weekly-update"]).unsubscribeUrl : undefined;
+  const unsub = name === "weekly-update" ? (props as TemplateProps["weekly-update"]).unsubscribeUrl
+    : name === "ignite-interest" ? (props as TemplateProps["ignite-interest"]).unsubscribeUrl : undefined;
   return sesSend({ from: EMAIL_FROM, replyTo: EMAIL_REPLY_TO, to, subject: `${opts.subjectPrefix ?? ""}${r.subject}`, html: r.html, text: r.text, unsubscribeUrl: unsub });
 }
 

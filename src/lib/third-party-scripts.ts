@@ -9,7 +9,7 @@ const PUBLIC_EXACT = new Set([
   "/", "/ignite", "/ignite/confirmed", "/coming-soon", "/list", "/manifesto", "/terms", "/privacy",
   "/risk", "/custody", "/how-it-works", "/brand", "/stats", "/tsd", "/proof/code", "/api",
 ]);
-const PUBLIC_PREFIXES = ["/about/"];
+const PUBLIC_PREFIXES = ["/about/", "/ignite/"];
 
 export function thirdPartyScriptsAllowed(pathname: string): boolean {
   const p = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;

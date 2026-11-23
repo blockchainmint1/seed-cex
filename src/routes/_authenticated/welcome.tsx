@@ -11,7 +11,6 @@ import { getIgniteSeats, getMyIgnite } from "@/lib/ignite.functions";
 import {
   afterOnboarding, cleanStep, ONBOARDING_QUERY, nextStep, prevStep, STEP_LABELS, stepNumber, stepsFor, type OnboardingStep,
 } from "@/lib/onboarding";
-import { DEPOSIT_USD, SCHEDULE_DATES, SCHEDULE_START_UTC, SCHEDULE_TIME } from "@/lib/ignite-registration";
 import { useSession } from "@/hooks/use-session";
 import { Button } from "@/components/ui/button";
 import { Card, fieldLabel, inputCls, Note } from "@/components/account/ui";
@@ -510,30 +509,31 @@ function StepIgnite() {
   const { user } = useSession();
   const fetchMine = useServerFn(getMyIgnite);
   const fetchSeats = useServerFn(getIgniteSeats);
-  const open = Date.now() < new Date(SCHEDULE_START_UTC).getTime();
-  const mine = useQuery({ queryKey: ["ignite", user?.id], queryFn: () => fetchMine(), enabled: !!user && open });
-  const seats = useQuery({ queryKey: ["ignite-seats"], queryFn: () => fetchSeats(), enabled: open });
+  const mine = useQuery({ queryKey: ["ignite", user?.id], queryFn: () => fetchMine(), enabled: !!user });
+  const seats = useQuery({ queryKey: ["ignite-seats"], queryFn: () => fetchSeats() });
   const status = mine.data?.registration?.status;
+  const myClass = mine.data?.regClass ?? null;
+  const next = seats.data?.next ?? null;
 
   return (
     <>
       <Heading title="Learn to trade at Ignite">
-        A five-day live class on trading with Seeds, led by Bobby Gray, founder of HME.
+        Live classes on trading with Seeds. HME miners attend free, and every seat comes with a free Cold Storage Coin.
       </Heading>
-      {!open ? (
-        <Card><p className="text-sm text-muted-foreground">This Ignite class has started. Sessions are recorded; watch for the next class on the <Link to="/ignite" className="text-primary underline">Ignite page</Link>.</p></Card>
-      ) : status === "confirmed" ? (
-        <Note tone="ok">You have a seat at Ignite, {SCHEDULE_DATES}. See you there!</Note>
+      {status === "confirmed" ? (
+        <Note tone="ok">You have a seat in {myClass ? `${myClass.name}, ${myClass.dates}` : "Ignite"}. See you there!</Note>
+      ) : !next ? (
+        <Card><p className="text-sm text-muted-foreground">No class is open right now. Classes are recorded; see what's coming on the <Link to="/ignite" className="text-primary underline">Ignite page</Link>.</p></Card>
       ) : (
         <div className="rounded-md border border-primary/40 bg-primary/5 p-5">
           <div className="flex items-start gap-3">
             <Flame aria-hidden className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
             <div className="min-w-0">
-              <p className="font-semibold">{SCHEDULE_DATES}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{SCHEDULE_TIME} · ${DEPOSIT_USD} reservation deposit · sessions are recorded</p>
+              <p className="font-semibold">{next.name} · {next.dates}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{next.time ? `${next.time} · ` : ""}{next.price} · sessions are recorded</p>
               {seats.data ? <p className="mt-1 text-sm text-muted-foreground">{seats.data.seatsLeft} of {seats.data.capacity} seats left</p> : null}
               {status && status !== "canceled" ? <p className="mt-2 text-sm">You started registering but haven't finished paying yet.</p> : null}
-              <Button asChild className="mt-4"><Link to="/ignite">{status && status !== "canceled" ? "Finish registration" : "Reserve your seat"} <ArrowRight /></Link></Button>
+              <Button asChild className="mt-4"><Link to="/ignite/$slug" params={{ slug: myClass && status && status !== "canceled" ? myClass.slug : next.slug }}>{status && status !== "canceled" ? "Finish registration" : "Reserve your seat"} <ArrowRight /></Link></Button>
             </div>
           </div>
         </div>
@@ -552,8 +552,10 @@ function StepDone({ onFinish }: { onFinish: () => void }) {
   const identity = useMyIdentity();
   const keyKind = identity.keyKind;
   const fetchMine = useServerFn(getMyIgnite);
-  const open = Date.now() < new Date(SCHEDULE_START_UTC).getTime();
-  const mine = useQuery({ queryKey: ["ignite", user?.id], queryFn: () => fetchMine(), enabled: !!user && open });
+  const fetchSeats = useServerFn(getIgniteSeats);
+  const mine = useQuery({ queryKey: ["ignite", user?.id], queryFn: () => fetchMine(), enabled: !!user });
+  const seats = useQuery({ queryKey: ["ignite-seats"], queryFn: () => fetchSeats() });
+  const open = !!seats.data?.next || mine.data?.registration?.status === "confirmed";
   const p = profile.data;
   const fees = useFeePrep();
   const rows: { done: boolean; label: string; to: "/account/profile" | "/account/security" | "/account/alerts" | "/account/balances/deposit" | "/ignite" }[] = [

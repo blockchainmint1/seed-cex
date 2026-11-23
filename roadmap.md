@@ -402,3 +402,13 @@
 - [x] Record which invite code each new member joined with; count invite clicks; learn code owners
 - [x] /admin/affiliates: totals, new members per day, per-code clicks/sign-ups/trading/swaps/TSD/Ignite seats, new members list with trading + TSD
 - [ ] Auditor review before publishing (blocked: auditor)
+
+## Ignite becomes regular classes (Bobby, Nov 23)
+- [x] Classes stored per class (First Class + Spark Dec 5–6, 1–5 PM CT, 100 seats, $99 + $400 deposit); paid people grouped under First Class
+- [x] Unpaid sign-ups → interest list (not tied to a class), emailable with one-click unsubscribe
+- [x] /ignite overview with upcoming classes + seats; /ignite/<class> pages (agenda, benefits, instructor + photo, price); no inaugural wording; Ignite in About menu
+- [x] Admin: class manager (instructor + photo, seats, fee, deposit, requirements, sessions), registrants by class, email a whole class, move a seat, miner marks, interest list
+- [x] Miner discount rules: class fee waived (deposit kept) when the miner check says "miner"; admin mark wins; unknown = full fee
+- [ ] Honest.Money adds POST /api/public/minetxc/miner-status (request drafted) (blocked: Honest.Money team)
+- [ ] Open Spark to the public once the miner check answers (blocked: miner-status endpoint, then Bobby's go-ahead)
+- [ ] Spark instructor photo + final agenda/requirements (blocked: Bobby supplies)

@@ -2,7 +2,7 @@ import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, Bug, CandlestickChart, Coins, ExternalLink, Flame, LayoutDashboard, LockKeyhole, Map as MapIcon, Megaphone, Settings, Share2, ShieldCheck, Sparkles, UserCog, Users } from "lucide-react";
+import { ArrowLeft, Bug, CandlestickChart, Coins, ExternalLink, Flame, CalendarDays, Inbox, LayoutDashboard, LockKeyhole, Map as MapIcon, Megaphone, Settings, Share2, ShieldCheck, Sparkles, UserCog, Users } from "lucide-react";
 import { getAdminGate } from "@/lib/admin.functions";
 import { getMyProfile } from "@/lib/profile.functions";
 import { useSession } from "@/hooks/use-session";
@@ -31,7 +31,9 @@ export const Route = createFileRoute("/_authenticated/admin")({
 
 const NAV = [
   { to: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
-  { to: "/admin/ignite", label: "Ignite class", icon: Flame },
+  { to: "/admin/ignite", label: "Ignite registrants", icon: Flame },
+  { to: "/admin/ignite-classes", label: "Ignite classes", icon: CalendarDays },
+  { to: "/admin/ignite-interest", label: "Ignite interest list", icon: Inbox },
   { to: "/admin/accounts", label: "Accounts", icon: Users },
   { to: "/admin/affiliates", label: "Affiliates", icon: Share2 },
   { to: "/admin/markets", label: "Orders & trades", icon: CandlestickChart },

@@ -13,12 +13,19 @@ function secret() {
   return s;
 }
 
-async function optOut(token: string | null): Promise<boolean> {
+const COPY = {
+  weekly: { ask: "Stop weekly updates?", what: "You'll stop getting the Monday summary of your Seeds activity.", done: "We won't send you weekly updates anymore. You can turn them back on any time from your profile." },
+  ignite: { ask: "Stop Ignite class news?", what: "You'll stop getting emails about new Seeds Ignite classes. If you already have a seat, emails about your class still come.", done: "We won't email you about new Ignite classes anymore." },
+} as const;
+
+async function optOut(token: string | null): Promise<"weekly" | "ignite" | null> {
   const t = token ? readUnsubToken(secret(), token) : null;
-  if (!t) return false;
+  if (!t) return null;
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { error } = await supabaseAdmin.from("profiles").update({ email_weekly_update: false }).eq("id", t.userId);
-  return !error;
+  const { error } = t.list === "ignite"
+    ? await supabaseAdmin.from("ignite_interest").update({ unsubscribed_at: new Date().toISOString() }).eq("id", t.userId).is("unsubscribed_at", null)
+    : await supabaseAdmin.from("profiles").update({ email_weekly_update: false }).eq("id", t.userId);
+  return error ? null : t.list;
 }
 
 // GET shows a confirm button (so link scanners can't unsubscribe people);
@@ -29,16 +36,17 @@ export const Route = createFileRoute("/api/public/email/unsubscribe")({
     handlers: {
       GET: async ({ request }) => {
         const token = new URL(request.url).searchParams.get("t");
-        if (!token || !readUnsubToken(secret(), token)) return html(page("Link not recognized", "This unsubscribe link is incomplete or has been changed. You can turn weekly emails off on your Seeds profile instead."), 400);
-        return html(page("Stop weekly updates?", "You'll stop getting the Monday summary of your Seeds activity.",
+        const t = token ? readUnsubToken(secret(), token) : null;
+        if (!token || !t) return html(page("Link not recognized", "This unsubscribe link is incomplete or has been changed. You can turn weekly emails off on your Seeds profile instead."), 400);
+        return html(page(COPY[t.list].ask, COPY[t.list].what,
           `<form method="post"><input type="hidden" name="t" value="${esc(token)}"><button type="submit">Unsubscribe</button></form>`));
       },
       POST: async ({ request }) => {
         let token = new URL(request.url).searchParams.get("t");
         if (!token) { try { token = String((await request.formData()).get("t") ?? ""); } catch { token = null; } }
-        const ok = await optOut(token);
-        return ok
-          ? html(page("You're unsubscribed", "We won't send you weekly updates anymore. You can turn them back on any time from your profile."))
+        const list = await optOut(token);
+        return list
+          ? html(page("You're unsubscribed", COPY[list].done))
           : html(page("Link not recognized", "We couldn't match this link to an account. Turn weekly emails off on your Seeds profile instead."), 400);
       },
     },

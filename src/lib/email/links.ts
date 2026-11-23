@@ -4,7 +4,8 @@ import { sha256 } from "@noble/hashes/sha2.js";
 import { base64urlnopad } from "@scure/base";
 
 const enc = new TextEncoder();
-export const LISTS = ["weekly"] as const;
+/** weekly = profile id; ignite = Ignite interest-list row id. */
+export const LISTS = ["weekly", "ignite"] as const;
 export type EmailList = (typeof LISTS)[number];
 
 function mac(secret: string, list: EmailList, userId: string): string {

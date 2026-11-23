@@ -51,7 +51,7 @@ function AdminOverview() {
         </div>
       ) : null}
       <div className="grid gap-3 md:grid-cols-2">
-        <Jump to="/admin/ignite" title="Ignite class" body={ig.data ? `${ig.data.confirmed} paid · ${ig.data.seatsLeft} of ${ig.data.capacity} seats left · ${ig.data.pending} waiting to pay` : "Registrants, payment reminders and messages."} />
+        <Jump to="/admin/ignite" title="Ignite classes" body={ig.data ? `${ig.data.confirmed} paid · ${ig.data.classes.filter((c) => c.status === "open").map((c) => `${c.name}: ${Math.max(0, c.capacity - c.held)} of ${c.capacity} left`).join(" · ") || "no open class"} · ${ig.data.pending} waiting to pay` : "Registrants, payment reminders and messages."} />
         <Jump to="/admin/accounts" title="Accounts" body="Every member, their activity and trading value." />
         <Jump to="/admin/markets" title="Orders & trades" body="Open orders, trades waiting to settle, recent fills." />
         <Jump to="/admin/users" title="Admin access" body="Choose which Honest.Money members can open this console." />

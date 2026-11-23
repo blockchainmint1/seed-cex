@@ -1,9 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Download, Mail, Search, Send, X } from "lucide-react";
-import { cancelIgniteSeat, type AdminIgniteRow } from "@/lib/admin.functions";
+import { cancelIgniteSeat, moveIgniteSeat, type AdminIgniteRow } from "@/lib/admin.functions";
+import { checkIgniteMiner, setIgniteMinerMark } from "@/lib/ignite-classes.functions";
 import { sendIgniteMessage, sendIgniteReminders } from "@/lib/ignite-admin.functions";
 import { BODY_MAX, MAX_RECIPIENTS, REMINDABLE, filterIgniteRows, reminderBlock, sortIgniteRows, validateMessage, type SortKey } from "@/lib/ignite-admin";
 import { Note, TabTitle, fieldLabel, inputCls } from "@/components/account/ui";
@@ -16,7 +17,7 @@ export const Route = createFileRoute("/_authenticated/admin/ignite")({
   staticData: { sitemap: false },
   head: () => ({
     meta: [
-      { title: "Ignite class registrants — Seeds admin" },
+      { title: "Ignite registrants — Seeds admin" },
       { name: "description", content: "Everyone registered for the Ignite class: search, sort, email registrants and send payment reminders." },
       { property: "og:title", content: "Ignite class registrants — Seeds admin" },
       { property: "og:description", content: "Registrants, payments and messages for the Ignite class." },
@@ -69,6 +70,11 @@ function IgniteAdminPage() {
   const remind = useServerFn(sendIgniteReminders);
   const message = useServerFn(sendIgniteMessage);
   const cancel = useServerFn(cancelIgniteSeat);
+  const move = useServerFn(moveIgniteSeat);
+  const markMiner = useServerFn(setIgniteMinerMark);
+  const checkMiner = useServerFn(checkIgniteMiner);
+  const [classFilter, setClassFilter] = useState<string>("all");
+  const [minerCheck, setMinerCheck] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<(typeof FILTERS)[number]["v"]>("all");
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "createdAt", dir: "desc" });
@@ -79,7 +85,11 @@ function IgniteAdminPage() {
   const [detail, setDetail] = useState<AdminIgniteRow | null>(null);
   const d = q.data;
 
-  const rows = useMemo(() => (d ? sortIgniteRows(filterIgniteRows(d.rows, search, filter), sort.key, sort.dir) : []), [d, search, filter, sort]);
+  const className = useMemo(() => new Map((d?.classes ?? []).map((c) => [c.id, c.name])), [d]);
+  const inClass = useMemo(() => (d ? (classFilter === "all" ? d.rows : d.rows.filter((r) => r.classId === classFilter)) : []), [d, classFilter]);
+  const rows = useMemo(() => sortIgniteRows(filterIgniteRows(inClass, search, filter), sort.key, sort.dir), [inClass, search, filter, sort]);
+  const selClass = d?.classes.find((c) => c.id === classFilter) ?? null;
+  const paidInClass = inClass.filter((r) => r.status === "confirmed");
   const pickedRows = useMemo(() => (d ? d.rows.filter((r) => picked.has(r.id)) : []), [d, picked]);
   const pickedUnpaid = pickedRows.filter((r) => (REMINDABLE as readonly string[]).includes(r.status));
   const allShownPicked = rows.length > 0 && rows.every((r) => picked.has(r.id));
@@ -119,8 +129,8 @@ function IgniteAdminPage() {
   }
 
   function downloadCsv() {
-    const head = ["Name", "Email", "Phone", "Status", "Paid", "Paid by", "Referred by", "Registered", "Last emailed", "Marketing opt-in"];
-    const lines = rows.map((r) => [r.fullName, r.email, r.phone, r.status, paidLabel(r), r.payerName ?? "", r.refCode ?? "", r.createdAt, r.lastEmailedAt ?? "", r.marketingOptIn ? "yes" : "no"].map(csvCell).join(","));
+    const head = ["Name", "Email", "Phone", "Class", "Status", "Paid", "Paid by", "Referred by", "Registered", "Last emailed", "Marketing opt-in"];
+    const lines = rows.map((r) => [r.fullName, r.email, r.phone, r.classId ? className.get(r.classId) ?? "" : "", r.status, paidLabel(r), r.payerName ?? "", r.refCode ?? "", r.createdAt, r.lastEmailedAt ?? "", r.marketingOptIn ? "yes" : "no"].map(csvCell).join(","));
     const blob = new Blob([[head.map(csvCell).join(","), ...lines].join("\n")], { type: "text/csv" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -132,17 +142,34 @@ function IgniteAdminPage() {
   return (
     <div className="space-y-5">
       <TabTitle
-        title="Ignite class"
-        desc={d ? `${d.schedule.dates} · ${d.schedule.time} · $${d.deposit} deposit · ${d.capacity} seats` : "Registrants, payments and messages."}
+        title="Ignite registrants"
+        desc={selClass ? `${selClass.name} · ${selClass.dates}${selClass.time ? ` · ${selClass.time}` : ""} · ${selClass.capacity} seats` : "Everyone who registered for any Ignite class: payments, messages and reminders."}
       />
       {q.isPending ? <Loading /> : q.error || !d ? <p role="alert" className="text-sm text-destructive">Couldn't load registrations. Refresh to retry.</p> : (
         <>
+          <div className="flex flex-wrap items-center gap-2">
+            <div role="group" aria-label="Class" className="flex flex-wrap rounded-sm border border-border p-0.5">
+              {[{ id: "all", name: "All classes" }, ...d.classes].map((c) => (
+                <button key={c.id} type="button" aria-pressed={classFilter === c.id} onClick={() => { setClassFilter(c.id); setPicked(new Set()); }}
+                  className={`rounded-sm px-2.5 py-1 text-xs ${classFilter === c.id ? "bg-primary/10 font-semibold text-primary" : "text-muted-foreground hover:text-foreground"}`}>
+                  {c.name}{"status" in c && c.status === "draft" ? " (draft)" : ""}
+                </button>
+              ))}
+            </div>
+            <Link to="/admin/ignite-classes" className="text-xs font-semibold text-primary underline-offset-4 hover:underline">Manage classes</Link>
+            <Link to="/admin/ignite-interest" className="text-xs font-semibold text-primary underline-offset-4 hover:underline">Interest list</Link>
+            {selClass && paidInClass.length ? (
+              <Button size="sm" className="ml-auto" disabled={paidInClass.length > MAX_RECIPIENTS} onClick={() => setCompose(paidInClass)}>
+                <Mail /> Email everyone paid in {selClass.name} ({paidInClass.length})
+              </Button>
+            ) : null}
+          </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
-            <Stat label="Paid" value={String(d.confirmed)} tone="good" />
-            <Stat label="Seats left" value={`${d.seatsLeft} / ${d.capacity}`} />
-            <Stat label="Not paid yet" value={String(d.rows.filter((r) => (REMINDABLE as readonly string[]).includes(r.status)).length)} tone={d.pending ? "warn" : undefined} />
-            <Stat label="Registered" value={String(d.rows.filter((r) => r.status !== "canceled").length)} />
-            <Stat label="Cancelled" value={String(d.canceled)} />
+            <Stat label="Paid" value={String(paidInClass.length)} tone="good" />
+            <Stat label="Seats left" value={selClass ? `${Math.max(0, selClass.capacity - selClass.held)} / ${selClass.capacity}` : String(d.classes.filter((c) => c.status === "open").reduce((n, c) => n + Math.max(0, c.capacity - c.held), 0))} />
+            <Stat label="Not paid yet" value={String(inClass.filter((r) => (REMINDABLE as readonly string[]).includes(r.status)).length)} tone={d.pending ? "warn" : undefined} />
+            <Stat label="Registered" value={String(inClass.filter((r) => r.status !== "canceled").length)} />
+            <Stat label="Cancelled" value={String(inClass.filter((r) => r.status === "canceled").length)} />
           </div>
 
           {notice ? (
@@ -193,6 +220,7 @@ function IgniteAdminPage() {
                     <SortHeader label="Name" k="fullName" sort={sort} onSort={onSort} />
                     <SortHeader label="Email" k="email" sort={sort} onSort={onSort} />
                     <th scope="col" className="px-3 py-2 text-left font-normal">Phone</th>
+                    <th scope="col" className="px-3 py-2 text-left font-normal">Class</th>
                     <SortHeader label="Status" k="status" sort={sort} onSort={onSort} />
                     <SortHeader label="Paid" k="paidUsd" sort={sort} onSort={onSort} />
                     <SortHeader label="Referred by" k="refCode" sort={sort} onSort={onSort} />
@@ -215,6 +243,7 @@ function IgniteAdminPage() {
                         </td>
                         <td className="px-3 py-2 text-muted-foreground">{r.email}</td>
                         <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{r.phone}</td>
+                        <td className="px-3 py-2 text-xs">{r.classId ? className.get(r.classId) ?? "—" : "—"}{r.minerDiscountUsd > 0 ? <span className="block text-primary">miner: fee waived</span> : null}</td>
                         <td className="px-3 py-2"><span className={`rounded-sm px-1.5 py-0.5 font-mono text-[10px] uppercase ${chip.cls}`}>{chip.label}</span></td>
                         <td className="px-3 py-2 text-xs">{paidLabel(r)}{r.payerName ? <span className="block text-muted-foreground">by {r.payerName}</span> : null}</td>
                         <td className="px-3 py-2 text-xs text-muted-foreground">{r.refCode ?? "—"}</td>
@@ -238,7 +267,7 @@ function IgniteAdminPage() {
                       </tr>
                     );
                   })}
-                  {rows.length === 0 ? <tr><td colSpan={10} className="px-3 py-6 text-muted-foreground">{d.rows.length ? "No one matches." : "No registrations yet."}</td></tr> : null}
+                  {rows.length === 0 ? <tr><td colSpan={11} className="px-3 py-6 text-muted-foreground">{d.rows.length ? "No one matches." : "No registrations yet."}</td></tr> : null}
                 </tbody>
               </table>
             </div>
@@ -260,7 +289,7 @@ function IgniteAdminPage() {
         }}
       />
 
-      <Dialog open={!!detail} onOpenChange={(o) => !o && setDetail(null)}>
+      <Dialog open={!!detail} onOpenChange={(o) => { if (!o) { setDetail(null); setMinerCheck(null); } }}>
         <DialogContent className="max-w-lg">
           {detail ? (
             <>
@@ -269,6 +298,8 @@ function IgniteAdminPage() {
                 <DialogDescription>{detail.email} · {detail.phone}</DialogDescription>
               </DialogHeader>
               <dl className="grid grid-cols-[8rem_1fr] gap-x-3 gap-y-1.5 text-sm">
+                <dt className="text-muted-foreground">Class</dt><dd>{detail.classId ? className.get(detail.classId) ?? "—" : "—"}</dd>
+                <dt className="text-muted-foreground">Seat price</dt><dd>${detail.amountUsd.toLocaleString("en-US")}{detail.minerDiscountUsd > 0 ? ` (class fee waived: miner)` : ""}</dd>
                 <dt className="text-muted-foreground">Status</dt><dd>{STATUS_CHIP[detail.status]?.label ?? detail.status}</dd>
                 <dt className="text-muted-foreground">Paid</dt><dd>{paidLabel(detail)}</dd>
                 <dt className="text-muted-foreground">Paid by</dt><dd>{detail.payerName ?? (detail.status === "confirmed" && detail.method !== "peer" ? "self" : "—")}</dd>
@@ -292,6 +323,44 @@ function IgniteAdminPage() {
                   </ul>
                 ) : <p className="mt-1 text-sm text-muted-foreground">None yet.</p>}
               </div>
+              <div className="space-y-2 rounded-md border border-border p-3 text-sm">
+                <p className={fieldLabel}>HME miner (class fee waived)</p>
+                <p className="text-xs text-muted-foreground">
+                  {detail.minerMark === true ? "Marked as a miner by an admin." : detail.minerMark === false ? "Marked as not a miner by an admin." : "No admin mark: Seeds asks Honest.Money for mining hash power when they check out."}
+                  {minerCheck ? ` Check now: ${minerCheck}.` : ""}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline" disabled={busy === "miner"} onClick={async () => {
+                    setBusy("miner"); setMinerCheck(null);
+                    try { const r = await checkMiner({ data: { userId: detail.userId } }); setMinerCheck(`${r.status === "miner" ? "miner" : r.status === "not_miner" ? "not a miner" : "couldn't tell"} (${r.source === "admin" ? "admin mark" : r.source === "honest-money" ? "Honest.Money" : "no answer"})`); }
+                    catch (e) { setMinerCheck((e as Error).message); } finally { setBusy(null); }
+                  }}>Check now</Button>
+                  {([[true, "Mark miner"], [false, "Mark not a miner"], [null, "Clear mark"]] as const).map(([v, label]) => (
+                    <Button key={label} size="sm" variant="ghost" disabled={busy === "miner" || detail.minerMark === v} onClick={async () => {
+                      setBusy("miner");
+                      try { await markMiner({ data: { userId: detail.userId, isMiner: v } }); setDetail({ ...detail, minerMark: v }); await reload(); }
+                      finally { setBusy(null); }
+                    }}>{label}</Button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">A mark changes the price of their next checkout only. Seats already paid keep what was paid.</p>
+              </div>
+              {detail.status !== "canceled" && d && d.classes.length > 1 ? (
+                <label className="block text-sm">
+                  <span className={fieldLabel}>Move seat to another class</span>
+                  <select className={`${inputCls} mt-1`} value={detail.classId ?? ""} disabled={busy === "move"} onChange={async (e) => {
+                    const to = e.target.value;
+                    const name = className.get(to);
+                    if (!to || to === detail.classId || !window.confirm(`Move ${detail.fullName}'s seat to ${name}? What they paid stays the same.`)) return;
+                    setBusy("move");
+                    try { const r = await move({ data: { id: detail.id, classId: to } }); setNotice({ tone: "ok", text: `${detail.fullName} moved to ${r.className}.` }); setDetail({ ...detail, classId: to }); await reload(); }
+                    catch (err) { setNotice({ tone: "error", text: (err as Error).message }); }
+                    finally { setBusy(null); }
+                  }}>
+                    {d.classes.map((c) => <option key={c.id} value={c.id}>{c.name} · {c.dates}{c.status === "draft" ? " (draft)" : ""}</option>)}
+                  </select>
+                </label>
+              ) : null}
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" onClick={() => { setCompose([detail]); setDetail(null); }}><Mail /> Email {detail.fullName.split(" ")[0]}</Button>
               </div>

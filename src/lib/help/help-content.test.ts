@@ -5,7 +5,6 @@ import { searchHelp } from "./search";
 import { DEFAULT_TIERS } from "../withdraw-limits";
 import { LISTING_PACKAGES } from "../listing";
 import { FEE_PREP } from "../fee-prep";
-import { DEPOSIT_USD, SEAT_CAPACITY } from "../ignite-registration";
 import { LAUNCH_DATE_LABEL } from "../launch";
 import { MARKET_SLIPPAGE_OPTIONS, DEFAULT_MARKET_SLIPPAGE_PCT } from "../market-order";
 
@@ -85,10 +84,10 @@ describe("help facts match Seeds' own rules", () => {
     expect(t).toContain(`$${FEE_PREP.base.suggestUsd} in ETH`);
   });
 
-  test("Ignite deposit and seats match the class page", () => {
+  test("Ignite help never names a fixed price or seat count (each class sets its own)", () => {
     const t = text("ignite");
-    expect(t).toContain(`$${DEPOSIT_USD} reservation deposit`);
-    expect(t).toContain(`**Seats:** ${SEAT_CAPACITY}.`);
+    expect(t).not.toMatch(/\$\d/);
+    expect(t).toContain("HME miners attend free");
   });
 
   test("launch date matches the demo banner page", () => {

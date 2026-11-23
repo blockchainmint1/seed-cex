@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, ArrowRight, Bell, CalendarDays, Check, Clock, KeyRound, Link2, LineChart, Lock, UserRound, Video } from "lucide-react";
 import { getIgniteSeats } from "@/lib/ignite.functions";
 import { LAUNCH_DATE_LABEL, timeLeft } from "@/lib/launch";
-import { RECORDING_NOTE, SCHEDULE_DATES, SCHEDULE_SESSIONS, SCHEDULE_START_UTC, SCHEDULE_TIME, SEAT_CAPACITY } from "@/lib/ignite-registration";
+import { RECORDING_NOTE, SCHEDULE_START_UTC } from "@/lib/ignite-registration";
 
 export const Route = createFileRoute("/coming-soon")({
   staticData: { sitemap: true },
@@ -66,9 +66,10 @@ function Countdown() {
 
 function ComingSoon() {
   const seats = useQuery({ queryKey: ["ignite-seats"], queryFn: () => getIgniteSeats(), refetchInterval: 60_000 });
+  const next = seats.data?.next ?? null;
   const seatLine = seats.data
-    ? seats.data.seatsLeft > 0 ? `${seats.data.seatsLeft} of ${seats.data.capacity} seats left` : "Fully reserved"
-    : `Limited to ${SEAT_CAPACITY} seats`;
+    ? next ? `${seats.data.seatsLeft} of ${seats.data.capacity} seats left` : "No open class right now"
+    : "Limited seats";
 
   return (
     <div className="mx-auto max-w-7xl px-5 pb-20 pt-12 lg:pt-20">
@@ -87,8 +88,8 @@ function ComingSoon() {
             Right now Seeds is open for account setup and wallet linking only. Trading is not live yet. It opens on launch day, the same day our first Ignite trading class begins.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link to="/ignite" hash="reserve" className="inline-flex items-center gap-2 rounded-md bg-action px-6 py-3 text-sm font-semibold text-action-foreground transition-[filter] hover:brightness-110">
-              Reserve a seat in the first class <ArrowRight aria-hidden className="size-4" />
+            <Link to="/ignite" className="inline-flex items-center gap-2 rounded-md bg-action px-6 py-3 text-sm font-semibold text-action-foreground transition-[filter] hover:brightness-110">
+              See Ignite classes <ArrowRight aria-hidden className="size-4" />
             </Link>
             <Link to="/account" className="inline-flex items-center rounded-md border border-foreground/70 px-6 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-foreground/5">
               Set up my account
@@ -140,14 +141,15 @@ function ComingSoon() {
       <section className="mt-20 overflow-hidden rounded-3xl border border-primary/40 bg-card">
         <div className="grid gap-10 p-6 sm:p-10 lg:grid-cols-[1.3fr_1fr]">
           <div>
-            <p className="font-mono text-[11px] tracking-[0.24em] text-primary uppercase">Start on launch day with Ignite</p>
-            <h2 className="mt-3 font-display text-3xl tracking-tight text-foreground sm:text-5xl">Register for the first class.</h2>
+            <p className="font-mono text-[11px] tracking-[0.24em] text-primary uppercase">Learn with Ignite</p>
+            <h2 className="mt-3 font-display text-3xl tracking-tight text-foreground sm:text-5xl">{next ? `Register for ${next.name}.` : "Join an Ignite class."}</h2>
             <p className="mt-5 max-w-xl text-muted-foreground">
-              Ignite is our live crypto trading class, led by Bobby Gray, founder of the Honest Money Ecosystem. Five sessions walk you through setting up a wallet, getting into crypto and buying and selling on Seeds, starting the day Seeds goes live.
+              Ignite is our live crypto trading class, led by Bobby Gray, founder of the Honest Money Ecosystem. Live sessions walk you through setting up a wallet, getting into crypto and buying and selling on Seeds.
             </p>
             <ul className="mt-6 space-y-2 text-sm">
               {[
-                "Your $400 reservation deposit comes back to you during the class for trading.",
+                "Your trade deposit comes back to you during the class for trading.",
+                "Free for HME miners, plus a free Cold Storage Coin.",
                 "Pay with crypto, or have someone pay for you with Peer Pay.",
                 "Every session is recorded, so you can catch up later.",
               ].map((t) => (
@@ -157,12 +159,12 @@ function ComingSoon() {
           </div>
           <div className="flex flex-col justify-between gap-6 rounded-2xl border border-border bg-background p-6">
             <dl className="space-y-4">
-              <div className="flex gap-3"><CalendarDays aria-hidden className="mt-0.5 size-4 shrink-0 text-primary" /><div><dt className="sr-only">Dates</dt><dd className="font-semibold text-foreground">{SCHEDULE_DATES}</dd></div></div>
-              <div className="flex gap-3"><Clock aria-hidden className="mt-0.5 size-4 shrink-0 text-primary" /><div><dt className="sr-only">Time</dt><dd className="text-foreground">{SCHEDULE_TIME}</dd><dd className="text-sm text-muted-foreground">{SCHEDULE_SESSIONS}</dd></div></div>
+              <div className="flex gap-3"><CalendarDays aria-hidden className="mt-0.5 size-4 shrink-0 text-primary" /><div><dt className="sr-only">Dates</dt><dd className="font-semibold text-foreground">{next ? `${next.name} · ${next.dates}` : "New classes coming soon"}</dd></div></div>
+              <div className="flex gap-3"><Clock aria-hidden className="mt-0.5 size-4 shrink-0 text-primary" /><div><dt className="sr-only">Time</dt><dd className="text-foreground">{next?.time ?? "—"}</dd><dd className="text-sm text-muted-foreground">{next?.format ?? ""}</dd></div></div>
               <div className="flex gap-3"><Video aria-hidden className="mt-0.5 size-4 shrink-0 text-primary" /><div><dt className="sr-only">Recording</dt><dd className="text-sm text-muted-foreground">{RECORDING_NOTE.replace(/^\*/, "")}</dd></div></div>
               <div className="flex gap-3"><KeyRound aria-hidden className="mt-0.5 size-4 shrink-0 text-primary" /><div><dt className="sr-only">Seats</dt><dd className="font-semibold text-primary">{seatLine}</dd></div></div>
             </dl>
-            <Link to="/ignite" hash="reserve" className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-action px-6 py-3 text-sm font-semibold text-action-foreground transition-[filter] hover:brightness-110">
+            <Link to={next ? "/ignite/$slug" : "/ignite"} params={{ slug: next?.slug ?? "" }} hash={next ? "reserve" : undefined} className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-action px-6 py-3 text-sm font-semibold text-action-foreground transition-[filter] hover:brightness-110">
               Reserve my seat <ArrowRight aria-hidden className="size-4" />
             </Link>
           </div>

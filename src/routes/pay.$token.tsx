@@ -4,7 +4,6 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { useSession } from "@/hooks/use-session";
 import { getPeerLinkPublic, startPeerCheckout } from "@/lib/ignite-peer.functions";
-import { SCHEDULE_DATES, SCHEDULE_TIME } from "@/lib/ignite-registration";
 import { shownEmail } from "@/lib/key-signin/rules";
 
 const peerQuery = (token: string) => queryOptions({ queryKey: ["peer-link", token], queryFn: () => getPeerLinkPublic({ data: { token } }) });
@@ -62,11 +61,12 @@ function PayPage() {
     <>
       <p className="text-xs font-semibold uppercase tracking-widest text-primary">Peer Pay</p>
       <h1 className="mt-2 font-display text-3xl">Pay {data.forName}'s Ignite seat</h1>
-      <p className="mt-2 text-sm text-muted-foreground">{data.forName} asked you to pay the deposit for their seat in Ignite, the Seeds crypto trading class. The seat is theirs. You don't get a seat or any access to their account.</p>
+      <p className="mt-2 text-sm text-muted-foreground">{data.forName} asked you to pay for their seat in Ignite, the Seeds crypto trading class. The seat is theirs. You don't get a seat or any access to their account.</p>
       <dl className="mt-5 divide-y divide-border rounded-2xl border border-border text-sm">
         <Row k="For" v={data.forName} />
-        <Row k="Class" v={SCHEDULE_DATES} />
-        <Row k="Time" v={SCHEDULE_TIME} />
+        <Row k="Class" v={data.cls?.name ?? "Ignite"} />
+        {data.cls && <Row k="Dates" v={data.cls.dates} />}
+        {data.cls?.time && <Row k="Time" v={data.cls.time} />}
         <Row k="Amount" v={<strong className="text-base">${data.amount} USD</strong>} />
         <Row k="Link works until" v={new Date(data.expiresAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} />
       </dl>

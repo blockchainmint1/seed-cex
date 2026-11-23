@@ -14,6 +14,7 @@ import { IgniteSeatConfirmedEmail, type IgniteSeatConfirmedProps } from "./templ
 import { LegacyLinkEmail, type LegacyLinkProps } from "./templates/legacy-link";
 import { IgniteReminderEmail, type IgniteReminderProps } from "./templates/ignite-reminder";
 import { IgniteMessageEmail, type IgniteMessageProps } from "./templates/ignite-message";
+import { IgniteInterestEmail, type IgniteInterestProps } from "./templates/ignite-interest";
 import { WithdrawalCodeEmail, type WithdrawalCodeProps } from "./templates/withdrawal-code";
 import { fmt, usd } from "./components";
 
@@ -29,6 +30,7 @@ export type TemplateProps = {
   "legacy-link": LegacyLinkProps;
   "ignite-reminder": IgniteReminderProps;
   "ignite-message": IgniteMessageProps;
+  "ignite-interest": IgniteInterestProps;
   "withdrawal-code": WithdrawalCodeProps;
 };
 export type TemplateName = keyof TemplateProps;
@@ -127,7 +129,7 @@ export const TEMPLATES: { [K in TemplateName]: Def<K> } = {
     category: "receipt",
     subject: () => "Your Ignite seat is reserved",
     render: (p) => <IgniteSeatConfirmedEmail {...p} />,
-    sample: { name: "Alex", amount: 400, paidBy: null, paidWith: "TSD on TXC", confirmedAt: "2026-11-18T15:10:00Z", timezone: "America/Chicago", referralUrl: "https://seeds.honest.money/invite/alex" },
+    sample: { name: "Alex", amount: 499, paidBy: null, paidWith: "TSD on TXC", confirmedAt: "2026-11-18T15:10:00Z", timezone: "America/Chicago", referralUrl: "https://seeds.honest.money/invite/alex", className: "Spark", classSlug: "spark", dates: "December 5–6, 2026", time: "1:00–5:00 PM CST", feeUsd: 99, minerDiscountUsd: 0, depositUsd: 400 },
   },
   "legacy-link": {
     label: "Link your older account",
@@ -141,7 +143,7 @@ export const TEMPLATES: { [K in TemplateName]: Def<K> } = {
     category: "ignite",
     subject: () => "Finish reserving your Ignite seat",
     render: (p) => <IgniteReminderEmail {...p} />,
-    sample: { name: "Alex", amount: 400, dates: "November 30–December 4, 2026", time: "Daily from 5:00–6:30 PM CST", seatsLeft: 42 },
+    sample: { name: "Alex", amount: 499, dates: "December 5–6, 2026", time: "1:00–5:00 PM CST", seatsLeft: 42, className: "Spark", classSlug: "spark" },
   },
   "ignite-message": {
     label: "Ignite: message from Seeds",
@@ -149,6 +151,13 @@ export const TEMPLATES: { [K in TemplateName]: Def<K> } = {
     subject: (p) => p.subject,
     render: (p) => <IgniteMessageEmail {...p} />,
     sample: { subject: "Your Zoom link for Monday", paragraphs: ["Hi Alex,", "Here's everything you need for the first session.\nSee you Monday."] },
+  },
+  "ignite-interest": {
+    label: "Ignite: new class news (interest list)",
+    category: "ignite",
+    subject: (p) => p.subject,
+    render: (p) => <IgniteInterestEmail {...p} />,
+    sample: { subject: "A new Ignite class just opened", paragraphs: ["Hi Alex,", "Spark runs December 5–6, 1–5 PM Central. Seats are limited."], classSlug: "spark", unsubscribeUrl: "https://seeds.honest.money/api/public/email/unsubscribe?t=sample" },
   },
 };
 

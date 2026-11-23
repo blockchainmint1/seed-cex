@@ -2,10 +2,10 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { CalendarDays, Check, Copy, Mail, Users, Video } from "lucide-react";
+import { CalendarDays, Check, Copy, Mail, Video } from "lucide-react";
 import { useSession } from "@/hooks/use-session";
 import { getIgniteConfirmation } from "@/lib/ignite.functions";
-import { SCHEDULE_DATES, SCHEDULE_TIME, SCHEDULE_SESSIONS, RECORDING_NOTE, paidInLabel, inviteLabel } from "@/lib/ignite-registration";
+import { RECORDING_NOTE, paidInLabel, inviteLabel } from "@/lib/ignite-registration";
 
 export const Route = createFileRoute("/ignite_/confirmed")({
   staticData: { sitemap: false },
@@ -71,8 +71,10 @@ function ConfirmedPage() {
       <Shell>
         <Card>
           <h1 className="font-display text-3xl">{d.state === "none" ? "You haven't reserved a seat yet" : "Your checkout closed before payment arrived"}</h1>
-          <p className="mt-2 text-sm text-muted-foreground">{d.seatsLeft} of {d.capacity} seats are still open. {d.state === "expired" ? "No money was taken. You can start a fresh checkout." : ""}</p>
-          <Link to="/ignite" hash="reserve" className="seed-btn mt-6 inline-flex justify-center">Reserve my Ignite seat</Link>
+          <p className="mt-2 text-sm text-muted-foreground">{d.state === "expired" ? "No money was taken. You can start a fresh checkout any time." : "See the upcoming classes and pick the one that suits you."}</p>
+          {d.cls && d.state === "expired"
+            ? <Link to="/ignite/$slug" params={{ slug: d.cls.slug }} hash="reserve" className="seed-btn mt-6 inline-flex justify-center">Back to {d.cls.name}</Link>
+            : <Link to="/ignite" className="seed-btn mt-6 inline-flex justify-center">See upcoming classes</Link>}
         </Card>
       </Shell>
     );
@@ -83,7 +85,7 @@ function ConfirmedPage() {
       <Shell>
         <Card>
           <p className="text-xs font-bold tracking-[0.25em] text-warning">PAYMENT ARRIVED SHORT</p>
-          <h1 className="mt-3 font-display text-3xl">We received less than the $400 deposit</h1>
+          <h1 className="mt-3 font-display text-3xl">We received less than your seat costs</h1>
           <p className="mt-2 text-sm text-muted-foreground">Please don't pay again. Email <a className="font-semibold text-primary underline-offset-4 hover:underline" href="mailto:support@honest.money">support@honest.money</a> and we'll sort it out with you.</p>
         </Card>
       </Shell>
@@ -112,7 +114,7 @@ function ConfirmedPage() {
       <p className="font-mono text-xs font-medium tracking-[0.14em] text-primary">SEAT RESERVED</p>
       <h1 className="mt-4 font-display text-5xl leading-[1.05] tracking-tight sm:text-6xl">Thank you, {d.firstName}. You're in.</h1>
       <p className="mt-5 max-w-2xl text-lg text-muted-foreground">
-        Your seat in Ignite is reserved{d.paidBy ? ` — ${d.paidBy} covered your deposit through Peer Pay` : ""}. We can't wait to see you in class.
+        Your seat in {d.cls ? `Ignite: ${d.cls.name}` : "Ignite"} is reserved{d.paidBy ? ` — ${d.paidBy} paid for it through Peer Pay` : ""}. We can't wait to see you in class.
       </p>
 
       <Card className="mt-10">
@@ -124,9 +126,10 @@ function ConfirmedPage() {
           </div>
         </div>
         <dl className="mt-6 divide-y divide-border rounded-2xl border border-border text-sm">
-          <div className="flex justify-between gap-4 px-4 py-3"><dt className="text-muted-foreground">Dates</dt><dd className="text-right font-semibold">{SCHEDULE_DATES}</dd></div>
-          <div className="flex justify-between gap-4 px-4 py-3"><dt className="text-muted-foreground">Sessions</dt><dd className="text-right">{SCHEDULE_SESSIONS}</dd></div>
-          <div className="flex justify-between gap-4 px-4 py-3"><dt className="text-muted-foreground">Time</dt><dd className="text-right">{SCHEDULE_TIME}</dd></div>
+          {d.cls && <div className="flex justify-between gap-4 px-4 py-3"><dt className="text-muted-foreground">Class</dt><dd className="text-right font-semibold">{d.cls.name}</dd></div>}
+          <div className="flex justify-between gap-4 px-4 py-3"><dt className="text-muted-foreground">Dates</dt><dd className="text-right font-semibold">{d.cls?.dates ?? "To be announced"}</dd></div>
+          <div className="flex justify-between gap-4 px-4 py-3"><dt className="text-muted-foreground">Sessions</dt><dd className="text-right">{d.cls?.sessions ?? "—"}</dd></div>
+          {d.cls?.time && <div className="flex justify-between gap-4 px-4 py-3"><dt className="text-muted-foreground">Time</dt><dd className="text-right">{d.cls.time}</dd></div>}
         </dl>
         <p className="mt-2 text-xs text-muted-foreground">{RECORDING_NOTE}</p>
       </Card>
@@ -140,29 +143,17 @@ function ConfirmedPage() {
         <Card>
           <Video className="size-5 text-primary" aria-hidden />
           <h2 className="mt-3 font-display text-xl">Connection info is coming</h2>
-          <p className="mt-2 text-sm text-muted-foreground">We'll email you how to join the live sessions shortly, well before the first class on November 30.</p>
+          <p className="mt-2 text-sm text-muted-foreground">We'll email you how to join the live sessions well before your first session.</p>
         </Card>
       </div>
-
-      <Card className="mt-4">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <Users className="size-5 text-primary" aria-hidden />
-            <h2 className="mt-3 font-display text-xl">Seats left</h2>
-            <p className="mt-1 text-sm text-muted-foreground">The inaugural class is capped at {d.capacity}.</p>
-          </div>
-          <p className="font-display text-5xl tabular-nums">{d.seatsLeft}<span className="text-xl text-muted-foreground"> / {d.capacity}</span></p>
-        </div>
-        <div className="mt-4 h-2 overflow-hidden rounded-full bg-muted" aria-hidden>
-          <div className="h-full rounded-full bg-primary" style={{ width: `${Math.round(((d.capacity - d.seatsLeft) / d.capacity) * 100)}%` }} />
-        </div>
-      </Card>
 
       <ReferralCard url={d.referralUrl ?? null} />
 
       <div className="mt-10 flex flex-wrap gap-3">
         <Link to="/" className="seed-btn-ghost inline-flex w-auto justify-center px-6">Explore Seeds</Link>
-        <Link to="/ignite" className="seed-btn-ghost inline-flex w-auto justify-center px-6"><CalendarDays className="mr-2 size-4" aria-hidden />Course details</Link>
+        {d.cls
+          ? <Link to="/ignite/$slug" params={{ slug: d.cls.slug }} className="seed-btn-ghost inline-flex w-auto justify-center px-6"><CalendarDays className="mr-2 size-4" aria-hidden />Class details</Link>
+          : <Link to="/ignite" className="seed-btn-ghost inline-flex w-auto justify-center px-6"><CalendarDays className="mr-2 size-4" aria-hidden />Class details</Link>}
       </div>
     </Shell>
   );

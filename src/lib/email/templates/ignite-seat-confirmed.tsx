@@ -10,27 +10,36 @@ export type IgniteSeatConfirmedProps = {
   confirmedAt: string;
   timezone: string;
   referralUrl: string | null;
+  className: string;
+  classSlug: string | null;
+  dates: string;
+  time: string;
+  feeUsd: number;
+  minerDiscountUsd: number;
+  depositUsd: number;
 };
 
 export function IgniteSeatConfirmedEmail(p: IgniteSeatConfirmedProps) {
   return (
     <Layout
-      preview="Your Ignite seat is reserved. Class starts November 30 at 5:00 PM CST."
+      preview={`Your Ignite seat in ${p.className} is reserved. ${p.dates}.`}
       eyebrow="Ignite seat confirmed"
       title={`You're in, ${p.name}.`}
       footer="transactional"
     >
-      <P>Thank you for reserving your place in Ignite. {p.paidBy ? `${p.paidBy} paid your deposit through Peer Pay, and the` : "Your"} payment has been confirmed, so your seat is reserved.</P>
+      <P>Thank you for reserving your place in Ignite. {p.paidBy ? `${p.paidBy} paid for your seat through Peer Pay, and the` : "Your"} payment has been confirmed, so your seat is reserved.</P>
       <Details rows={[
-        ["Class", "Ignite live crypto trading class"],
-        ["Dates", "November 30 – December 4, 2026"],
-        ["Time", "Daily 5:00–6:30 PM CST"],
-        ["Deposit", usd(p.amount)],
+        ["Class", `Ignite: ${p.className}`],
+        ["Dates", p.dates],
+        ["Time", p.time],
+        ...(p.feeUsd > 0 ? [["Class fee", p.minerDiscountUsd >= p.feeUsd ? "Free for HME miners" : usd(p.feeUsd - p.minerDiscountUsd)] as [string, string]] : []),
+        ["Trade deposit", usd(p.depositUsd)],
+        ["Total paid", usd(p.amount)],
         ...(p.paidWith ? [["Paid with", p.paidWith] as [string, string]] : []),
         ...(p.paidBy ? [["Paid by", p.paidBy] as [string, string]] : []),
         ["Confirmed", when(p.confirmedAt, p.timezone)],
       ]} />
-      <Note>We'll email you the connection details for the live sessions shortly, before the first class. Sessions are recorded, so you can catch up if you miss one.</Note>
+      <Note>We'll email you the connection details for the live sessions before the first class. Your trade deposit comes back to you during class to trade with. Sessions are recorded, so you can watch them any time.</Note>
       {p.referralUrl && (
         <>
           <P>Know another Honest.Money miner who should be in the room? Share your personal invite link:</P>
@@ -42,7 +51,7 @@ export function IgniteSeatConfirmedEmail(p: IgniteSeatConfirmedProps) {
       )}
       <Cta href={`${SITE}/ignite/confirmed`}>View your confirmation</Cta>
       {p.paidBy && <P muted>Any repayment between you and {p.paidBy} is your own arrangement. Seeds doesn't handle it.</P>}
-      <P muted>This deposit reserves a class seat. It doesn't open or fund a Seeds exchange account.</P>
+      <P muted>This payment reserves a class seat. It doesn't open or fund a Seeds exchange account.</P>
     </Layout>
   );
 }

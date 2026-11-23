@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { cancelPeerLink, createPeerLink, emailPeerLink } from "@/lib/ignite-peer.functions";
-import { DEPOSIT_USD, type Details } from "@/lib/ignite-registration";
+import type { Details } from "@/lib/ignite-registration";
 
 export type PeerInfo = { path: string | null; state: string; expiresAt: string; payerName: string | null; openedAt: string | null; paidAt: string | null; emailsLeft: number } | null;
 
 const fmtDate = (iso: string) => new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
-export function PeerPayPanel({ details, peer, cryptoOpen, onChanged }: { details: Details; peer: PeerInfo | undefined; cryptoOpen: boolean; onChanged: () => void }) {
+export function PeerPayPanel({ details, peer, cryptoOpen, onChanged, classId, amountUsd }: { details: Details; peer: PeerInfo | undefined; cryptoOpen: boolean; onChanged: () => void; classId: string; amountUsd: number | null }) {
   const create = useServerFn(createPeerLink);
   const cancel = useServerFn(cancelPeerLink);
   const email = useServerFn(emailPeerLink);
@@ -32,12 +32,12 @@ export function PeerPayPanel({ details, peer, cryptoOpen, onChanged }: { details
     return (
       <div className="rounded-2xl border border-border p-4">
         <p className="font-semibold">Peer Pay: have a friend pay</p>
-        <p className="mt-1 text-sm text-muted-foreground">Get a private link to send to someone you trust. They sign in with Honest.Money and pay the ${DEPOSIT_USD} deposit for you. The link works for 7 days.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Get a private link to send to someone you trust. They sign in with Honest.Money and pay {amountUsd != null ? `the $${amountUsd.toLocaleString("en-US")}` : "the cost of your seat"} for you. The link works for 7 days.</p>
         {peer && peer.state !== "paid" && (
           <p className="mt-2 text-xs text-muted-foreground">Your last link {peer.state === "expired" ? "expired" : "was turned off"}. You can make a new one.</p>
         )}
         <button type="button" className="seed-btn-ghost mt-3 w-full" disabled={!cryptoOpen || busy !== null}
-          onClick={() => run("create", () => create({ data: { ...details, origin: window.location.origin } }))}>
+          onClick={() => run("create", () => create({ data: { ...details, origin: window.location.origin, classId } }))}>
           {busy === "create" ? "Creating link…" : "Create a Peer Pay link"}
         </button>
         {error && <p className="mt-2 text-sm text-destructive" role="alert">{error}</p>}

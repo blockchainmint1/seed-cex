@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { SiteLogo } from "@/components/site/SiteLogo";
 import { useSession } from "@/hooks/use-session";
 import { getIgniteSeats, getMyIgnite } from "@/lib/ignite.functions";
-import { SCHEDULE_START_UTC, SEAT_CAPACITY, shouldShowIgnitePromo } from "@/lib/ignite-registration";
+import { shouldShowIgnitePromo } from "@/lib/ignite-registration";
 import art from "@/assets/ignite-glow-art.jpg.asset.json";
 
 const DISMISS_KEY = "seeds-ignite-promo-dismissed-at";
@@ -36,9 +36,9 @@ export function IgnitePromo() {
   const [dismissedAt, setDismissedAt] = useState<number | null>(null);
   const panel = useRef<HTMLDivElement>(null);
 
-  const beforeStart = typeof window !== "undefined" && Date.now() < new Date(SCHEDULE_START_UTC).getTime();
-  const seats = useQuery({ queryKey: ["ignite-seats"], queryFn: () => fetchSeats(), enabled: ready && beforeStart });
-  const mine = useQuery({ queryKey: ["ignite", user?.id], queryFn: () => fetchMine(), enabled: ready && beforeStart && !!user });
+  const seats = useQuery({ queryKey: ["ignite-seats"], queryFn: () => fetchSeats(), enabled: ready });
+  const mine = useQuery({ queryKey: ["ignite", user?.id], queryFn: () => fetchMine(), enabled: ready && !!user });
+  const next = seats.data?.next ?? null;
 
   useEffect(() => {
     setDismissedAt(readDismissed());
@@ -46,7 +46,8 @@ export function IgnitePromo() {
     return () => window.clearTimeout(t);
   }, []);
 
-  const seatsLeft = seats.data?.seatsLeft ?? null;
+  // No open class → behave as "no seats" so the popup stays shut.
+  const seatsLeft = seats.data ? (next ? seats.data.seatsLeft : 0) : null;
   const decided = ready && seats.isFetched && (!user || mine.isFetched);
   useEffect(() => {
     if (!decided) return;
@@ -63,7 +64,7 @@ export function IgnitePromo() {
     setOpen(v);
   };
 
-  const capacity = seats.data?.capacity ?? SEAT_CAPACITY;
+  const capacity = seats.data?.capacity ?? 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -93,9 +94,9 @@ export function IgnitePromo() {
 
           <dl className="mt-7 grid max-w-2xl grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-0">
             {[
-              ["Dates", "November 30 – December 4, 2026"],
-              ["Format", "5 days · 90 minutes daily"],
-              ["Time", "5:00–6:30 PM CST"],
+              ["Dates", next ? `${next.name} · ${next.dates}` : ""],
+              ["Format", next?.format ?? ""],
+              ["Time", next?.time ?? "Times vary by day"],
             ].map(([k, v], i) => (
               <div key={k} className={`border-l-2 border-action/70 pl-4 sm:pr-4 ${i === 0 ? "sm:border-l-0 sm:pl-0" : ""}`}>
                 <dt className="sr-only">{k}</dt>
@@ -107,12 +108,13 @@ export function IgnitePromo() {
           <div className="mt-8 flex flex-col gap-4 md:flex-row md:items-center md:gap-5">
             <div className="flex flex-wrap items-center gap-3">
               <span className="rounded-full border-2 border-action px-4 py-2 text-sm font-bold">
-                {seatsLeft != null ? `${seatsLeft} of ${capacity} seats left` : `Limited to ${capacity} seats`}
+                {seatsLeft != null ? `${seatsLeft} of ${capacity} seats left` : "Limited seats"}
               </span>
-              <span className="text-sm font-semibold sm:text-base">$400 reservation deposit</span>
+              <span className="text-sm font-semibold sm:text-base">{next?.price}{next?.minersFree ? " · free for HME miners" : ""}</span>
             </div>
             <Link
-              to="/ignite"
+              to="/ignite/$slug"
+              params={{ slug: next?.slug ?? "" }}
               hash="reserve"
               onClick={() => { snooze(); setOpen(false); }}
               className="group inline-flex min-h-14 items-center justify-center gap-2 rounded-full bg-action px-8 text-base font-extrabold italic tracking-wide text-action-foreground shadow-promo-btn transition-[filter,transform] hover:brightness-110 active:scale-[0.98] md:ml-auto"
@@ -123,7 +125,7 @@ export function IgnitePromo() {
           </div>
 
           <div className="mt-8 flex flex-col gap-2 border-t border-foreground/10 pt-5 text-sm text-foreground/85 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4">
-            <span>Led by <span className="font-semibold text-foreground">Bobby Gray</span> · Founder of HME</span>
+            <span>Led by <span className="font-semibold text-foreground">{next?.instructorName ?? "Bobby Gray"}</span></span>
             <span aria-hidden className="hidden h-4 w-px bg-action/60 sm:block" />
             <span>Powered by the <a href="https://honest.money" target="_blank" rel="noreferrer" className="font-semibold text-foreground underline-offset-4 hover:underline">Honest Money Ecosystem</a></span>
             <span aria-hidden className="hidden h-4 w-px bg-action/60 sm:block" />
