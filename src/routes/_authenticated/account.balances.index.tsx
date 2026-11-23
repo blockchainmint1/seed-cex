@@ -93,7 +93,7 @@ function SpotBalances() {
         </label>
       </div>
 
-      <ul className="divide-y divide-border rounded-md border border-border sm:hidden">
+      <ul className="divide-y divide-border rounded-md border border-border md:hidden">
         {shown.map((r) => (
           <li key={`${r.asset.symbol}-${r.net.id}`} className="px-4 py-3">
             <div className="flex items-start justify-between gap-3">
@@ -122,17 +122,16 @@ function SpotBalances() {
         {!shown.length ? <li className="px-4 py-6 text-center text-sm text-muted-foreground">{hideZero ? "No coins with a balance yet." : "No coins match."}</li> : null}
       </ul>
 
-      <div className="hidden overflow-x-auto rounded-md border border-border sm:block">
-        <table className="w-full min-w-[56rem] text-left text-sm">
+      <div className="hidden overflow-x-auto rounded-md border border-border md:block">
+        <table className="w-full text-left text-sm">
           <thead className="border-b border-border bg-muted/40 font-mono text-[11px] text-muted-foreground uppercase">
             <tr>
-              <th className="px-4 py-3">Coin</th>
-              <th className="px-4 py-3">Network</th>
-              <th className="px-4 py-3 text-right">Balance</th>
-              <th className="whitespace-nowrap px-4 py-3 text-right">In trades</th>
-              <th className="px-4 py-3 text-right">Available</th>
-              <th className="px-4 py-3 text-right">Value</th>
-              <th className="px-4 py-3 text-right">Actions</th>
+              <th className="px-3 py-2.5">Coin</th>
+              <th className="px-3 py-2.5 text-right">Balance</th>
+              <th className="whitespace-nowrap px-3 py-2.5 text-right">In trades</th>
+              <th className="px-3 py-2.5 text-right">Available</th>
+              <th className="px-3 py-2.5 text-right">Value</th>
+              <th className="px-3 py-2.5 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -140,29 +139,28 @@ function SpotBalances() {
               const route = withdrawRoute(r.net);
               return (
                 <tr key={`${r.asset.symbol}-${r.net.id}`} className="border-b border-border/60 last:border-0">
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2.5">
                     <span className="font-semibold">{r.asset.symbol}</span>
-                    <span className="block text-xs text-muted-foreground">{r.asset.name}</span>
+                    <span className="block text-xs text-muted-foreground">
+                      {r.net.label}
+                      {route !== "hme" ? <span className="ml-1.5 whitespace-nowrap rounded-sm border border-warn/60 px-1 py-0.5 font-mono text-[10px] text-foreground">Not in HME Wallet</span> : null}
+                    </span>
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {r.net.label}
-                    {route !== "hme" ? <span className="ml-2 whitespace-nowrap rounded-sm border border-warn/60 px-1.5 py-0.5 font-mono text-[10px] text-foreground">Not in HME Wallet</span> : null}
-                  </td>
-                  <td className="num px-4 py-3 text-right">{r.balance == null ? (balances.isFetching ? "Checking…" : "Not available") : fmtCoin(r.balance)}</td>
-                  <td data-qa-mask className="num px-4 py-3 text-right text-muted-foreground">{held.byRow[rowKey(r)] ? fmtCoin(held.byRow[rowKey(r)]!) : "—"}</td>
-                  <td data-qa-mask className="num px-4 py-3 text-right">{r.balance == null ? "—" : fmtCoin(Math.max(0, r.balance - (held.byRow[rowKey(r)] ?? 0)))}</td>
-                  <td className="num px-4 py-3 text-right text-muted-foreground">{fmtUsd(r.usd)}</td>
-                  <td className="px-4 py-2 text-right whitespace-nowrap">
-                    <Link to="/account/balances/deposit" search={{ coin: r.asset.symbol, network: r.net.id }} className="px-2 text-xs font-semibold text-primary hover:underline">Deposit</Link>
-                    <Link to="/account/balances/withdraw" search={{ coin: r.asset.symbol, network: r.net.id }} className="px-2 text-xs font-semibold text-primary hover:underline">Withdraw</Link>
-                    {r.asset.market ? <Link to={r.asset.market} className="px-2 text-xs font-semibold text-primary hover:underline">Trade</Link> : null}
-                    {NO_SWAP.has(r.asset.symbol) ? null : <Link to="/swap" className="px-2 text-xs font-semibold text-primary hover:underline">Swap</Link>}
+                  <td className="num px-3 py-2.5 text-right">{r.balance == null ? (balances.isFetching ? "Checking…" : "Not available") : fmtCoin(r.balance)}</td>
+                  <td data-qa-mask className="num px-3 py-2.5 text-right text-muted-foreground">{held.byRow[rowKey(r)] ? fmtCoin(held.byRow[rowKey(r)]!) : "—"}</td>
+                  <td data-qa-mask className="num px-3 py-2.5 text-right">{r.balance == null ? "—" : fmtCoin(Math.max(0, r.balance - (held.byRow[rowKey(r)] ?? 0)))}</td>
+                  <td className="num px-3 py-2.5 text-right text-muted-foreground">{fmtUsd(r.usd)}</td>
+                  <td className="px-3 py-2 text-right whitespace-nowrap">
+                    <Link to="/account/balances/deposit" search={{ coin: r.asset.symbol, network: r.net.id }} className="px-1 text-xs font-semibold text-primary hover:underline">Deposit</Link>
+                    <Link to="/account/balances/withdraw" search={{ coin: r.asset.symbol, network: r.net.id }} className="px-1 text-xs font-semibold text-primary hover:underline">Withdraw</Link>
+                    {r.asset.market ? <Link to={r.asset.market} className="px-1 text-xs font-semibold text-primary hover:underline">Trade</Link> : null}
+                    {NO_SWAP.has(r.asset.symbol) ? null : <Link to="/swap" className="px-1 text-xs font-semibold text-primary hover:underline">Swap</Link>}
                   </td>
                 </tr>
               );
             })}
             {!shown.length ? (
-              <tr><td colSpan={7} className="px-4 py-6 text-center text-sm text-muted-foreground">{hideZero ? "No coins with a balance yet." : "No coins match."}</td></tr>
+              <tr><td colSpan={6} className="px-3 py-6 text-center text-sm text-muted-foreground">{hideZero ? "No coins with a balance yet." : "No coins match."}</td></tr>
             ) : null}
           </tbody>
         </table>
