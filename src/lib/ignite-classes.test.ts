@@ -74,13 +74,15 @@ describe("who can register", () => {
 
 describe("Honest.Money miner status", () => {
   const id = "03ee869f-8726-48a7-80f8-286221d6436e";
-  test("any hash power = miner", () => expect(minerFromStatus(id, { results: [{ hmeId: id, result: "found", miner: true, totalHashMhs: 12.5, checked: ["txc"] }] })).toBe("miner"));
-  test("found, sites answered, zero hash = not a miner", () => expect(minerFromStatus(id, { results: [{ hmeId: id, result: "found", miner: false, totalHashMhs: 0, checked: ["txc", "zcu"] }] })).toBe("not_miner"));
-  test("no site answered = unknown", () => expect(minerFromStatus(id, { results: [{ hmeId: id, result: "found", miner: null, totalHashMhs: 0, checked: [] }] })).toBe("unknown"));
-  test("someone else's row or a bad answer = unknown", () => {
-    expect(minerFromStatus(id, { results: [{ hmeId: "other", result: "found", miner: true, totalHashMhs: 5 }] })).toBe("unknown");
+  const row = (r: object) => ({ ok: true, results: [{ hmeId: id, found: true, ...r }] });
+  test("mining true = miner (Bobby's #59131: 810 MH/s)", () => expect(minerFromStatus(id, row({ mining: true, totalMhs: 810, complete: false }))).toBe("miner"));
+  test("not mining and every site answered = not a miner", () => expect(minerFromStatus(id, row({ mining: false, totalMhs: 0, complete: true }))).toBe("not_miner"));
+  test("not mining but a site didn't answer = unknown (full fee, staff can waive)", () => expect(minerFromStatus(id, row({ mining: false, totalMhs: 0, complete: false }))).toBe("unknown"));
+  test("someone else's row, not found, or a bad answer = unknown", () => {
+    expect(minerFromStatus(id, { ok: true, results: [{ hmeId: "other", found: true, mining: true }] })).toBe("unknown");
     expect(minerFromStatus(id, "<!doctype html>")).toBe("unknown");
-    expect(minerFromStatus(id, { results: [{ hmeId: id, result: "not_found" }] })).toBe("unknown");
+    expect(minerFromStatus(id, { ok: true, results: [{ hmeId: id, found: false }] })).toBe("unknown");
+    expect(minerFromStatus(id, { ok: false, error: "unauthorized" })).toBe("unknown");
   });
   test("an admin's mark wins either way", () => {
     expect(resolveMiner(true, "not_miner")).toBe("miner");

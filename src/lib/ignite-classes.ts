@@ -215,17 +215,17 @@ export function validateClass(c: ClassInput, opts: { held?: number } = {}): Reco
  * so a member is never charged as a non-miner just because a site was down.
  */
 export function minerFromStatus(hmeId: string, answer: unknown): MinerStatus {
-  const results = (answer as { results?: unknown })?.results;
-  if (!Array.isArray(results)) return "unknown";
-  const r = results.find((x) => (x as { hmeId?: unknown })?.hmeId === hmeId) as
-    | { result?: unknown; totalHashMhs?: unknown; checked?: unknown; miner?: unknown }
+  // Honest.Money POST /api/public/hme/members/mining. "mining" is true once the
+  // member has ever owned hash (their record only goes up). "Not a miner" needs
+  // every mining site to have answered (complete: true); anything else = unknown.
+  const a = answer as { ok?: unknown; results?: unknown } | null;
+  if (!a || a.ok !== true || !Array.isArray(a.results)) return "unknown";
+  const r = a.results.find((x) => (x as { hmeId?: unknown })?.hmeId === hmeId) as
+    | { found?: unknown; mining?: unknown; complete?: unknown; totalMhs?: unknown }
     | undefined;
-  if (!r || r.result !== "found") return "unknown";
-  const total = Number(r.totalHashMhs);
-  if (Number.isFinite(total) && total > 0) return "miner";
-  if (r.miner === true) return "miner";
-  const checked = Array.isArray(r.checked) ? r.checked.length : 0;
-  if (r.miner === false && checked > 0 && Number.isFinite(total) && total === 0) return "not_miner";
+  if (!r || r.found !== true) return "unknown";
+  if (r.mining === true) return "miner";
+  if (r.mining === false && r.complete === true) return "not_miner";
   return "unknown";
 }
 

@@ -12,6 +12,16 @@ export function ecosystemHeaders() {
   return { Authorization: `Bearer ${ecosystemKey()}`, "X-HME-Site": HME_SITE, "Content-Type": "application/json" };
 }
 
+/** Signed partner request headers (timestamp.nonce.rawBody, HMAC-SHA256 with the site key). Server only. */
+export async function signedHmeHeaders(rawBody: string): Promise<Record<string, string>> {
+  const ts = Math.floor(Date.now() / 1000).toString();
+  const nonce = crypto.randomUUID();
+  const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(ecosystemKey()), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const sig = [...new Uint8Array(await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(`${ts}.${nonce}.${rawBody}`)))]
+    .map((b) => b.toString(16).padStart(2, "0")).join("");
+  return { "Content-Type": "application/json", "X-HME-Site": HME_SITE, "X-HME-Timestamp": ts, "X-HME-Nonce": nonce, "X-HME-Signature": sig };
+}
+
 export function safeEqual(a: string, b: string) {
   let diff = a.length ^ b.length;
   for (let i = 0; i < Math.max(a.length, b.length); i++) diff |= (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0);

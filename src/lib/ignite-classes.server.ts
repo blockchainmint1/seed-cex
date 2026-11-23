@@ -46,7 +46,7 @@ export async function loadClass(by: { id?: string; slug?: string }, includeDraft
 }
 
 /**
- * Is this member an HME miner (any live hash power)? An admin's mark in
+ * Is this member an HME miner (ever owned hash; Honest.Money's record only goes up)? An admin's mark in
  * ignite_miner_marks wins; otherwise Honest.Money's miner-status lookup.
  * "unknown" whenever it can't be checked, which charges the full class fee.
  */
@@ -61,10 +61,11 @@ export async function minerStatusFor(userId: string): Promise<{ status: MinerSta
   const hmeId = prof?.hm_member_id;
   if (!hmeId) return { status: "unknown", source: "none" };
   try {
-    const { ecosystemHeaders } = await import("./hme-auth.server");
-    const res = await fetch("https://honest.money/api/public/minetxc/miner-status", {
-      method: "POST", headers: ecosystemHeaders(), redirect: "manual",
-      body: JSON.stringify({ members: [{ ref: "seeds-ignite", hmeId }] }),
+    if (!/^[0-9a-f-]{36}$/i.test(hmeId)) return { status: "unknown", source: "none" };
+    const { signedHmeHeaders } = await import("./hme-auth.server");
+    const body = JSON.stringify({ members: [hmeId] });
+    const res = await fetch("https://honest.money/api/public/hme/members/mining", {
+      method: "POST", headers: await signedHmeHeaders(body), redirect: "manual", body,
       signal: AbortSignal.timeout(8000),
     });
     if (!res.ok || !(res.headers.get("content-type") ?? "").includes("json")) return { status: "unknown", source: "none" };
