@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { MoonTabs } from "@/components/admin/MoonTabs";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -75,7 +76,8 @@ function ClassesPage() {
 
   return (
     <div className="space-y-5">
-      <TabTitle title="To the Moon classes" desc="Every class gets its own page at /to-the-moon/<address>. Prices here are what checkout charges."
+      <MoonTabs />
+      <TabTitle title="Classes" desc="Every class gets its own page at /to-the-moon/<address>. Prices here are what checkout charges."
         right={editing ? null : <Button size="sm" onClick={() => setEditing("new")}><Plus /> New class</Button>} />
       {notice ? <Note tone="ok">{notice}</Note> : null}
       <MinerCheckStatus />

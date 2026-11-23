@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { MoonTabs } from "@/components/admin/MoonTabs";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -63,7 +64,8 @@ function InterestPage() {
   const d = q.data ?? [];
   return (
     <div className="space-y-5">
-      <TabTitle title="To the Moon interest list" desc={<>Not tied to any class. Everyone who registered but didn't pay is here, plus anyone who signed up on <Link to="/to-the-moon" className="text-primary underline">/to-the-moon</Link>. Email them when you add a class.</>} />
+      <MoonTabs />
+      <TabTitle title="Interest list" desc={<>Not tied to any class. Everyone who registered but didn't pay is here, plus anyone who signed up on <Link to="/to-the-moon" className="text-primary underline">/to-the-moon</Link>. Email them when you add a class.</>} />
       {q.isPending ? <Loading /> : q.error ? <p role="alert" className="text-sm text-destructive">{(q.error as Error).message}</p> : (
         <>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { MoonTabs } from "@/components/admin/MoonTabs";
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -141,8 +142,9 @@ function IgniteAdminPage() {
 
   return (
     <div className="space-y-5">
+      <MoonTabs />
       <TabTitle
-        title="To the Moon registrants"
+        title="Registrants"
         desc={selClass ? `${selClass.name} · ${selClass.dates}${selClass.time ? ` · ${selClass.time}` : ""} · ${selClass.capacity} seats` : "Everyone who registered for any To the Moon class: payments, messages and reminders."}
       />
       {q.isPending ? <Loading /> : q.error || !d ? <p role="alert" className="text-sm text-destructive">Couldn't load registrations. Refresh to retry.</p> : (

@@ -1,9 +1,10 @@
-import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, Bug, CandlestickChart, Coins, ExternalLink, Flame, CalendarDays, Inbox, LayoutDashboard, LockKeyhole, Map as MapIcon, Megaphone, Settings, Share2, ShieldCheck, Sparkles, UserCog, Users } from "lucide-react";
+import { ArrowLeft, Bug, CandlestickChart, Coins, ExternalLink, Rocket, LayoutDashboard, LockKeyhole, Map as MapIcon, Megaphone, Settings, Share2, ShieldCheck, Sparkles, UserCog, Users } from "lucide-react";
 import { getAdminGate } from "@/lib/admin.functions";
+import { MOON_ADMIN_PATHS } from "@/components/admin/MoonTabs";
 import { getMyProfile } from "@/lib/profile.functions";
 import { useSession } from "@/hooks/use-session";
 import { Button } from "@/components/ui/button";
@@ -31,9 +32,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
 
 const NAV = [
   { to: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
-  { to: "/admin/ignite", label: "To the Moon registrants", icon: Flame },
-  { to: "/admin/ignite-classes", label: "To the Moon classes", icon: CalendarDays },
-  { to: "/admin/ignite-interest", label: "To the Moon interest list", icon: Inbox },
+  { to: "/admin/ignite", label: "To the Moon", icon: Rocket, also: MOON_ADMIN_PATHS },
   { to: "/admin/accounts", label: "Accounts", icon: Users },
   { to: "/admin/affiliates", label: "Affiliates", icon: Share2 },
   { to: "/admin/markets", label: "Orders & trades", icon: CandlestickChart },
@@ -54,6 +53,7 @@ const ELSEWHERE = [
 
 function AdminLayout() {
   const { user } = useSession();
+  const pathname = useRouterState({ select: (r) => r.location.pathname });
   const check = useServerFn(getAdminGate);
   // Re-checked every minute so the console locks itself when the 12-hour unlock runs out.
   const admin = useQuery({ queryKey: ["admin-gate"], queryFn: () => check(), retry: false, staleTime: 30_000, refetchInterval: 60_000 });
@@ -107,7 +107,10 @@ function AdminLayout() {
                 <Link
                   to={n.to}
                   activeOptions={{ exact: "exact" in n && n.exact }}
-                  className="flex items-center gap-2.5 whitespace-nowrap rounded-sm px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground data-[status=active]:bg-primary/10 data-[status=active]:font-semibold data-[status=active]:text-primary"
+                  className={`flex items-center gap-2.5 whitespace-nowrap rounded-sm px-3 py-2 text-sm transition-colors hover:bg-muted hover:text-foreground data-[status=active]:bg-primary/10 data-[status=active]:font-semibold data-[status=active]:text-primary ${
+                    // One entry covers several sibling pages (To the Moon's three tabs).
+                    "also" in n && (n.also as readonly string[]).includes(pathname.replace(/\/$/, "")) ? "bg-primary/10 font-semibold text-primary" : "text-muted-foreground"
+                  }`}
                 >
                   <n.icon className="h-4 w-4" /> {n.label}
                 </Link>
