@@ -68,7 +68,6 @@ export type AdminOverview = {
     apiKeys: number;
     withdrawals: number;
   };
-  accounts: AdminAccountRow[];
   openTrades: AdminTradeRow[];
   recentTrades: AdminTradeRow[];
   openOrders: AdminOrderRow[];
@@ -119,13 +118,11 @@ export const getAdminOverview = createServerFn({ method: "GET" })
 
     const since = new Date(Date.now() - 86_400_000).toISOString();
 
-    const { recentFailuresByMember } = await import("./order-pause.server");
-    const { repeatFailurePause } = await import("./order-readiness");
-    const failures = await recentFailuresByMember().catch(() => new Map<string, { at: number[]; lastTradeId: string }>());
-    const [profiles, wallets, delegations, orders, trades, escrows, apiKeys, withdrawals, links] =
+    const [profiles, wallets, delegations, orders, trades, escrows, apiKeys, withdrawals] =
       await Promise.all([
-        supabaseAdmin.from("profiles").select("id, display_name, created_at, trading_frozen_at, trading_frozen_reason, order_pause_cleared_at"),
-        supabaseAdmin.from("wallets").select("user_id, txc_address, evm_address"),
+        // Counts only: the Accounts tab pages members in the database (getAdminAccounts).
+        supabaseAdmin.from("profiles").select("id", { count: "exact", head: true }),
+        supabaseAdmin.from("wallets").select("id", { count: "exact", head: true }),
         supabaseAdmin
           .from("wallet_delegations")
           .select("user_id, asset, chain, max_amount, expires_at, revoked_at"),
@@ -143,21 +140,8 @@ export const getAdminOverview = createServerFn({ method: "GET" })
         supabaseAdmin.from("escrows").select("trade_id, leg, status, release_txid"),
         supabaseAdmin.from("api_keys").select("id", { count: "exact", head: true }),
         supabaseAdmin.from("withdrawals").select("id", { count: "exact", head: true }),
-        supabaseAdmin.from("hme_links").select("user_id, xpubs").eq("status", "active"),
       ]);
 
-    // Members' real receive addresses are their HME pocket (1106/0/0), derived from the link's public keys;
-    // the old wallets table is only a fallback for accounts that never linked.
-    const { pocketReceiveAddress } = await import("./pockets/derive");
-    const pocketAddr = new Map<string, { txc: string | null; evm: string | null }>();
-    for (const l of links.data ?? []) {
-      const x = (l.xpubs ?? {}) as Record<string, string>;
-      const one = (coin: "TXC" | "EVM") => { try { return x[coin] ? pocketReceiveAddress(coin, x[coin]) : null; } catch { return null; } };
-      pocketAddr.set(l.user_id, { txc: one("TXC"), evm: one("EVM") });
-    }
-
-    const profileRows = profiles.data ?? [];
-    const walletRows = wallets.data ?? [];
     const delegationRows = delegations.data ?? [];
     const orderRows = orders.data ?? [];
     const tradeRows = trades.data ?? [];
@@ -191,50 +175,14 @@ export const getAdminOverview = createServerFn({ method: "GET" })
 
     const quoteValue = (t: (typeof tradeRows)[number]) => Number(t.price) * Number(t.amount);
 
-    const accounts: AdminAccountRow[] = profileRows
-      .map((p) => {
-        const wallet = walletRows.find((w) => w.user_id === p.id);
-        const mine = liveDelegations.filter((d) => d.user_id === p.id);
-        const myOrders = orderRows.filter((o) => o.user_id === p.id);
-        const myTrades = tradeRows.filter((t) => t.maker_id === p.id || t.taker_id === p.id);
-        const times = [
-          ...myOrders.map((o) => o.created_at),
-          ...myTrades.map((t) => t.created_at),
-        ].sort();
-        return {
-          userId: p.id,
-          displayName: p.display_name,
-          createdAt: p.created_at,
-          hasVault: Boolean(wallet),
-          linked: pocketAddr.has(p.id),
-          txcAddress: pocketAddr.get(p.id)?.txc ?? wallet?.txc_address ?? null,
-          evmAddress: pocketAddr.get(p.id)?.evm ?? wallet?.evm_address ?? null,
-          activeAuthorizations: mine.length,
-          authorizedCap: mine.reduce((a, d) => a + Number(d.max_amount ?? 0), 0),
-          openOrders: myOrders.filter((o) => o.status === "open" || o.status === "partial").length,
-          trades: myTrades.length,
-          tradedQuoteValue: myTrades.reduce((a, t) => a + quoteValue(t), 0),
-          lastActivity: times.length ? times[times.length - 1]! : null,
-          tradingFrozenAt: p.trading_frozen_at ?? null,
-          tradingFrozenReason: p.trading_frozen_reason ?? null,
-          orderPausedUntil: (() => {
-            const f = failures.get(p.id);
-            if (!f) return null;
-            const r = repeatFailurePause({ failedAtMs: f.at, clearedAtMs: p.order_pause_cleared_at ? Date.parse(p.order_pause_cleared_at) : null, nowMs: now });
-            return r.paused && r.untilMs ? new Date(r.untilMs).toISOString() : null;
-          })(),
-        };
-      })
-      .sort((a, b) => b.tradedQuoteValue - a.tradedQuoteValue);
-
     const openTradeRows = tradeRows.filter((t) => OPEN_TRADE_STATUSES.includes(t.status));
     const trades24hRows = tradeRows.filter((t) => t.created_at >= since);
 
     return {
       generatedAt: new Date().toISOString(),
       totals: {
-        accounts: profileRows.length,
-        vaults: walletRows.length,
+        accounts: profiles.count ?? 0,
+        vaults: wallets.count ?? 0,
         activeAuthorizations: liveDelegations.length,
         authorizedCapTotal: liveDelegations.reduce((a, d) => a + Number(d.max_amount ?? 0), 0),
         openOrders: orderRows.filter((o) => o.status === "open" || o.status === "partial").length,
@@ -248,7 +196,6 @@ export const getAdminOverview = createServerFn({ method: "GET" })
         apiKeys: apiKeys.count ?? 0,
         withdrawals: withdrawals.count ?? 0,
       },
-      accounts,
       openTrades: openTradeRows.slice(0, 100).map(mapTrade),
       recentTrades: tradeRows.slice(0, 50).map(mapTrade),
       openOrders: orderRows

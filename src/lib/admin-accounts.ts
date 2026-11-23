@@ -1,19 +1,22 @@
-/** Pure search / sort / paging rules for the /admin/accounts table. */
-export type AccountRowLike = {
-  userId: string; displayName: string; createdAt: string; hasVault: boolean;
-  txcAddress: string | null; evmAddress: string | null; activeAuthorizations: number;
-  authorizedCap: number; openOrders: number; trades: number; tradedQuoteValue: number; lastActivity: string | null;
-  /** TSD in the member's trading pocket; null = not linked or not read yet. */
-  tsd?: number | null;
-};
-export type AccountSortKey = "displayName" | "createdAt" | "hasVault" | "activeAuthorizations" | "authorizedCap" | "openOrders" | "trades" | "tradedQuoteValue" | "lastActivity" | "tsd";
+/**
+ * Pure rules for the /admin/accounts table. Search, sort and paging run in the
+ * database (admin_accounts_page) so only the rows on screen leave the server;
+ * TSD balances are read only for those rows.
+ */
+export type AccountSortKey = "displayName" | "createdAt" | "hasVault" | "activeAuthorizations" | "authorizedCap" | "openOrders" | "trades" | "tradedQuoteValue" | "lastActivity";
+export const SORT_KEYS: readonly AccountSortKey[] = ["displayName", "createdAt", "hasVault", "activeAuthorizations", "authorizedCap", "openOrders", "trades", "tradedQuoteValue", "lastActivity"];
 export const PAGE_SIZES = [25, 50, 100] as const;
+/** Most TSD balances one request may read: the biggest page. */
+export const MAX_TSD_READS = 100;
+/** Shortest text that also searches addresses (shorter would match nearly every address of a coin). */
+export const MIN_ADDRESS_SEARCH = 6;
+/** Most members one address search may hand to the page query. */
+export const MAX_ADDRESS_HITS = 200;
 
-/** Name, address or user id, case-insensitive. */
-export function filterAccounts<T extends AccountRowLike>(rows: T[], q: string): T[] {
-  const s = q.trim().toLowerCase();
-  if (!s) return rows;
-  return rows.filter((r) => [r.displayName, r.txcAddress ?? "", r.evmAddress ?? "", r.userId].some((v) => v.toLowerCase().includes(s)));
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function isSortKey(k: unknown): k is AccountSortKey {
+  return typeof k === "string" && (SORT_KEYS as readonly string[]).includes(k);
 }
 
 /** Numbers and dates start biggest/newest first; names start A→Z. */
@@ -21,27 +24,31 @@ export function defaultDir(k: AccountSortKey): "asc" | "desc" {
   return k === "displayName" ? "asc" : "desc";
 }
 
-/** Stable sort; missing dates always sink to the bottom whichever way you sort. */
-export function sortAccounts<T extends AccountRowLike>(rows: T[], key: AccountSortKey, dir: "asc" | "desc"): T[] {
-  const sign = dir === "asc" ? 1 : -1;
-  const val = (r: T): string | number | null => {
-    if (key === "displayName") return r.displayName.toLowerCase();
-    if (key === "createdAt" || key === "lastActivity") return r[key] ? new Date(r[key] as string).getTime() : null;
-    if (key === "hasVault") return r.hasVault ? 1 : 0;
-    if (key === "tsd") return r.tsd ?? null;
-    return r[key];
-  };
-  return rows.map((r, i) => ({ r, i, v: val(r) })).sort((a, b) => {
-    if (a.v === null && b.v === null) return a.i - b.i;
-    if (a.v === null) return 1;
-    if (b.v === null) return -1;
-    if (a.v < b.v) return -sign;
-    if (a.v > b.v) return sign;
-    return a.i - b.i;
-  }).map((x) => x.r);
+/** Rows per page: one of PAGE_SIZES, anything else falls back to the smallest. */
+export function pageSize(n: unknown): number {
+  return (PAGE_SIZES as readonly number[]).includes(n as number) ? (n as number) : PAGE_SIZES[0];
 }
 
-/** Clamp the page so a shrinking search never leaves you on an empty page. */
+/** The lowercase start of an address to look up, or null when the text can't be (part of) an address. */
+export function addressSearchTerm(q: string): string | null {
+  const s = q.trim().toLowerCase();
+  return s.length >= MIN_ADDRESS_SEARCH && s.length <= 120 && /^[a-z0-9]+$/.test(s) ? s : null;
+}
+
+/** Page numbers from the total and the offset the server actually used (it snaps back past the end). */
+export function pageInfo(total: number, offset: number, size: number, shown: number): { page: number; pages: number; from: number; to: number } {
+  const pages = Math.max(1, Math.ceil(total / size));
+  const page = Math.min(Math.max(0, Math.floor(offset / size)), pages - 1);
+  return { page, pages, from: shown ? offset + 1 : 0, to: offset + shown };
+}
+
+/** Member ids whose TSD may be read in one request: valid ids only, no repeats, at most one page. */
+export function tsdReadIds(ids: unknown): string[] {
+  if (!Array.isArray(ids)) return [];
+  return [...new Set(ids.filter((i): i is string => typeof i === "string" && UUID.test(i)))].slice(0, MAX_TSD_READS);
+}
+
+/** Client-side paging for smaller admin tables: clamp so a shrinking search never leaves you on an empty page. */
 export function pageOf<T>(rows: T[], page: number, size: number): { rows: T[]; page: number; pages: number; from: number; to: number } {
   const pages = Math.max(1, Math.ceil(rows.length / size));
   const p = Math.min(Math.max(0, Math.floor(page)), pages - 1);

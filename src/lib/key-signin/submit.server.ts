@@ -210,6 +210,8 @@ export async function handleKeySubmit(request: Request): Promise<Response> {
     ...(vaultFp ? { vault_fingerprint: vaultFp } : {}),
   });
   if (le) return corsJson({ error: "store failed" }, 500);
+  const { saveLinkAddressesById } = await import("@/lib/pockets/link-addresses.server");
+  await saveLinkAddressesById(newLinkId);
   if (!created) await renameForVault(userId, prof?.display_name ?? null, identity, vaultFp);
 
   await supabaseAdmin.from("key_signin_requests").update({ user_id: userId, identity_kind: kind, created_account: created }).eq("challenge_id", b.token);

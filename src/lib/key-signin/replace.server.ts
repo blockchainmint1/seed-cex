@@ -156,12 +156,14 @@ export async function confirmHeldReplace(i: { challengeId: string; code: string 
   }
   const kindOk = p.kind === "coin" || p.kind === "evm" || p.kind === "sol";
   // The held key was sealed for this link id (KMS context), so the row must get exactly that id.
-  const { error: le } = await supabaseAdmin.from("hme_links").insert({
+  const { data: newLink, error: le } = await supabaseAdmin.from("hme_links").insert({
     ...(p.link_id ? { id: p.link_id } : {}), user_id: r.user_id, mode: "access", account: p.account, paths: p.paths, identity_address: p.identity,
     xpubs: p.xpubs, key_ciphertext: p.key_ciphertext, source: "seeds_key", ...(kindOk ? { key_kind: p.kind } : {}),
     ...(p.kind === "coin" && p.vault_fingerprint && /^[0-9a-f]{8}$/.test(p.vault_fingerprint) ? { vault_fingerprint: p.vault_fingerprint } : {}),
-  });
-  if (le) throw new Error("Couldn't save the new pocket link. Start again.");
+  }).select("id").single();
+  if (le || !newLink) throw new Error("Couldn't save the new pocket link. Start again.");
+  const { saveLinkAddressesById } = await import("@/lib/pockets/link-addresses.server");
+  await saveLinkAddressesById(newLink.id);
   // Sign-in mode only (never an Honest.Money member's profile): Seeds' starting coin name becomes "Vault <ID>".
   if (!linkMode && p.kind === "coin") {
     const { data: prof } = await supabaseAdmin.from("profiles").select("display_name, identity_kind").eq("id", r.user_id).maybeSingle();

@@ -1,14 +1,14 @@
-import { useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { clearOrderPause, liftTradingFreeze } from "@/lib/admin.functions";
 import { createFileRoute } from "@tanstack/react-router";
 import { Check, Copy, Search, X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { getAdminMemberAddresses, getAdminTsdBalances } from "@/lib/admin-members.functions";
+import { getAdminAccounts, getAdminMemberAddresses, getAdminTsdBalances } from "@/lib/admin-members.functions";
 import { TabTitle, inputCls } from "@/components/account/ui";
-import { Loading, Pager, SortHeader, short, useAdminOverview } from "@/components/admin/ui";
-import { PAGE_SIZES, defaultDir, filterAccounts, pageOf, sortAccounts, type AccountSortKey } from "@/lib/admin-accounts";
+import { Loading, Pager, SortHeader, short } from "@/components/admin/ui";
+import { PAGE_SIZES, defaultDir, pageInfo, type AccountSortKey } from "@/lib/admin-accounts";
 import { fmtAgo, fmtAmount } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/admin/accounts")({
@@ -27,21 +27,35 @@ export const Route = createFileRoute("/_authenticated/admin/accounts")({
 });
 
 function AccountsPage() {
-  const q = useAdminOverview();
-  const d = q.data;
   const [search, setSearch] = useState("");
+  const [q, setQ] = useState("");
   const [sort, setSort] = useState<{ key: AccountSortKey; dir: "asc" | "desc" }>({ key: "tradedQuoteValue", dir: "desc" });
   const [page, setPage] = useState(0);
   const [size, setSize] = useState<number>(PAGE_SIZES[0]);
   const [open, setOpen] = useState<{ userId: string; name: string } | null>(null);
-  const fetchTsd = useServerFn(getAdminTsdBalances);
-  // Display only, refreshed every minute; the server reads through the shared balance cache.
-  const tsdQ = useQuery({ queryKey: ["admin-tsd-balances"], queryFn: () => fetchTsd(), refetchInterval: 60_000, retry: false });
-  const tsd = tsdQ.data;
+  // Wait for a pause in typing before asking the server.
+  useEffect(() => { const t = setTimeout(() => { setQ(search.trim()); setPage(0); }, 300); return () => clearTimeout(t); }, [search]);
 
-  const rows = useMemo(() => (d ? d.accounts.map((a) => ({ ...a, tsd: tsd?.[a.userId] ?? null })) : []), [d, tsd]);
-  const matched = useMemo(() => sortAccounts(filterAccounts(rows, search), sort.key, sort.dir), [rows, search, sort]);
-  const view = pageOf(matched, page, size);
+  // Only the rows on screen come back; search, sort and paging run in the database.
+  const fetchPage = useServerFn(getAdminAccounts);
+  const pq = useQuery({
+    queryKey: ["admin-accounts", q, sort.key, sort.dir, page, size],
+    queryFn: () => fetchPage({ data: { q, sort: sort.key, dir: sort.dir, page, size } }),
+    placeholderData: keepPreviousData, refetchInterval: 60_000, retry: false,
+  });
+  const d = pq.data;
+  const rows = d?.rows ?? [];
+  const info = pageInfo(d?.total ?? 0, d?.offset ?? 0, size, rows.length);
+
+  // TSD balances for the members on screen only, refreshed every minute through the shared balance cache.
+  const fetchTsd = useServerFn(getAdminTsdBalances);
+  const linkedIds = rows.filter((r) => r.linked).map((r) => r.userId);
+  const tsdQ = useQuery({
+    queryKey: ["admin-tsd-balances", linkedIds.join(",")],
+    queryFn: () => fetchTsd({ data: { userIds: linkedIds } }),
+    enabled: linkedIds.length > 0, refetchInterval: 60_000, retry: false,
+  });
+  const tsd = tsdQ.data;
 
   const onSort = (k: AccountSortKey) => {
     setSort((s) => (s.key === k ? { key: k, dir: s.dir === "asc" ? "desc" : "asc" } : { key: k, dir: defaultDir(k) }));
@@ -54,17 +68,17 @@ function AccountsPage() {
   return (
     <div className="space-y-5">
       <TabTitle title="Accounts" desc="Every signed-in member. Click a column header to sort; click again to flip. Click a name to see all of that member's addresses." />
-      {q.isPending ? <Loading /> : !d ? <p role="alert" className="text-sm text-destructive">Couldn't load accounts. Refresh to retry.</p> : (
+      {pq.isPending ? <Loading /> : !d ? <p role="alert" className="text-sm text-destructive">Couldn't load accounts. Refresh to retry.</p> : (
         <section className="min-w-0 rounded-md border border-border bg-surface">
           <header className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3">
-            <h3 className="font-display text-sm font-bold">{search.trim() ? `${matched.length} of ${d.accounts.length} accounts` : `${d.accounts.length} accounts`}</h3>
+            <h3 className="font-display text-sm font-bold">{q ? `${d.total} matching accounts` : `${d.total} accounts`}{pq.isFetching ? <span className="ml-2 font-mono text-[10px] font-normal text-muted-foreground">updating…</span> : null}</h3>
             <label className="relative w-full sm:ml-auto sm:w-80">
               <span className="sr-only">Search accounts</span>
               <Search aria-hidden className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <input className={`${inputCls} py-1.5 pr-8 pl-8`} placeholder="Name, TXC or EVM address, user id" value={search}
-                onChange={(e) => { setSearch(e.target.value); setPage(0); }} />
+              <input className={`${inputCls} py-1.5 pr-8 pl-8`} placeholder="Name, any pocket address, user id" value={search}
+                onChange={(e) => setSearch(e.target.value)} />
               {search ? (
-                <button type="button" aria-label="Clear search" onClick={() => { setSearch(""); setPage(0); }}
+                <button type="button" aria-label="Clear search" onClick={() => setSearch("")}
                   className="absolute top-1/2 right-2 -translate-y-1/2 text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
               ) : null}
             </label>
@@ -78,7 +92,7 @@ function AccountsPage() {
                   {H("Vault", "hasVault", "left")}
                   <th scope="col" className="px-3 py-2 text-left font-normal">TXC</th>
                   <th scope="col" className="px-3 py-2 text-left font-normal">EVM</th>
-                  {H("TSD", "tsd")}
+                  <th scope="col" className="px-3 py-2 text-right font-normal" title="Read live for the members on this page">TSD</th>
                   {H("Auths", "activeAuthorizations")}
                   {H("Cap", "authorizedCap")}
                   {H("Open", "openOrders")}
@@ -88,7 +102,9 @@ function AccountsPage() {
                 </tr>
               </thead>
               <tbody>
-                {view.rows.map((a) => (
+                {rows.map((a) => {
+                  const bal = tsd?.[a.userId];
+                  return (
                   <tr key={a.userId} className="border-b border-border/50">
                     <td className="px-3 py-2 text-foreground">
                       <button type="button" onClick={() => setOpen({ userId: a.userId, name: a.displayName })}
@@ -103,7 +119,7 @@ function AccountsPage() {
                     <td className="px-3 py-2" title={a.txcAddress ?? undefined}>{short(a.txcAddress)}</td>
                     <td className="px-3 py-2" title={a.evmAddress ?? undefined}>{short(a.evmAddress)}</td>
                     <td className="px-3 py-2 text-right" title={a.linked ? undefined : "No trading pocket linked"}>
-                      {!a.linked ? "—" : tsdQ.isPending ? "…" : a.tsd == null ? "?" : fmtAmount(a.tsd)}
+                      {!a.linked ? "—" : !tsd ? "…" : bal == null ? "?" : fmtAmount(bal)}
                     </td>
                     <td className="px-3 py-2 text-right">{a.activeAuthorizations}</td>
                     <td className="px-3 py-2 text-right">{fmtAmount(a.authorizedCap)}</td>
@@ -112,14 +128,15 @@ function AccountsPage() {
                     <td className="px-3 py-2 text-right">{fmtAmount(a.tradedQuoteValue)}</td>
                     <td className="px-3 py-2 text-right text-muted-foreground">{a.lastActivity ? fmtAgo(a.lastActivity) : "—"}</td>
                   </tr>
-                ))}
-                {view.rows.length === 0 ? (
-                  <tr><td className="px-4 py-6 text-muted-foreground" colSpan={12}>{d.accounts.length ? "No accounts match that search." : "No accounts yet."}</td></tr>
+                  );
+                })}
+                {rows.length === 0 ? (
+                  <tr><td className="px-4 py-6 text-muted-foreground" colSpan={12}>{q ? "No accounts match that search." : "No accounts yet."}</td></tr>
                 ) : null}
               </tbody>
             </table>
           </div>
-          <Pager page={view.page} pages={view.pages} from={view.from} to={view.to} total={matched.length} size={size} sizes={PAGE_SIZES}
+          <Pager page={info.page} pages={info.pages} from={info.from} to={info.to} total={d.total} size={size} sizes={PAGE_SIZES}
             onPage={setPage} onSize={(n) => { setSize(n); setPage(0); }} />
         </section>
       )}
@@ -220,7 +237,7 @@ function OrderPauseBadge({ userId, until }: { userId: string; until: string }) {
           setErr(null);
           try {
             await clear({ data: { userId } });
-            await qc.invalidateQueries({ queryKey: ["admin-overview"] });
+            await qc.invalidateQueries({ queryKey: ["admin-accounts"] });
           } catch (e) {
             setErr(e instanceof Error ? e.message : "Couldn't clear it");
           } finally {
@@ -253,7 +270,7 @@ function FrozenBadge({ userId, reason }: { userId: string; reason: string | null
           setErr(null);
           try {
             await lift({ data: { userId } });
-            await qc.invalidateQueries({ queryKey: ["admin-overview"] });
+            await qc.invalidateQueries({ queryKey: ["admin-accounts"] });
           } catch (e) {
             setErr(e instanceof Error ? e.message : "Couldn't lift it");
           } finally {

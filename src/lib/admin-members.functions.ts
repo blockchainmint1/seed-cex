@@ -1,12 +1,16 @@
 /**
- * Admin → Accounts extras: each member's TSD balance and the full list of their
- * trading-pocket receive addresses. Admin only (role + fresh admin code).
- * Addresses are derived from the link's public keys — no key is opened.
- * Balances are display reads through the shared cache; nothing here moves coins.
+ * Admin → Accounts: one page of members (searched, sorted and paged in the
+ * database), each member's TSD balance for the rows on screen, and the full list
+ * of a member's trading-pocket receive addresses. Admin only (role + fresh admin code).
+ * Addresses come from pocket_addresses (saved from the link's public keys at link
+ * time) — no key is opened. Balances are display reads through the shared cache;
+ * nothing here moves coins.
  */
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireAdmin } from "./admin-guard";
+import type { AdminAccountRow } from "./admin.functions";
+import { MAX_ADDRESS_HITS, addressSearchTerm, isSortKey, pageSize, tsdReadIds, type AccountSortKey } from "./admin-accounts";
 
 export type AdminPocketAddress = { pocket: string; name: string; covers: string[]; address: string };
 export type AdminMemberAddresses = {
@@ -16,26 +20,103 @@ export type AdminMemberAddresses = {
   /** Addresses saved on the old pre-HME wallet record, if any. */
   legacy: { coin: string; address: string }[];
 };
+export type AdminAccountsPage = { total: number; offset: number; rows: AdminAccountRow[] };
 
-/** TSD in every linked member's trading pocket (their TXC address). userId → balance, null = couldn't read. */
-export const getAdminTsdBalances = createServerFn({ method: "GET" })
+type PageRow = {
+  user_id: string; display_name: string; created_at: string; has_vault: boolean; link_id: string | null;
+  txc_address: string | null; evm_address: string | null; addresses_saved: boolean;
+  active_authorizations: number; authorized_cap: number | string; open_orders: number; trades: number;
+  traded_value: number | string; last_activity: string | null;
+  trading_frozen_at: string | null; trading_frozen_reason: string | null; order_pause_cleared_at: string | null;
+};
+
+/** One page of the Accounts table. Search: name, user id, or the start of any pocket / old wallet address. */
+export const getAdminAccounts = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<Record<string, number | null>> => {
+  .inputValidator((d: { q?: string; sort?: string; dir?: string; page?: number; size?: number }) => ({
+    q: typeof d?.q === "string" ? d.q.slice(0, 120) : "",
+    sort: (isSortKey(d?.sort) ? d.sort : "tradedQuoteValue") as AccountSortKey,
+    desc: d?.dir !== "asc",
+    page: Number.isInteger(d?.page) && (d.page as number) >= 0 ? Math.min(d.page as number, 100_000) : 0,
+    size: pageSize(d?.size),
+  }))
+  .handler(async ({ data, context }): Promise<AdminAccountsPage> => {
     await requireAdmin(context as never);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data } = await supabaseAdmin.from("hme_links").select("user_id, xpubs").eq("status", "active");
-    const { pocketReceiveAddress } = await import("./pockets/derive");
+    // Address search is an index lookup on the saved addresses (any pocket the member ever linked).
+    const term = addressSearchTerm(data.q);
+    let hits: string[] = [];
+    if (term) {
+      const { data: found } = await supabaseAdmin.from("pocket_addresses").select("user_id").like("address_lc", `${term}%`).limit(MAX_ADDRESS_HITS);
+      hits = [...new Set((found ?? []).map((r) => r.user_id))];
+    }
+    const { data: page, error } = await supabaseAdmin.rpc("admin_accounts_page", {
+      _q: data.q, _hits: hits, _sort: data.sort, _desc: data.desc, _limit: data.size, _offset: data.page * data.size,
+    });
+    if (error || !page) { console.error("[admin-accounts] page failed", error?.message); throw new Error("Couldn't load accounts. Refresh to retry."); }
+    const p = page as unknown as { total: number; offset: number; rows: PageRow[] };
+
+    // A link from before addresses were saved at link time: save it now (only rows on screen).
+    const unsaved = p.rows.filter((r) => r.link_id && !r.addresses_saved).map((r) => r.link_id!);
+    const healed = new Map<string, { txc: string | null; evm: string | null }>();
+    if (unsaved.length) {
+      const { saveLinkAddresses } = await import("./pockets/link-addresses.server");
+      const { data: links } = await supabaseAdmin.from("hme_links").select("id, user_id, account, paths, xpubs").in("id", unsaved);
+      for (const l of links ?? []) {
+        const list = await saveLinkAddresses(l as never).catch(() => []);
+        healed.set(l.id, { txc: list.find((a) => a.coin === "TXC")?.address ?? null, evm: list.find((a) => a.coin === "EVM")?.address ?? null });
+      }
+    }
+
+    const { recentFailuresByMember } = await import("./order-pause.server");
+    const { repeatFailurePause } = await import("./order-readiness");
+    const failures = await recentFailuresByMember().catch(() => new Map<string, { at: number[]; lastTradeId: string }>());
+    const now = Date.now();
+    const rows: AdminAccountRow[] = p.rows.map((r) => {
+      const h = r.link_id ? healed.get(r.link_id) : undefined;
+      const f = failures.get(r.user_id);
+      const pause = f ? repeatFailurePause({ failedAtMs: f.at, clearedAtMs: r.order_pause_cleared_at ? Date.parse(r.order_pause_cleared_at) : null, nowMs: now }) : null;
+      return {
+        userId: r.user_id,
+        displayName: r.display_name,
+        createdAt: r.created_at,
+        hasVault: r.has_vault,
+        linked: Boolean(r.link_id),
+        txcAddress: h?.txc ?? r.txc_address,
+        evmAddress: h?.evm ?? r.evm_address,
+        activeAuthorizations: r.active_authorizations,
+        authorizedCap: Number(r.authorized_cap),
+        openOrders: r.open_orders,
+        trades: r.trades,
+        tradedQuoteValue: Number(r.traded_value),
+        lastActivity: r.last_activity,
+        tradingFrozenAt: r.trading_frozen_at,
+        tradingFrozenReason: r.trading_frozen_reason,
+        orderPausedUntil: pause?.paused && pause.untilMs ? new Date(pause.untilMs).toISOString() : null,
+      };
+    });
+    return { total: p.total, offset: p.offset, rows };
+  });
+
+/** TSD in the trading pocket of the members on screen (their TXC address). userId → balance, null = couldn't read. */
+export const getAdminTsdBalances = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { userIds: string[] }) => ({ userIds: tsdReadIds(d?.userIds) }))
+  .handler(async ({ data, context }): Promise<Record<string, number | null>> => {
+    await requireAdmin(context as never);
+    if (!data.userIds.length) return {};
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: links } = await supabaseAdmin.from("hme_links").select("id, user_id").eq("status", "active").in("user_id", data.userIds);
+    const linkIds = (links ?? []).map((l) => l.id);
+    const { data: addrs } = linkIds.length
+      ? await supabaseAdmin.from("pocket_addresses").select("link_id, user_id, address").eq("coin", "TXC").in("link_id", linkIds)
+      : { data: [] as { link_id: string; user_id: string; address: string }[] };
     const { fetchOmniBalance } = await import("./omni.server");
     const { shared } = await import("@/lib/cache/shared-cache.server");
     const { CACHE_TIMES, balanceKey } = await import("@/lib/cache/shared-cache-rules");
-    const jobs: { userId: string; address: string }[] = [];
-    for (const l of data ?? []) {
-      const pub = ((l.xpubs ?? {}) as Record<string, string>)["TXC"];
-      if (!pub) continue;
-      try { jobs.push({ userId: l.user_id, address: pocketReceiveAddress("TXC", pub) }); } catch { /* malformed legacy row */ }
-    }
+    const jobs = (addrs ?? []).map((a) => ({ userId: a.user_id, address: a.address }));
     const out: Record<string, number | null> = {};
-    // A few at a time so the TEXITcoin node isn't hit with every member at once.
+    // A few at a time so the TEXITcoin node isn't hit with a whole page at once.
     for (let i = 0; i < jobs.length; i += 6) {
       await Promise.all(jobs.slice(i, i + 6).map(async (j) => {
         const b = await shared(balanceKey("tsd", j.address), { ...CACHE_TIMES.balance, good: (v) => v.online }, () => fetchOmniBalance(j.address)).catch(() => null);
@@ -57,23 +138,21 @@ export const getAdminMemberAddresses = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const [prof, link, wallet] = await Promise.all([
       supabaseAdmin.from("profiles").select("display_name").eq("id", data.userId).maybeSingle(),
-      supabaseAdmin.from("hme_links").select("mode, account, paths, xpubs, created_at, vault_fingerprint")
+      supabaseAdmin.from("hme_links").select("id, user_id, mode, account, paths, xpubs, created_at, vault_fingerprint")
         .eq("user_id", data.userId).eq("status", "active").order("created_at", { ascending: false }).limit(1).maybeSingle(),
       supabaseAdmin.from("wallets").select("txc_address, isk_address, ltc_address, evm_address").eq("user_id", data.userId).maybeSingle(),
     ]);
     if (!prof.data) throw new Error("No such member");
     let linkOut: AdminMemberAddresses["link"] = null;
     if (link.data) {
-      const { pocketReceiveAddress } = await import("./pockets/derive");
-      const { chainForPath } = await import("./hme-link.server");
       const { POCKET_SPECS, POCKET_COINS } = await import("./pockets/coins");
-      const xpubs = (link.data.xpubs ?? {}) as Record<string, string>;
-      const found = new Map<string, string>();
-      for (const path of (link.data.paths ?? []) as string[]) {
-        const info = chainForPath(path);
-        if (!info || info.account !== link.data.account || !xpubs[info.chain]) continue;
-        try { found.set(info.chain, pocketReceiveAddress(info.chain as never, xpubs[info.chain])); } catch { /* skip malformed */ }
+      const { data: saved } = await supabaseAdmin.from("pocket_addresses").select("coin, address").eq("link_id", link.data.id);
+      let list = (saved ?? []) as { coin: string; address: string }[];
+      if (!list.length) {
+        const { saveLinkAddresses } = await import("./pockets/link-addresses.server");
+        list = await saveLinkAddresses(link.data as never);
       }
+      const found = new Map(list.map((a) => [a.coin, a.address]));
       linkOut = {
         mode: link.data.mode,
         createdAt: link.data.created_at,

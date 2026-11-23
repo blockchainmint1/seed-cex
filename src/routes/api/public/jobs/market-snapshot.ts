@@ -14,8 +14,11 @@ export const Route = createFileRoute("/api/public/jobs/market-snapshot")({
         // Deposit history for linked pockets, a few members per run (read-only on every chain).
         const { syncDueDeposits } = await import("@/lib/activity/deposits.server");
         const deposits = await syncDueDeposits().catch((e) => { console.error("[deposits] job failed", e); return null; });
+        // Receive addresses of links saved before link-time saving existed, a few per run (admin Accounts reads them).
+        const { backfillLinkAddresses } = await import("@/lib/pockets/link-addresses.server");
+        const linkAddresses = await backfillLinkAddresses().catch((e) => { console.error("[pocket-addresses] backfill failed", e); return null; });
         // A run that stored neither markets nor chains is a failure the scheduler should see.
-        return Response.json({ ok: result.markets > 0 && result.chains > 0, ...result, deposits });
+        return Response.json({ ok: result.markets > 0 && result.chains > 0, ...result, deposits, linkAddresses });
       },
     },
   },

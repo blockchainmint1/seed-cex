@@ -120,6 +120,8 @@ export async function submitKeyLink(p: {
       ...(p.vaultFingerprint ? { vault_fingerprint: p.vaultFingerprint } : {}),
     });
     if (le) return corsJson({ error: "store failed" }, 500);
+    const { saveLinkAddressesById } = await import("@/lib/pockets/link-addresses.server");
+    await saveLinkAddressesById(newLinkId);
   } else if (p.vaultFingerprint) {
     await supabaseAdmin.from("hme_links").update({ vault_fingerprint: p.vaultFingerprint }).eq("id", active!.id).is("vault_fingerprint", null);
   }

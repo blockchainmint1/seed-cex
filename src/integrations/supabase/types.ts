@@ -2916,6 +2916,41 @@ export type Database = {
           },
         ]
       }
+      pocket_addresses: {
+        Row: {
+          address: string
+          address_lc: string | null
+          coin: string
+          created_at: string
+          link_id: string
+          user_id: string
+        }
+        Insert: {
+          address: string
+          address_lc?: string | null
+          coin: string
+          created_at?: string
+          link_id: string
+          user_id: string
+        }
+        Update: {
+          address?: string
+          address_lc?: string | null
+          coin?: string
+          created_at?: string
+          link_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pocket_addresses_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: false
+            referencedRelation: "hme_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pocket_deposit_sync: {
         Row: {
           backfilled: Json
@@ -4739,6 +4774,29 @@ export type Database = {
     }
     Functions: {
       ad_stat_bump: { Args: { _ad: string; _kind: string }; Returns: undefined }
+      admin_account_stats: {
+        Args: { _ids: string[] }
+        Returns: {
+          active_authorizations: number
+          authorized_cap: number
+          last_activity: string
+          open_orders: number
+          traded_value: number
+          trades: number
+          user_id: string
+        }[]
+      }
+      admin_accounts_page: {
+        Args: {
+          _desc: boolean
+          _hits: string[]
+          _limit: number
+          _offset: number
+          _q: string
+          _sort: string
+        }
+        Returns: Json
+      }
       ai_sync_ingest: { Args: never; Returns: number }
       ai_sync_request: { Args: { _with_markets?: boolean }; Returns: number }
       api_bump_rate: {
@@ -4780,6 +4838,7 @@ export type Database = {
         Returns: boolean
       }
       legacy_user_for_email: { Args: { _email: string }; Returns: string }
+      links_missing_addresses: { Args: { _limit: number }; Returns: string[] }
       market_snapshot_latest: {
         Args: { _max_age_minutes?: number }
         Returns: {

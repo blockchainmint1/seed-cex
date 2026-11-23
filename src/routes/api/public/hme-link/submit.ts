@@ -108,6 +108,8 @@ export const Route = createFileRoute("/api/public/hme-link/submit")({
           identity_address: b.identity_address, xpubs, key_ciphertext: keyCiphertext,
         }).select("id").single();
         if (error || !link) return json({ error: "store failed" }, 500);
+        const { saveLinkAddressesById } = await import("@/lib/pockets/link-addresses.server");
+        await saveLinkAddressesById(link.id);
         const { emailAccountChange } = await import("@/lib/email/send.server");
         await emailAccountChange(req.user_id, "HME Wallet link", [
           active
