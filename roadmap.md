@@ -367,13 +367,16 @@
 - [ ] Rebuild Seeds Lend lockboxes for BTC and ETH collateral (blocked: lending stays off; BTC needs a Seeds signing key in AWS KMS, ETH needs a 2-of-3 lockbox contract + its own audit)
 - [x] L4 liquidation price: dropped with TXC (Bobby, Nov 22)
 - [ ] C4: split the order watch across more runs once a few hundred members hold orders (later)
-- [ ] Auditor re-check of C1–C3, C5 and the Lend switch-off + L1/L5 (blocked: auditor)
+- [x] Auditor re-check of C1–C3, C5 and the Lend switch-off + L1/L5: all correct (Nov 23)
+- [ ] C2 follow-up: log when a balance-check lock outlives its 60-second hold (blocked: Bobby's pick)
+- [ ] BTC/ETH Lend rebuild must carry: coin selection + dust floor for payouts, price from several sources, resend only when the node proves the payout missing, signing-key alarm, honest wording that Seeds holds pocket keys; ETH lockbox design reviewed before code (blocked: lending rebuild)
 
 ## Auditor bundle (Nov 22, late) — key-link, Vault, bug tracker (waiting on Bobby's picks)
-- [ ] H1 second-channel approval for linking a coin/wallet to an HME account (blocked: Bobby picks approach)
+- [ ] H1 second-channel approval for linking a coin/wallet to an HME account; auditor accepted our 24-hour version and prefers a fresh sign-in first (blocked: Bobby picks approach)
+- [ ] H1b: new 2FA apps / Telegram chats only count for approvals once confirmed with a fresh sign-in, an older 2FA/Telegram, or an email code (blocked: Bobby's pick)
 - [ ] H2 warn before a held key is applied; H3 migration checklist note (blocked: Bobby's pick)
 - [ ] V1 Vault request signing key into AWS KMS (blocked: Bobby's call + new AWS key)
 - [ ] V2 pairing code in shared Vault rules file (HME Vault shows it); V3 extra-password wording on Seeds Key page (other projects)
 - [ ] QA group: full text vs title-only (blocked: Bobby — is the group staff only?); error-log new-group hourly cap
-- [ ] Send auditor the Coins-in-trades/Lend fixes + Cancel all (blocked: Bobby forwards the note)
+- [x] Auditor saw the Coins-in-trades/Lend fixes, Cancel all and Balances table: no issues (Nov 23)
 
