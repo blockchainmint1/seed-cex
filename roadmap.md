@@ -420,3 +420,4 @@
 - [x] Rocket climbing toward the Moon in the empty right half of the hero, brand tokens only, phones skip it
 - [x] Desktop rocket 50% larger (24rem at lg, 37.5rem at xl)
 - [x] A few twinkling stars + distant pinpoints around the rocket
+- [x] Miner check & classes audit: K1 (failure log + admin status), K3 (member handle removed), K4 (safe seat moves), softer non-miner note; K2 sent to Honest.Money; K5/K6 deferred
