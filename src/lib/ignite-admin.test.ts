@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { filterIgniteRows, hideBlock, paragraphs, personalize, reminderBlock, sortIgniteRows, validateMessage, REMINDER_COOLDOWN_HOURS } from "./ignite-admin";
+import { checkoutLapsed, filterIgniteRows, hideBlock, paragraphs, personalize, reminderBlock, sortIgniteRows, validateMessage, REMINDER_COOLDOWN_HOURS } from "./ignite-admin";
 
 const NOW = Date.parse("2026-11-18T20:00:00Z");
 
@@ -75,5 +75,27 @@ describe("hiding sign-ups from the Registrants list", () => {
   });
   test("someone paying right now stays on the list", () => {
     expect(hideBlock("pending", new Date(NOW + 60_000).toISOString(), NOW)).toBe("They have a checkout open right now.");
+  });
+});
+
+describe("expired checkouts move to the interest list", () => {
+  const ago = (min: number) => new Date(NOW - min * 60_000).toISOString();
+  const base = { status: "pending", updatedAt: ago(90), peerLinkExpiresAt: null };
+  test("a checkout that ran out more than 5 minutes ago moves", () => {
+    expect(checkoutLapsed({ ...base, invoiceExpiresAt: ago(6) }, NOW)).toBe(true);
+  });
+  test("a checkout still open, or only just expired, stays", () => {
+    expect(checkoutLapsed({ ...base, invoiceExpiresAt: ago(-10) }, NOW)).toBe(false);
+    expect(checkoutLapsed({ ...base, invoiceExpiresAt: ago(4) }, NOW)).toBe(false);
+  });
+  test("an open friend Peer Pay link keeps the sign-up on the class list", () => {
+    expect(checkoutLapsed({ ...base, invoiceExpiresAt: null, peerLinkExpiresAt: ago(-60) }, NOW)).toBe(false);
+    expect(checkoutLapsed({ ...base, invoiceExpiresAt: null, peerLinkExpiresAt: ago(1) }, NOW)).toBe(true);
+  });
+  test("someone who just filled in the form isn't moved before their checkout opens", () => {
+    expect(checkoutLapsed({ ...base, invoiceExpiresAt: null, updatedAt: ago(1) }, NOW)).toBe(false);
+  });
+  test("paid, short-paid and cancelled seats are never moved", () => {
+    for (const status of ["confirmed", "underpaid", "canceled"]) expect(checkoutLapsed({ ...base, status, invoiceExpiresAt: ago(60) }, NOW)).toBe(false);
   });
 });

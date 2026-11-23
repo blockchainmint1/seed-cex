@@ -138,6 +138,43 @@ export async function addInterest(row: { email: string; fullName?: string | null
   }, { onConflict: "email", ignoreDuplicates: true });
 }
 
+/**
+ * Minute job: unpaid sign-ups whose checkout ran out (checkoutLapsed) go onto the interest list and
+ * are hidden from the admin Registrants list. Nothing is deleted; a late payment or a new checkout
+ * brings the row back (DB trigger / saveRegistration). People who unsubscribed stay unsubscribed.
+ */
+export async function sweepLapsedCheckouts(limit = 50) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { checkoutLapsed, LAPSE_GRACE_MS } = await import("./ignite-admin");
+  const now = Date.now();
+  const cutoff = new Date(now - LAPSE_GRACE_MS).toISOString();
+  const { data: rows } = await supabaseAdmin.from("ignite_registrations")
+    .select("id, user_id, email, full_name, status, invoice_expires_at, updated_at")
+    .eq("status", "pending").is("hidden_at", null).lt("updated_at", cutoff)
+    .or(`invoice_expires_at.is.null,invoice_expires_at.lt.${cutoff}`)
+    .order("updated_at").limit(limit);
+  if (!rows?.length) return { checked: 0, moved: 0 };
+  const { data: links } = await supabaseAdmin.from("ignite_peer_links").select("registration_id, expires_at")
+    .in("registration_id", rows.map((r) => r.id)).eq("status", "active");
+  const peerUntil = new Map<string, string>();
+  for (const l of links ?? []) {
+    const cur = peerUntil.get(l.registration_id);
+    if (l.expires_at && (!cur || l.expires_at > cur)) peerUntil.set(l.registration_id, l.expires_at);
+  }
+  let moved = 0;
+  for (const r of rows) {
+    if (!checkoutLapsed({ status: r.status, invoiceExpiresAt: r.invoice_expires_at, updatedAt: r.updated_at, peerLinkExpiresAt: peerUntil.get(r.id) ?? null }, now)) continue;
+    await addInterest({ email: r.email, fullName: r.full_name, userId: r.user_id, source: "unpaid_registration", registrationId: r.id });
+    // Compare-and-set: skip if they opened a new checkout or paid since we read the row.
+    const q = supabaseAdmin.from("ignite_registrations").update({ hidden_at: new Date().toISOString() })
+      .eq("id", r.id).eq("status", "pending").is("hidden_at", null).eq("updated_at", r.updated_at);
+    const { data: done } = await (r.invoice_expires_at ? q.eq("invoice_expires_at", r.invoice_expires_at) : q.is("invoice_expires_at", null)).select("id");
+    if (done?.length) moved++;
+  }
+  if (moved) console.info("[ignite] lapsed checkouts moved to interest list", { moved });
+  return { checked: rows.length, moved };
+}
+
 /** Every published class with seat counts, soonest first (counts only, no member data). */
 export async function publicClasses(): Promise<(IgniteClassPublic & { seatsLeft: number; held: number })[]> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

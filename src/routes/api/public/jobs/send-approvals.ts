@@ -4,7 +4,7 @@ import { authenticateCronRequest } from "@/integrations/supabase/cron-auth";
 /**
  * Every minute: end "approve this send?" requests nobody tapped in time (and cancel their trades),
  * start matched trades whose payout never started, then move exchange settlements along: the second side is sent only once the first is confirmed,
- * then cancel orders whose coins have left the member's pocket, and finish cut-off Ignite seat notices.
+ * then cancel orders whose coins have left the member's pocket, finish cut-off Ignite seat notices, and move expired class checkouts to the interest list.
  */
 export const Route = createFileRoute("/api/public/jobs/send-approvals")({
   staticData: { sitemap: false },
@@ -31,7 +31,10 @@ export const Route = createFileRoute("/api/public/jobs/send-approvals")({
         // Paid Ignite seats whose confirmation email/Telegram/Honest.Money report was cut off.
         const { resumeSeatNotices } = await import("@/lib/ignite-confirm.server");
         const seatNotices = await resumeSeatNotices().catch((e) => ({ error: e instanceof Error ? e.message : String(e) }));
-        return Response.json({ ok: true, ...result, orders, unstarted, settling, reapprove, cover, seatNotices });
+        // Unpaid class sign-ups whose checkout ran out move to the interest list (ignite-classes.server.ts).
+        const { sweepLapsedCheckouts } = await import("@/lib/ignite-classes.server");
+        const lapsed = await sweepLapsedCheckouts().catch((e) => ({ error: e instanceof Error ? e.message : String(e) }));
+        return Response.json({ ok: true, ...result, orders, unstarted, settling, reapprove, cover, seatNotices, lapsed });
       },
     },
   },

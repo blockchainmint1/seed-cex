@@ -21,6 +21,25 @@ export function hideBlock(status: string, invoiceExpiresAt: string | null, now =
   return null;
 }
 
+/** How long after a checkout runs out before the sign-up moves to the interest list (late payments still count). */
+export const LAPSE_GRACE_MS = 5 * 60_000;
+
+/**
+ * True when an unpaid sign-up has no way left to pay: its checkout ran out (or never opened) at least
+ * LAPSE_GRACE_MS ago, it wasn't just saved, and no friend Peer Pay link is still open.
+ */
+export function checkoutLapsed(
+  r: { status: string; invoiceExpiresAt: string | null; updatedAt: string; peerLinkExpiresAt: string | null },
+  now = Date.now(),
+): boolean {
+  if (r.status !== "pending") return false;
+  const cutoff = now - LAPSE_GRACE_MS;
+  if (Date.parse(r.updatedAt) > cutoff) return false;
+  if (r.invoiceExpiresAt && Date.parse(r.invoiceExpiresAt) > cutoff) return false;
+  if (r.peerLinkExpiresAt && Date.parse(r.peerLinkExpiresAt) > now) return false;
+  return true;
+}
+
 /** Why a payment reminder can't go out right now, or null when it can. */
 export function reminderBlock(status: string, lastReminderAt: string | null, now = Date.now()): string | null {
   if (status === "confirmed") return "Already paid.";
