@@ -455,3 +455,16 @@
   transform-box: view-box;
   transform-origin: 220px 328px;
 }
+@keyframes star-twinkle {
+  0%, 100% { opacity: 0.45; transform: scale(0.82); }
+  50% { opacity: 1; transform: scale(1.12); }
+}
+.rocket-star {
+  animation: star-twinkle 3.4s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+/* Reduced motion: the hero art rests instead of drifting, flickering or twinkling. */
+@media (prefers-reduced-motion: reduce) {
+  .rocket-float, .rocket-flame, .rocket-star { animation: none; }
+}

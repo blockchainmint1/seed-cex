@@ -1,16 +1,43 @@
 /**
- * To the Moon hero art: a rocket climbing toward the Moon.
+ * To the Moon hero art: a rocket climbing toward the Moon, with a few stars.
  *
  * Drawn entirely from brand tokens (var(--...)) so it follows light/dark mode
  * like the rest of the page, and sits in the empty right half of the hero
  * beside the headline. Decorative: the headline already says what it is.
  */
+
+/** Four-point sparkle, centred on its own origin so CSS can twinkle it. */
+const STAR = "M0 -9 L2.4 -2.4 L9 0 L2.4 2.4 L0 9 L-2.4 2.4 L-9 0 L-2.4 -2.4 Z";
+
+/** [x, y, scale, opacity, twinkle delay] — placed clear of the rocket and Moon. */
+const STARS: [number, number, number, number, string][] = [
+  [52, 96, 1.5, 0.8, "0s"],
+  [146, 44, 0.9, 0.6, "1.1s"],
+  [258, 26, 1.1, 0.5, "2.2s"],
+  [398, 186, 1.15, 0.65, "0.6s"],
+  [36, 262, 1.0, 0.55, "1.7s"],
+  [26, 392, 1.35, 0.7, "2.8s"],
+  [128, 486, 0.95, 0.5, "0.9s"],
+  [392, 330, 0.85, 0.5, "2.5s"],
+  [356, 452, 1.05, 0.6, "1.4s"],
+];
+
+/** Distant pinpoints: no animation, just depth. */
+const SPECKS: [number, number, number][] = [
+  [200, 70, 2.5],
+  [88, 160, 2],
+  [300, 470, 2.5],
+  [420, 250, 2],
+  [60, 470, 2],
+  [330, 116, 2],
+];
+
 export function MoonRocket({ className = "" }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 440 520"
       role="img"
-      aria-label="A rocket climbing toward the Moon"
+      aria-label="A rocket climbing toward the Moon among stars"
       className={className}
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
@@ -21,6 +48,19 @@ export function MoonRocket({ className = "" }: { className?: string }) {
         <circle cx="384" cy="50" r="8" stroke="var(--primary)" strokeWidth="2" opacity="0.45" />
         <circle cx="408" cy="74" r="5.5" stroke="var(--primary)" strokeWidth="2" opacity="0.45" />
         <circle cx="400" cy="38" r="3.5" stroke="var(--primary)" strokeWidth="2" opacity="0.45" />
+      </g>
+
+      {/* Stars: the group carries each star's steady brightness, the path inside
+          twinkles (CSS transform only — the positioning lives on the group). */}
+      <g>
+        {SPECKS.map(([x, y, r]) => (
+          <circle key={`s${x}-${y}`} cx={x} cy={y} r={r} fill="var(--foreground)" opacity="0.3" />
+        ))}
+        {STARS.map(([x, y, s, o, delay]) => (
+          <g key={`st${x}-${y}`} transform={`translate(${x} ${y}) scale(${s})`} opacity={o}>
+            <path className="rocket-star" style={{ animationDelay: delay }} d={STAR} fill="var(--primary)" />
+          </g>
+        ))}
       </g>
 
       {/* Float on the outer group, tilt on the inner one: a CSS transform on the

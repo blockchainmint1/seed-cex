@@ -415,3 +415,8 @@
 
 - [x] Rename the class program to Flight School (/flight-school; old /ignite links forward); first class → Spark, Dec 5–6 class → Ignite; 20 standby class names saved (Bobby, Nov 23)
 - [ ] Open the Dec 5–6 Ignite class (blocked: Honest.Money miner check + Bobby's go-ahead)
+
+## To the Moon hero art (Bobby, Nov 23)
+- [x] Rocket climbing toward the Moon in the empty right half of the hero, brand tokens only, phones skip it
+- [x] Desktop rocket 50% larger (24rem at lg, 37.5rem at xl)
+- [x] A few twinkling stars + distant pinpoints around the rocket

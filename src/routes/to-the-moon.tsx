@@ -43,7 +43,7 @@ function IgniteHome() {
   return (
     <div className="ignite-theme seed-lines min-h-screen overflow-x-clip">
       <div className="mx-auto max-w-7xl px-5 pt-6 pb-16 lg:pt-16">
-        <section className="grid items-center gap-x-10 gap-y-12 lg:grid-cols-[minmax(0,1fr)_21rem] xl:grid-cols-[minmax(0,1fr)_25rem]">
+        <section className="grid items-center gap-x-10 gap-y-12 lg:grid-cols-[minmax(0,1fr)_24rem] xl:grid-cols-[minmax(0,1fr)_37.5rem]">
           <div className="max-w-3xl">
             <p className="font-mono text-xs font-medium tracking-[0.14em] text-primary">SEEDS TO THE MOON</p>
             <h1 className="mt-5 font-display text-5xl font-bold leading-[1.05] tracking-[-0.03em] sm:text-6xl lg:text-[4.25rem]">
