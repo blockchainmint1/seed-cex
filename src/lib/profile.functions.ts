@@ -112,8 +112,11 @@ export const startTelegramConnect = createServerFn({ method: "POST" })
     const { connectUrl } = await import("./telegram-bot");
     if (!telegramConfigured()) throw new Error("Telegram alerts aren't switched on yet. Please try again later.");
     const code = newStartCode();
+    // H1b: a chat connected from a session that just proved it's the member is trusted straight away.
+    const { provenNow } = await import("./step-up/step-up.server");
+    const trustedNow = await provenNow(context.userId, context.claims).catch(() => false);
     const { error } = await supabaseAdmin.from("profiles")
-      .update({ telegram_code: await sha256hex(code), telegram_code_expires_at: new Date(Date.now() + 15 * 60_000).toISOString() })
+      .update({ telegram_code: await sha256hex(code), telegram_code_expires_at: new Date(Date.now() + 15 * 60_000).toISOString(), telegram_code_trusted: trustedNow })
       .eq("id", context.userId);
     if (error) throw new Error(error.message);
     return { url: connectUrl(code) };
@@ -121,10 +124,16 @@ export const startTelegramConnect = createServerFn({ method: "POST" })
 
 export const unlinkTelegram = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    await requireTelegramChangeCode(context.userId, context.claims);
+  .inputValidator((d: unknown) => z.object({ proof: z.object({ id: z.string().uuid(), secret: z.string().regex(/^[0-9a-f]{64}$/) }).nullable().optional() }).parse(d ?? {}))
+  .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: before } = await supabaseAdmin.from("profiles").select("telegram_chat_id, telegram_verified").eq("id", context.userId).maybeSingle();
+    // H1: unlinking a working chat silences the member's alarms, so it needs "prove it's you" (sign-in again,
+    // a tap in that chat, a day-old confirmed 2FA code, or the Honest.Money email code).
+    if (before?.telegram_verified && before.telegram_chat_id) {
+      const { requireStepUp } = await import("./step-up/step-up.server");
+      await requireStepUp(context.userId, context.claims, "telegram_unlink", data.proof);
+    }
     const { error } = await supabaseAdmin
       .from("profiles")
       .update({
@@ -136,6 +145,8 @@ export const unlinkTelegram = createServerFn({ method: "POST" })
       .eq("id", context.userId);
     if (error) throw new Error(error.message);
     const { telegramChatChanged } = await import("./telegram.server");
+    const { forgetTelegramTrust } = await import("./step-up/step-up.server");
+    await forgetTelegramTrust(context.userId).catch(() => undefined);
     await telegramChatChanged(context.userId, before?.telegram_verified ? before.telegram_chat_id : null, null);
     const { emailAccountChange } = await import("@/lib/email/send.server");
     await emailAccountChange(context.userId, "Telegram alerts", ["Unlinked Telegram; alerts there have stopped"]);

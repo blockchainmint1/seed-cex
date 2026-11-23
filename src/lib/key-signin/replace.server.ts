@@ -28,6 +28,24 @@ async function telegramTo(userId: string, text: string, linkId?: string): Promis
   await sendTelegram(String(data.telegram_chat_id), text, markup);
 }
 
+/**
+ * Auditor H2 (Bobby, Nov 23): link mode — a new coin / wallet is waiting to become the trading pocket.
+ * Warn on Telegram and email BEFORE it's approved, not just after.
+ */
+export async function warnKeyLinkHeld(i: { userId: string; kind: string; activeLinkId: string | null }): Promise<void> {
+  const what = (IDENTITY_LABEL[i.kind] ?? "key").toLowerCase();
+  await telegramTo(
+    i.userId,
+    `⚠️ <b>Seeds security</b>\nSomeone signed in to your Seeds account is about to link a <b>${what}</b> as your trading pocket. It only goes through after they confirm it's you (signing in again, a tap here, or a code).\nIf this wasn't you: don't approve any "Is this you?" tap, sign out of Honest.Money everywhere and contact support@honest.money.\n\n<a href="${SITE}/account/security">Open Security</a>`,
+    i.activeLinkId ?? undefined,
+  ).catch((e) => console.error("[key-link] telegram warn failed", e));
+  const { emailAccountChange } = await import("@/lib/email/send.server");
+  await emailAccountChange(i.userId, "Trading pocket", [
+    `Someone signed in to your Seeds account is about to link a ${what} as your trading pocket`,
+    "It only goes through after they confirm it's you",
+  ], "don't approve any \"Is this you?\" request, sign out of Honest.Money everywhere and contact support@honest.money.").catch(() => undefined);
+}
+
 /** Tell the member BEFORE anything changes (Telegram whatever their alert settings, plus email when they have one). */
 export async function warnKeyReplaceHeld(i: { userId: string; linkId: string; kind: string }): Promise<void> {
   const { hasTwoFactor } = await import("../two-factor.server");
@@ -87,14 +105,19 @@ async function codeMatches(email: string, userId: string, code: string): Promise
  * The starting screen approves a held key change. Returns null when nothing is held (normal sign-in),
  * otherwise applies the swap (compare-and-set on the old link) or throws why it can't.
  */
-export async function confirmHeldReplace(i: { challengeId: string; code: string | null }): Promise<void> {
+export async function confirmHeldReplace(i: { challengeId: string; code: string | null; stepUpDone?: boolean }): Promise<void> {
   const { data: r } = await supabaseAdmin.from("key_signin_requests")
     .select("user_id, link_user_id, claimed_at, replace_link_id, pending_link, replace_tries, replaced_at").eq("challenge_id", i.challengeId).maybeSingle();
   // Link mode (a signed-in member linking a key, link.server.ts) may have no old link to replace; sign-ins always do.
   const linkMode = Boolean(r?.link_user_id) && r?.link_user_id === r?.user_id;
   if (!r?.user_id || (!r.replace_link_id && !linkMode) || !r.pending_link || r.replaced_at) throw new Error("That sign-in ran out. Start again.");
   const { hasTwoFactor } = await import("../two-factor.server");
-  const twoFactorOn = await hasTwoFactor(r.user_id);
+  // Link mode is gated by "confirm it's you" before this runs (confirmKeyLink → requireStepUp), which already
+  // covers the authenticator; sign-in replacements keep the fresh-code rule.
+  // Never cross the two paths: a link-mode request can't be approved through the sign-in replace screen
+  // (that would skip "confirm it's you"), and a sign-in replacement can't borrow a link's step-up.
+  if (Boolean(i.stepUpDone) !== linkMode) throw new Error("That sign-in ran out. Start again.");
+  const twoFactorOn = i.stepUpDone ? false : await hasTwoFactor(r.user_id);
   const problem = replaceConfirmProblem({
     claimedMs: r.claimed_at ? Date.parse(r.claimed_at) : null, nowMs: Date.now(), tries: r.replace_tries, twoFactorOn, code: i.code,
   });
@@ -140,7 +163,7 @@ export async function confirmHeldReplace(i: { challengeId: string; code: string 
   if (le) throw new Error("Couldn't save the new pocket link. Start again.");
   if (linkMode) {
     const what = (IDENTITY_LABEL[p.kind ?? ""] ?? "key").toLowerCase();
-    await telegramTo(r.user_id, `🔑 <b>Seeds security</b>\nYour trading pocket is now linked to your ${what}${twoFactorOn ? ", confirmed with your authenticator code" : ""}. Seeds never saw your recovery phrase. If this wasn't you, revoke Seeds' access in Security now and contact support@honest.money.\n\n<a href="${SITE}/account/security">Open Security</a>`).catch(() => undefined);
+    await telegramTo(r.user_id, `🔑 <b>Seeds security</b>\nYour trading pocket is now linked to your ${what}, after a "confirm it's you" check. Seeds never saw your recovery phrase. If this wasn't you, revoke Seeds' access in Security now and contact support@honest.money.\n\n<a href="${SITE}/account/security">Open Security</a>`, p.link_id).catch(() => undefined);
     const { emailAccountChange } = await import("@/lib/email/send.server");
     await emailAccountChange(r.user_id, "Trading pocket", [`Your trading pocket is now linked to your ${what} (pocket #${p.account})`],
       "revoke Seeds' access in Account → Security right away and contact support@honest.money.").catch(() => undefined);

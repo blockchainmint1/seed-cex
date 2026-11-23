@@ -37,6 +37,8 @@ export type SendReadiness = {
   /** From withdrawLinkState: two-factor must predate the link. */
   twoFactor: "ready" | "needs_2fa" | "needs_relink" | null;
   telegramVerified: boolean;
+  /** H1b: a chat added outside a fresh sign-in is "Not confirmed yet" and can't approve sends. Omitted = confirmed. */
+  telegramConfirmed?: boolean;
 };
 
 /**
@@ -47,6 +49,8 @@ export type SendReadiness = {
 export type PocketSendUse = "send" | "trade";
 
 /** Why this member can't send from their pocket right now, or null when they can. Plain English. */
+export const TELEGRAM_UNCONFIRMED = "Your Telegram chat shows \"Not confirmed yet\". Confirm it in Account → Security (sign in again), then try again. Sends wait for a tap from a confirmed chat.";
+
 export function pocketSendBlocker(i: SendReadiness, pocket: PocketId, use: PocketSendUse = "send"): string | null {
   if (!i.link) return "Link your HME Wallet first (Account → Security).";
   if (i.link.mode !== "access") {
@@ -60,6 +64,7 @@ export function pocketSendBlocker(i: SendReadiness, pocket: PocketId, use: Pocke
       : "Turn on two-factor sign-in (Account → Security), then re-link your HME Wallet. Coins only leave your pocket when two-factor was on before the link.";
   }
   if (!i.telegramVerified) return "Connect Telegram (Account → Alerts). Every send from your pocket waits for your tap in Telegram.";
+  if (i.telegramConfirmed === false) return TELEGRAM_UNCONFIRMED;
   return null;
 }
 

@@ -87,6 +87,9 @@ export async function submitKeyLink(p: {
       .update({ user_id: userId, identity_kind: p.kind, created_account: false, replace_link_id: active?.id ?? null, pending_link: pending })
       .eq("challenge_id", p.token);
     if (error) return corsJson({ error: "store failed" }, 500);
+    // H2: warn before the member's screen can apply it.
+    const { warnKeyLinkHeld } = await import("./replace.server");
+    await warnKeyLinkHeld({ userId, kind: p.kind, activeLinkId: active?.id ?? null }).catch(() => undefined);
     return corsJson({ linked_to: "Seeds Exchange", signed_in: false, needs_confirm: true, new_account: false, pocket: p.account });
   }
 

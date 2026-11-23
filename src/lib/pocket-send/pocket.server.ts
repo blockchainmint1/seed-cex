@@ -44,11 +44,15 @@ export async function pocketSender(userId: string, leg: LegId, use: PocketSendUs
     .select("telegram_verified, telegram_chat_id")
     .eq("id", userId)
     .maybeSingle();
+  const telegramVerified = prof?.telegram_verified === true && Boolean(prof?.telegram_chat_id);
+  const { chatTrusted } = await import("@/lib/step-up/step-up.server");
+  const telegramConfirmed = telegramVerified ? await chatTrusted(userId, prof?.telegram_chat_id) : true;
   const reason = pocketSendBlocker(
     {
       link: link ? { mode: link.mode, hasKey: link.hasKey, pocketAddress: address } : null,
       twoFactor,
-      telegramVerified: prof?.telegram_verified === true && Boolean(prof?.telegram_chat_id),
+      telegramVerified,
+      telegramConfirmed,
     },
     pocket,
     use,

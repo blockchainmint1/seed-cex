@@ -368,15 +368,17 @@
 - [x] L4 liquidation price: dropped with TXC (Bobby, Nov 22)
 - [ ] C4: split the order watch across more runs once a few hundred members hold orders (later)
 - [x] Auditor re-check of C1–C3, C5 and the Lend switch-off + L1/L5: all correct (Nov 23)
-- [ ] C2 follow-up: log when a balance-check lock outlives its 60-second hold (blocked: Bobby's pick)
+- [x] C2 follow-up: a balance check that outlives its 60-second hold is noted in Admin → Bugs → Errors (Nov 23)
 - [ ] BTC/ETH Lend rebuild must carry: coin selection + dust floor for payouts, price from several sources, resend only when the node proves the payout missing, signing-key alarm, honest wording that Seeds holds pocket keys; ETH lockbox design reviewed before code (blocked: lending rebuild)
 
-## Auditor bundle (Nov 22, late) — key-link, Vault, bug tracker (waiting on Bobby's picks)
-- [ ] H1 second-channel approval for linking a coin/wallet to an HME account; auditor accepted our 24-hour version and prefers a fresh sign-in first (blocked: Bobby picks approach)
-- [ ] H1b: new 2FA apps / Telegram chats only count for approvals once confirmed with a fresh sign-in, an older 2FA/Telegram, or an email code (blocked: Bobby's pick)
-- [ ] H2 warn before a held key is applied; H3 migration checklist note (blocked: Bobby's pick)
-- [ ] V1 Vault request signing key into AWS KMS (blocked: Bobby's call + new AWS key)
+## Auditor bundle (Nov 22, late) — key-link, Vault, bug tracker
+- [x] H1 second-channel approval for linking a coin/wallet to an HME account; auditor accepted our 24-hour version and prefers a fresh sign-in first (Bobby: all four, fresh sign-in first, Nov 23) — built: "Confirm it's you" panel; also gates Telegram unlink. Post-link Telegram now has a Revoke button; an email "This wasn't me" page is not built (email points to Security)
+- [x] H1b: new 2FA apps / Telegram chats only count for approvals once confirmed with a fresh sign-in, an older 2FA/Telegram, or an email code; existing ones stay trusted, others show "Not confirmed yet" (Bobby: yes, Nov 23) — built; an unconfirmed chat can't approve sends or AI buys
+- [x] H2 warn before a held key is applied (Telegram + email); H3 info only, no change (Nov 23)
+- [x] Error log: max 60 new error types per hour; empty ones cleared after 90 days (Nov 23)
+- [x] Bug group stays staff only: keep tester name + full text (Bobby, Nov 23)
+- [ ] V1 Vault request signing key into AWS KMS — code ready (id seeds-vault-kms-2026-11, signed once per request); blocked: Bobby runs the CloudShell commands and pastes the key ARN, then delete SEEDS_VAULT_REQUEST_SIGNING_SEED and publish the new fingerprint
 - [ ] V2 pairing code in shared Vault rules file (HME Vault shows it); V3 extra-password wording on Seeds Key page (other projects)
-- [ ] QA group: full text vs title-only (blocked: Bobby — is the group staff only?); error-log new-group hourly cap
+- [x] QA group: staff only, full text kept; error-log new-group hourly cap done (Nov 23)
 - [x] Auditor saw the Coins-in-trades/Lend fixes, Cancel all and Balances table: no issues (Nov 23)
-
+- [ ] Auditor review of the Nov 23 step-up / factor-trust / Vault-KMS changes before publishing

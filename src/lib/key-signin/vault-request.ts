@@ -21,6 +21,11 @@ import {
 
 /** Stable id Key and Vault pin next to the public key. A new key gets a new id (see docs/vault-request-signer.md). */
 export const VAULT_SIGNING_KEY_ID = "seeds-vault-2026-11";
+/**
+ * The AWS KMS key that replaces it (Bobby, Nov 23 2026: move the key into AWS before any Vault app pins one).
+ * The private half never leaves AWS; every signature is logged there. A new KMS key = a new id here.
+ */
+export const VAULT_KMS_SIGNING_KEY_ID = "seeds-vault-kms-2026-11";
 /** HKDF label turning the stored random secret into the Ed25519 private key. Changing it = a new key. */
 export const VAULT_SIGNER_LABEL = "seeds vault request signer v1";
 export const MIN_SIGNING_SEED_CHARS = 32;
@@ -37,6 +42,25 @@ export type VaultSigner = Readonly<{
   fingerprint: string;
   sign(bytes: Uint8Array): Uint8Array;
 }>;
+
+/** Same, for a signer whose private key lives elsewhere (AWS KMS): signing is a network call. */
+export type AsyncVaultSigner = Readonly<{
+  id: string;
+  publicKey: string;
+  fingerprint: string;
+  sign(bytes: Uint8Array): Promise<Uint8Array>;
+}>;
+
+/** Public-key details for an Ed25519 key (32 raw bytes), as Key and Vault pin them. */
+export function vaultKeyInfo(pub: Uint8Array): { publicKey: string; fingerprint: string } {
+  if (pub.length !== 32) throw new Error("Ed25519 public key must be 32 bytes");
+  return { publicKey: base64urlnopad.encode(pub), fingerprint: hex.encode(sha256(pub)) };
+}
+
+/** Accept a signature only when it verifies against the signer's own public key (a KMS answer is never trusted blindly). */
+export function vaultSignatureOk(sig: Uint8Array, bytes: Uint8Array, publicKey: string): boolean {
+  try { return sig.length === 64 && ed25519.verify(sig, bytes, base64urlnopad.decode(publicKey)); } catch { return false; }
+}
 
 export function vaultSignerFromSeed(seedText: string, id: string = VAULT_SIGNING_KEY_ID): VaultSigner {
   if (typeof seedText !== "string" || seedText.length < MIN_SIGNING_SEED_CHARS) throw new Error("Vault request signer is not configured");
@@ -81,17 +105,48 @@ export const VAULT_PATHS: readonly string[] = Object.freeze(POCKET_COINS.map((c)
  */
 export function vaultRequestFor(m: VaultRequestSource, signer: VaultSigner | null): SignedVaultRequest | null {
   if (!signer) return null;
+  const r = unsignedVaultRequestFor(m, signer.id);
+  return r ? { ...r, request_sig: base64urlnopad.encode(signer.sign(vaultRequestBytes(r))) } : null;
+}
+
+/** vaultRequestFor for an AWS KMS signer. Refuses a signature that doesn't verify. */
+export async function vaultRequestForAsync(m: VaultRequestSource, signer: AsyncVaultSigner | null): Promise<SignedVaultRequest | null> {
+  if (!signer) return null;
+  const r = unsignedVaultRequestFor(m, signer.id);
+  if (!r) return null;
+  const bytes = vaultRequestBytes(r);
+  const sig = await signer.sign(bytes);
+  if (!vaultSignatureOk(sig, bytes, signer.publicKey)) throw new Error("Vault request signature did not verify");
+  return { ...r, request_sig: base64urlnopad.encode(sig) };
+}
+
+/**
+ * A stored signed request may be reused only when every field still matches this manifest and
+ * it was signed by the current key (so a key change re-signs). Saves an AWS call per page load.
+ */
+export function storedVaultRequestMatches(stored: unknown, m: VaultRequestSource, signerId: string): stored is SignedVaultRequest {
+  const want = unsignedVaultRequestFor(m, signerId);
+  if (!want || !stored || typeof stored !== "object") return false;
+  const s = stored as Record<string, unknown>;
+  if (typeof s.request_sig !== "string" || !/^[A-Za-z0-9_-]{86}$/.test(s.request_sig)) return false;
+  try {
+    const td = new TextDecoder();
+    return td.decode(vaultRequestBytes(want)) === td.decode(vaultRequestBytes(s as unknown as UnsignedVaultRequest));
+  } catch { return false; }
+}
+
+function unsignedVaultRequestFor(m: VaultRequestSource, signerId: string): UnsignedVaultRequest | null {
   if (m.domain !== LIVE_SEEDS_DOMAIN || m.key_host !== LIVE_KEY_HOST || m.pocket !== SEEDS_POCKET) return null;
   if (!/^[a-f0-9]{32}$/.test(m.challenge_id) || !/^[a-f0-9]{48}$/.test(m.challenge) || !goodRecipient(m.recipient_pubkey)) return null;
   const issued = canonicalIso(m.issued_at);
   const expires = canonicalIso(m.expires_at);
   if (issued === null || expires === null || expires <= issued || expires - issued > MAX_VAULT_REQUEST_MS) return null;
   const r: UnsignedVaultRequest = {
-    type: VAULT_REQUEST, v: 2, signing_key_id: signer.id, domain: LIVE_SEEDS_DOMAIN, key_host: LIVE_KEY_HOST,
+    type: VAULT_REQUEST, v: 2, signing_key_id: signerId, domain: LIVE_SEEDS_DOMAIN, key_host: LIVE_KEY_HOST,
     challenge_id: m.challenge_id, challenge: m.challenge, recipient_pubkey: m.recipient_pubkey, pocket: SEEDS_POCKET,
     issued_at: m.issued_at, expires_at: m.expires_at, paths: [...VAULT_PATHS],
   };
-  return { ...r, request_sig: base64urlnopad.encode(signer.sign(vaultRequestBytes(r))) };
+  return r;
 }
 
 /**

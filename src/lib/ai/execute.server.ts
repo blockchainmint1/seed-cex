@@ -213,6 +213,8 @@ async function askOwner(p: {
   if (!telegramConfigured()) return false;
   const { data: prof } = await db.from("profiles").select("telegram_chat_id, telegram_verified").eq("id", p.userId).maybeSingle();
   if (!prof?.telegram_verified || !prof.telegram_chat_id) return false;
+  const { chatTrusted } = await import("@/lib/step-up/step-up.server");
+  if (!(await chatTrusted(p.userId, prof.telegram_chat_id))) return false; // H1b: unconfirmed chats can't approve buys
   const msg = decisionMessage({ ...p, oneTapLimit: p.limit, siteUrl: `${SITE}/account/ai` });
   const chatId = String(prof.telegram_chat_id);
   try {
@@ -297,7 +299,8 @@ export async function handleAiTap(cq: CallbackQuery): Promise<string | null> {
     privateChat: cq.message?.chat?.type === "private",
     tapChatId: String(cq.message?.chat?.id ?? ""),
     ownerChatId: owner?.telegram_chat_id ? String(owner.telegram_chat_id) : null,
-    ownerChatVerified: owner?.telegram_verified === true,
+    ownerChatVerified: owner?.telegram_verified === true && check != null
+      && await (await import("@/lib/step-up/step-up.server")).chatTrusted(check.user_id, owner?.telegram_chat_id),
     status: check?.exec_status ?? "missing",
     oneTap: oneTapAllowed(Number(check?.exec_total_usd ?? 0), oneTapLimit),
     expiresAtMs: check?.exec_expires_at ? Date.parse(check.exec_expires_at) : 0,

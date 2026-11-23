@@ -133,3 +133,41 @@ describe("Seeds-signed HME Vault requests (v2)", () => {
     expect(vaultAvailable("seeds.honest.money", null, true)).toBe(false);
   });
 });
+
+describe("Vault signer in AWS KMS (Bobby, Nov 23 2026)", () => {
+  test("the KMS key has its own id, different from the old seed key", async () => {
+    const { VAULT_KMS_SIGNING_KEY_ID } = await import("./vault-request");
+    expect(VAULT_KMS_SIGNING_KEY_ID).toBe("seeds-vault-kms-2026-11");
+    expect(VAULT_KMS_SIGNING_KEY_ID).not.toBe(VAULT_SIGNING_KEY_ID);
+  });
+  test("an AWS-style async signer produces requests Seeds Key accepts", async () => {
+    const { vaultRequestForAsync, vaultKeyInfo } = await import("./vault-request");
+    const priv = new Uint8Array(32).fill(7);
+    const pub = ed25519.getPublicKey(priv);
+    const s = { id: "seeds-vault-kms-2026-11", ...vaultKeyInfo(pub), sign: async (b: Uint8Array) => ed25519.sign(b, priv) };
+    const r = (await vaultRequestForAsync(source(), s))!;
+    expect(readSignedVaultRequest(r, { [s.id]: s.publicKey })).toEqual(r);
+  });
+  test("a signature that doesn't match the public key is refused, never published", async () => {
+    const { vaultRequestForAsync, vaultKeyInfo } = await import("./vault-request");
+    const s = { id: "x", ...vaultKeyInfo(ed25519.getPublicKey(new Uint8Array(32).fill(7))), sign: async (b: Uint8Array) => ed25519.sign(b, new Uint8Array(32).fill(8)) };
+    await expect(vaultRequestForAsync(source(), s)).rejects.toThrow();
+  });
+  test("a stored request is reused only when every field and the key id still match", async () => {
+    const { storedVaultRequestMatches } = await import("./vault-request");
+    const src = source();
+    const r = vaultRequestFor(src, signer)!;
+    expect(storedVaultRequestMatches(r, src, signer.id)).toBe(true);
+    expect(storedVaultRequestMatches(r, src, "seeds-vault-kms-2026-11")).toBe(false);
+    expect(storedVaultRequestMatches(r, { ...src, recipient_pubkey: VAULT_EXAMPLE_SOURCE.recipient_pubkey }, signer.id)).toBe(false);
+    expect(storedVaultRequestMatches({ ...r, request_sig: "short" }, src, signer.id)).toBe(false);
+    expect(storedVaultRequestMatches(null, src, signer.id)).toBe(false);
+  });
+  test("reads the Ed25519 key out of AWS's GetPublicKey answer", async () => {
+    const { ed25519FromSpki } = await import("./vault-request.server");
+    const pub = ed25519.getPublicKey(new Uint8Array(32).fill(3));
+    const spki = new Uint8Array([...[0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00], ...pub]);
+    expect(ed25519FromSpki(spki)).toEqual(pub);
+    expect(() => ed25519FromSpki(spki.slice(1))).toThrow();
+  });
+});

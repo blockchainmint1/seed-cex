@@ -46,6 +46,7 @@ export function TwoFactorCard() {
     await qc.invalidateQueries({ queryKey: TWO_FACTOR_QUERY });
     await qc.invalidateQueries({ queryKey: ["withdrawals"] });
     await qc.invalidateQueries({ queryKey: ["admin-gate"] });
+    await qc.invalidateQueries({ queryKey: ["factor-trust"] });
     setSetup(null); setTurningOff(false); setCode(""); setDone(msg);
   };
 

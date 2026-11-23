@@ -59,9 +59,9 @@ async function newKeyRequest(originIn: string, kind: z.infer<typeof kindSchema>,
     ? `${base}/?kind=${kind}&r=${encodeURIComponent(manifestUrl)}`
     : null;
   const { vaultAvailable } = await import("./vault-request");
-  const { vaultSigner } = await import("./vault-request.server");
+  const { vaultSignerConfigured } = await import("./vault-request.server");
   const { keyHostOf } = await import("./rules");
-  const vaultReady = vaultAvailable(new URL(origin).host, keyHostOf(process.env.SEEDS_KEY_URL), vaultSigner() !== null);
+  const vaultReady = vaultAvailable(new URL(origin).host, keyHostOf(process.env.SEEDS_KEY_URL), vaultSignerConfigured());
   // Shown here and on the Seeds Key page; the member continues only when they match (auditor K2).
   return { id, secret, manifestUrl, keyPageUrl, expiresAt, pairCode: pairingCode(challenge), vaultReady };
 }
@@ -169,19 +169,27 @@ export const claimKeyLink = createServerFn({ method: "POST" })
     const { isKeyKind, shortKeyName } = await import("./rules");
     const pending = r.pending_link as { kind?: string; identity?: string };
     const who = isKeyKind(pending.kind) && pending.identity ? shortKeyName(pending.kind, pending.identity) : "this key";
-    const { hasTwoFactor } = await import("../two-factor.server");
-    return { status: "confirm" as const, who, kind: isKeyKind(pending.kind) ? pending.kind : null, needsCode: await hasTwoFactor(context.userId) };
+    // H1: approving needs "confirm it's you" (StepUp panel), not just this signed-in tab.
+    return { status: "confirm" as const, who, kind: isKeyKind(pending.kind) ? pending.kind : null, needsCode: false };
   });
 
-/** Link mode: this screen approves the held key (fresh authenticator code when two-factor is on). */
+/**
+ * Link mode: this screen approves the held key. Auditor H1 (Bobby, Nov 23): the signed-in tab alone isn't enough —
+ * a fresh sign-in, a day-old trusted Telegram tap or 2FA code, or the Honest.Money email code (step-up.server.ts).
+ */
 export const confirmKeyLink = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(linkInput)
+  .inputValidator((d) => z.object({
+    id: z.string().regex(/^[a-f0-9]{32}$/), secret: z.string().regex(/^[a-f0-9]{64}$/),
+    proof: z.object({ id: z.string().uuid(), secret: z.string().regex(/^[0-9a-f]{64}$/) }).nullable().optional(),
+  }).parse(d))
   .handler(async ({ data, context }) => {
     const r = await myLinkRequest(data.id, data.secret, context.userId);
     if (!r || !r.claimed_at) throw new Error("That link request ran out. Start again.");
+    const { requireStepUp } = await import("../step-up/step-up.server");
+    await requireStepUp(context.userId, context.claims, "key_link", data.proof);
     const { confirmHeldReplace } = await import("./replace.server");
-    await confirmHeldReplace({ challengeId: data.id, code: data.code });
+    await confirmHeldReplace({ challengeId: data.id, code: null, stepUpDone: true });
     return { ok: true };
   });
 

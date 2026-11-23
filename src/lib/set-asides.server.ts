@@ -130,11 +130,29 @@ export async function withPocketSpendLock<T>(userId: string, fn: () => Promise<T
     if (Date.now() > until) throw new Error("Another request on your trading pocket is still being checked. Nothing was done. Try again in a few seconds.");
     await new Promise((r) => setTimeout(r, 300));
   }
+  const began = Date.now();
   try {
     return await fn();
   } finally {
     await supabaseAdmin.rpc("release_pocket_spend_lock", { _user: userId, _token: token }).then(() => undefined, () => undefined);
+    const tookMs = Date.now() - began;
+    if (tookMs > SPEND_LOCK_TTL_S * 1000) await noteSlowSpendLock(tookMs, userId);
   }
+}
+
+/**
+ * Auditor C2 follow-up (Bobby, Nov 23): a check that outlived its hold could have overlapped another request.
+ * Note it in Admin → Bugs → Errors (one grouped entry; the member's account id only, like browser errors). Never throws.
+ */
+async function noteSlowSpendLock(tookMs: number, userId: string): Promise<void> {
+  try {
+    const sig = "5eed5106c2a5106c2a5106c2a5106c2a"; // fixed: every overrun groups under one entry
+    await supabaseAdmin.rpc("record_client_error", {
+      _signature: sig, _kind: "error",
+      _message: `Server: a pocket check took ${Math.round(tookMs / 1000)}s, longer than its ${SPEND_LOCK_TTL_S}s hold — another request may have overlapped it. Check this account's open orders and sends.`,
+      _source: "server:set-asides.withPocketSpendLock", _page: "", _browser: "server", _os: "", _viewport: "", _version: "", _host: "other", _account: userId,
+    });
+  } catch { /* logging must never block the request */ }
 }
 
 export async function setAsideFor(userId: string, leg: LegId, opts: SetAsideOptions = {}): Promise<SetAside> {

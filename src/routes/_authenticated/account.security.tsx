@@ -10,6 +10,7 @@ import { Card, TabTitle } from "@/components/account/ui";
 import { HmeWalletLinkCard } from "@/components/wallet/HmeWalletLinkCard";
 import { usePocketLink } from "@/components/account/use-pocket";
 import { TwoFactorCard, useMyTwoFactor } from "@/components/account/TwoFactorCard";
+import { FactorTrustCard } from "@/components/account/FactorTrustCard";
 import { LinkHistoryCard } from "@/components/account/LinkHistoryCard";
 import { ConnectedAppsCard } from "@/components/account/ConnectedAppsCard";
 import { KeyWithdrawSteps } from "@/components/account/KeyWithdrawSteps";
@@ -95,6 +96,7 @@ function SecurityTab() {
 
       <KeyWithdrawSteps />
 
+      <FactorTrustCard />
       <TwoFactorCard />
 
       <div className="rounded-md border border-border bg-surface px-5">

@@ -8,6 +8,7 @@ import { claimKeyLink, claimKeySignin, confirmKeyLink, confirmKeyReplace, dropKe
 import { takeReturnPath } from "@/lib/return-path";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { StepUp, type StepUpProof } from "@/components/account/StepUp";
 
 /** "vault" = HME Vault: signs in as a coin account, but the Seeds Key page opens its Vault scan straight away. */
 type Kind = "coin" | "wallet" | "vault";
@@ -58,6 +59,9 @@ function KeySignin() {
   const [req, setReq] = useState<Req | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [state, setState] = useState<State>("starting");
+  // Link mode: "confirm it's you" before the held key may become the pocket (auditor H1).
+  const [stepUp, setStepUp] = useState<{ ready: boolean; proof: StepUpProof }>({ ready: false, proof: null });
+  const [stepUpKey, setStepUpKey] = useState(0);
   const [ready, setReady] = useState<Ready | null>(null);
   const [held, setHeld] = useState<Held | null>(null);
   const [code, setCode] = useState("");
@@ -187,16 +191,17 @@ function KeySignin() {
   async function approveLink() {
     if (!held) return;
     setError(null);
-    const c = code.replace(/\s+/g, "");
-    if (held.needsCode && !/^\d{6}$/.test(c)) { setError("Enter the 6-digit code from your authenticator app."); return; }
+    if (!stepUp.ready) { setError("First confirm it's you (above)."); return; }
     setState("signing");
     try {
-      await confirmLink({ data: { id: held.id, secret: held.secret, code: held.needsCode ? c : null } });
+      await confirmLink({ data: { id: held.id, secret: held.secret, proof: stepUp.proof } });
       setHeld(null);
       setState("linked");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Linking failed";
       setError(msg);
+      setStepUp({ ready: false, proof: null });
+      setStepUpKey((k) => k + 1); // a spent proof can't be reused: show the check again
       setState(/ran out|already used|Too many|in the meantime|Start again/i.test(msg) ? "expired" : "link_confirm");
     }
   }
@@ -248,14 +253,9 @@ function KeySignin() {
                 If yes, it becomes your trading pocket (pocket 1106). Its addresses are different from any pocket you had before, so deposit to the new ones.
                 If you didn't just do this yourself, or the name is different, choose "No" — nothing changes.
               </p>
-              {held.needsCode ? (
-                <label className="block max-w-xs text-sm">
-                  Code from your authenticator app
-                  <Input inputMode="numeric" autoComplete="one-time-code" maxLength={7} value={code} onChange={(e) => setCode(e.target.value)} className="mt-1 font-mono tracking-[0.3em]" />
-                </label>
-              ) : null}
+              <StepUp key={stepUpKey} purpose="key_link" onChange={(ready, proof) => setStepUp({ ready, proof })} />
               <div className="flex flex-wrap gap-2">
-                <Button onClick={() => void approveLink()}>Yes, that's mine — link it</Button>
+                <Button disabled={!stepUp.ready} onClick={() => void approveLink()}>Yes, that's mine — link it</Button>
                 <Button variant="outline" onClick={refuse}>No, that's not mine</Button>
               </div>
             </div>

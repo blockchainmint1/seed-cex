@@ -116,6 +116,10 @@ async function handleCallback(cq: CallbackQuery): Promise<string> {
   const { handleApprovalTap } = await import("./pocket-send/approvals.server");
   const approval = await handleApprovalTap(cq);
   if (approval) return `send_${approval}`;
+  // "Is this you?" taps (linking a coin / wallet, confirming a new 2FA app or chat, unlinking Telegram).
+  const { handleStepUpTap } = await import("./step-up/step-up.server");
+  const stepUp = await handleStepUpTap(cq);
+  if (stepUp) return stepUp;
   // "Do today's AI plan trades?" buttons (Seeds AI real buying).
   const { handleAiTap } = await import("./ai/execute.server");
   const ai = await handleAiTap(cq);
@@ -206,12 +210,12 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const now = new Date().toISOString();
   const { data: owner } = code
-    ? await supabaseAdmin.from("profiles").select("telegram_chat_id, telegram_verified")
+    ? await supabaseAdmin.from("profiles").select("telegram_chat_id, telegram_verified, telegram_code_trusted")
         .eq("telegram_code", await sha256hex(code)).gt("telegram_code_expires_at", now).maybeSingle()
     : { data: null };
   const { data: rows } = code
     ? await supabaseAdmin.from("profiles")
-        .update({ telegram_chat_id: String(chatId), telegram_verified: true, telegram_code: null, telegram_code_expires_at: null })
+        .update({ telegram_chat_id: String(chatId), telegram_verified: true, telegram_code: null, telegram_code_expires_at: null, telegram_code_trusted: false })
         .eq("telegram_code", await sha256hex(code)).gt("telegram_code_expires_at", now).select("id")
     : { data: null };
   const userId = rows?.[0]?.id;
@@ -219,7 +223,13 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
     await sendTelegram(String(chatId), "<b>Seeds</b>\nTo turn on alerts, open your Seeds Profile and tap <b>Connect Telegram</b>. Links expire after 15 minutes.").catch(() => {});
     return "no_match";
   }
-  await sendTelegram(String(chatId), "<b>Seeds</b>\nAlerts are on. You'll hear from us when your orders fill and settle.").catch(() => {});
+  // H1b: a chat connected right after a fresh sign-in is trusted now; otherwise "Not confirmed yet" until the member confirms it.
+  const codeTrusted = owner?.telegram_code_trusted === true;
+  const { recordTelegramTrust } = await import("./step-up/step-up.server");
+  await recordTelegramTrust(userId, String(chatId), codeTrusted).catch((e) => console.error("[telegram] trust record failed", e));
+  await sendTelegram(String(chatId), codeTrusted
+    ? "<b>Seeds</b>\nAlerts are on. You'll hear from us when your orders fill and settle."
+    : "<b>Seeds</b>\nAlerts are on. Before this chat can approve sends, confirm it in Seeds → Account → Security (you'll be asked to sign in again).").catch(() => {});
   await telegramChatChanged(userId, owner?.telegram_verified ? owner.telegram_chat_id : null, String(chatId));
   const { emailAccountChange } = await import("@/lib/email/send.server");
   await emailAccountChange(userId, "Telegram alerts", [`Linked Telegram chat ending ${String(chatId).slice(-4)}`],

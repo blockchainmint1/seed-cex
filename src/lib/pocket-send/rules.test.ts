@@ -17,6 +17,11 @@ const ready = {
 };
 
 describe("who can send from a pocket", () => {
+  test("a Telegram chat that shows 'Not confirmed yet' can't approve sends (auditor H1b)", () => {
+    expect(pocketSendBlocker({ ...ready, telegramConfirmed: false }, "TXC")).toContain("Not confirmed yet");
+    expect(pocketSendBlocker({ ...ready, telegramConfirmed: false }, "TXC", "trade")).toContain("Not confirmed yet");
+    expect(pocketSendBlocker({ ...ready, telegramConfirmed: true }, "TXC")).toBeNull();
+  });
   test("instant-access link + two-factor first + Telegram = ready", () => {
     expect(pocketSendBlocker(ready, "TXC")).toBeNull();
   });

@@ -1,0 +1,3 @@
+# step-up
+
+- "Confirm it's you" (step-up) lives in src/lib/step-up/ (rules.ts tested, step-up.server.ts, components/account/StepUp.tsx): linking a new coin/wallet pocket, confirming a new 2FA app or Telegram chat, and unlinking Telegram pass only on a fresh sign-in (offered first) or a single-use proof from a day-old trusted Telegram tap, a code from day-old trusted 2FA apps, or the Honest.Money email code. second_factor_trust (server only) marks each 2FA app/chat; ones added outside a fresh sign-in are "Not confirmed yet" and an unconfirmed chat can't approve any pocket send or AI buy (pocketSender, requestSendApproval, tap checks). Why: auditor H1/H1b — a stolen tab must not redirect coins or plant its own second factor.

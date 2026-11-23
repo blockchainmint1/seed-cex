@@ -533,6 +533,13 @@
       "when": 1795386858541,
       "tag": "0075_coins_in_trades_c1_c2",
       "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1795392876581,
+      "tag": "0076_step_up_and_factor_trust",
+      "breakpoints": true
     }
   ]
 }

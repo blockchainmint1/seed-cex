@@ -1456,6 +1456,7 @@ export type Database = {
           replace_tries: number
           replaced_at: string | null
           user_id: string | null
+          vault_request: Json | null
         }
         Insert: {
           browser_secret_hash: string
@@ -1476,6 +1477,7 @@ export type Database = {
           replace_tries?: number
           replaced_at?: string | null
           user_id?: string | null
+          vault_request?: Json | null
         }
         Update: {
           browser_secret_hash?: string
@@ -1496,6 +1498,7 @@ export type Database = {
           replace_tries?: number
           replaced_at?: string | null
           user_id?: string | null
+          vault_request?: Json | null
         }
         Relationships: []
       }
@@ -3080,6 +3083,7 @@ export type Database = {
           telegram_chat_id: string | null
           telegram_code: string | null
           telegram_code_expires_at: string | null
+          telegram_code_trusted: boolean
           telegram_verified: boolean
           telegram_verified_at: string | null
           timezone: string
@@ -3121,6 +3125,7 @@ export type Database = {
           telegram_chat_id?: string | null
           telegram_code?: string | null
           telegram_code_expires_at?: string | null
+          telegram_code_trusted?: boolean
           telegram_verified?: boolean
           telegram_verified_at?: string | null
           timezone?: string
@@ -3162,6 +3167,7 @@ export type Database = {
           telegram_chat_id?: string | null
           telegram_code?: string | null
           telegram_code_expires_at?: string | null
+          telegram_code_trusted?: boolean
           telegram_verified?: boolean
           telegram_verified_at?: string | null
           timezone?: string
@@ -3594,6 +3600,33 @@ export type Database = {
           },
         ]
       }
+      second_factor_trust: {
+        Row: {
+          added_at: string
+          kind: string
+          ref: string
+          trusted_at: string | null
+          trusted_how: string | null
+          user_id: string
+        }
+        Insert: {
+          added_at?: string
+          kind: string
+          ref: string
+          trusted_at?: string | null
+          trusted_how?: string | null
+          user_id: string
+        }
+        Update: {
+          added_at?: string
+          kind?: string
+          ref?: string
+          trusted_at?: string | null
+          trusted_how?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       send_approvals: {
         Row: {
           amount: number
@@ -3729,6 +3762,57 @@ export type Database = {
         Update: {
           nonce?: string
           used_at?: string
+        }
+        Relationships: []
+      }
+      step_up_checks: {
+        Row: {
+          browser_secret_hash: string
+          code_hash: string | null
+          created_at: string
+          decided_at: string | null
+          expires_at: string
+          id: string
+          method: string
+          purpose: string
+          status: string
+          telegram_chat_id: string | null
+          telegram_message_id: number | null
+          tries: number
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          browser_secret_hash: string
+          code_hash?: string | null
+          created_at?: string
+          decided_at?: string | null
+          expires_at: string
+          id?: string
+          method: string
+          purpose: string
+          status?: string
+          telegram_chat_id?: string | null
+          telegram_message_id?: number | null
+          tries?: number
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          browser_secret_hash?: string
+          code_hash?: string | null
+          created_at?: string
+          decided_at?: string | null
+          expires_at?: string
+          id?: string
+          method?: string
+          purpose?: string
+          status?: string
+          telegram_chat_id?: string | null
+          telegram_message_id?: number | null
+          tries?: number
+          used_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }

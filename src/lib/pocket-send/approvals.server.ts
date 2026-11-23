@@ -112,6 +112,12 @@ export async function requestSendApproval(p: {
   const { data: prof } = await supabaseAdmin.from("profiles").select("telegram_chat_id, telegram_verified").eq("id", p.userId).maybeSingle();
   const chatId = prof?.telegram_verified ? String(prof.telegram_chat_id ?? "") : "";
   if (!chatId) throw new Error("Connect Telegram (Account → Alerts). Every send from your pocket waits for your tap in Telegram.");
+  // H1b: only a confirmed chat may approve sends (a chat added from a stolen session must not).
+  const { chatTrusted } = await import("@/lib/step-up/step-up.server");
+  if (!(await chatTrusted(p.userId, chatId))) {
+    const { TELEGRAM_UNCONFIRMED } = await import("./rules");
+    throw new Error(TELEGRAM_UNCONFIRMED);
+  }
 
   const symbol = p.asset ?? getLeg(p.leg as LegId).symbol;
   const { data: ins, error } = await supabaseAdmin
@@ -324,7 +330,8 @@ export async function handleApprovalTap(cq: CallbackQuery): Promise<string | nul
     privateChat: cq.message?.chat?.type === "private",
     tapChatId: String(chatId ?? ""),
     ownerChatId: owner?.telegram_chat_id ? String(owner.telegram_chat_id) : null,
-    ownerChatVerified: owner?.telegram_verified === true,
+    ownerChatVerified: owner?.telegram_verified === true && row != null
+      && await (await import("@/lib/step-up/step-up.server")).chatTrusted(row.user_id, owner?.telegram_chat_id),
     status: row?.status ?? "missing",
     expiresAtMs: row ? Date.parse(row.expires_at) : 0,
     nowMs: Date.now(),

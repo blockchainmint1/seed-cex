@@ -9,6 +9,9 @@ import { Card, Note } from "@/components/account/ui";
 import { CodeField } from "@/components/account/CodeField";
 import { useMyTwoFactor } from "@/components/account/TwoFactorCard";
 import { proveTwoFactor } from "@/components/account/two-factor";
+import { StepUp, type StepUpProof } from "@/components/account/StepUp";
+import { getMyFactorTrust } from "@/lib/step-up/step-up.functions";
+import { Link } from "@tanstack/react-router";
 
 /** One-tap Telegram linking, shared by Account → Alerts and the setup guide. */
 export function TelegramCard({ title = "Telegram", desc }: { title?: string; desc?: string }) {
@@ -25,6 +28,10 @@ export function TelegramCard({ title = "Telegram", desc }: { title?: string; des
   const twoFactorOn = Boolean(useMyTwoFactor().data);
   const [code, setCode] = useState("");
   const [askUnlink, setAskUnlink] = useState(false);
+  const [unlinkProof, setUnlinkProof] = useState<{ ready: boolean; proof: StepUpProof }>({ ready: false, proof: null });
+  const loadTrust = useServerFn(getMyFactorTrust);
+  const trust = useQuery({ queryKey: ["factor-trust"], queryFn: () => loadTrust(), enabled: Boolean(p?.telegram_verified) });
+  const chatUnconfirmed = Boolean(p?.telegram_verified && trust.data?.telegram.connected && !trust.data.telegram.confirmed);
   const codeReady = !twoFactorOn || code.length === 6;
   useEffect(() => {
     if (tgWaitUrl && p?.telegram_verified) { setTgWaitUrl(null); setTgNote({ ok: true, text: "Telegram linked. Alerts are on." }); }
@@ -33,15 +40,15 @@ export function TelegramCard({ title = "Telegram", desc }: { title?: string; des
   const tg = useMutation({
     mutationFn: async (action: "unlink" | "test") => {
       if (action === "test") return test();
-      if (twoFactorOn) await proveTwoFactor(code);
-      return unlink();
+      return unlink({ data: { proof: unlinkProof.proof } });
     },
     onSuccess: (_r, action) => {
       setTgNote({ ok: true, text: action === "unlink" ? "Telegram unlinked." : "Test alert sent." });
       if (action === "unlink") setAskUnlink(false);
       qc.invalidateQueries({ queryKey: ["my-profile"] });
+      qc.invalidateQueries({ queryKey: ["factor-trust"] });
     },
-    onError: (e: Error) => setTgNote({ ok: false, text: e.message }),
+    onError: (e: Error, action) => { setTgNote({ ok: false, text: e.message }); if (action === "unlink") setAskUnlink(false); },
     onSettled: () => setCode(""),
   });
 
@@ -69,15 +76,20 @@ export function TelegramCard({ title = "Telegram", desc }: { title?: string; des
       {p?.telegram_verified ? (
         <div className="flex flex-wrap items-center gap-3">
           <span className="inline-flex items-center gap-2 font-mono text-xs text-primary"><Check className="h-3.5 w-3.5" /> Linked to chat {p.telegram_chat_id}</span>
+          {chatUnconfirmed ? (
+            <span className="rounded-sm border border-destructive/40 bg-destructive/10 px-2 py-0.5 text-xs text-destructive">
+              Not confirmed yet — <Link to="/account/security" className="underline underline-offset-4">confirm it in Security</Link> before it can approve sends
+            </span>
+          ) : null}
           <Button size="sm" variant="outline" disabled={tg.isPending} onClick={() => tg.mutate("test")}><Send /> Send test</Button>
-          <Button size="sm" variant="ghost" disabled={tg.isPending} onClick={() => (twoFactorOn ? setAskUnlink(true) : tg.mutate("unlink"))}>Unlink</Button>
-          {askUnlink && twoFactorOn ? (
+          <Button size="sm" variant="ghost" disabled={tg.isPending} onClick={() => setAskUnlink(true)}>Unlink</Button>
+          {askUnlink ? (
             <div className="basis-full space-y-2 rounded-md border border-border p-3">
-              <p className="text-xs text-muted-foreground">Telegram is where you approve coins leaving your pocket, so unlinking needs your code.</p>
-              <CodeField id="tg-unlink-code" value={code} onChange={setCode} />
+              <p className="text-xs text-muted-foreground">Telegram is where you approve coins leaving your pocket and where Seeds warns you, so unlinking it needs you to confirm it's you.</p>
+              <StepUp purpose="telegram_unlink" onChange={(ready, proof) => setUnlinkProof({ ready, proof })} />
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" disabled={!codeReady || tg.isPending} onClick={() => tg.mutate("unlink")}>Unlink Telegram</Button>
-                <Button size="sm" variant="ghost" onClick={() => { setAskUnlink(false); setCode(""); }}>Cancel</Button>
+                <Button size="sm" variant="outline" disabled={!unlinkProof.ready || tg.isPending} onClick={() => tg.mutate("unlink")}>Unlink Telegram</Button>
+                <Button size="sm" variant="ghost" onClick={() => setAskUnlink(false)}>Cancel</Button>
               </div>
             </div>
           ) : null}
