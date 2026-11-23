@@ -1,55 +1,57 @@
 # Seeds' HME Vault request signing key — public release record
 
-> **November 23, 2026 — moving into AWS KMS (Bobby's decision, auditor V1).** Before any Vault app pins a key, Seeds is
-> replacing the key below with one held in **AWS KMS** (Ed25519, `ECC_NIST_EDWARDS25519`, `SIGN_VERIFY`). Its private half
-> never leaves AWS and every signature is logged by AWS. New id: **`seeds-vault-kms-2026-11`**. Its public key and
-> fingerprint are filled in below once the key is created, and the live endpoint shows `key_storage: "AWS KMS"`.
-> **Do not pin `seeds-vault-2026-11`.** Pin only `seeds-vault-kms-2026-11`, checked the four ways below.
->
-> | Field | Value |
-> |---|---|
-> | `signing_key_id` | `seeds-vault-kms-2026-11` |
-> | Public key | _pending — published after the AWS key is created_ |
-> | SHA-256 fingerprint | _pending_ |
-> | Where the private key lives | AWS KMS, us-east-1 (server setting `SEEDS_VAULT_KMS_KEY`); Seeds signs through the shared `seeds-lock-signer` AWS login |
-> | Status | next (replaces `seeds-vault-2026-11`, which is retired as soon as this one is live) |
->
-> Seeds signs each sign-in's Vault request **once** and stores it on that request, so a reloaded manifest never asks AWS again.
-> Seeds also checks every AWS signature against the public key before publishing it.
-
 This is the **public** half of the key Seeds uses to sign HME Vault link requests (signed-request v2).
 Seeds Key and HME Vault pin it in their own source. They never fetch it, and they never take it from a QR.
-The private half exists only as the server-only secret `SEEDS_VAULT_REQUEST_SIGNING_SEED`. It is not in this repository, in any browser output or in any audit file.
+
+## Active key (AWS KMS) — pin this one
+
+Since November 23, 2026 (Bobby's decision, auditor V1) the key lives in **AWS KMS** (Ed25519, `ECC_NIST_EDWARDS25519`,
+`SIGN_VERIFY`, `ED25519_SHA_512`, `MessageType: RAW`). Its private half never leaves AWS and every signature is logged by AWS.
+The server setting `SEEDS_VAULT_KMS_KEY` names the key; Seeds signs through the shared `seeds-lock-signer` AWS login,
+which may only `kms:Sign` and `kms:GetPublicKey` on this one key.
 
 | Field | Value |
 |---|---|
 | Algorithm | Ed25519 (plain, not Ed25519ph) |
-| `signing_key_id` | `seeds-vault-2026-11` |
-| Public key (base64url, no padding, 32 bytes) | `KuDdTWX-bDwxkSff2lULKVwvUS_Dfa0tZLy_iWefuxc` |
-| SHA-256 fingerprint of the 32 decoded bytes | `b81366bf60017f6ce50379f3dea1868c18c311bec9ba31292116e6552163307c` |
-| Status | being retired (November 23, 2026) — replaced by the AWS KMS key above before any app pinned it |
+| `signing_key_id` | `seeds-vault-kms-2026-11` |
+| Public key (base64url, no padding, 32 bytes) | `6_06ZOHGeDeGX7O1ToRTAmdiGs0_AOSSX70VbTd9IjA` |
+| SHA-256 fingerprint of the 32 decoded bytes | `0556577f852b0cf2a05a1c75ecbf806e6657ce193393d9e800137b6537c86d4d` |
+| Where the private key lives | AWS KMS, us-east-1, account 150646524089, key `33a25a5a-d6d9-46eb-a4bb-1ab785b7d9f9` |
+| Status | active |
 | Signed bytes | `vaultRequestBytes` in `src/lib/key-signin/vault-protocol.ts`, a verbatim copy of Seeds Key's `src/lib/seeds-key/vault-protocol.ts` (SHA-256 `fa3d955bae6c947b83d1bea2b7200aad956e061baeb03f4b975ba0591d1379a9`) |
 
 Pin it as:
 
 ```ts
 export const SEEDS_REQUEST_KEYS: RequestTrust = Object.freeze({
-  "seeds-vault-2026-11": "KuDdTWX-bDwxkSff2lULKVwvUS_Dfa0tZLy_iWefuxc",
+  "seeds-vault-kms-2026-11": "6_06ZOHGeDeGX7O1ToRTAmdiGs0_AOSSX70VbTd9IjA",
 });
 ```
+
+Seeds signs each sign-in's Vault request **once** and stores it on that request, so a reloaded manifest never asks AWS again.
+Seeds also checks every AWS signature against the public key before using it.
+
+## Retired key — do not pin
+
+| Field | Value |
+|---|---|
+| `signing_key_id` | `seeds-vault-2026-11` |
+| Public key | `KuDdTWX-bDwxkSff2lULKVwvUS_Dfa0tZLy_iWefuxc` |
+| SHA-256 fingerprint | `b81366bf60017f6ce50379f3dea1868c18c311bec9ba31292116e6552163307c` |
+| Status | retired November 23, 2026, before any app pinned it. Seeds no longer signs with it once `SEEDS_VAULT_KMS_KEY` is set. |
 
 ## How to check it independently before pinning
 
 Pin only when **all** of these agree, character for character:
 
-1. **This file in the Seeds code repository**, at or after commit `04abb28`, viewed through the repository host, not a copy pasted from chat.
+1. **This file in the Seeds code repository**, in the version that lists `seeds-vault-kms-2026-11` as active, viewed through the repository host, not a copy pasted from chat.
 2. **The live Seeds site** (once published): `https://seeds.honest.money/api/public/key-signin/vault-signer` shows the same id, public key and fingerprint. Vault never calls this; a person checks it in a browser.
-3. **Bobby reads the fingerprint aloud** (or sends it from his own device) to whoever pins it. Check at least the first and last 8 characters: `b81366bf … 2163307c`.
+3. **Bobby reads the fingerprint aloud** (or sends it from his own device) to whoever pins it. Check at least the first and last 8 characters: `0556577f … 37c86d4d`.
 4. **Recompute the fingerprint** yourself: base64url-decode the public key (32 bytes) and SHA-256 the bytes.
 
 ## Signed public example (test fixture)
 
-Signed with the production key above. It is deliberately harmless:
+Signed with the active AWS KMS key above (`seeds-vault-kms-2026-11`). It is deliberately harmless:
 - Expired on January 1, 2026.
 - Its recipient is a random public key whose private half was thrown away, so nobody can open anything sealed to it.
 - Its challenge matches no Seeds sign-in.
@@ -60,7 +62,7 @@ Verify it with `readSignedVaultRequest(example, SEEDS_REQUEST_KEYS, Date.parse("
 {
   "type": "hm-seeds-key-vault-request",
   "v": 2,
-  "signing_key_id": "seeds-vault-2026-11",
+  "signing_key_id": "seeds-vault-kms-2026-11",
   "domain": "seeds.honest.money",
   "key_host": "key.seeds.honest.money",
   "challenge_id": "00000000000000000000000000000001",
@@ -87,7 +89,7 @@ Verify it with `readSignedVaultRequest(example, SEEDS_REQUEST_KEYS, Date.parse("
     "m/1852'/1815'/1106'",
     "m/44'/128'/1106'"
   ],
-  "request_sig": "aSLdBvjd3AiIFXfA8jUEJeGxUdUAnIr6SgnQ8vmJCCk5zF3NL4zMb_UskaVoqjEiyEFzW3_7zJb-O07880C4DQ"
+  "request_sig": "FUn5Jqz5FFupj8BucCnR4St3AoVYvzAamzSWU9tqYMtLKV-wIuI3beuWfaS_mPsOPWqJ2qZdrFZzQRNOgpW6Aw"
 }
 ```
 
@@ -96,13 +98,13 @@ Verify it with `readSignedVaultRequest(example, SEEDS_REQUEST_KEYS, Date.parse("
 `vault_request` appears inside the normal sign-in manifest (`/api/public/key-signin/manifest/{id}`) only when:
 - the request is served from `seeds.honest.money` with Seeds Key at `key.seeds.honest.money`;
 - the pocket is 1106;
-- the signer is set: the AWS KMS key (`SEEDS_VAULT_KMS_KEY`, which always wins), or until then the old secret. A KMS key set without the AWS login means no Vault requests, never a quiet fallback.
+- the signer is set: the AWS KMS key (`SEEDS_VAULT_KMS_KEY`, which always wins). A KMS key set without the AWS login means no Vault requests, never a quiet fallback.
 
 Previews never carry one. Its `domain`, `key_host`, `challenge_id`, `challenge`, `recipient_pubkey`, `pocket`, `issued_at` and `expires_at` equal the manifest's own fields. Its timestamps are canonical `toISOString()` with milliseconds and `Z`. The lifetime is exactly 10 minutes, with issue and expiry taken from one clock reading. The paths are the 16 ordered pocket-1106 paths. Coin, wallet and Ledger sign-in are unchanged.
 
 ## Rotation
 
-1. Generate a new server-only secret under a new name. Give the new key a new id (for example `seeds-vault-2027-xx`). Do not change `VAULT_SIGNER_LABEL`.
+1. Create a new AWS KMS Ed25519 key (grant `seeds-lock-signer` only `kms:Sign` + `kms:GetPublicKey` on it). Give it a new id (for example `seeds-vault-2027-xx`). Do not change `VAULT_SIGNER_LABEL`.
 2. Publish the new public key in this file (new row, status "next") and on the live endpoint. Check it the same four ways.
 3. Ship Seeds Key and HME Vault releases that trust **both** ids. Wait for an audited overlap, long enough for offline Vault phones to update.
 4. Switch Seeds to sign with the new id. Then ship Key and Vault releases that drop the old id, and mark it "retired" here.
