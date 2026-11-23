@@ -1,12 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getAdminAffiliateTsd, getAdminAffiliates, getAdminNewMembers } from "@/lib/affiliates.functions";
 import { getAdminTsdBalances } from "@/lib/admin-members.functions";
 import { AFFILIATE_PERIODS, DEFAULT_PERIOD, type AffiliatePeriod, type AffiliateSort } from "@/lib/affiliates";
+import { ChevronRight, Search, X } from "lucide-react";
 import { Note, TabTitle } from "@/components/account/ui";
-import { Loading, Panel, Stat } from "@/components/admin/ui";
+import { Loading, Panel, SortHeader, Stat } from "@/components/admin/ui";
 import { fmtAgo } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/admin/affiliates")({
@@ -31,10 +32,8 @@ const SOURCE: Record<string, string> = { sso: "Honest.Money sign-up", attach: "J
 
 function AdminAffiliates() {
   const [days, setDays] = useState<AffiliatePeriod>(DEFAULT_PERIOD);
-  const [sort, setSort] = useState<AffiliateSort>("signupsPeriod");
-  const [code, setCode] = useState<string | null>(null);
   const load = useServerFn(getAdminAffiliates);
-  const q = useQuery({ queryKey: ["admin-affiliates", days, sort], queryFn: () => load({ data: { days, sort } }), retry: false, placeholderData: keepPreviousData, refetchInterval: 60_000 });
+  const q = useQuery({ queryKey: ["admin-affiliates", days], queryFn: () => load({ data: { days } }), retry: false, placeholderData: keepPreviousData, refetchInterval: 60_000 });
 
   return (
     <div className="space-y-6">
@@ -60,12 +59,11 @@ function AdminAffiliates() {
             <Stat label="Ignite seats paid via a code" value={num(q.data.totals.ignitePaidByRef)} />
           </div>
           <JoinChart series={q.data.series} />
-          <AffiliateTable rows={q.data.affiliates} days={days} sort={sort} onSort={setSort} onPick={setCode} picked={code} />
+          <AffiliateTable rows={q.data.affiliates} days={days} newMembers={q.data.totals.membersPeriod} />
         </>
       )}
-      <NewMembers days={days} code={code} onClearCode={() => setCode(null)} />
       <p className="text-xs text-muted-foreground">
-        A sign-up counts as referred when the member joins Seeds with someone’s code within 7 days (first code wins). Clicks count people opening seeds.honest.money/invite/… links — link previews and repeat clicks within 10 minutes don’t count. Traded = exchange trades (called-off matches left out); swapped = finished swaps. TSD is read live from each member’s trading pocket.
+        Open a row to see the members that code brought in (all time). A sign-up counts as referred when the member joins Seeds with someone’s code within 7 days (first code wins). Clicks count people opening seeds.honest.money/invite/… links — link previews and repeat clicks within 10 minutes don’t count. Traded = exchange trades (called-off matches left out); swapped = finished swaps. TSD is read live from each member’s trading pocket.
       </p>
     </div>
   );
@@ -91,66 +89,141 @@ function JoinChart({ series }: { series: { day: string; total: number; referred:
 }
 
 type Row = Awaited<ReturnType<typeof getAdminAffiliates>>["affiliates"][number];
+type ColKey = "name" | AffiliateSort | "tsd";
+const EVERYONE = "__everyone__";
 
-function AffiliateTable({ rows, days, sort, onSort, onPick, picked }: { rows: Row[]; days: number; sort: AffiliateSort; onSort: (s: AffiliateSort) => void; onPick: (c: string | null) => void; picked: string | null }) {
+function AffiliateTable({ rows, days, newMembers }: { rows: Row[]; days: number; newMembers: number }) {
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<{ key: ColKey; dir: "asc" | "desc" }>({ key: "signupsPeriod", dir: "desc" });
+  const [open, setOpen] = useState<Set<string>>(() => new Set());
   const [limit, setLimit] = useState(50);
-  const shown = rows.slice(0, limit);
-  const codes = useMemo(() => shown.filter((r) => r.signupsAll > 0).map((r) => r.code), [shown]);
+
+  // TSD for the busiest codes (server reads at most 100 codes / 200 members), independent of sort and search.
+  const tsdCodes = useMemo(() => rows.filter((r) => r.signupsAll > 0).sort((a, b) => b.signupsAll - a.signupsAll).slice(0, 100).map((r) => r.code), [rows]);
   const loadTsd = useServerFn(getAdminAffiliateTsd);
-  const tsdQ = useQuery({ queryKey: ["admin-affiliate-tsd", codes], queryFn: () => loadTsd({ data: { codes } }), enabled: codes.length > 0, staleTime: 60_000, retry: false });
-  const th = (label: string, k?: AffiliateSort) => (
-    <th className="px-3 py-2 text-right font-normal">
-      {k ? <button type="button" onClick={() => onSort(k)} className={`hover:text-foreground ${sort === k ? "font-semibold text-foreground" : ""}`}>{label}{sort === k ? " ↓" : ""}</button> : label}
-    </th>
-  );
+  const tsdQ = useQuery({ queryKey: ["admin-affiliate-tsd", tsdCodes], queryFn: () => loadTsd({ data: { codes: tsdCodes } }), enabled: tsdCodes.length > 0, staleTime: 60_000, retry: false });
+  const tsdOf = (r: Row) => (r.signupsAll === 0 ? null : tsdQ.data?.byCode[r.code.toLowerCase()] ?? (tsdQ.data ? 0 : null));
+
+  const needle = search.trim().toLowerCase();
+  const sorted = useMemo(() => {
+    const label = (r: Row) => (r.ownerName ?? r.code).toLowerCase();
+    const val = (r: Row): number | string => (sort.key === "name" ? label(r) : sort.key === "tsd" ? tsdOf(r) ?? -1 : r[sort.key]);
+    const list = needle ? rows.filter((r) => r.code.toLowerCase().includes(needle) || (r.ownerName ?? "").toLowerCase().includes(needle)) : rows;
+    return [...list].sort((a, b) => {
+      const x = val(a), y = val(b);
+      const c = typeof x === "string" ? x.localeCompare(String(y)) : x - (y as number);
+      return (sort.dir === "asc" ? c : -c) || a.code.localeCompare(b.code);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, sort, needle, tsdQ.data]);
+  const shown = sorted.slice(0, limit);
+
+  const onSort = (k: ColKey) => setSort((s) => (s.key === k ? { key: k, dir: s.dir === "asc" ? "desc" : "asc" } : { key: k, dir: k === "name" ? "asc" : "desc" }));
+  const toggle = (k: string) => setOpen((o) => { const n = new Set(o); if (n.has(k)) n.delete(k); else n.add(k); return n; });
+  const h = (label: string, k: ColKey, align: "left" | "right" = "right") => <SortHeader label={label} k={k} sort={sort} onSort={onSort} align={align} />;
+  const COLS = 9;
+
   return (
-    <Panel title={`Invite codes (${rows.length})`} right={tsdQ.data?.partial ? <span className="text-xs text-warn">TSD shown for the newest 200 referred members</span> : null}>
-      <table className="w-full min-w-[60rem] text-sm">
+    <Panel
+      title={`Invite codes (${needle ? `${sorted.length} of ${rows.length}` : rows.length})`}
+      right={
+        <div className="flex flex-wrap items-center gap-3">
+          {tsdQ.data?.partial ? <span className="text-xs text-warn">TSD shown for the newest 200 referred members</span> : null}
+          <label className="relative flex items-center">
+            <Search className="pointer-events-none absolute left-2 h-3.5 w-3.5 text-muted-foreground" />
+            <input
+              type="text" value={search} onChange={(e) => { setSearch(e.target.value); setLimit(50); }}
+              placeholder="Search code or member" aria-label="Search invite codes"
+              className="w-56 rounded-sm border border-border bg-background py-1.5 pr-7 pl-7 text-sm"
+            />
+            {search ? <button type="button" onClick={() => setSearch("")} aria-label="Clear search" className="absolute right-1.5 text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button> : null}
+          </label>
+        </div>
+      }
+    >
+      <table className="w-full min-w-[62rem] text-sm">
         <thead className="font-mono text-[10px] tracking-[0.14em] text-muted-foreground uppercase">
           <tr className="border-b border-border">
-            <th className="px-3 py-2 text-left font-normal">Member / code</th>
-            {th(`Clicks ${days}d`, "clicksPeriod")}
-            {th(`Sign-ups ${days}d`, "signupsPeriod")}
-            {th("Sign-ups all", "signupsAll")}
-            {th("Active", "activeMembers")}
-            {th("Traded", "tradedValue")}
-            {th("Swapped", "swapUsd")}
-            {th("TSD held")}
-            {th("Ignite paid", "ignitePaid")}
+            {h("Member / code", "name", "left")}
+            {h(`Clicks ${days}d`, "clicksPeriod")}
+            {h(`Sign-ups ${days}d`, "signupsPeriod")}
+            {h("Sign-ups all", "signupsAll")}
+            {h("Active", "activeMembers")}
+            {h("Traded", "tradedValue")}
+            {h("Swapped", "swapUsd")}
+            {h("TSD held", "tsd")}
+            {h("Ignite paid", "ignitePaid")}
           </tr>
         </thead>
         <tbody>
-          {shown.length === 0 ? (
-            <tr><td colSpan={9} className="px-3 py-8 text-center text-muted-foreground">No invite links used yet.</td></tr>
-          ) : shown.map((r) => {
-            const on = picked?.toLowerCase() === r.code.toLowerCase();
-            return (
-              <tr key={r.code} onClick={() => onPick(on ? null : r.code)} className={`cursor-pointer border-b border-border hover:bg-muted/40 ${on ? "bg-primary/10" : ""}`}>
+          {!needle ? (
+            <>
+              <tr onClick={() => toggle(EVERYONE)} className="cursor-pointer border-b border-border bg-muted/20 hover:bg-muted/40">
                 <td className="px-3 py-2">
-                  <div className="font-semibold text-foreground">{r.ownerName ?? (r.ownerId ? "Seeds member" : "Not on Seeds yet")}</div>
-                  <div className="font-mono text-xs text-muted-foreground">{r.code}{r.linkSeenAt ? ` · link opened ${fmtAgo(r.linkSeenAt)}` : ""}</div>
+                  <RowToggle open={open.has(EVERYONE)} label="everyone who joined" onToggle={() => toggle(EVERYONE)} />
+                  <span className="font-semibold text-foreground">Everyone who joined</span>
+                  <div className="pl-6 text-xs text-muted-foreground">With or without a code</div>
                 </td>
-                <td className="num px-3 py-2 text-right">{num(r.clicksPeriod)}<div className="text-xs text-muted-foreground">{num(r.clicksAll)} all</div></td>
-                <td className="num px-3 py-2 text-right font-semibold">{num(r.signupsPeriod)}</td>
-                <td className="num px-3 py-2 text-right">{num(r.signupsAll)}</td>
-                <td className="num px-3 py-2 text-right">{num(r.activeMembers)}</td>
-                <td className="num px-3 py-2 text-right">{usd(r.tradedValue)}<div className="text-xs text-muted-foreground">{num(r.trades)} trades</div></td>
-                <td className="num px-3 py-2 text-right">{usd(r.swapUsd)}<div className="text-xs text-muted-foreground">{num(r.swaps)} swaps</div></td>
-                <td className="num px-3 py-2 text-right">{r.signupsAll === 0 ? "—" : tsdQ.isPending ? "…" : tsd(tsdQ.data?.byCode[r.code.toLowerCase()] ?? 0)}</td>
-                <td className="num px-3 py-2 text-right">{num(r.ignitePaid)}{r.igniteStarted > r.ignitePaid ? <div className="text-xs text-muted-foreground">{num(r.igniteStarted - r.ignitePaid)} unpaid</div> : null}</td>
+                <td colSpan={COLS - 1} className="px-3 py-2 text-muted-foreground"><span className="num font-semibold text-foreground">{num(newMembers)}</span> new members in the last {days} days</td>
               </tr>
+              {open.has(EVERYONE) ? <tr className="border-b border-border"><td colSpan={COLS} className="bg-muted/10 p-0"><MembersList days={days} code={null} /></td></tr> : null}
+            </>
+          ) : null}
+          {shown.length === 0 ? (
+            <tr><td colSpan={COLS} className="px-3 py-8 text-center text-muted-foreground">{needle ? "No code or member matches that search." : "No invite links used yet."}</td></tr>
+          ) : shown.map((r) => {
+            const on = open.has(r.code);
+            const t = tsdOf(r);
+            return (
+              <Fragment key={r.code}>
+                <tr onClick={() => toggle(r.code)} className={`cursor-pointer border-b border-border hover:bg-muted/40 ${on ? "bg-primary/10" : ""}`}>
+                  <td className="px-3 py-2">
+                    <RowToggle open={on} label={r.code} onToggle={() => toggle(r.code)} />
+                    <span className="font-semibold text-foreground">{r.ownerName ?? (r.ownerId ? "Seeds member" : "Not on Seeds yet")}</span>
+                    <div className="pl-6 font-mono text-xs text-muted-foreground">{r.code}{r.linkSeenAt ? ` · link opened ${fmtAgo(r.linkSeenAt)}` : ""}</div>
+                  </td>
+                  <td className="num px-3 py-2 text-right">{num(r.clicksPeriod)}<div className="text-xs text-muted-foreground">{num(r.clicksAll)} all</div></td>
+                  <td className="num px-3 py-2 text-right font-semibold">{num(r.signupsPeriod)}</td>
+                  <td className="num px-3 py-2 text-right">{num(r.signupsAll)}</td>
+                  <td className="num px-3 py-2 text-right">{num(r.activeMembers)}</td>
+                  <td className="num px-3 py-2 text-right">{usd(r.tradedValue)}<div className="text-xs text-muted-foreground">{num(r.trades)} trades</div></td>
+                  <td className="num px-3 py-2 text-right">{usd(r.swapUsd)}<div className="text-xs text-muted-foreground">{num(r.swaps)} swaps</div></td>
+                  <td className="num px-3 py-2 text-right">{r.signupsAll === 0 ? "—" : tsdQ.isPending ? "…" : tsd(t)}</td>
+                  <td className="num px-3 py-2 text-right">{num(r.ignitePaid)}{r.igniteStarted > r.ignitePaid ? <div className="text-xs text-muted-foreground">{num(r.igniteStarted - r.ignitePaid)} unpaid</div> : null}</td>
+                </tr>
+                {on ? (
+                  <tr className="border-b border-border">
+                    <td colSpan={COLS} className="bg-muted/10 p-0">
+                      {r.signupsAll === 0 ? <p className="px-6 py-3 text-sm text-muted-foreground">Nobody has joined with this code yet.</p> : <MembersList days={days} code={r.code} />}
+                    </td>
+                  </tr>
+                ) : null}
+              </Fragment>
             );
           })}
         </tbody>
       </table>
-      {rows.length > limit ? (
+      {sorted.length > limit ? (
         <div className="border-t border-border px-4 py-2.5"><button type="button" onClick={() => setLimit(limit + 50)} className="text-sm font-semibold text-primary">Show 50 more</button></div>
       ) : null}
     </Panel>
   );
 }
 
-function NewMembers({ days, code, onClearCode }: { days: number; code: string | null; onClearCode: () => void }) {
+function RowToggle({ open, label, onToggle }: { open: boolean; label: string; onToggle: () => void }) {
+  return (
+    <button
+      type="button" aria-expanded={open} aria-label={`${open ? "Hide" : "Show"} members for ${label}`}
+      onClick={(e) => { e.stopPropagation(); onToggle(); }}
+      className="mr-2 inline-flex rounded-sm align-middle text-muted-foreground hover:text-foreground"
+    >
+      <ChevronRight className={`h-4 w-4 transition-transform ${open ? "rotate-90 text-primary" : ""}`} />
+    </button>
+  );
+}
+
+/** Members inside an opened row: one code's members (all time), or everyone who joined in the period. */
+function MembersList({ days, code }: { days: number; code: string | null }) {
   const [referredOnly, setReferredOnly] = useState(false);
   const [offset, setOffset] = useState(0);
   const load = useServerFn(getAdminNewMembers);
@@ -162,59 +235,58 @@ function NewMembers({ days, code, onClearCode }: { days: number; code: string | 
   const loadTsd = useServerFn(getAdminTsdBalances);
   const tsdQ = useQuery({ queryKey: ["admin-tsd", ids], queryFn: () => loadTsd({ data: { userIds: ids } }), enabled: ids.length > 0, staleTime: 60_000, retry: false });
   const total = q.data?.total ?? 0;
+  const sub = "px-3 py-1.5";
 
+  if (q.isPending) return <div className="px-6 py-3"><Loading /></div>;
+  if (q.error) return <div className="px-6 py-3"><Note tone="error">{(q.error as Error).message}</Note></div>;
   return (
-    <Panel
-      title={code ? <>Members brought in by <span className="font-mono">{code}</span></> : `New members · last ${days} days`}
-      right={
-        <div className="flex items-center gap-3 text-sm">
-          {code ? <button type="button" onClick={() => { onClearCode(); setOffset(0); }} className="font-semibold text-primary">Show everyone</button> : (
-            <label className="flex items-center gap-2"><input type="checkbox" checked={referredOnly} onChange={(e) => { setReferredOnly(e.target.checked); setOffset(0); }} /> Referred only</label>
-          )}
+    <div className="py-2 pr-2 pl-8" onClick={(e) => e.stopPropagation()}>
+      <div className="flex items-center justify-between gap-3 pb-1.5 text-xs text-muted-foreground">
+        <span>{code ? <>Members who joined with <span className="font-mono text-foreground">{code}</span> · all time</> : `Everyone who joined · last ${days} days`}</span>
+        {code ? null : <label className="flex items-center gap-2"><input type="checkbox" checked={referredOnly} onChange={(e) => { setReferredOnly(e.target.checked); setOffset(0); }} /> Referred only</label>}
+      </div>
+      <table className="w-full text-sm">
+        <thead className="font-mono text-[10px] tracking-[0.14em] text-muted-foreground uppercase">
+          <tr className="border-b border-border">
+            <th className={`${sub} text-left font-normal`}>Member</th>
+            <th className={`${sub} text-left font-normal`}>Joined</th>
+            <th className={`${sub} text-left font-normal`}>{code ? "How" : "Referred by"}</th>
+            <th className={`${sub} text-right font-normal`}>Traded</th>
+            <th className={`${sub} text-right font-normal`}>Swapped</th>
+            <th className={`${sub} text-right font-normal`}>TSD held</th>
+            <th className={`${sub} text-left font-normal`}>Last activity</th>
+          </tr>
+        </thead>
+        <tbody>
+          {q.data.rows.length === 0 ? (
+            <tr><td colSpan={7} className="px-3 py-4 text-center text-muted-foreground">Nobody here yet.</td></tr>
+          ) : q.data.rows.map((r) => (
+            <tr key={r.userId} className="border-b border-border last:border-0">
+              <td className={`${sub} font-semibold text-foreground`}>{r.name ?? "—"}</td>
+              <td className={`${sub} text-muted-foreground`}>{r.joinedAt ? fmtAgo(r.joinedAt) : "—"}</td>
+              <td className={sub}>
+                {r.code ? (code
+                  ? <span className="text-muted-foreground">{SOURCE[r.source ?? ""] ?? r.source}</span>
+                  : <><span className="text-foreground">{r.referrerName ?? <span className="font-mono">{r.code}</span>}</span><div className="text-xs text-muted-foreground">{SOURCE[r.source ?? ""] ?? r.source}</div></>)
+                  : <span className="text-muted-foreground">—</span>}
+              </td>
+              <td className={`num ${sub} text-right`}>{r.trades ? <>{usd(r.tradedValue)}<div className="text-xs text-muted-foreground">{num(r.trades)} trades</div></> : "—"}</td>
+              <td className={`num ${sub} text-right`}>{r.swaps ? <>{usd(r.swapUsd)}<div className="text-xs text-muted-foreground">{num(r.swaps)} swaps</div></> : "—"}</td>
+              <td className={`num ${sub} text-right`}>{!r.linked ? <span className="text-muted-foreground">no pocket</span> : tsdQ.isPending ? "…" : tsd(tsdQ.data?.[r.userId])}</td>
+              <td className={`${sub} text-muted-foreground`}>{r.lastActivity ? fmtAgo(r.lastActivity) : "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {total > 50 ? (
+        <div className="flex items-center justify-between pt-2 text-xs text-muted-foreground">
+          <span className="num">{`${offset + 1}–${Math.min(offset + 50, total)} of ${num(total)}`}</span>
+          <span className="flex gap-1.5">
+            <button type="button" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - 50))} className="rounded-sm border border-border px-2.5 py-1 font-semibold disabled:opacity-40">Prev</button>
+            <button type="button" disabled={offset + 50 >= total} onClick={() => setOffset(offset + 50)} className="rounded-sm border border-border px-2.5 py-1 font-semibold disabled:opacity-40">Next</button>
+          </span>
         </div>
-      }
-    >
-      {q.isPending ? <div className="p-4"><Loading /></div> : q.error ? <div className="p-4"><Note tone="error">{(q.error as Error).message}</Note></div> : (
-        <>
-          <table className="w-full min-w-[56rem] text-sm">
-            <thead className="font-mono text-[10px] tracking-[0.14em] text-muted-foreground uppercase">
-              <tr className="border-b border-border">
-                <th className="px-3 py-2 text-left font-normal">Member</th>
-                <th className="px-3 py-2 text-left font-normal">Joined</th>
-                <th className="px-3 py-2 text-left font-normal">Referred by</th>
-                <th className="px-3 py-2 text-right font-normal">Traded</th>
-                <th className="px-3 py-2 text-right font-normal">Swapped</th>
-                <th className="px-3 py-2 text-right font-normal">TSD held</th>
-                <th className="px-3 py-2 text-left font-normal">Last activity</th>
-              </tr>
-            </thead>
-            <tbody>
-              {q.data.rows.length === 0 ? (
-                <tr><td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">Nobody here yet.</td></tr>
-              ) : q.data.rows.map((r) => (
-                <tr key={r.userId} className="border-b border-border">
-                  <td className="px-3 py-2 font-semibold text-foreground">{r.name ?? "—"}</td>
-                  <td className="px-3 py-2 text-muted-foreground">{r.joinedAt ? fmtAgo(r.joinedAt) : "—"}</td>
-                  <td className="px-3 py-2">
-                    {r.code ? <><span className="text-foreground">{r.referrerName ?? <span className="font-mono">{r.code}</span>}</span><div className="text-xs text-muted-foreground">{SOURCE[r.source ?? ""] ?? r.source}</div></> : <span className="text-muted-foreground">—</span>}
-                  </td>
-                  <td className="num px-3 py-2 text-right">{r.trades ? <>{usd(r.tradedValue)}<div className="text-xs text-muted-foreground">{num(r.trades)} trades</div></> : "—"}</td>
-                  <td className="num px-3 py-2 text-right">{r.swaps ? <>{usd(r.swapUsd)}<div className="text-xs text-muted-foreground">{num(r.swaps)} swaps</div></> : "—"}</td>
-                  <td className="num px-3 py-2 text-right">{!r.linked ? <span className="text-muted-foreground">no pocket</span> : tsdQ.isPending ? "…" : tsd(tsdQ.data?.[r.userId])}</td>
-                  <td className="px-3 py-2 text-muted-foreground">{r.lastActivity ? fmtAgo(r.lastActivity) : "—"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="flex items-center justify-between border-t border-border px-4 py-2.5 text-xs text-muted-foreground">
-            <span className="num">{total ? `${offset + 1}–${Math.min(offset + 50, total)} of ${num(total)}` : "0"}</span>
-            <span className="flex gap-1.5">
-              <button type="button" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - 50))} className="rounded-sm border border-border px-2.5 py-1 font-semibold disabled:opacity-40">Prev</button>
-              <button type="button" disabled={offset + 50 >= total} onClick={() => setOffset(offset + 50)} className="rounded-sm border border-border px-2.5 py-1 font-semibold disabled:opacity-40">Next</button>
-            </span>
-          </div>
-        </>
-      )}
-    </Panel>
+      ) : null}
+    </div>
   );
 }
