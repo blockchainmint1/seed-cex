@@ -377,8 +377,15 @@
 - [x] H2 warn before a held key is applied (Telegram + email); H3 info only, no change (Nov 23)
 - [x] Error log: max 60 new error types per hour; empty ones cleared after 90 days (Nov 23)
 - [x] Bug group stays staff only: keep tester name + full text (Bobby, Nov 23)
-- [ ] V1 Vault request signing key into AWS KMS — code ready (id seeds-vault-kms-2026-11, signed once per request); blocked: Bobby runs the CloudShell commands and pastes the key ARN, then delete SEEDS_VAULT_REQUEST_SIGNING_SEED and publish the new fingerprint
+- [x] V1 Vault request signing key into AWS KMS — live in preview (fingerprint 0556577f…37c86d4d), old seed deleted
 - [ ] V2 pairing code in shared Vault rules file (HME Vault shows it); V3 extra-password wording on Seeds Key page (other projects)
 - [x] QA group: staff only, full text kept; error-log new-group hourly cap done (Nov 23)
 - [x] Auditor saw the Coins-in-trades/Lend fixes, Cancel all and Balances table: no issues (Nov 23)
 - [ ] Auditor review of the Nov 23 step-up / factor-trust / Vault-KMS changes before publishing
+
+## Auditor review Nov 23 — step-up + Vault KMS (waiting on Bobby's picks)
+- [ ] S1 fresh sign-in must come after the request (blocked: Bobby — strict vs. first-factor exception)
+- [ ] S2 confirm/remove each 2FA app separately (blocked: Bobby)
+- [ ] S3 confirm-it's-you before replacing a connected Telegram chat (blocked: Bobby)
+- [ ] S4 AWS identifiers out of the public Vault record (blocked: Bobby)
+- [ ] CloudTrail alarms for the Vault KMS key (blocked: Bobby, then he runs a CloudShell script)
