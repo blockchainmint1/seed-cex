@@ -215,9 +215,10 @@ export function validateClass(c: ClassInput, opts: { held?: number } = {}): Reco
  * so a member is never charged as a non-miner just because a site was down.
  */
 export function minerFromStatus(hmeId: string, answer: unknown): MinerStatus {
-  // Honest.Money POST /api/public/hme/members/mining. "mining" is true once the
-  // member has ever owned hash (their record only goes up). "Not a miner" needs
-  // every mining site to have answered (complete: true); anything else = unknown.
+  // Honest.Money POST /api/public/hme/members/mining (their reply v2). "mining" is
+  // true while recorded hash (totalMhs) is above zero; mineHME can correct it down,
+  // so it is checked at each checkout. "Not a miner" needs every mining site to
+  // have answered (complete: true); anything else = unknown (full fee, manual waiver).
   const a = answer as { ok?: unknown; results?: unknown } | null;
   if (!a || a.ok !== true || !Array.isArray(a.results)) return "unknown";
   const r = a.results.find((x) => (x as { hmeId?: unknown })?.hmeId === hmeId) as
