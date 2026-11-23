@@ -2,7 +2,7 @@
 // Called by the signed NectarPay webhook and by the payment re-check, so a
 // missed webhook can't strand a paid seat. Both paths re-read the invoice from
 // the NectarPay API and confirm with a compare-and-set, so notices fire once.
-import { CONFIRMABLE_STATUSES, canConfirmSeat, invoiceBelongs, invoiceSettled, paidInLabel, inviteUrl, registrationIdFromOrderId } from "./ignite-registration";
+import { CONFIRMABLE_STATUSES, SEAT_NOTICE_GIVE_UP_MS, SEAT_NOTICE_GRACE_MS, canConfirmSeat, seatNoticesDue, invoiceBelongs, invoiceSettled, paidInLabel, inviteUrl, registrationIdFromOrderId } from "./ignite-registration";
 
 type EventData = { invoice_id: string; chain?: string | null; paid_amount_usd?: number | null };
 const REG_COLS = "id, user_id, status, hm_member_id, email, full_name, amount_usd, payment_method, invoice_id, ref_code";
@@ -77,24 +77,7 @@ export async function processIgniteInvoiceEvent(type: string, data: EventData): 
   if (!won?.length) return "noop"; // the other path confirmed it first
 
   if (peer) await supabaseAdmin.from("ignite_peer_links").update({ status: "paid", paid_at: now, updated_at: now }).eq("id", peer.id);
-  const payerName = peer ? (peer.payer_name ?? "Your friend") : null;
-  const { notifyUser } = await import("@/lib/telegram.server");
-  await notifyUser(reg.user_id, "notify_p2p", payerName
-    ? `✅ ${payerName} paid your Seeds Ignite seat. You're confirmed. See you Nov 30, 5:00 PM CST.`
-    : "✅ Your Seeds Ignite seat is confirmed. See you Nov 30, 5:00 PM CST.");
-
-  const { hmeReferralCode, sendHubEvent } = await import("@/lib/hme-hub.server");
-  const code = await hmeReferralCode(reg.hm_member_id);
-  const { emailUser } = await import("@/lib/email/send.server");
-  await emailUser(reg.user_id, "ignite-seat-confirmed", (r) => ({
-    name: ((n) => n.charAt(0).toUpperCase() + n.slice(1))(reg!.full_name.trim().split(/\s+/)[0] || r.name), amount: Number(reg!.amount_usd), paidBy: payerName,
-    paidWith: paidInLabel(paidAsset, data.chain ?? inv.chain ?? null),
-    confirmedAt: now, timezone: r.timezone, referralUrl: code ? inviteUrl(code) : null,
-  }), { dedupe: reg.id, to: reg.email });
-  await sendHubEvent({
-    event: "purchase", member_id: reg.hm_member_id, email: reg.email, ref: reg.ref_code,
-    metadata: { product: "ignite_seat", amount_usd: Number(reg.amount_usd), ...(peer ? { paid_by: "peer", payer_member_id: peer.payer_hm_member_id } : {}) },
-  });
+  await sendSeatNotices(reg.id);
   return "confirmed";
 }
 
@@ -119,4 +102,70 @@ export async function reconcileIgniteRegistration(reg: { status: string; invoice
     console.warn("[ignite] payment re-check failed", e instanceof Error ? e.message : e);
     return false;
   }
+}
+
+/**
+ * The member's "seat confirmed" email, Telegram note and Honest.Money purchase report.
+ * Each one is claimed in alert_log before it goes out, so it is sent at most once; the seat is
+ * marked notices_done_at only when the email went out (or was skipped by rule), so a payment
+ * notice cut off midway is finished by the minute job (resumeSeatNotices). Never throws.
+ */
+export async function sendSeatNotices(regId: string): Promise<boolean> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  try {
+    const { data: reg } = await supabaseAdmin.from("ignite_registrations")
+      .select("id, user_id, status, hm_member_id, email, full_name, amount_usd, ref_code, paid_asset, paid_chain, confirmed_at, notices_done_at")
+      .eq("id", regId).maybeSingle();
+    if (!reg || reg.status !== "confirmed" || reg.notices_done_at) return false;
+    const { data: peer } = await supabaseAdmin.from("ignite_peer_links").select("payer_name, payer_hm_member_id")
+      .eq("registration_id", reg.id).eq("status", "paid").order("paid_at", { ascending: false }).limit(1).maybeSingle();
+    const payerName = peer ? (peer.payer_name ?? "Your friend") : null;
+    const claim = async (kind: string) => {
+      const { data } = await supabaseAdmin.from("alert_log")
+        .upsert({ user_id: reg.user_id, kind, subject: reg.id }, { onConflict: "user_id,kind,subject", ignoreDuplicates: true }).select("user_id");
+      return !!data?.length;
+    };
+
+    const { hmeReferralCode, sendHubEvent } = await import("@/lib/hme-hub.server");
+    const code = await hmeReferralCode(reg.hm_member_id);
+    const { emailUser } = await import("@/lib/email/send.server");
+    const emailed = await emailUser(reg.user_id, "ignite-seat-confirmed", (r) => ({
+      name: ((n) => n.charAt(0).toUpperCase() + n.slice(1))(reg.full_name.trim().split(/\s+/)[0] || r.name), amount: Number(reg.amount_usd), paidBy: payerName,
+      paidWith: paidInLabel(reg.paid_asset, reg.paid_chain),
+      confirmedAt: reg.confirmed_at ?? new Date().toISOString(), timezone: r.timezone, referralUrl: code ? inviteUrl(code) : null,
+    }), { dedupe: reg.id, to: reg.email });
+
+    if (await claim("ignite:telegram-confirmed")) {
+      const { notifyUser } = await import("@/lib/telegram.server");
+      await notifyUser(reg.user_id, "notify_p2p", payerName
+        ? `✅ ${payerName} paid your Seeds Ignite seat. You're confirmed. See you Nov 30, 5:00 PM CST.`
+        : "✅ Your Seeds Ignite seat is confirmed. See you Nov 30, 5:00 PM CST.");
+    }
+    if (await claim("ignite:hub-purchase")) {
+      await sendHubEvent({
+        event: "purchase", member_id: reg.hm_member_id, email: reg.email, ref: reg.ref_code,
+        metadata: { product: "ignite_seat", amount_usd: Number(reg.amount_usd), ...(peer ? { paid_by: "peer", payer_member_id: peer.payer_hm_member_id } : {}) },
+      });
+    }
+    if (emailed === "failed") return false; // claim was freed; the minute job tries again
+    await supabaseAdmin.from("ignite_registrations").update({ notices_done_at: new Date().toISOString() }).eq("id", reg.id).is("notices_done_at", null);
+    return true;
+  } catch (e) {
+    console.error("[ignite] seat notices failed", regId, e instanceof Error ? e.message : e);
+    return false;
+  }
+}
+
+/** Minute job: finish notices for seats confirmed 2 minutes to 3 days ago that never got them. */
+export async function resumeSeatNotices(limit = 20) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const now = Date.now();
+  const { data } = await supabaseAdmin.from("ignite_registrations").select("id, status, confirmed_at, notices_done_at")
+    .eq("status", "confirmed").is("notices_done_at", null)
+    .lte("confirmed_at", new Date(now - SEAT_NOTICE_GRACE_MS).toISOString())
+    .gte("confirmed_at", new Date(now - SEAT_NOTICE_GIVE_UP_MS).toISOString())
+    .order("confirmed_at").limit(limit);
+  let done = 0;
+  for (const row of data ?? []) if (seatNoticesDue(row, now) && (await sendSeatNotices(row.id))) done++;
+  return { due: data?.length ?? 0, done };
 }

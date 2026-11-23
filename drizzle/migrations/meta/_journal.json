@@ -624,6 +624,13 @@
       "when": 1795453196678,
       "tag": "0088_referral_codes_viewed_at",
       "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1795457207249,
+      "tag": "0089_ignite_seat_notices",
+      "breakpoints": true
     }
   ]
 }

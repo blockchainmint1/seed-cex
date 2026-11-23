@@ -1366,6 +1366,7 @@ export type Database = {
           invoice_expires_at: string | null
           invoice_id: string | null
           marketing_opt_in: boolean
+          notices_done_at: string | null
           paid_amount_usd: number | null
           paid_asset: string | null
           paid_chain: string | null
@@ -1389,6 +1390,7 @@ export type Database = {
           invoice_expires_at?: string | null
           invoice_id?: string | null
           marketing_opt_in?: boolean
+          notices_done_at?: string | null
           paid_amount_usd?: number | null
           paid_asset?: string | null
           paid_chain?: string | null
@@ -1412,6 +1414,7 @@ export type Database = {
           invoice_expires_at?: string | null
           invoice_id?: string | null
           marketing_opt_in?: boolean
+          notices_done_at?: string | null
           paid_amount_usd?: number | null
           paid_asset?: string | null
           paid_chain?: string | null

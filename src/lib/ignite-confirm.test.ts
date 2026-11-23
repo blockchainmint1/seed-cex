@@ -36,3 +36,19 @@ describe("referral link", () => {
     expect(cleanRefCode(undefined)).toBeNull();
   });
 });
+
+import { seatNoticesDue } from "./ignite-registration";
+describe("seat-confirmed notices are retried when cut off", () => {
+  const NOW = Date.parse("2026-11-23T18:10:00Z");
+  const row = (o: Partial<{ status: string; confirmed_at: string | null; notices_done_at: string | null }>) =>
+    ({ status: "confirmed", confirmed_at: "2026-11-23T18:01:41Z", notices_done_at: null, ...o });
+  it("a paid seat with no notices 8 minutes later is due", () => expect(seatNoticesDue(row({}), NOW)).toBe(true));
+  it("not within the first 2 minutes (the payment notice may still be sending)", () =>
+    expect(seatNoticesDue(row({ confirmed_at: "2026-11-23T18:09:00Z" }), NOW)).toBe(false));
+  it("never again once notices are done", () => expect(seatNoticesDue(row({ notices_done_at: "2026-11-23T18:02:00Z" }), NOW)).toBe(false));
+  it("never for an unpaid or cancelled seat", () => {
+    expect(seatNoticesDue(row({ status: "pending" }), NOW)).toBe(false);
+    expect(seatNoticesDue(row({ status: "cancelled" }), NOW)).toBe(false);
+  });
+  it("gives up after 3 days", () => expect(seatNoticesDue(row({ confirmed_at: "2026-11-20T18:00:00Z" }), NOW)).toBe(false));
+});
