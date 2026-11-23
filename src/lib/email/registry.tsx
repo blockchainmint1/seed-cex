@@ -129,7 +129,7 @@ export const TEMPLATES: { [K in TemplateName]: Def<K> } = {
     category: "receipt",
     subject: () => "Your To the Moon seat is reserved",
     render: (p) => <IgniteSeatConfirmedEmail {...p} />,
-    sample: { name: "Alex", amount: 499, paidBy: null, paidWith: "TSD on TXC", confirmedAt: "2026-11-18T15:10:00Z", timezone: "America/Chicago", referralUrl: "https://seeds.honest.money/invite/alex", className: "Spark", classSlug: "spark", dates: "December 5–6, 2026", time: "1:00–5:00 PM CST", feeUsd: 99, minerDiscountUsd: 0, depositUsd: 400 },
+    sample: { name: "Alex", amount: 499, paidBy: null, paidWith: "TSD on TXC", confirmedAt: "2026-11-18T15:10:00Z", timezone: "America/Chicago", referralUrl: "https://seeds.honest.money/invite/alex", className: "Spark", classSlug: "spark", dates: "December 12–13, 2026", time: "1:00–5:00 PM CST", feeUsd: 99, minerDiscountUsd: 0, depositUsd: 400 },
   },
   "legacy-link": {
     label: "Link your older account",
@@ -143,7 +143,7 @@ export const TEMPLATES: { [K in TemplateName]: Def<K> } = {
     category: "ignite",
     subject: () => "Finish reserving your To the Moon seat",
     render: (p) => <IgniteReminderEmail {...p} />,
-    sample: { name: "Alex", amount: 499, dates: "December 5–6, 2026", time: "1:00–5:00 PM CST", seatsLeft: 42, className: "Spark", classSlug: "spark" },
+    sample: { name: "Alex", amount: 499, dates: "December 12–13, 2026", time: "1:00–5:00 PM CST", seatsLeft: 42, className: "Spark", classSlug: "spark" },
   },
   "ignite-message": {
     label: "To the Moon: message from Seeds",
@@ -157,7 +157,7 @@ export const TEMPLATES: { [K in TemplateName]: Def<K> } = {
     category: "ignite",
     subject: (p) => p.subject,
     render: (p) => <IgniteInterestEmail {...p} />,
-    sample: { subject: "A new To the Moon class just opened", paragraphs: ["Hi Alex,", "Spark runs December 5–6, 1–5 PM Central. Seats are limited."], classSlug: "spark", unsubscribeUrl: "https://seeds.honest.money/api/public/email/unsubscribe?t=sample" },
+    sample: { subject: "A new To the Moon class just opened", paragraphs: ["Hi Alex,", "Spark runs December 12–13, 1–5 PM Central. Seats are limited."], classSlug: "spark", unsubscribeUrl: "https://seeds.honest.money/api/public/email/unsubscribe?t=sample" },
   },
 };
 

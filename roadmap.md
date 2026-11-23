@@ -410,7 +410,7 @@
 - [x] Admin: class manager (instructor + photo, seats, fee, deposit, requirements, sessions), registrants by class, email a whole class, move a seat, miner marks, interest list
 - [x] Miner discount rules: class fee waived (deposit kept) when the miner check says "miner"; admin mark wins; unknown = full fee
 - [x] Honest.Money miner check live (POST /api/public/hme/members/mining, mining:read on for Seeds; verified live Nov 23 — miners, non-miners and unknowns all answer correctly; unsigned calls get 401)
-- [ ] Open Spark to the public (blocked: Bobby's go-ahead)
+- [x] Open Spark to the public — opened Nov 23; moved to Sat Dec 12 + Sun Dec 13, 1–5 PM CT (Bobby)
 - [ ] Spark instructor photo + final agenda/requirements (blocked: Bobby supplies)
 
 - [x] Rename the class program to Flight School (/flight-school; old /ignite links forward); first class → Spark, Dec 5–6 class → Ignite; 20 standby class names saved (Bobby, Nov 23)

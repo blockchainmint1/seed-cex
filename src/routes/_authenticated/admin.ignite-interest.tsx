@@ -184,7 +184,7 @@ function InterestComposer({ open, recipients, classes, onClose, onSend }: {
           </label>
           <label className="block"><span className={fieldLabel}>Subject</span><input className={`${inputCls} mt-1`} value={subject} maxLength={140} onChange={(e) => setSubject(e.target.value)} placeholder="A new To the Moon class just opened" /></label>
           <label className="block"><span className={fieldLabel}>Message</span>
-            <textarea className={`${inputCls} mt-1 min-h-40`} value={body} maxLength={BODY_MAX + 200} onChange={(e) => setBody(e.target.value)} placeholder={"Hi {first},\n\nSpark runs December 5–6, 1–5 PM Central…"} />
+            <textarea className={`${inputCls} mt-1 min-h-40`} value={body} maxLength={BODY_MAX + 200} onChange={(e) => setBody(e.target.value)} placeholder={"Hi {first},\n\nSpark runs December 12–13, 1–5 PM Central…"} />
             <span className="mt-1 block text-xs text-muted-foreground">Type {"{first}"} to greet each person by name. Leave a blank line between paragraphs.</span>
           </label>
           {err ? <Note tone="error">{err}</Note> : null}
