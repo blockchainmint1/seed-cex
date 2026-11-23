@@ -68,14 +68,4 @@ export function selfCheckoutBlock(i: { hasActivePeerLink: boolean; reg: { paymen
 }
 
 /** Hosts a Peer Pay link may point at (deep scan D1): Seeds' own addresses only, never a look-alike. */
-export const PEER_ORIGINS = [
-  "https://seeds.honest.money",
-  "https://seeds-cex.lovable.app",
-  "https://id-preview--0ce4bcf5-5883-4de0-96d3-b161585d1bf4.lovable.app",
-];
-
-export function safeOrigin(origin: string) {
-  if (PEER_ORIGINS.includes(origin)) return origin;
-  if (/^http:\/\/localhost(:\d{1,5})?$/.test(origin)) return origin;
-  return "https://seeds.honest.money";
-}
+export { SEEDS_ORIGINS as PEER_ORIGINS, safeOrigin } from "./safe-origin";

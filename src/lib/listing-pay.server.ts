@@ -6,6 +6,8 @@ import {
   CHECKOUT_MINUTES, PAYABLE_STATUSES, applicationIdFromOrderId, checkoutBlock, checkoutStillOpen,
   listingInvoicePaid, listingOrderId, packageById,
 } from "./listing";
+// Return address after paying: Seeds' own hosts only (review P1), same rule as Ignite Peer Pay.
+import { safeOrigin } from "./safe-origin";
 
 const APP_COLS = "id, user_id, package, coin_name, ticker, contact_email, status, amount_usd, payment_status, invoice_id, checkout_url, invoice_expires_at, paid_invoice_id, updated_at";
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -25,11 +27,6 @@ export async function tellListingAdmins(text: string) {
   } catch (e) {
     console.error("listing admin alert failed", e);
   }
-}
-
-export function safeOrigin(origin: string | null | undefined) {
-  const o = origin ?? "";
-  return /^https:\/\/[a-z0-9.-]+$/i.test(o) || o.startsWith("http://localhost") ? o : "https://seeds.honest.money";
 }
 
 /**

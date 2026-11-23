@@ -1,4 +1,9 @@
 // Server-only: recording referrals and invite-link clicks for Admin → Affiliates.
+//
+// WARNING (review P2): the `referrals` sign-up count is for watching who shares links,
+// never a basis for paying anyone. Coin/wallet accounts cost nothing to create, so anyone
+// can stamp a code onto a stream of empty accounts. If affiliate rewards ever come to
+// Seeds, base them on real activity (trades, swaps, TSD held) or Honest.Money's own credit.
 import { cleanCode, isAutomatedVisit, referralProblem } from "./affiliates";
 
 /**
