@@ -3,8 +3,10 @@ export type AccountRowLike = {
   userId: string; displayName: string; createdAt: string; hasVault: boolean;
   txcAddress: string | null; evmAddress: string | null; activeAuthorizations: number;
   authorizedCap: number; openOrders: number; trades: number; tradedQuoteValue: number; lastActivity: string | null;
+  /** TSD in the member's trading pocket; null = not linked or not read yet. */
+  tsd?: number | null;
 };
-export type AccountSortKey = "displayName" | "createdAt" | "hasVault" | "activeAuthorizations" | "authorizedCap" | "openOrders" | "trades" | "tradedQuoteValue" | "lastActivity";
+export type AccountSortKey = "displayName" | "createdAt" | "hasVault" | "activeAuthorizations" | "authorizedCap" | "openOrders" | "trades" | "tradedQuoteValue" | "lastActivity" | "tsd";
 export const PAGE_SIZES = [25, 50, 100] as const;
 
 /** Name, address or user id, case-insensitive. */
@@ -26,6 +28,7 @@ export function sortAccounts<T extends AccountRowLike>(rows: T[], key: AccountSo
     if (key === "displayName") return r.displayName.toLowerCase();
     if (key === "createdAt" || key === "lastActivity") return r[key] ? new Date(r[key] as string).getTime() : null;
     if (key === "hasVault") return r.hasVault ? 1 : 0;
+    if (key === "tsd") return r.tsd ?? null;
     return r[key];
   };
   return rows.map((r, i) => ({ r, i, v: val(r) })).sort((a, b) => {

@@ -7,6 +7,8 @@ export type AdminAccountRow = {
   displayName: string;
   createdAt: string;
   hasVault: boolean;
+  /** Has an active HME trading-pocket link (addresses below are then that pocket's). */
+  linked: boolean;
   txcAddress: string | null;
   evmAddress: string | null;
   activeAuthorizations: number;
@@ -120,7 +122,7 @@ export const getAdminOverview = createServerFn({ method: "GET" })
     const { recentFailuresByMember } = await import("./order-pause.server");
     const { repeatFailurePause } = await import("./order-readiness");
     const failures = await recentFailuresByMember().catch(() => new Map<string, { at: number[]; lastTradeId: string }>());
-    const [profiles, wallets, delegations, orders, trades, escrows, apiKeys, withdrawals] =
+    const [profiles, wallets, delegations, orders, trades, escrows, apiKeys, withdrawals, links] =
       await Promise.all([
         supabaseAdmin.from("profiles").select("id, display_name, created_at, trading_frozen_at, trading_frozen_reason, order_pause_cleared_at"),
         supabaseAdmin.from("wallets").select("user_id, txc_address, evm_address"),
@@ -141,7 +143,18 @@ export const getAdminOverview = createServerFn({ method: "GET" })
         supabaseAdmin.from("escrows").select("trade_id, leg, status, release_txid"),
         supabaseAdmin.from("api_keys").select("id", { count: "exact", head: true }),
         supabaseAdmin.from("withdrawals").select("id", { count: "exact", head: true }),
+        supabaseAdmin.from("hme_links").select("user_id, xpubs").eq("status", "active"),
       ]);
+
+    // Members' real receive addresses are their HME pocket (1106/0/0), derived from the link's public keys;
+    // the old wallets table is only a fallback for accounts that never linked.
+    const { pocketReceiveAddress } = await import("./pockets/derive");
+    const pocketAddr = new Map<string, { txc: string | null; evm: string | null }>();
+    for (const l of links.data ?? []) {
+      const x = (l.xpubs ?? {}) as Record<string, string>;
+      const one = (coin: "TXC" | "EVM") => { try { return x[coin] ? pocketReceiveAddress(coin, x[coin]) : null; } catch { return null; } };
+      pocketAddr.set(l.user_id, { txc: one("TXC"), evm: one("EVM") });
+    }
 
     const profileRows = profiles.data ?? [];
     const walletRows = wallets.data ?? [];
@@ -193,8 +206,9 @@ export const getAdminOverview = createServerFn({ method: "GET" })
           displayName: p.display_name,
           createdAt: p.created_at,
           hasVault: Boolean(wallet),
-          txcAddress: wallet?.txc_address ?? null,
-          evmAddress: wallet?.evm_address ?? null,
+          linked: pocketAddr.has(p.id),
+          txcAddress: pocketAddr.get(p.id)?.txc ?? wallet?.txc_address ?? null,
+          evmAddress: pocketAddr.get(p.id)?.evm ?? wallet?.evm_address ?? null,
           activeAuthorizations: mine.length,
           authorizedCap: mine.reduce((a, d) => a + Number(d.max_amount ?? 0), 0),
           openOrders: myOrders.filter((o) => o.status === "open" || o.status === "partial").length,

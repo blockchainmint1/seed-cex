@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { clearOrderPause, liftTradingFreeze } from "@/lib/admin.functions";
 import { createFileRoute } from "@tanstack/react-router";
-import { Search, X } from "lucide-react";
+import { Check, Copy, Search, X } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { getAdminMemberAddresses, getAdminTsdBalances } from "@/lib/admin-members.functions";
 import { TabTitle, inputCls } from "@/components/account/ui";
 import { Loading, Pager, SortHeader, short, useAdminOverview } from "@/components/admin/ui";
 import { PAGE_SIZES, defaultDir, filterAccounts, pageOf, sortAccounts, type AccountSortKey } from "@/lib/admin-accounts";
@@ -31,8 +33,14 @@ function AccountsPage() {
   const [sort, setSort] = useState<{ key: AccountSortKey; dir: "asc" | "desc" }>({ key: "tradedQuoteValue", dir: "desc" });
   const [page, setPage] = useState(0);
   const [size, setSize] = useState<number>(PAGE_SIZES[0]);
+  const [open, setOpen] = useState<{ userId: string; name: string } | null>(null);
+  const fetchTsd = useServerFn(getAdminTsdBalances);
+  // Display only, refreshed every minute; the server reads through the shared balance cache.
+  const tsdQ = useQuery({ queryKey: ["admin-tsd-balances"], queryFn: () => fetchTsd(), refetchInterval: 60_000, retry: false });
+  const tsd = tsdQ.data;
 
-  const matched = useMemo(() => (d ? sortAccounts(filterAccounts(d.accounts, search), sort.key, sort.dir) : []), [d, search, sort]);
+  const rows = useMemo(() => (d ? d.accounts.map((a) => ({ ...a, tsd: tsd?.[a.userId] ?? null })) : []), [d, tsd]);
+  const matched = useMemo(() => sortAccounts(filterAccounts(rows, search), sort.key, sort.dir), [rows, search, sort]);
   const view = pageOf(matched, page, size);
 
   const onSort = (k: AccountSortKey) => {
@@ -45,7 +53,7 @@ function AccountsPage() {
 
   return (
     <div className="space-y-5">
-      <TabTitle title="Accounts" desc="Every signed-in member. Click a column header to sort; click again to flip." />
+      <TabTitle title="Accounts" desc="Every signed-in member. Click a column header to sort; click again to flip. Click a name to see all of that member's addresses." />
       {q.isPending ? <Loading /> : !d ? <p role="alert" className="text-sm text-destructive">Couldn't load accounts. Refresh to retry.</p> : (
         <section className="min-w-0 rounded-md border border-border bg-surface">
           <header className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3">
@@ -70,6 +78,7 @@ function AccountsPage() {
                   {H("Vault", "hasVault", "left")}
                   <th scope="col" className="px-3 py-2 text-left font-normal">TXC</th>
                   <th scope="col" className="px-3 py-2 text-left font-normal">EVM</th>
+                  {H("TSD", "tsd")}
                   {H("Auths", "activeAuthorizations")}
                   {H("Cap", "authorizedCap")}
                   {H("Open", "openOrders")}
@@ -82,7 +91,10 @@ function AccountsPage() {
                 {view.rows.map((a) => (
                   <tr key={a.userId} className="border-b border-border/50">
                     <td className="px-3 py-2 text-foreground">
-                      {a.displayName}
+                      <button type="button" onClick={() => setOpen({ userId: a.userId, name: a.displayName })}
+                        className="rounded-sm text-left text-primary underline-offset-2 hover:underline" title="Show all addresses">
+                        {a.displayName}
+                      </button>
                       {a.tradingFrozenAt ? <FrozenBadge userId={a.userId} reason={a.tradingFrozenReason} /> : null}
                       {a.orderPausedUntil ? <OrderPauseBadge userId={a.userId} until={a.orderPausedUntil} /> : null}
                     </td>
@@ -90,6 +102,9 @@ function AccountsPage() {
                     <td className="px-3 py-2">{a.hasVault ? "yes" : "—"}</td>
                     <td className="px-3 py-2" title={a.txcAddress ?? undefined}>{short(a.txcAddress)}</td>
                     <td className="px-3 py-2" title={a.evmAddress ?? undefined}>{short(a.evmAddress)}</td>
+                    <td className="px-3 py-2 text-right" title={a.linked ? undefined : "No trading pocket linked"}>
+                      {!a.linked ? "—" : tsdQ.isPending ? "…" : a.tsd == null ? "?" : fmtAmount(a.tsd)}
+                    </td>
                     <td className="px-3 py-2 text-right">{a.activeAuthorizations}</td>
                     <td className="px-3 py-2 text-right">{fmtAmount(a.authorizedCap)}</td>
                     <td className="px-3 py-2 text-right">{a.openOrders}</td>
@@ -99,7 +114,7 @@ function AccountsPage() {
                   </tr>
                 ))}
                 {view.rows.length === 0 ? (
-                  <tr><td className="px-4 py-6 text-muted-foreground" colSpan={11}>{d.accounts.length ? "No accounts match that search." : "No accounts yet."}</td></tr>
+                  <tr><td className="px-4 py-6 text-muted-foreground" colSpan={12}>{d.accounts.length ? "No accounts match that search." : "No accounts yet."}</td></tr>
                 ) : null}
               </tbody>
             </table>
@@ -108,7 +123,80 @@ function AccountsPage() {
             onPage={setPage} onSize={(n) => { setSize(n); setPage(0); }} />
         </section>
       )}
+      <AddressesDialog member={open} onClose={() => setOpen(null)} />
     </div>
+  );
+}
+
+/** Every receive address of one member's trading pocket, each with a copy button. */
+function AddressesDialog({ member, onClose }: { member: { userId: string; name: string } | null; onClose: () => void }) {
+  const fetchAddrs = useServerFn(getAdminMemberAddresses);
+  const q = useQuery({
+    queryKey: ["admin-member-addresses", member?.userId],
+    queryFn: () => fetchAddrs({ data: { userId: member!.userId } }),
+    enabled: Boolean(member),
+    retry: false,
+  });
+  const d = q.data;
+  return (
+    <Dialog open={Boolean(member)} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>{member?.name ?? ""} — addresses</DialogTitle>
+          <DialogDescription>
+            Receive addresses of this member's Seeds trading pocket. TXC, TSD and the other TEXITcoin-network coins all go to the TXC address.
+          </DialogDescription>
+        </DialogHeader>
+        {q.isPending ? <Loading /> : q.isError || !d ? (
+          <p role="alert" className="text-sm text-destructive">{q.error instanceof Error ? q.error.message : "Couldn't load addresses."}</p>
+        ) : (
+          <div className="space-y-4">
+            {d.link ? (
+              <>
+                <p className="font-mono text-[11px] text-muted-foreground">
+                  Linked {new Date(d.link.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  {" · "}{d.link.mode === "access" ? "Seeds can send (instant access)" : "approve in HME Wallet"}
+                  {d.link.vaultName ? ` · ${d.link.vaultName}` : ""}
+                </p>
+                <ul className="divide-y divide-border rounded-md border border-border">
+                  {d.link.addresses.map((a) => (
+                    <AddressRow key={a.pocket} label={a.pocket} sub={a.covers.join(", ")} address={a.address} />
+                  ))}
+                </ul>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">No trading pocket linked, so Seeds has no live receive address for this member.</p>
+            )}
+            {d.legacy.length ? (
+              <div className="space-y-2">
+                <p className="font-mono text-[11px] text-muted-foreground">Old wallet record (before HME linking) — only use if the member confirms it:</p>
+                <ul className="divide-y divide-border rounded-md border border-border">
+                  {d.legacy.map((a) => <AddressRow key={a.coin} label={a.coin} sub="old wallet" address={a.address} />)}
+                </ul>
+              </div>
+            ) : null}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AddressRow({ label, sub, address }: { label: string; sub: string; address: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <li className="flex items-center gap-3 px-3 py-2">
+      <div className="w-28 shrink-0">
+        <div className="font-display text-sm font-bold">{label}</div>
+        <div className="truncate font-mono text-[10px] text-muted-foreground" title={sub}>{sub}</div>
+      </div>
+      <code className="min-w-0 flex-1 font-mono text-[11px] break-all">{address}</code>
+      <button type="button" aria-label={`Copy ${label} address`}
+        onClick={async () => { await navigator.clipboard.writeText(address); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
+        className="shrink-0 rounded-sm p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground">
+        {copied ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
+      </button>
+    </li>
   );
 }
 

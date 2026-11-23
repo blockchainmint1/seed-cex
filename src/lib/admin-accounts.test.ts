@@ -47,3 +47,13 @@ describe("accounts paging", () => {
   test("a page past the end snaps back to the last page", () => expect(pageOf(rows, 9, 25).page).toBe(2));
   test("no rows still reads as page 1 of 1", () => expect(pageOf([], 3, 25)).toMatchObject({ page: 0, pages: 1, from: 0, to: 0 }));
 });
+
+describe("accounts sort by TSD", () => {
+  const rows = [
+    row({ displayName: "unlinked", tsd: null }),
+    row({ displayName: "small", tsd: 2 }),
+    row({ displayName: "big", tsd: 400 }),
+  ];
+  test("biggest TSD first, unread balances last", () => expect(sortAccounts(rows, "tsd", "desc").map((r) => r.displayName)).toEqual(["big", "small", "unlinked"]));
+  test("flipped, unread balances still last", () => expect(sortAccounts(rows, "tsd", "asc").map((r) => r.displayName)).toEqual(["small", "big", "unlinked"]));
+});
