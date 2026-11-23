@@ -33,7 +33,7 @@ export function ClassCard({ c }: { c: PublicClass }) {
       <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="font-display text-2xl">{usd0(c.feeUsd + c.depositUsd)}</p>
-          <p className="text-sm text-muted-foreground">{priceLine(c)}{c.minersFree && c.feeUsd > 0 ? " · class free for HME miners" : ""}</p>
+          <p className="text-sm text-muted-foreground">{priceLine(c)}{c.minersFree && c.feeUsd > 0 ? " · free for HME miners" : ""}</p>
         </div>
         <Link to="/to-the-moon/$slug" params={{ slug: c.slug }} className="seed-btn inline-flex w-auto justify-center px-6">{open ? "See class & reserve" : "See class"}</Link>
       </div>
