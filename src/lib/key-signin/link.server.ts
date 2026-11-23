@@ -14,7 +14,7 @@ import { checkXprvMatches, openSealed } from "../hme-link.server";
 import { replaceProblem } from "../hme-link-rules";
 import { decryptDelegatedKey, encryptDelegatedKey } from "../delegation.server";
 import { keepExistingLink, keyLinkOutcome, keyLinkProblem, keysDiffer, pocketFor, type KeyKind } from "./rules";
-import { corsJson } from "./signin.server";
+import { REQUEST_UNLOCK_FAILED, corsJson } from "./signin.server";
 
 export async function submitKeyLink(p: {
   token: string;
@@ -61,9 +61,12 @@ export async function submitKeyLink(p: {
   );
   if (dropped) return corsJson({ error: dropped }, 409);
 
+  let recipientPriv: string;
+  try { recipientPriv = await decryptDelegatedKey(p.recipientPrivCiphertext, `signin-request:${p.token}`); }
+  catch { return corsJson({ error: REQUEST_UNLOCK_FAILED }, 503); }
   let keep: Record<string, string>;
   try {
-    const xprvs = JSON.parse(openSealed(p.payload, await decryptDelegatedKey(p.recipientPrivCiphertext, `signin-request:${p.token}`), p.recipientPubkey)) as Record<string, string>;
+    const xprvs = JSON.parse(openSealed(p.payload, recipientPriv, p.recipientPubkey)) as Record<string, string>;
     keep = {};
     for (const c of p.chains) {
       if (!xprvs[c] || !checkXprvMatches(c, xprvs[c], p.xpubs[c]!)) return corsJson({ error: `key mismatch ${c}` }, 400);

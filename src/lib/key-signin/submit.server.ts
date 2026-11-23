@@ -8,7 +8,7 @@ import { ACCEPTED_CHAINS, ALLOWED_CHAINS, type LinkChain, chainForPath, checkXpr
 import { replaceProblem } from "../hme-link-rules";
 import { decryptDelegatedKey, encryptDelegatedKey } from "../delegation.server";
 import { NEW_ACCOUNTS_PER_IP_HOUR, NEW_KEY_ACCOUNTS_ALARM_GAP_MS, NEW_KEY_ACCOUNTS_ALARM_PER_HOUR, secondAccountProblem, shouldAlarmNewAccounts, isKeyKind, keepExistingLink, keyHostOf, keySigninMessage, keysDiffer, normalizeIdentity, placeholderEmail, pocketFor, startingName, type KeyKind } from "./rules";
-import { corsJson, ipHash, sha256Hex, verifyKeySignature } from "./signin.server";
+import { REQUEST_UNLOCK_FAILED, corsJson, ipHash, sha256Hex, verifyKeySignature } from "./signin.server";
 import { requestIp } from "../ip-rate.server";
 
 type Body = {
@@ -84,9 +84,13 @@ export async function handleKeySubmit(request: Request): Promise<Response> {
   const want = pocketFor((history ?? []).map((h) => ({ account: h.account, active: h.status === "active" })));
   if (b.account !== want) return corsJson({ error: "use_pocket", account: want }, 409);
 
+  // Seeds' own one-time key failing to open is Seeds' problem, not a bad signature: say so (503), never "the text didn't match".
+  let recipientPriv: string;
+  try { recipientPriv = await decryptDelegatedKey(req.recipient_priv_ciphertext, `signin-request:${b.token}`); }
+  catch { return corsJson({ error: REQUEST_UNLOCK_FAILED }, 503); }
   let keep: Record<string, string>;
   try {
-    const xprvs = JSON.parse(openSealed(b.payload, await decryptDelegatedKey(req.recipient_priv_ciphertext, `signin-request:${b.token}`), req.recipient_pubkey)) as Record<string, string>;
+    const xprvs = JSON.parse(openSealed(b.payload, recipientPriv, req.recipient_pubkey)) as Record<string, string>;
     keep = {};
     for (const c of chains) {
       if (!xprvs[c] || !checkXprvMatches(c, xprvs[c], xpubs[c])) return corsJson({ error: `key mismatch ${c}` }, 400);

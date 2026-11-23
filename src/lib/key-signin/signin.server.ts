@@ -63,6 +63,9 @@ export function ipHash(ip: string): string {
   return sha256Hex(`seeds-key-ip|${ip}`).slice(0, 32);
 }
 
+/** Seeds could not open its own one-time key for this request (e.g. made just before a settings change): start a new one. */
+export const REQUEST_UNLOCK_FAILED = "Seeds couldn't open this sign-in request. Nothing was saved. Start again on Seeds to get a new code.";
+
 export function corsJson(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
