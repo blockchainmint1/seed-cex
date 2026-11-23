@@ -10,13 +10,18 @@ export const Route = createFileRoute("/invite/$code")({
   staticData: { sitemap: false },
   server: {
     handlers: {
-      GET: async ({ params }) => {
+      GET: async ({ params, request }) => {
         const code = cleanRefCode(params.code);
         const to = code ? referralUrl(code) : "/ignite";
-        return new Response(null, {
-          status: 302,
-          headers: { Location: to, "Cache-Control": "no-store", "X-Robots-Tag": "noindex" },
-        });
+        const headers = new Headers({ Location: to, "Cache-Control": "no-store", "X-Robots-Tag": "noindex" });
+        if (code) {
+          // Admin → Affiliates: count the click (people only, capped) and keep Seeds' own first-touch copy of the code.
+          const { countInviteClick } = await import("@/lib/affiliates.server");
+          await countInviteClick(request.headers, code);
+          if (!/(?:^|;\s*)seeds_ref=/.test(request.headers.get("cookie") ?? ""))
+            headers.append("Set-Cookie", `seeds_ref=${encodeURIComponent(code)}; Max-Age=2592000; Path=/; Secure; SameSite=Lax`);
+        }
+        return new Response(null, { status: 302, headers });
       },
     },
   },

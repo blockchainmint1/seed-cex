@@ -10,5 +10,8 @@ export const getMyInvite = createServerFn({ method: "GET" })
     const { hmeReferralCode } = await import("./hme-hub.server");
     const { inviteUrl } = await import("./ignite-registration");
     const code = await hmeReferralCode(data?.hm_member_id ?? null);
+    // Admin → Affiliates: remember whose code this is.
+    const { rememberOwnCode } = await import("./affiliates.server");
+    await rememberOwnCode(context.userId, code);
     return { url: code ? inviteUrl(code) : null, code };
   });

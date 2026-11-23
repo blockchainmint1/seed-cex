@@ -1,3 +1,4 @@
+import { ReferralCapture } from "@/components/site/ReferralCapture";
 import { HonestMoneyScripts } from "@/components/site/HonestMoneyScripts";
 import { Toaster } from "@/components/ui/sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -175,6 +176,8 @@ function RootComponent() {
         </main>
         <SiteFooter />
         <VisitCounter />
+        {/* Invite codes for Admin → Affiliates. Rollback = delete this line. */}
+        <ReferralCapture />
         <HonestMoneyScripts />
         {/* Prelaunch QA: testers/admins only, switch in Admin → Bugs. Rollback = delete this line. */}
         <FeedbackButton />

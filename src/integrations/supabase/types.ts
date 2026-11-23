@@ -3896,6 +3896,88 @@ export type Database = {
           },
         ]
       }
+      referral_clicks: {
+        Row: {
+          clicks: number
+          code_lc: string
+          day: string
+        }
+        Insert: {
+          clicks?: number
+          code_lc: string
+          day: string
+        }
+        Update: {
+          clicks?: number
+          code_lc?: string
+          day?: string
+        }
+        Relationships: []
+      }
+      referral_codes: {
+        Row: {
+          code: string
+          code_lc: string
+          first_seen_at: string
+          last_seen_at: string
+          user_id: string
+        }
+        Insert: {
+          code: string
+          code_lc: string
+          first_seen_at?: string
+          last_seen_at?: string
+          user_id: string
+        }
+        Update: {
+          code?: string
+          code_lc?: string
+          first_seen_at?: string
+          last_seen_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_codes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      referrals: {
+        Row: {
+          code: string
+          code_lc: string | null
+          recorded_at: string
+          source: string
+          user_id: string
+        }
+        Insert: {
+          code: string
+          code_lc?: string | null
+          recorded_at?: string
+          source: string
+          user_id: string
+        }
+        Update: {
+          code?: string
+          code_lc?: string | null
+          recorded_at?: string
+          source?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referrals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       second_factor_trust: {
         Row: {
           added_at: string
@@ -5001,6 +5083,37 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_affiliates: {
+        Args: { _since: string }
+        Returns: {
+          active_members: number
+          clicks_all: number
+          clicks_since: number
+          code: string
+          code_lc: string
+          ignite_paid: number
+          ignite_started: number
+          link_seen_at: string
+          owner_id: string
+          signups_all: number
+          signups_since: number
+          swap_usd: number
+          swaps: number
+          traded_value: number
+          trades: number
+        }[]
+      }
+      admin_member_activity: {
+        Args: { _ids: string[] }
+        Returns: {
+          last_activity: string
+          swap_usd: number
+          swaps: number
+          traded_value: number
+          trades: number
+          user_id: string
+        }[]
+      }
       ai_sync_ingest: { Args: never; Returns: number }
       ai_sync_request: { Args: { _with_markets?: boolean }; Returns: number }
       api_bump_rate: {
@@ -5011,6 +5124,7 @@ export type Database = {
         Args: { _approval_id: string; _id: string }
         Returns: boolean
       }
+      bump_referral_click: { Args: { _code: string }; Returns: undefined }
       cancel_pocket_withdrawal: {
         Args: { _id: string; _user_id: string }
         Returns: boolean

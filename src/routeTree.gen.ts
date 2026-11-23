@@ -82,6 +82,7 @@ import { Route as AuthenticatedAccountSecurityRouteImport } from './routes/_auth
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as AuthenticatedAdminAccountsRouteImport } from './routes/_authenticated/admin.accounts'
 import { Route as AuthenticatedAdminAdsRouteImport } from './routes/_authenticated/admin.ads'
+import { Route as AuthenticatedAdminAffiliatesRouteImport } from './routes/_authenticated/admin.affiliates'
 import { Route as AuthenticatedAdminAiRouteImport } from './routes/_authenticated/admin.ai'
 import { Route as AuthenticatedAdminIgniteRouteImport } from './routes/_authenticated/admin.ignite'
 import { Route as AuthenticatedAdminListingsRouteImport } from './routes/_authenticated/admin.listings'
@@ -530,6 +531,12 @@ const AuthenticatedAdminAdsRoute = AuthenticatedAdminAdsRouteImport.update({
   path: '/ads',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const AuthenticatedAdminAffiliatesRoute =
+  AuthenticatedAdminAffiliatesRouteImport.update({
+    id: '/affiliates',
+    path: '/affiliates',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminAiRoute = AuthenticatedAdminAiRouteImport.update({
   id: '/ai',
   path: '/ai',
@@ -1007,6 +1014,7 @@ export interface FileRoutesByFullPath {
   '/account/security': typeof AuthenticatedAccountSecurityRoute
   '/admin/accounts': typeof AuthenticatedAdminAccountsRoute
   '/admin/ads': typeof AuthenticatedAdminAdsRoute
+  '/admin/affiliates': typeof AuthenticatedAdminAffiliatesRoute
   '/admin/ai': typeof AuthenticatedAdminAiRoute
   '/admin/ignite': typeof AuthenticatedAdminIgniteRoute
   '/admin/listings': typeof AuthenticatedAdminListingsRoute
@@ -1151,6 +1159,7 @@ export interface FileRoutesByTo {
   '/account/security': typeof AuthenticatedAccountSecurityRoute
   '/admin/accounts': typeof AuthenticatedAdminAccountsRoute
   '/admin/ads': typeof AuthenticatedAdminAdsRoute
+  '/admin/affiliates': typeof AuthenticatedAdminAffiliatesRoute
   '/admin/ai': typeof AuthenticatedAdminAiRoute
   '/admin/ignite': typeof AuthenticatedAdminIgniteRoute
   '/admin/listings': typeof AuthenticatedAdminListingsRoute
@@ -1300,6 +1309,7 @@ export interface FileRoutesById {
   '/_authenticated/account/security': typeof AuthenticatedAccountSecurityRoute
   '/_authenticated/admin/accounts': typeof AuthenticatedAdminAccountsRoute
   '/_authenticated/admin/ads': typeof AuthenticatedAdminAdsRoute
+  '/_authenticated/admin/affiliates': typeof AuthenticatedAdminAffiliatesRoute
   '/_authenticated/admin/ai': typeof AuthenticatedAdminAiRoute
   '/_authenticated/admin/ignite': typeof AuthenticatedAdminIgniteRoute
   '/_authenticated/admin/listings': typeof AuthenticatedAdminListingsRoute
@@ -1450,6 +1460,7 @@ export interface FileRouteTypes {
     | '/account/security'
     | '/admin/accounts'
     | '/admin/ads'
+    | '/admin/affiliates'
     | '/admin/ai'
     | '/admin/ignite'
     | '/admin/listings'
@@ -1594,6 +1605,7 @@ export interface FileRouteTypes {
     | '/account/security'
     | '/admin/accounts'
     | '/admin/ads'
+    | '/admin/affiliates'
     | '/admin/ai'
     | '/admin/ignite'
     | '/admin/listings'
@@ -1742,6 +1754,7 @@ export interface FileRouteTypes {
     | '/_authenticated/account/security'
     | '/_authenticated/admin/accounts'
     | '/_authenticated/admin/ads'
+    | '/_authenticated/admin/affiliates'
     | '/_authenticated/admin/ai'
     | '/_authenticated/admin/ignite'
     | '/_authenticated/admin/listings'
@@ -2436,6 +2449,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminAdsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/affiliates': {
+      id: '/_authenticated/admin/affiliates'
+      path: '/affiliates'
+      fullPath: '/admin/affiliates'
+      preLoaderRoute: typeof AuthenticatedAdminAffiliatesRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/ai': {
       id: '/_authenticated/admin/ai'
       path: '/ai'
@@ -3047,6 +3067,7 @@ const AuthenticatedAdminMarketingRouteWithChildren =
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminAccountsRoute: typeof AuthenticatedAdminAccountsRoute
   AuthenticatedAdminAdsRoute: typeof AuthenticatedAdminAdsRoute
+  AuthenticatedAdminAffiliatesRoute: typeof AuthenticatedAdminAffiliatesRoute
   AuthenticatedAdminAiRoute: typeof AuthenticatedAdminAiRoute
   AuthenticatedAdminIgniteRoute: typeof AuthenticatedAdminIgniteRoute
   AuthenticatedAdminListingsRoute: typeof AuthenticatedAdminListingsRoute
@@ -3066,6 +3087,7 @@ interface AuthenticatedAdminRouteChildren {
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminAccountsRoute: AuthenticatedAdminAccountsRoute,
   AuthenticatedAdminAdsRoute: AuthenticatedAdminAdsRoute,
+  AuthenticatedAdminAffiliatesRoute: AuthenticatedAdminAffiliatesRoute,
   AuthenticatedAdminAiRoute: AuthenticatedAdminAiRoute,
   AuthenticatedAdminIgniteRoute: AuthenticatedAdminIgniteRoute,
   AuthenticatedAdminListingsRoute: AuthenticatedAdminListingsRoute,

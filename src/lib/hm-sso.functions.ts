@@ -21,6 +21,8 @@ export const redeemHonestMoneyToken = createServerFn({ method: "POST" })
       const { attachMembership } = await import("./key-signin/attach.server");
       const tokenHash = await attachMembership({ accessToken: data.attach, minerId: p.minerId, email: ticketEmail });
       await sendHubEvent({ event: "signup", member_id: p.minerId, ref: data.ref, metadata: { via: "seeds-key-attach" } });
+      const { data: attached } = await supabaseAdmin.from("profiles").select("id").eq("hm_member_id", p.minerId).maybeSingle();
+      if (attached) await (await import("./affiliates.server")).recordReferral(attached.id, data.ref, "attach");
       return { tokenHash };
     }
     // The permanent UUID finds the existing account even after a contact-email change.
@@ -85,6 +87,7 @@ export const redeemHonestMoneyToken = createServerFn({ method: "POST" })
       }
     }
 
+    if (isNew && userId) await (await import("./affiliates.server")).recordReferral(userId, data.ref, "sso");
     await sendHubEvent({ event: isNew ? "signup" : "service_used", member_id: p.minerId, ref: data.ref, metadata: { via: "sso" } });
     return { tokenHash: link.data.properties.hashed_token };
   });

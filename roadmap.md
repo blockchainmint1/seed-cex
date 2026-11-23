@@ -397,3 +397,8 @@
 - [x] Coin teams pay through NectarPay right after applying (Bobby: right after applying); declined coins refunded by hand
 - [x] Auditor note + tests
 - [ ] A real NectarPay test payment for a listing, and auditor review, before publishing (blocked: needs Bobby / auditor)
+
+## Admin → Affiliates (Nov 23)
+- [x] Record which invite code each new member joined with; count invite clicks; learn code owners
+- [x] /admin/affiliates: totals, new members per day, per-code clicks/sign-ups/trading/swaps/TSD/Ignite seats, new members list with trading + TSD
+- [ ] Auditor review before publishing (blocked: auditor)

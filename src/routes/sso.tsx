@@ -1,3 +1,4 @@
+import { storedSignupRef } from "@/lib/referral-capture";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
@@ -40,8 +41,9 @@ function Sso() {
     if (!token) return setError("Missing sign-in ticket.");
     (async () => {
       try {
-        // Honest.Money's script doesn't run on this page (audit M4), so read the referral it saved directly.
-        const ref = savedHmRef() || undefined;
+        // Honest.Money's script doesn't run on this page (audit M4), so read the referral it saved directly
+        // (then Seeds' own copy from an invite link).
+        const ref = savedHmRef() || storedSignupRef() || undefined;
         // "Join Honest.Money" from a coin / wallet account: attach to the account signed in here.
         let attach: string | undefined;
         try {
