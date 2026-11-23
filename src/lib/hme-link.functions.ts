@@ -27,7 +27,7 @@ export const getMyHmeLink = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin.from("hme_links")
-      .select("id, mode, account, paths, xpubs, created_at, identity_address, key_ciphertext")
+      .select("id, mode, account, paths, xpubs, created_at, identity_address, key_ciphertext, vault_fingerprint")
       .eq("user_id", context.userId).eq("status", "active").maybeSingle();
     if (error) throw new Error("Could not read your HME Wallet link. Try again.");
     // Most recent retired link, so the user can tell which wallet/pocket used to hold their funds.
@@ -82,6 +82,8 @@ export const getMyHmeLink = createServerFn({ method: "GET" })
           id: data.id, mode: data.mode, account: data.account, paths: data.paths as string[],
           created_at: data.created_at, addresses, pending,
           identityAddress: data.identity_address as string,
+          /** HME Vault seed ID this pocket was linked with ("Vault 73c5da0a"), display only. */
+          vaultName: data.vault_fingerprint ? `Vault ${data.vault_fingerprint}` : null,
           keyHeld: Boolean(data.key_ciphertext),
           justUpdated,
           withdrawals,

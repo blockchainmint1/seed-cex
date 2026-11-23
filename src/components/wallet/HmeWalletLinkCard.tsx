@@ -98,6 +98,7 @@ export function HmeWalletLinkCard({ showBalances = true, className = "border-y b
           </p>
           <div className="rounded-md bg-accent/60 px-3 py-2.5 ring-1 ring-primary/25">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">{keyKind ? "Set up by" : "Linked wallet"}</p>
+            {l.vaultName ? <p className="mt-1 font-semibold text-foreground">{l.vaultName} <span className="text-xs font-normal text-muted-foreground">· the seed ID HME Vault shows next to this seed</span></p> : null}
             <div className="mt-1 flex flex-wrap items-center gap-2">
               <button
                 type="button"

@@ -28,6 +28,8 @@ export async function submitKeyLink(p: {
   chains: LinkChain[];
   xpubs: Record<string, string>;
   payload: string;
+  /** Verified HME Vault seed ID (submit.server.ts): labels this pocket only, never the member's profile. */
+  vaultFingerprint?: string | null;
 }): Promise<Response> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const userId = p.linkUserId;
@@ -83,7 +85,7 @@ export async function submitKeyLink(p: {
     // Sealed for the link id it will get, so the KMS context matches when the screen applies it.
     const pendingId = crypto.randomUUID();
     const pending = {
-      link_id: pendingId, account: p.account, paths: p.paths, xpubs: p.xpubs, identity: p.identity, kind: p.kind,
+      link_id: pendingId, account: p.account, paths: p.paths, xpubs: p.xpubs, identity: p.identity, kind: p.kind, vault_fingerprint: p.vaultFingerprint ?? null,
       key_ciphertext: await encryptDelegatedKey(JSON.stringify(keep), `link:${pendingId}`),
     };
     const { error } = await supabaseAdmin.from("key_signin_requests")
@@ -115,8 +117,11 @@ export async function submitKeyLink(p: {
     const { error: le } = await supabaseAdmin.from("hme_links").insert({
       id: newLinkId, user_id: userId, mode: "access", account: p.account, paths: p.paths, identity_address: p.identity,
       xpubs: p.xpubs, key_ciphertext: await encryptDelegatedKey(JSON.stringify(keep), `link:${newLinkId}`), source: "seeds_key", key_kind: p.kind,
+      ...(p.vaultFingerprint ? { vault_fingerprint: p.vaultFingerprint } : {}),
     });
     if (le) return corsJson({ error: "store failed" }, 500);
+  } else if (p.vaultFingerprint) {
+    await supabaseAdmin.from("hme_links").update({ vault_fingerprint: p.vaultFingerprint }).eq("id", active!.id).is("vault_fingerprint", null);
   }
   await supabaseAdmin.from("key_signin_requests")
     .update({ user_id: userId, identity_kind: p.kind, created_account: false, replaced_at: new Date().toISOString() })

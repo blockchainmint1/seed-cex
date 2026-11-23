@@ -8,11 +8,11 @@
  */
 import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { IDENTITY_LABEL, REPLACE_CODE_TRIES, replaceConfirmProblem } from "./rules";
+import { IDENTITY_LABEL, REPLACE_CODE_TRIES, replaceConfirmProblem, vaultRename } from "./rules";
 
 const SITE = "https://seeds.honest.money";
 
-type Pending = { link_id?: string; account: number; paths: string[]; xpubs: Record<string, string>; identity: string; kind?: string; key_ciphertext: string };
+type Pending = { link_id?: string; account: number; paths: string[]; xpubs: Record<string, string>; identity: string; kind?: string; key_ciphertext: string; vault_fingerprint?: string | null };
 
 async function telegramTo(userId: string, text: string, linkId?: string): Promise<void> {
   const { sendTelegram, telegramConfigured, telegramActionKey } = await import("@/lib/telegram.server");
@@ -159,8 +159,18 @@ export async function confirmHeldReplace(i: { challengeId: string; code: string 
   const { error: le } = await supabaseAdmin.from("hme_links").insert({
     ...(p.link_id ? { id: p.link_id } : {}), user_id: r.user_id, mode: "access", account: p.account, paths: p.paths, identity_address: p.identity,
     xpubs: p.xpubs, key_ciphertext: p.key_ciphertext, source: "seeds_key", ...(kindOk ? { key_kind: p.kind } : {}),
+    ...(p.kind === "coin" && p.vault_fingerprint && /^[0-9a-f]{8}$/.test(p.vault_fingerprint) ? { vault_fingerprint: p.vault_fingerprint } : {}),
   });
   if (le) throw new Error("Couldn't save the new pocket link. Start again.");
+  // Sign-in mode only (never an Honest.Money member's profile): Seeds' starting coin name becomes "Vault <ID>".
+  if (!linkMode && p.kind === "coin") {
+    const { data: prof } = await supabaseAdmin.from("profiles").select("display_name, identity_kind").eq("id", r.user_id).maybeSingle();
+    const next = prof?.identity_kind === "coin" ? vaultRename(prof.display_name, p.identity, p.vault_fingerprint) : null;
+    if (next) {
+      const q = supabaseAdmin.from("profiles").update({ display_name: next }).eq("id", r.user_id).eq("identity_kind", "coin");
+      await (prof?.display_name == null ? q.is("display_name", null) : q.eq("display_name", prof.display_name));
+    }
+  }
   if (linkMode) {
     const what = (IDENTITY_LABEL[p.kind ?? ""] ?? "key").toLowerCase();
     await telegramTo(r.user_id, `🔑 <b>Seeds security</b>\nYour trading pocket is now linked to your ${what}, after a "confirm it's you" check. Seeds never saw your recovery phrase. If this wasn't you, revoke Seeds' access in Security now and contact support@honest.money.\n\n<a href="${SITE}/account/security">Open Security</a>`, p.link_id).catch(() => undefined);

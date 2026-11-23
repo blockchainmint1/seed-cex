@@ -1122,6 +1122,7 @@ export type Database = {
           source: string
           status: string
           user_id: string
+          vault_fingerprint: string | null
           xpubs: Json
         }
         Insert: {
@@ -1138,6 +1139,7 @@ export type Database = {
           source?: string
           status?: string
           user_id: string
+          vault_fingerprint?: string | null
           xpubs: Json
         }
         Update: {
@@ -1154,6 +1156,7 @@ export type Database = {
           source?: string
           status?: string
           user_id?: string
+          vault_fingerprint?: string | null
           xpubs?: Json
         }
         Relationships: []
@@ -1456,6 +1459,7 @@ export type Database = {
           replace_tries: number
           replaced_at: string | null
           user_id: string | null
+          vault_fingerprint: string | null
           vault_request: Json | null
         }
         Insert: {
@@ -1477,6 +1481,7 @@ export type Database = {
           replace_tries?: number
           replaced_at?: string | null
           user_id?: string | null
+          vault_fingerprint?: string | null
           vault_request?: Json | null
         }
         Update: {
@@ -1498,6 +1503,7 @@ export type Database = {
           replace_tries?: number
           replaced_at?: string | null
           user_id?: string | null
+          vault_fingerprint?: string | null
           vault_request?: Json | null
         }
         Relationships: []

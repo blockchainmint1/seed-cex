@@ -248,6 +248,34 @@ export function startingName(kind: KeyKind, identity: string): string {
   return `Wallet ${short}`;
 }
 
+/**
+ * HME Vault seed ID (Bobby, Nov 23): the 8-character ID Vault shows beside the seed name (BIP32 master
+ * fingerprint, lowercase hex), signed by the coin over the exact handoff (vault-label.ts). A display label
+ * only — never a sign-in, matching, ownership or pocket input; 32 bits, so two seeds can share one.
+ */
+export function vaultName(fingerprint: string): string {
+  return `Vault ${fingerprint}`;
+}
+
+/** Name shown for a key on both screens: "Vault 73c5da0a" when Vault vouched for its seed ID, else shortKeyName. */
+export function keyName(kind: KeyKind, identity: string, vaultFingerprint?: string | null): string {
+  return kind === "coin" && typeof vaultFingerprint === "string" && /^[0-9a-f]{8}$/.test(vaultFingerprint)
+    ? vaultName(vaultFingerprint)
+    : shortKeyName(kind, identity);
+}
+
+/**
+ * New display name for an existing coin account that signed in through HME Vault, or null to keep it.
+ * Only Seeds' own starting name ("Coin ZZCuca") or an empty name is replaced; a name the member chose stays.
+ */
+export function vaultRename(current: string | null | undefined, identity: string, fingerprint: string | null | undefined): string | null {
+  if (!fingerprint || !/^[0-9a-f]{8}$/.test(fingerprint)) return null;
+  const name = String(current ?? "").trim();
+  if (name && name !== startingName("coin", identity)) return null;
+  const next = vaultName(fingerprint);
+  return name === next ? null : next;
+}
+
 /** The email to show a member, or null for a coin / wallet account that hasn't added one. */
 export function shownEmail(email: string | null | undefined): string | null {
   return isPlaceholderEmail(email) ? null : (email as string);

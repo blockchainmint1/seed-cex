@@ -73,16 +73,17 @@ export const claimKeySignin = createServerFn({ method: "POST" })
     const { sameDigest, sha256Hex } = await import("./signin.server");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: r } = await supabaseAdmin.from("key_signin_requests")
-      .select("browser_secret_hash, expires_at, consumed_at, user_id, created_account, claimed_at, replace_link_id, pending_link").eq("challenge_id", data.id).maybeSingle();
+      .select("browser_secret_hash, expires_at, consumed_at, user_id, created_account, claimed_at, replace_link_id, pending_link, vault_fingerprint").eq("challenge_id", data.id).maybeSingle();
     if (!r || !sameDigest(r.browser_secret_hash, sha256Hex(data.secret))) return { status: "expired" as const };
     if (r.claimed_at) return { status: "used" as const };
     if (!r.consumed_at || !r.user_id) return { status: new Date(r.expires_at) < new Date() ? ("expired" as const) : ("waiting" as const) };
     const { data: won } = await supabaseAdmin.from("key_signin_requests").update({ claimed_at: new Date().toISOString() })
       .eq("challenge_id", data.id).is("claimed_at", null).select("challenge_id");
     if (!won?.length) return { status: "used" as const };
-    const { isKeyKind, shortKeyName } = await import("./rules");
+    const { isKeyKind, keyName } = await import("./rules");
     const { data: p } = await supabaseAdmin.from("profiles").select("identity_kind, identity_address").eq("id", r.user_id).maybeSingle();
-    const who = p && isKeyKind(p.identity_kind) && p.identity_address ? shortKeyName(p.identity_kind, p.identity_address) : "this key";
+    // Same name the Seeds Key page shows: "Vault 73c5da0a" when Vault sent its seed ID, else "Coin ZZCuca".
+    const who = p && isKeyKind(p.identity_kind) && p.identity_address ? keyName(p.identity_kind, p.identity_address, r.vault_fingerprint) : "this key";
     // Different pocket keys than the active link: nothing is applied or signed in until this screen approves
     // (with a fresh authenticator code when the member uses one) — see replace.server.ts.
     if (r.replace_link_id && r.pending_link) {
@@ -147,7 +148,7 @@ async function myLinkRequest(id: string, secret: string, userId: string) {
   const { sameDigest, sha256Hex } = await import("./signin.server");
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data: r } = await supabaseAdmin.from("key_signin_requests")
-    .select("browser_secret_hash, expires_at, consumed_at, user_id, link_user_id, claimed_at, pending_link, replaced_at")
+    .select("browser_secret_hash, expires_at, consumed_at, user_id, link_user_id, claimed_at, pending_link, replaced_at, vault_fingerprint")
     .eq("challenge_id", id).maybeSingle();
   if (!r || r.link_user_id !== userId || !sameDigest(r.browser_secret_hash, sha256Hex(secret))) return null;
   return r;
@@ -166,9 +167,9 @@ export const claimKeyLink = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     // The 10-minute approval window starts the first time this screen sees the held key.
     if (!r.claimed_at) await supabaseAdmin.from("key_signin_requests").update({ claimed_at: new Date().toISOString() }).eq("challenge_id", data.id).is("claimed_at", null);
-    const { isKeyKind, shortKeyName } = await import("./rules");
-    const pending = r.pending_link as { kind?: string; identity?: string };
-    const who = isKeyKind(pending.kind) && pending.identity ? shortKeyName(pending.kind, pending.identity) : "this key";
+    const { isKeyKind, keyName } = await import("./rules");
+    const pending = r.pending_link as { kind?: string; identity?: string; vault_fingerprint?: string | null };
+    const who = isKeyKind(pending.kind) && pending.identity ? keyName(pending.kind, pending.identity, pending.vault_fingerprint ?? r.vault_fingerprint) : "this key";
     // H1: approving needs "confirm it's you" (StepUp panel), not just this signed-in tab.
     return { status: "confirm" as const, who, kind: isKeyKind(pending.kind) ? pending.kind : null, needsCode: false };
   });

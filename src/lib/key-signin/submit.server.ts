@@ -7,14 +7,26 @@
 import { ACCEPTED_CHAINS, ALLOWED_CHAINS, type LinkChain, chainForPath, checkXprvMatches, linkDomainFor, openSealed, parseExtKey, payloadSha256 } from "../hme-link.server";
 import { replaceProblem } from "../hme-link-rules";
 import { decryptDelegatedKey, encryptDelegatedKey } from "../delegation.server";
-import { NEW_ACCOUNTS_PER_IP_HOUR, NEW_KEY_ACCOUNTS_ALARM_GAP_MS, NEW_KEY_ACCOUNTS_ALARM_PER_HOUR, secondAccountProblem, shouldAlarmNewAccounts, isKeyKind, keepExistingLink, keyHostOf, keySigninMessage, keysDiffer, normalizeIdentity, placeholderEmail, pocketFor, startingName, type KeyKind } from "./rules";
+import { NEW_ACCOUNTS_PER_IP_HOUR, NEW_KEY_ACCOUNTS_ALARM_GAP_MS, NEW_KEY_ACCOUNTS_ALARM_PER_HOUR, secondAccountProblem, shouldAlarmNewAccounts, isKeyKind, keepExistingLink, keyHostOf, keySigninMessage, keysDiffer, normalizeIdentity, placeholderEmail, pocketFor, startingName, vaultName, vaultRename, type KeyKind } from "./rules";
+import { readVaultLabel } from "./vault-label";
 import { REQUEST_UNLOCK_FAILED, corsJson, ipHash, sha256Hex, verifyKeySignature } from "./signin.server";
 import { requestIp } from "../ip-rate.server";
 
 type Body = {
   token?: string; kind?: string; identity_address?: string; account?: number; paths?: string[];
   xpubs?: Record<string, string>; payload?: string; message?: string; signature?: string;
+  /** Optional HME Vault seed ID + the coin's signature over it (vault-label.ts); both or neither. */
+  vault_fingerprint?: unknown; vault_label_signature?: unknown;
 };
+
+/** Seeds' starting name → "Vault <ID>" for an existing coin account (compare-and-set: a name changed meanwhile stays). */
+async function renameForVault(userId: string, current: string | null, identity: string, fingerprint: string | null) {
+  const next = vaultRename(current, identity, fingerprint);
+  if (!next) return;
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const q = supabaseAdmin.from("profiles").update({ display_name: next }).eq("id", userId).eq("identity_kind", "coin");
+  await (current == null ? q.is("display_name", null) : q.eq("display_name", current));
+}
 
 export async function handleKeySubmit(request: Request): Promise<Response> {
   let b: Body;
@@ -60,17 +72,31 @@ export async function handleKeySubmit(request: Request): Promise<Response> {
   if (b.message !== expected) return corsJson({ error: "message mismatch", expected }, 400);
   if (!verifyKeySignature(kind, b.identity_address!.trim(), b.message, b.signature)) return corsJson({ error: "bad signature" }, 401);
 
+  // HME Vault seed ID (display only, checked before anything is used up): either field means both, a coin
+  // sign-in, eight lowercase hex characters and a second signature by the same coin over exactly this
+  // handoff. Seeds Key only relays it; a bad one is refused, never silently dropped. Older Vaults send neither.
+  let vaultFp: string | null = null;
+  if (b.vault_fingerprint !== undefined || b.vault_label_signature !== undefined) {
+    if (kind !== "coin") return corsJson({ error: "bad vault label" }, 400);
+    try {
+      const label = readVaultLabel(b as unknown as Record<string, unknown>, b.message, b.identity_address!.trim(), (i, m, s) => verifyKeySignature("coin", i, m, s));
+      vaultFp = label?.vault_fingerprint ?? null;
+    } catch {
+      return corsJson({ error: "bad vault label" }, 400);
+    }
+  }
+
   // Started by a signed-in Honest.Money member: the key joins THAT account as its trading pocket (link.server.ts).
   if (req.link_user_id) {
     const { submitKeyLink } = await import("./link.server");
     return submitKeyLink({
       token: b.token, linkUserId: req.link_user_id, recipientPrivCiphertext: req.recipient_priv_ciphertext, recipientPubkey: req.recipient_pubkey,
-      kind, identity, account: b.account!, paths: b.paths, chains, xpubs, payload: b.payload,
+      kind, identity, account: b.account!, paths: b.paths, chains, xpubs, payload: b.payload, vaultFingerprint: vaultFp,
     });
   }
 
   // Who is this? A coin/wallet account is found by its identity, never by email.
-  const { data: prof } = await supabaseAdmin.from("profiles").select("id, hm_status")
+  const { data: prof } = await supabaseAdmin.from("profiles").select("id, hm_status, display_name")
     .eq("identity_kind", kind).eq("identity_address", identity).maybeSingle();
   if (prof && prof.hm_status && prof.hm_status !== "active" && prof.hm_status !== "oceanfront")
     return corsJson({ error: "This account is not active. Contact support@honest.money." }, 403);
@@ -100,7 +126,7 @@ export async function handleKeySubmit(request: Request): Promise<Response> {
 
   // Single use: burn the challenge before creating or changing anything.
   const { data: burned } = await supabaseAdmin.from("key_signin_requests")
-    .update({ consumed_at: new Date().toISOString() }).eq("challenge_id", b.token).is("consumed_at", null).select("challenge_id");
+    .update({ consumed_at: new Date().toISOString(), vault_fingerprint: vaultFp }).eq("challenge_id", b.token).is("consumed_at", null).select("challenge_id");
   if (!burned?.length) return corsJson({ error: "already used" }, 409);
 
   let userId = prof?.id ?? null;
@@ -114,7 +140,7 @@ export async function handleKeySubmit(request: Request): Promise<Response> {
     const u = await supabaseAdmin.auth.admin.createUser({ email, email_confirm: true, user_metadata: { identity_kind: kind, sso: "seeds-key" } });
     if (u.error || !u.data.user) return corsJson({ error: "Could not create your Seeds account. Try again." }, 500);
     userId = u.data.user.id;
-    const { error: pe } = await supabaseAdmin.from("profiles").upsert({ id: userId, identity_kind: kind, identity_address: identity, display_name: startingName(kind, identity) }, { onConflict: "id" });
+    const { error: pe } = await supabaseAdmin.from("profiles").upsert({ id: userId, identity_kind: kind, identity_address: identity, display_name: vaultFp ? vaultName(vaultFp) : startingName(kind, identity) }, { onConflict: "id" });
     if (pe) {
       await supabaseAdmin.auth.admin.deleteUser(userId);
       return corsJson({ error: "This key already has a Seeds account. Try again." }, 409);
@@ -146,7 +172,7 @@ export async function handleKeySubmit(request: Request): Promise<Response> {
   // member's screen approves it (with a fresh authenticator code when they use one), and tell them first.
   if (active && keysDiffer({ account: active.account, xpubs: active.xpubs as Record<string, string> }, { account: b.account!, xpubs })) {
     const pendingId = crypto.randomUUID();
-    const pending = { link_id: pendingId, account: b.account!, paths: b.paths, xpubs, identity, kind, key_ciphertext: await encryptDelegatedKey(JSON.stringify(keep), `link:${pendingId}`) };
+    const pending = { link_id: pendingId, account: b.account!, paths: b.paths, xpubs, identity, kind, vault_fingerprint: vaultFp, key_ciphertext: await encryptDelegatedKey(JSON.stringify(keep), `link:${pendingId}`) };
     const { error: he } = await supabaseAdmin.from("key_signin_requests")
       .update({ user_id: userId, identity_kind: kind, created_account: false, replace_link_id: active.id, pending_link: pending })
       .eq("challenge_id", b.token);
@@ -167,6 +193,9 @@ export async function handleKeySubmit(request: Request): Promise<Response> {
     });
     if (keep) {
       await supabaseAdmin.from("key_signin_requests").update({ user_id: userId, identity_kind: kind, created_account: false }).eq("challenge_id", b.token);
+      // Same keys: the link keeps its row; a Vault seed ID is added once if it has none (never changed).
+      if (vaultFp) await supabaseAdmin.from("hme_links").update({ vault_fingerprint: vaultFp }).eq("id", active.id).is("vault_fingerprint", null);
+      if (!created) await renameForVault(userId, prof?.display_name ?? null, identity, vaultFp);
       return corsJson({ linked_to: "Seeds Exchange", signed_in: true, new_account: false, pocket: b.account });
     }
   }
@@ -178,8 +207,10 @@ export async function handleKeySubmit(request: Request): Promise<Response> {
   const { error: le } = await supabaseAdmin.from("hme_links").insert({
     id: newLinkId, user_id: userId, mode: "access", account: b.account!, paths: b.paths, identity_address: identity,
     xpubs, key_ciphertext: await encryptDelegatedKey(JSON.stringify(keep), `link:${newLinkId}`), source: "seeds_key", key_kind: kind,
+    ...(vaultFp ? { vault_fingerprint: vaultFp } : {}),
   });
   if (le) return corsJson({ error: "store failed" }, 500);
+  if (!created) await renameForVault(userId, prof?.display_name ?? null, identity, vaultFp);
 
   await supabaseAdmin.from("key_signin_requests").update({ user_id: userId, identity_kind: kind, created_account: created }).eq("challenge_id", b.token);
   return corsJson({ linked_to: "Seeds Exchange", signed_in: true, new_account: created, pocket: b.account });
