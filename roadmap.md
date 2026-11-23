@@ -368,3 +368,12 @@
 - [x] L4 liquidation price: dropped with TXC (Bobby, Nov 22)
 - [ ] C4: split the order watch across more runs once a few hundred members hold orders (later)
 - [ ] Auditor re-check of C1–C3, C5 and the Lend switch-off + L1/L5 (blocked: auditor)
+
+## Auditor bundle (Nov 22, late) — key-link, Vault, bug tracker (waiting on Bobby's picks)
+- [ ] H1 second-channel approval for linking a coin/wallet to an HME account (blocked: Bobby picks approach)
+- [ ] H2 warn before a held key is applied; H3 migration checklist note (blocked: Bobby's pick)
+- [ ] V1 Vault request signing key into AWS KMS (blocked: Bobby's call + new AWS key)
+- [ ] V2 pairing code in shared Vault rules file (HME Vault shows it); V3 extra-password wording on Seeds Key page (other projects)
+- [ ] QA group: full text vs title-only (blocked: Bobby — is the group staff only?); error-log new-group hourly cap
+- [ ] Send auditor the Coins-in-trades/Lend fixes + Cancel all (blocked: Bobby forwards the note)
+
