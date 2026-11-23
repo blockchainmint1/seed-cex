@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { addressSearchTerm, defaultDir, isSortKey, MAX_TSD_READS, pageInfo, pageOf, pageSize, tsdReadIds } from "./admin-accounts";
+import { CALLED_OFF_FILTER, DEFAULT_SORT, LINK_ADDRESS_RETRY_MS, addressSearchTerm, countsAsTraded, defaultDir, isSortKey, MAX_TSD_READS, pageInfo, pageOf, pageSize, tsdReadIds } from "./admin-accounts";
 
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 
@@ -41,4 +41,19 @@ describe("client-side paging (smaller admin tables)", () => {
   const rows = Array.from({ length: 69 }, (_, i) => i);
   test("a page past the end snaps back to the last page", () => expect(pageOf(rows, 9, 25).page).toBe(2));
   test("no rows still reads as page 1 of 1", () => expect(pageOf([], 3, 25)).toMatchObject({ page: 0, pages: 1, from: 0, to: 0 }));
+});
+
+describe("reviewer notes (Nov 23 2026)", () => {
+  test("the page opens on join date, newest first", () => expect(DEFAULT_SORT).toEqual({ key: "createdAt", dir: "desc" }));
+  test("timed-out and refunded matches never count as traded", () => {
+    expect(countsAsTraded("timed_out")).toBe(false);
+    expect(countsAsTraded("refunded")).toBe(false);
+  });
+  test("settled and still-settling trades do count", () => {
+    expect(countsAsTraded("settled")).toBe(true);
+    expect(countsAsTraded("matched")).toBe(true);
+    expect(countsAsTraded("disputed")).toBe(true);
+  });
+  test("the database filter is the same list", () => expect(CALLED_OFF_FILTER).toBe("(timed_out,refunded)"));
+  test("a damaged link is retried once a day", () => expect(LINK_ADDRESS_RETRY_MS).toBe(86_400_000));
 });

@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { CALLED_OFF_FILTER } from "./admin-accounts";
 
 export type PublicStats = {
   generatedAt: string;
@@ -51,10 +52,12 @@ export const getPublicStats = createServerFn({ method: "GET" }).handler(
       wiped,
     ] = await Promise.all([
       allSnapshots().catch(() => []),
-      supabaseAdmin.from("trades").select("id", { count: "exact", head: true }),
+      // Matches called off before anything moved never traded (same rule as the tape and Admin).
+      supabaseAdmin.from("trades").select("id", { count: "exact", head: true }).not("status", "in", CALLED_OFF_FILTER),
       supabaseAdmin
         .from("trades")
         .select("id", { count: "exact", head: true })
+        .not("status", "in", CALLED_OFF_FILTER)
         .gte("created_at", since),
       supabaseAdmin
         .from("orders")

@@ -1568,6 +1568,32 @@ export type Database = {
         }
         Relationships: []
       }
+      link_address_tries: {
+        Row: {
+          link_id: string
+          tried_at: string
+          tries: number
+        }
+        Insert: {
+          link_id: string
+          tried_at?: string
+          tries?: number
+        }
+        Update: {
+          link_id?: string
+          tried_at?: string
+          tries?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "link_address_tries_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: true
+            referencedRelation: "hme_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       listing_applications: {
         Row: {
           admin_note: string | null

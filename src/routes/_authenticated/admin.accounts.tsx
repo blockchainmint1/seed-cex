@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { getAdminAccounts, getAdminMemberAddresses, getAdminTsdBalances } from "@/lib/admin-members.functions";
 import { TabTitle, inputCls } from "@/components/account/ui";
 import { Loading, Pager, SortHeader, short } from "@/components/admin/ui";
-import { PAGE_SIZES, defaultDir, pageInfo, type AccountSortKey } from "@/lib/admin-accounts";
+import { DEFAULT_SORT, PAGE_SIZES, defaultDir, pageInfo, type AccountSortKey } from "@/lib/admin-accounts";
 import { fmtAgo, fmtAmount } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/admin/accounts")({
@@ -29,7 +29,7 @@ export const Route = createFileRoute("/_authenticated/admin/accounts")({
 function AccountsPage() {
   const [search, setSearch] = useState("");
   const [q, setQ] = useState("");
-  const [sort, setSort] = useState<{ key: AccountSortKey; dir: "asc" | "desc" }>({ key: "tradedQuoteValue", dir: "desc" });
+  const [sort, setSort] = useState<{ key: AccountSortKey; dir: "asc" | "desc" }>(DEFAULT_SORT);
   const [page, setPage] = useState(0);
   const [size, setSize] = useState<number>(PAGE_SIZES[0]);
   const [open, setOpen] = useState<{ userId: string; name: string } | null>(null);

@@ -10,7 +10,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireAdmin } from "./admin-guard";
 import type { AdminAccountRow } from "./admin.functions";
-import { MAX_ADDRESS_HITS, addressSearchTerm, isSortKey, pageSize, tsdReadIds, type AccountSortKey } from "./admin-accounts";
+import { DEFAULT_SORT, MAX_ADDRESS_HITS, addressSearchTerm, isSortKey, pageSize, tsdReadIds, type AccountSortKey } from "./admin-accounts";
 
 export type AdminPocketAddress = { pocket: string; name: string; covers: string[]; address: string };
 export type AdminMemberAddresses = {
@@ -35,7 +35,7 @@ export const getAdminAccounts = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { q?: string; sort?: string; dir?: string; page?: number; size?: number }) => ({
     q: typeof d?.q === "string" ? d.q.slice(0, 120) : "",
-    sort: (isSortKey(d?.sort) ? d.sort : "tradedQuoteValue") as AccountSortKey,
+    sort: (isSortKey(d?.sort) ? d.sort : DEFAULT_SORT.key) as AccountSortKey,
     desc: d?.dir !== "asc",
     page: Number.isInteger(d?.page) && (d.page as number) >= 0 ? Math.min(d.page as number, 100_000) : 0,
     size: pageSize(d?.size),

@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { adminGate, adminUnlockedUntil, hasAdminRole, requireAdmin, type AdminGate } from "./admin-guard";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { countsAsTraded } from "./admin-accounts";
 
 export type AdminAccountRow = {
   userId: string;
@@ -176,7 +177,10 @@ export const getAdminOverview = createServerFn({ method: "GET" })
     const quoteValue = (t: (typeof tradeRows)[number]) => Number(t.price) * Number(t.amount);
 
     const openTradeRows = tradeRows.filter((t) => OPEN_TRADE_STATUSES.includes(t.status));
-    const trades24hRows = tradeRows.filter((t) => t.created_at >= since);
+    // Called-off matches (timed out / refunded) never traded: leave them out of the
+    // counts and value so the admin figures match the public market page.
+    const tradedRows = tradeRows.filter((t) => countsAsTraded(t.status));
+    const trades24hRows = tradedRows.filter((t) => t.created_at >= since);
 
     return {
       generatedAt: new Date().toISOString(),
@@ -188,9 +192,9 @@ export const getAdminOverview = createServerFn({ method: "GET" })
         openOrders: orderRows.filter((o) => o.status === "open" || o.status === "partial").length,
         openTrades: openTradeRows.length,
         trades24h: trades24hRows.length,
-        tradesAll: tradeRows.length,
+        tradesAll: tradedRows.length,
         tradedQuoteValue24h: trades24hRows.reduce((a, t) => a + quoteValue(t), 0),
-        tradedQuoteValueAll: tradeRows.reduce((a, t) => a + quoteValue(t), 0),
+        tradedQuoteValueAll: tradedRows.reduce((a, t) => a + quoteValue(t), 0),
         failedLegs: escrowRows.filter((e) => /fail/.test(e.status)).length,
         pendingLegs: escrowRows.filter((e) => /awaiting|funding|confirmed/.test(e.status)).length,
         apiKeys: apiKeys.count ?? 0,

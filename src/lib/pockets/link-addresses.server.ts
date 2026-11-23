@@ -52,7 +52,19 @@ export async function backfillLinkAddresses(limit = 25): Promise<{ saved: number
   const list = ((ids ?? []) as unknown as string[]).filter(Boolean);
   if (!list.length) return { saved: 0 };
   const { data: links } = await supabaseAdmin.from("hme_links").select("id, user_id, account, paths, xpubs").in("id", list);
+  const { data: prior } = await supabaseAdmin.from("link_address_tries").select("link_id, tries").in("link_id", list);
+  const triesBy = new Map((prior ?? []).map((r) => [r.link_id, r.tries]));
   let saved = 0;
-  for (const l of links ?? []) { if ((await saveLinkAddresses(l as LinkKeys)).length) saved++; }
+  const broken: { link_id: string; tried_at: string; tries: number }[] = [];
+  for (const l of links ?? []) {
+    if ((await saveLinkAddresses(l as LinkKeys)).length) saved++;
+    // Nothing could be worked out from this link's keys: wait a day before trying again
+    // (links_missing_addresses skips it), so a damaged link never retries every 5 minutes.
+    else broken.push({ link_id: l.id, tried_at: new Date().toISOString(), tries: (triesBy.get(l.id) ?? 0) + 1 });
+  }
+  if (broken.length) {
+    const { error } = await supabaseAdmin.from("link_address_tries").upsert(broken, { onConflict: "link_id" });
+    if (error) console.error("[pocket-addresses] retry note failed", error.message);
+  }
   return { saved };
 }

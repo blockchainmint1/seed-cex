@@ -6,6 +6,22 @@
 export type AccountSortKey = "displayName" | "createdAt" | "hasVault" | "activeAuthorizations" | "authorizedCap" | "openOrders" | "trades" | "tradedQuoteValue" | "lastActivity";
 export const SORT_KEYS: readonly AccountSortKey[] = ["displayName", "createdAt", "hasVault", "activeAuthorizations", "authorizedCap", "openOrders", "trades", "tradedQuoteValue", "lastActivity"];
 export const PAGE_SIZES = [25, 50, 100] as const;
+/**
+ * The page opens on join date, newest first: the database picks those rows first and
+ * only totals up the page. Activity sorts (Value, Trades…) total every member first.
+ */
+export const DEFAULT_SORT: { key: AccountSortKey; dir: "asc" | "desc" } = { key: "createdAt", dir: "desc" };
+/** Matches called off before anything moved. They never traded, so no count or value includes them (same as the public tape). */
+export const CALLED_OFF_TRADE_STATUSES = ["timed_out", "refunded"] as const;
+/** The same list as a PostgREST `not.in` filter value. */
+export const CALLED_OFF_FILTER = `(${CALLED_OFF_TRADE_STATUSES.join(",")})`;
+/** A broken link (no address can be worked out from its keys) is retried once a day, not every 5 minutes. */
+export const LINK_ADDRESS_RETRY_MS = 24 * 60 * 60 * 1000;
+
+/** Whether a trade counts in "trades" and "traded value" figures. */
+export function countsAsTraded(status: string): boolean {
+  return !(CALLED_OFF_TRADE_STATUSES as readonly string[]).includes(status);
+}
 /** Most TSD balances one request may read: the biggest page. */
 export const MAX_TSD_READS = 100;
 /** Shortest text that also searches addresses (shorter would match nearly every address of a coin). */

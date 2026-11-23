@@ -589,6 +589,13 @@
       "when": 1795440200842,
       "tag": "0083_admin_accounts_scale",
       "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1795449400110,
+      "tag": "0084_admin_accounts_review_fixes",
+      "breakpoints": true
     }
   ]
 }
