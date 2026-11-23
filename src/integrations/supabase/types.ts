@@ -4052,6 +4052,7 @@ export type Database = {
           maker_order_id: string | null
           pair: string
           price: number
+          settle_retry_at: string | null
           settle_started_at: string | null
           side: Database["public"]["Enums"]["order_side"]
           status: Database["public"]["Enums"]["trade_status"]
@@ -4070,6 +4071,7 @@ export type Database = {
           maker_order_id?: string | null
           pair?: string
           price: number
+          settle_retry_at?: string | null
           settle_started_at?: string | null
           side: Database["public"]["Enums"]["order_side"]
           status?: Database["public"]["Enums"]["trade_status"]
@@ -4088,6 +4090,7 @@ export type Database = {
           maker_order_id?: string | null
           pair?: string
           price?: number
+          settle_retry_at?: string | null
           settle_started_at?: string | null
           side?: Database["public"]["Enums"]["order_side"]
           status?: Database["public"]["Enums"]["trade_status"]

@@ -1,0 +1,3 @@
+ALTER TABLE public.trades ADD COLUMN IF NOT EXISTS settle_retry_at timestamptz;
+COMMENT ON COLUMN public.trades.settle_retry_at IS 'When the minute job last claimed this matched trade to start its payout (audit O6); a claim older than two minutes may be taken again';
+CREATE INDEX IF NOT EXISTS trades_unstarted_idx ON public.trades (created_at) WHERE status = 'matched'::trade_status AND settle_started_at IS NULL;

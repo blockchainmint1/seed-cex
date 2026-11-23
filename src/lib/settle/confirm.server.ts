@@ -267,3 +267,57 @@ export async function advanceSettlingTrades(limit = 50) {
   }
   return { trades: data?.length ?? 0, ...out };
 }
+
+/**
+ * One pass over matched trades whose payout never started (audit O6). autoSettleTrade is safe
+ * to run again: a trade that is no longer "matched" is skipped, a fill that already has its
+ * approval reuses it, and only one worker can set settle_started_at.
+ */
+export async function resumeUnstartedTrades(limit = 20) {
+  const { UNSTARTED_RETRY_AFTER_MS, unstartedTradeDue } = await import("./confirm-rules");
+  const now = Date.now();
+  const cutoff = new Date(now - UNSTARTED_RETRY_AFTER_MS).toISOString();
+  const { data, error } = await supabaseAdmin
+    .from("trades")
+    .select("id, status, created_at, settle_started_at, settle_retry_at")
+    .eq("status", "matched")
+    .is("settle_started_at", null)
+    .lt("created_at", cutoff)
+    .order("settle_retry_at", { ascending: true, nullsFirst: true })
+    .order("created_at", { ascending: true })
+    .limit(limit);
+  if (error) return { error: error.message };
+  let started = 0;
+  let skipped = 0;
+  for (const t of data ?? []) {
+    const due = unstartedTradeDue({
+      status: t.status,
+      settleStartedAtMs: t.settle_started_at ? Date.parse(t.settle_started_at) : null,
+      createdAtMs: Date.parse(t.created_at),
+      retryClaimedAtMs: t.settle_retry_at ? Date.parse(t.settle_retry_at) : null,
+    }, now);
+    if (!due) { skipped++; continue; }
+    // Claim it so two overlapping runs never work the same trade.
+    const { data: claimed } = await supabaseAdmin
+      .from("trades")
+      .update({ settle_retry_at: new Date(now).toISOString() })
+      .eq("id", t.id)
+      .eq("status", "matched")
+      .is("settle_started_at", null)
+      .or(`settle_retry_at.is.null,settle_retry_at.lt.${cutoff}`)
+      .select("id");
+    if (!claimed?.length) { skipped++; continue; }
+    await supabaseAdmin.from("trade_events").insert({
+      trade_id: t.id, actor_id: null, event: "settle_resumed",
+      detail: { ageMs: now - Date.parse(t.created_at), retried_before: t.settle_retry_at != null },
+    });
+    try {
+      const { autoSettleTrades } = await import("@/lib/autosettle.server");
+      await autoSettleTrades([t.id]);
+      started++;
+    } catch (e) {
+      console.error("[settle-resume]", t.id, e instanceof Error ? e.message : e);
+    }
+  }
+  return { found: data?.length ?? 0, started, skipped };
+}

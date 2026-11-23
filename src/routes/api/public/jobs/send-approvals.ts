@@ -3,7 +3,7 @@ import { authenticateCronRequest } from "@/integrations/supabase/cron-auth";
 
 /**
  * Every minute: end "approve this send?" requests nobody tapped in time (and cancel their trades),
- * then move exchange settlements along: the second side is sent only once the first is confirmed,
+ * start matched trades whose payout never started, then move exchange settlements along: the second side is sent only once the first is confirmed,
  * then cancel orders whose coins have left the member's pocket.
  */
 export const Route = createFileRoute("/api/public/jobs/send-approvals")({
@@ -18,7 +18,9 @@ export const Route = createFileRoute("/api/public/jobs/send-approvals")({
         // Approved orders whose tap-time run never placed them (audit O1).
         const { resumeOrderRequests } = await import("@/lib/order-approval/order-approval.server");
         const orders = await resumeOrderRequests().catch((e) => ({ error: e instanceof Error ? e.message : String(e) }));
-        const { advanceSettlingTrades } = await import("@/lib/settle/confirm.server");
+        // Matched trades whose payout never started (audit O6): start them again.
+        const { advanceSettlingTrades, resumeUnstartedTrades } = await import("@/lib/settle/confirm.server");
+        const unstarted = await resumeUnstartedTrades().catch((e) => ({ error: e instanceof Error ? e.message : String(e) }));
         const settling = await advanceSettlingTrades().catch((e) => ({ error: e instanceof Error ? e.message : String(e) }));
         // Orders placed before one-tap approval come off the book; owners re-place them (reapprove.server.ts).
         const { retireUntappedOrders } = await import("@/lib/order-approval/reapprove.server");
@@ -26,7 +28,7 @@ export const Route = createFileRoute("/api/public/jobs/send-approvals")({
         // Orders whose coins left the pocket outside Seeds come off the book (order-cover.server.ts).
         const { checkOrderCover } = await import("@/lib/order-cover.server");
         const cover = await checkOrderCover().catch((e) => ({ error: e instanceof Error ? e.message : String(e) }));
-        return Response.json({ ok: true, ...result, orders, settling, reapprove, cover });
+        return Response.json({ ok: true, ...result, orders, unstarted, settling, reapprove, cover });
       },
     },
   },

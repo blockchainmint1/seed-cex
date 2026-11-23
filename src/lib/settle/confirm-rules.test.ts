@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { confirmationsNeeded, nextSettleStep, sentLegState, NOT_FOUND_AFTER_MS, STUCK_AFTER_MS } from "./confirm-rules";
+import { confirmationsNeeded, nextSettleStep, sentLegState, unstartedTradeDue, NOT_FOUND_AFTER_MS, STUCK_AFTER_MS, UNSTARTED_RETRY_AFTER_MS } from "./confirm-rules";
 
 const MIN = 60_000;
 
@@ -110,5 +110,33 @@ describe("auditor follow-up 2 (Bobby: yes, all three, Nov 20)", () => {
   test("a failed TXC/ISK index check is retried after 1 minute, a real answer kept 10", () => {
     expect(txIndexCacheMs(true)).toBe(1 * MIN);
     expect(txIndexCacheMs(false)).toBe(10 * MIN);
+  });
+});
+
+describe("matched trades whose payout never started are picked up again (audit O6, Bobby: make the fix, Nov 23)", () => {
+  const now = Date.parse("2026-11-23T03:00:00Z");
+  const base = { status: "matched", settleStartedAtMs: null, retryClaimedAtMs: null };
+  test("a matched trade under two minutes old is left to the tap that is still running", () => {
+    expect(UNSTARTED_RETRY_AFTER_MS).toBe(2 * MIN);
+    expect(unstartedTradeDue({ ...base, createdAtMs: now - 1 * MIN }, now)).toBe(false);
+  });
+  test("a matched trade two minutes old with no payout started is started again", () => {
+    expect(unstartedTradeDue({ ...base, createdAtMs: now - 2 * MIN }, now)).toBe(true);
+    expect(unstartedTradeDue({ ...base, createdAtMs: now - 3 * 24 * 60 * MIN }, now)).toBe(true);
+  });
+  test("a trade whose payout already started belongs to the settlement watcher, not this pass", () => {
+    expect(unstartedTradeDue({ ...base, createdAtMs: now - 10 * MIN, settleStartedAtMs: now - 9 * MIN }, now)).toBe(false);
+  });
+  test("cancelled, settled or disputed trades are never started", () => {
+    for (const status of ["timed_out", "settled", "disputed", "refunded"]) {
+      expect(unstartedTradeDue({ ...base, status, createdAtMs: now - 10 * MIN }, now)).toBe(false);
+    }
+  });
+  test("a trade claimed by a run in the last two minutes is not taken twice", () => {
+    expect(unstartedTradeDue({ ...base, createdAtMs: now - 10 * MIN, retryClaimedAtMs: now - 1 * MIN }, now)).toBe(false);
+    expect(unstartedTradeDue({ ...base, createdAtMs: now - 10 * MIN, retryClaimedAtMs: now - 2 * MIN }, now)).toBe(true);
+  });
+  test("an unreadable creation time is never treated as old", () => {
+    expect(unstartedTradeDue({ ...base, createdAtMs: Number.NaN }, now)).toBe(false);
   });
 });

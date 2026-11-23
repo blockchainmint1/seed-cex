@@ -134,3 +134,21 @@ export function resendDue(lastAttemptAtMs: number | null, nowMs: number): boolea
 export function txIndexCacheMs(checkFailed: boolean): number {
   return checkFailed ? 60_000 : 10 * 60_000;
 }
+
+/**
+ * Matched trades whose payout never started (audit O6): the tap's run was cut off between
+ * matching and settlement, or settlement threw before deriving the first approval. The
+ * minute job starts them again once they are this old (same two minutes as the order
+ * placing lease, so it never races a tap that is still running), and a claim older than
+ * this may be taken again.
+ */
+export const UNSTARTED_RETRY_AFTER_MS = 2 * 60_000;
+
+export function unstartedTradeDue(
+  t: { status: string; settleStartedAtMs: number | null; createdAtMs: number; retryClaimedAtMs: number | null },
+  nowMs: number,
+): boolean {
+  if (t.status !== "matched" || t.settleStartedAtMs != null) return false;
+  if (!Number.isFinite(t.createdAtMs) || nowMs - t.createdAtMs < UNSTARTED_RETRY_AFTER_MS) return false;
+  return t.retryClaimedAtMs == null || nowMs - t.retryClaimedAtMs >= UNSTARTED_RETRY_AFTER_MS;
+}

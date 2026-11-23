@@ -397,8 +397,19 @@ export async function fillApprovalFromOrder(
     expires_at: new Date(now.getTime() + APPROVAL_TTL_MS).toISOString(), telegram_chat_id: null,
     meta: { side: memberSide, price: priceKey(trade.price), order_approval_id: oa.id } as never,
   }).select("id, user_id, link_id, purpose, ref_id, leg, asset, amount, from_address, to_address, status, meta, expires_at, telegram_chat_id, telegram_message_id").single();
+  const asRow = (r: NonNullable<typeof ins>): DerivedFillApproval =>
+    ({ kind: "approved", row: { ...(r as unknown as ApprovalRow), amount: Number(r.amount), meta: (r.meta ?? {}) as Record<string, unknown> } });
+  if (error && (error as { code?: string }).code === "23505") {
+    // Two runs derived this same fill at once (the minute job's retry beside a slow tap, audit O6):
+    // the one live approval for this trade leg, taken from this same order tap, is this fill's.
+    const { data: live } = await supabaseAdmin.from("send_approvals")
+      .select("id, user_id, link_id, purpose, ref_id, leg, asset, amount, from_address, to_address, status, meta, expires_at, telegram_chat_id, telegram_message_id")
+      .eq("purpose", "trade_leg").eq("ref_id", trade.id).eq("leg", leg).in("status", ["pending", "approved"])
+      .eq("meta->>order_approval_id", oa.id).eq("user_id", payer).maybeSingle();
+    if (live) return asRow(live);
+  }
   if (error || !ins) return { kind: "problem", reason: "Couldn't record this fill's approval", fault: "network" };
-  return { kind: "approved", row: { ...(ins as unknown as ApprovalRow), amount: Number(ins.amount), meta: (ins.meta ?? {}) as Record<string, unknown> } };
+  return asRow(ins);
 }
 
 /** For the order screen: one of my order requests (polled while waiting for the tap). */
