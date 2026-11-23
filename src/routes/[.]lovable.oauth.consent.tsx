@@ -83,7 +83,7 @@ const CAN_ALSO = [
   "Place and cancel orders (coins still move only after your Approve tap in Telegram)",
   "Open P2P trades and edit your P2P listings",
   "Change your profile and alert settings",
-  "Create Peer Pay links for Ignite",
+  "Create Peer Pay links for Flight School",
   "Turn on Seeds AI real buying and confirm a plan's trades up to your one-tap limit (they stay in your own pocket)",
 ];
 const CAN_NEVER = [

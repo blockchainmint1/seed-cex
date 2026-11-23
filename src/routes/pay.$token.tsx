@@ -14,10 +14,10 @@ export const Route = createFileRoute("/pay/$token")({
   loader: ({ context, params }) => context.queryClient.ensureQueryData(peerQuery(params.token)),
   head: () => ({
     meta: [
-      { title: "Pay a friend's Ignite seat — Seeds" },
-      { name: "description", content: "A private Peer Pay link to pay someone's Seeds Ignite seat deposit." },
-      { property: "og:title", content: "Pay a friend's Ignite seat — Seeds" },
-      { property: "og:description", content: "A private Peer Pay link to pay someone's Seeds Ignite seat deposit." },
+      { title: "Pay a friend's Flight School seat — Seeds" },
+      { name: "description", content: "A private Peer Pay link to pay someone's Seeds Flight School seat deposit." },
+      { property: "og:title", content: "Pay a friend's Flight School seat — Seeds" },
+      { property: "og:description", content: "A private Peer Pay link to pay someone's Seeds Flight School seat deposit." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex,nofollow" },
@@ -46,7 +46,7 @@ function PayPage() {
   );
 
   if (!data.found) return shell(<><h1 className="font-display text-3xl">Payment link not found</h1><p className="mt-2 text-sm text-muted-foreground">Check the link you were sent, or ask your friend for a new one.</p></>);
-  if (data.state === "paid") return shell(<><p className="text-xs font-semibold uppercase tracking-widest text-primary">Paid</p><h1 className="mt-2 font-display text-3xl">This seat is paid.</h1><p className="mt-2 text-sm text-muted-foreground">{data.forName}'s Ignite seat is confirmed. {paid ? "Thank you for paying. They've been told it was you." : "Nothing more to do here."}</p></>);
+  if (data.state === "paid") return shell(<><p className="text-xs font-semibold uppercase tracking-widest text-primary">Paid</p><h1 className="mt-2 font-display text-3xl">This seat is paid.</h1><p className="mt-2 text-sm text-muted-foreground">{data.forName}'s Flight School seat is confirmed. {paid ? "Thank you for paying. They've been told it was you." : "Nothing more to do here."}</p></>);
   if (data.state !== "active") return shell(<><h1 className="font-display text-3xl">This link {data.state === "expired" ? "has expired" : "was turned off"}</h1><p className="mt-2 text-sm text-muted-foreground">No payment can be made with it. Ask {data.forName} for a new link if they still need help.</p></>);
 
   const pay = async () => {
@@ -60,11 +60,11 @@ function PayPage() {
   return shell(
     <>
       <p className="text-xs font-semibold uppercase tracking-widest text-primary">Peer Pay</p>
-      <h1 className="mt-2 font-display text-3xl">Pay {data.forName}'s Ignite seat</h1>
-      <p className="mt-2 text-sm text-muted-foreground">{data.forName} asked you to pay for their seat in Ignite, the Seeds crypto trading class. The seat is theirs. You don't get a seat or any access to their account.</p>
+      <h1 className="mt-2 font-display text-3xl">Pay {data.forName}'s Flight School seat</h1>
+      <p className="mt-2 text-sm text-muted-foreground">{data.forName} asked you to pay for their seat in Flight School, the Seeds crypto trading class. The seat is theirs. You don't get a seat or any access to their account.</p>
       <dl className="mt-5 divide-y divide-border rounded-2xl border border-border text-sm">
         <Row k="For" v={data.forName} />
-        <Row k="Class" v={data.cls?.name ?? "Ignite"} />
+        <Row k="Class" v={data.cls?.name ?? "Flight School"} />
         {data.cls && <Row k="Dates" v={data.cls.dates} />}
         {data.cls?.time && <Row k="Time" v={data.cls.time} />}
         <Row k="Amount" v={<strong className="text-base">${data.amount} USD</strong>} />

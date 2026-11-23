@@ -117,7 +117,7 @@ function AdsAdmin() {
   async function submit(e: FormEvent) {
     e.preventDefault();
     setErr(null);
-    if (!safeAdLink(d.link)) { setErr("The link must be a Seeds page (like /ignite) or an https:// address."); return; }
+    if (!safeAdLink(d.link)) { setErr("The link must be a Seeds page (like /flight-school) or an https:// address."); return; }
     setBusy(true);
     try {
       await save({

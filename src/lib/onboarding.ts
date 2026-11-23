@@ -23,7 +23,7 @@ export const STEP_LABELS: Record<OnboardingStep, string> = {
   fees: "Network fees",
   alerts: "Alerts",
   security: "Two-factor",
-  ignite: "Ignite class",
+  ignite: "Flight School class",
   done: "All set",
 };
 

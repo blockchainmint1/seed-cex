@@ -412,3 +412,6 @@
 - [ ] Honest.Money adds POST /api/public/minetxc/miner-status (request drafted) (blocked: Honest.Money team)
 - [ ] Open Spark to the public once the miner check answers (blocked: miner-status endpoint, then Bobby's go-ahead)
 - [ ] Spark instructor photo + final agenda/requirements (blocked: Bobby supplies)
+
+- [x] Rename the class program to Flight School (/flight-school; old /ignite links forward); first class → Spark, Dec 5–6 class → Ignite; 20 standby class names saved (Bobby, Nov 23)
+- [ ] Open the Dec 5–6 Ignite class (blocked: Honest.Money miner check + Bobby's go-ahead)

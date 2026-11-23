@@ -28,7 +28,7 @@ export const Route = createFileRoute("/_authenticated/admin/affiliates")({
 const usd = (n: number) => `$${n.toLocaleString("en-US", { maximumFractionDigits: n >= 100 ? 0 : 2 })}`;
 const num = (n: number) => n.toLocaleString("en-US");
 const tsd = (n: number | null | undefined) => (n == null ? "—" : n.toLocaleString("en-US", { maximumFractionDigits: 2 }));
-const SOURCE: Record<string, string> = { sso: "Honest.Money sign-up", attach: "Joined Honest.Money later", after_signup: "Invite link", ignite: "Ignite sign-up" };
+const SOURCE: Record<string, string> = { sso: "Honest.Money sign-up", attach: "Joined Honest.Money later", after_signup: "Invite link", ignite: "Flight School sign-up" };
 
 function AdminAffiliates() {
   const [days, setDays] = useState<AffiliatePeriod>(DEFAULT_PERIOD);
@@ -56,7 +56,7 @@ function AdminAffiliates() {
             <Stat label="Members, all time" value={num(q.data.totals.membersAll)} />
             <Stat label="Referred, all time" value={num(q.data.totals.referredAll)} />
             <Stat label="Opened their invite link" value={num(q.data.totals.linksOpened)} />
-            <Stat label="Ignite seats paid via a code" value={num(q.data.totals.ignitePaidByRef)} />
+            <Stat label="Flight School seats paid via a code" value={num(q.data.totals.ignitePaidByRef)} />
           </div>
           <JoinChart series={q.data.series} />
           <AffiliateTable rows={q.data.affiliates} days={days} newMembers={q.data.totals.membersPeriod} />
@@ -152,7 +152,7 @@ function AffiliateTable({ rows, days, newMembers }: { rows: Row[]; days: number;
             {h("Traded", "tradedValue")}
             {h("Swapped", "swapUsd")}
             {h("TSD held", "tsd")}
-            {h("Ignite paid", "ignitePaid")}
+            {h("Flight School paid", "ignitePaid")}
           </tr>
         </thead>
         <tbody>

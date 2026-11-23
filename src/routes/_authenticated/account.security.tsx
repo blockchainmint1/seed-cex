@@ -71,7 +71,7 @@ function SecurityTab() {
     },
     { ok: Boolean(p?.telegram_verified && p?.notify_login), label: "Sign-in alerts on Telegram", hint: p?.telegram_verified ? (p.notify_login ? "You'll hear about every new sign-in." : "Turn on “New sign-in” in Alerts.") : "Connect Telegram in Alerts." },
     { ok: tradeKeys === 0 || (keys.data ?? []).every((k) => !k.enabled || (k.ip_allowlist ?? []).length > 0), label: "Trading API keys locked to IP addresses", hint: tradeKeys ? `${tradeKeys} key(s) can trade. Add an IP allowlist to each.` : "No trading keys." },
-    ...(kind && d && !d.hmeMember ? [{ ok: "optional" as const, label: "Honest.Money membership (optional)", hint: "Not required. Join in Profile for Ignite, referrals and one login across the ecosystem; your pocket and coins stay put." }] : []),
+    ...(kind && d && !d.hmeMember ? [{ ok: "optional" as const, label: "Honest.Money membership (optional)", hint: "Not required. Join in Profile for Flight School, referrals and one login across the ecosystem; your pocket and coins stay put." }] : []),
   ];
 
   return (

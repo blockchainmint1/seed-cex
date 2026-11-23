@@ -65,7 +65,7 @@ export const LISTING_PACKAGES: ListingPackage[] = [
       "Everything in Sapling, plus:",
       "Up to 3 markets",
       "Homepage spotlight for 30 days, with a launch-week pop-up",
-      "Featured in an Ignite trading class session",
+      "Featured in a Flight School trading class session",
       "Priority review and setup, with a named contact on the Seeds team",
       "Monthly report for 3 months: volume, trades and number of traders",
     ],

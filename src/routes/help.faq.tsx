@@ -6,7 +6,7 @@ import { faqId } from "@/lib/help/search";
 
 const title = "Seeds FAQ — Frequently Asked Questions";
 const description =
-  "Quick answers about Seeds: no KYC, no Seeds trading fees, signing in with Honest.Money, the HME Wallet trading pocket, withdrawals, P2P, swaps, Seeds AI and Ignite.";
+  "Quick answers about Seeds: no KYC, no Seeds trading fees, signing in with Honest.Money, the HME Wallet trading pocket, withdrawals, P2P, swaps, Seeds AI and Flight School.";
 
 export const Route = createFileRoute("/help/faq")({
   staticData: { sitemap: true },

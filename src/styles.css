@@ -305,7 +305,7 @@
   background-size: 48px 48px;
 }
 
-/* Ignite pages (/ignite, /ignite/confirmed, /pay): same brand tokens as the
+/* Ignite pages (/ignite, /flight-school/confirmed, /pay): same brand tokens as the
    rest of Seeds, so they follow light/dark mode; only larger sheet radii. */
 .ignite-theme {
   --radius: 0.75rem;

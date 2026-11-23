@@ -22,14 +22,14 @@ export type IgniteSeatConfirmedProps = {
 export function IgniteSeatConfirmedEmail(p: IgniteSeatConfirmedProps) {
   return (
     <Layout
-      preview={`Your Ignite seat in ${p.className} is reserved. ${p.dates}.`}
-      eyebrow="Ignite seat confirmed"
+      preview={`Your Flight School seat in ${p.className} is reserved. ${p.dates}.`}
+      eyebrow="Flight School seat confirmed"
       title={`You're in, ${p.name}.`}
       footer="transactional"
     >
-      <P>Thank you for reserving your place in Ignite. {p.paidBy ? `${p.paidBy} paid for your seat through Peer Pay, and the` : "Your"} payment has been confirmed, so your seat is reserved.</P>
+      <P>Thank you for reserving your place in Flight School. {p.paidBy ? `${p.paidBy} paid for your seat through Peer Pay, and the` : "Your"} payment has been confirmed, so your seat is reserved.</P>
       <Details rows={[
-        ["Class", `Ignite: ${p.className}`],
+        ["Class", `Flight School: ${p.className}`],
         ["Dates", p.dates],
         ["Time", p.time],
         ...(p.feeUsd > 0 ? [["Class fee", p.minerDiscountUsd >= p.feeUsd ? "Free for HME miners" : usd(p.feeUsd - p.minerDiscountUsd)] as [string, string]] : []),
@@ -49,7 +49,7 @@ export function IgniteSeatConfirmedEmail(p: IgniteSeatConfirmedProps) {
           </Section>
         </>
       )}
-      <Cta href={`${SITE}/ignite/confirmed`}>View your confirmation</Cta>
+      <Cta href={`${SITE}/flight-school/confirmed`}>View your confirmation</Cta>
       {p.paidBy && <P muted>Any repayment between you and {p.paidBy} is your own arrangement. Seeds doesn't handle it.</P>}
       <P muted>This payment reserves a class seat. It doesn't open or fund a Seeds exchange account.</P>
     </Layout>

@@ -17,10 +17,10 @@ export const Route = createFileRoute("/_authenticated/admin/ignite")({
   staticData: { sitemap: false },
   head: () => ({
     meta: [
-      { title: "Ignite registrants — Seeds admin" },
-      { name: "description", content: "Everyone registered for the Ignite class: search, sort, email registrants and send payment reminders." },
-      { property: "og:title", content: "Ignite class registrants — Seeds admin" },
-      { property: "og:description", content: "Registrants, payments and messages for the Ignite class." },
+      { title: "Flight School registrants — Seeds admin" },
+      { name: "description", content: "Everyone registered for the Flight School class: search, sort, email registrants and send payment reminders." },
+      { property: "og:title", content: "Flight School class registrants — Seeds admin" },
+      { property: "og:description", content: "Registrants, payments and messages for the Flight School class." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -117,7 +117,7 @@ function IgniteAdminPage() {
   }
 
   async function onCancel(r: AdminIgniteRow) {
-    if (!window.confirm(`Cancel ${r.fullName}'s Ignite seat? This frees the seat. Refund the payment in NectarPay separately.`)) return;
+    if (!window.confirm(`Cancel ${r.fullName}'s Flight School seat? This frees the seat. Refund the payment in NectarPay separately.`)) return;
     setBusy(r.id);
     try {
       await cancel({ data: { id: r.id } });
@@ -142,8 +142,8 @@ function IgniteAdminPage() {
   return (
     <div className="space-y-5">
       <TabTitle
-        title="Ignite registrants"
-        desc={selClass ? `${selClass.name} · ${selClass.dates}${selClass.time ? ` · ${selClass.time}` : ""} · ${selClass.capacity} seats` : "Everyone who registered for any Ignite class: payments, messages and reminders."}
+        title="Flight School registrants"
+        desc={selClass ? `${selClass.name} · ${selClass.dates}${selClass.time ? ` · ${selClass.time}` : ""} · ${selClass.capacity} seats` : "Everyone who registered for any Flight School class: payments, messages and reminders."}
       />
       {q.isPending ? <Loading /> : q.error || !d ? <p role="alert" className="text-sm text-destructive">Couldn't load registrations. Refresh to retry.</p> : (
         <>

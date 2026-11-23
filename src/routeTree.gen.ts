@@ -16,6 +16,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as BrandRouteImport } from './routes/brand'
 import { Route as ComingSoonRouteImport } from './routes/coming-soon'
 import { Route as CustodyRouteImport } from './routes/custody'
+import { Route as FlightSchoolRouteImport } from './routes/flight-school'
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
 import { Route as IgniteRouteImport } from './routes/ignite'
 import { Route as KeySigninRouteImport } from './routes/key-signin'
@@ -46,6 +47,8 @@ import { Route as AboutAdsRouteImport } from './routes/about.ads'
 import { Route as AboutKycRouteImport } from './routes/about.kyc'
 import { Route as AiIndexRouteImport } from './routes/ai.index'
 import { Route as ApiIndexRouteImport } from './routes/api/index'
+import { Route as FlightSchoolSlugRouteImport } from './routes/flight-school_.$slug'
+import { Route as FlightSchoolConfirmedRouteImport } from './routes/flight-school_.confirmed'
 import { Route as HelpIndexRouteImport } from './routes/help.index'
 import { Route as HelpSlugRouteImport } from './routes/help.$slug'
 import { Route as HelpFaqRouteImport } from './routes/help.faq'
@@ -194,6 +197,11 @@ const ComingSoonRoute = ComingSoonRouteImport.update({
 const CustodyRoute = CustodyRouteImport.update({
   id: '/custody',
   path: '/custody',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FlightSchoolRoute = FlightSchoolRouteImport.update({
+  id: '/flight-school',
+  path: '/flight-school',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HowItWorksRoute = HowItWorksRouteImport.update({
@@ -345,6 +353,16 @@ const AiIndexRoute = AiIndexRouteImport.update({
 const ApiIndexRoute = ApiIndexRouteImport.update({
   id: '/api/',
   path: '/api/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FlightSchoolSlugRoute = FlightSchoolSlugRouteImport.update({
+  id: '/flight-school_/$slug',
+  path: '/flight-school/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FlightSchoolConfirmedRoute = FlightSchoolConfirmedRouteImport.update({
+  id: '/flight-school_/confirmed',
+  path: '/flight-school/confirmed',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HelpIndexRoute = HelpIndexRouteImport.update({
@@ -976,6 +994,7 @@ export interface FileRoutesByFullPath {
   '/brand': typeof BrandRoute
   '/coming-soon': typeof ComingSoonRoute
   '/custody': typeof CustodyRoute
+  '/flight-school': typeof FlightSchoolRoute
   '/how-it-works': typeof HowItWorksRoute
   '/ignite': typeof IgniteRoute
   '/key-signin': typeof KeySigninRoute
@@ -1004,6 +1023,8 @@ export interface FileRoutesByFullPath {
   '/welcome': typeof AuthenticatedWelcomeRoute
   '/about/ads': typeof AboutAdsRoute
   '/about/kyc': typeof AboutKycRoute
+  '/flight-school/$slug': typeof FlightSchoolSlugRoute
+  '/flight-school/confirmed': typeof FlightSchoolConfirmedRoute
   '/help/$slug': typeof HelpSlugRoute
   '/help/faq': typeof HelpFaqRoute
   '/ignite/$slug': typeof IgniteSlugRoute
@@ -1129,6 +1150,7 @@ export interface FileRoutesByTo {
   '/brand': typeof BrandRoute
   '/coming-soon': typeof ComingSoonRoute
   '/custody': typeof CustodyRoute
+  '/flight-school': typeof FlightSchoolRoute
   '/how-it-works': typeof HowItWorksRoute
   '/ignite': typeof IgniteRoute
   '/key-signin': typeof KeySigninRoute
@@ -1155,6 +1177,8 @@ export interface FileRoutesByTo {
   '/welcome': typeof AuthenticatedWelcomeRoute
   '/about/ads': typeof AboutAdsRoute
   '/about/kyc': typeof AboutKycRoute
+  '/flight-school/$slug': typeof FlightSchoolSlugRoute
+  '/flight-school/confirmed': typeof FlightSchoolConfirmedRoute
   '/help/$slug': typeof HelpSlugRoute
   '/help/faq': typeof HelpFaqRoute
   '/ignite/$slug': typeof IgniteSlugRoute
@@ -1279,6 +1303,7 @@ export interface FileRoutesById {
   '/brand': typeof BrandRoute
   '/coming-soon': typeof ComingSoonRoute
   '/custody': typeof CustodyRoute
+  '/flight-school': typeof FlightSchoolRoute
   '/how-it-works': typeof HowItWorksRoute
   '/ignite': typeof IgniteRoute
   '/key-signin': typeof KeySigninRoute
@@ -1307,6 +1332,8 @@ export interface FileRoutesById {
   '/_authenticated/welcome': typeof AuthenticatedWelcomeRoute
   '/about/ads': typeof AboutAdsRoute
   '/about/kyc': typeof AboutKycRoute
+  '/flight-school_/$slug': typeof FlightSchoolSlugRoute
+  '/flight-school_/confirmed': typeof FlightSchoolConfirmedRoute
   '/help/$slug': typeof HelpSlugRoute
   '/help/faq': typeof HelpFaqRoute
   '/ignite_/$slug': typeof IgniteSlugRoute
@@ -1434,6 +1461,7 @@ export interface FileRouteTypes {
     | '/brand'
     | '/coming-soon'
     | '/custody'
+    | '/flight-school'
     | '/how-it-works'
     | '/ignite'
     | '/key-signin'
@@ -1462,6 +1490,8 @@ export interface FileRouteTypes {
     | '/welcome'
     | '/about/ads'
     | '/about/kyc'
+    | '/flight-school/$slug'
+    | '/flight-school/confirmed'
     | '/help/$slug'
     | '/help/faq'
     | '/ignite/$slug'
@@ -1587,6 +1617,7 @@ export interface FileRouteTypes {
     | '/brand'
     | '/coming-soon'
     | '/custody'
+    | '/flight-school'
     | '/how-it-works'
     | '/ignite'
     | '/key-signin'
@@ -1613,6 +1644,8 @@ export interface FileRouteTypes {
     | '/welcome'
     | '/about/ads'
     | '/about/kyc'
+    | '/flight-school/$slug'
+    | '/flight-school/confirmed'
     | '/help/$slug'
     | '/help/faq'
     | '/ignite/$slug'
@@ -1736,6 +1769,7 @@ export interface FileRouteTypes {
     | '/brand'
     | '/coming-soon'
     | '/custody'
+    | '/flight-school'
     | '/how-it-works'
     | '/ignite'
     | '/key-signin'
@@ -1764,6 +1798,8 @@ export interface FileRouteTypes {
     | '/_authenticated/welcome'
     | '/about/ads'
     | '/about/kyc'
+    | '/flight-school_/$slug'
+    | '/flight-school_/confirmed'
     | '/help/$slug'
     | '/help/faq'
     | '/ignite_/$slug'
@@ -1891,6 +1927,7 @@ export interface RootRouteChildren {
   BrandRoute: typeof BrandRoute
   ComingSoonRoute: typeof ComingSoonRoute
   CustodyRoute: typeof CustodyRoute
+  FlightSchoolRoute: typeof FlightSchoolRoute
   HowItWorksRoute: typeof HowItWorksRoute
   IgniteRoute: typeof IgniteRoute
   KeySigninRoute: typeof KeySigninRoute
@@ -1911,6 +1948,8 @@ export interface RootRouteChildren {
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   AboutAdsRoute: typeof AboutAdsRoute
   AboutKycRoute: typeof AboutKycRoute
+  FlightSchoolSlugRoute: typeof FlightSchoolSlugRoute
+  FlightSchoolConfirmedRoute: typeof FlightSchoolConfirmedRoute
   HelpSlugRoute: typeof HelpSlugRoute
   HelpFaqRoute: typeof HelpFaqRoute
   IgniteSlugRoute: typeof IgniteSlugRoute
@@ -2037,6 +2076,13 @@ declare module '@tanstack/react-router' {
       path: '/custody'
       fullPath: '/custody'
       preLoaderRoute: typeof CustodyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/flight-school': {
+      id: '/flight-school'
+      path: '/flight-school'
+      fullPath: '/flight-school'
+      preLoaderRoute: typeof FlightSchoolRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/how-it-works': {
@@ -2247,6 +2293,20 @@ declare module '@tanstack/react-router' {
       path: '/api'
       fullPath: '/api/'
       preLoaderRoute: typeof ApiIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/flight-school_/$slug': {
+      id: '/flight-school_/$slug'
+      path: '/flight-school/$slug'
+      fullPath: '/flight-school/$slug'
+      preLoaderRoute: typeof FlightSchoolSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/flight-school_/confirmed': {
+      id: '/flight-school_/confirmed'
+      path: '/flight-school/confirmed'
+      fullPath: '/flight-school/confirmed'
+      preLoaderRoute: typeof FlightSchoolConfirmedRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/help/': {
@@ -3247,6 +3307,7 @@ const rootRouteChildren: RootRouteChildren = {
   BrandRoute: BrandRoute,
   ComingSoonRoute: ComingSoonRoute,
   CustodyRoute: CustodyRoute,
+  FlightSchoolRoute: FlightSchoolRoute,
   HowItWorksRoute: HowItWorksRoute,
   IgniteRoute: IgniteRoute,
   KeySigninRoute: KeySigninRoute,
@@ -3268,6 +3329,8 @@ const rootRouteChildren: RootRouteChildren = {
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   AboutAdsRoute: AboutAdsRoute,
   AboutKycRoute: AboutKycRoute,
+  FlightSchoolSlugRoute: FlightSchoolSlugRoute,
+  FlightSchoolConfirmedRoute: FlightSchoolConfirmedRoute,
   HelpSlugRoute: HelpSlugRoute,
   HelpFaqRoute: HelpFaqRoute,
   IgniteSlugRoute: IgniteSlugRoute,

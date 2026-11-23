@@ -16,10 +16,10 @@ export const Route = createFileRoute("/_authenticated/admin/ignite-interest")({
   staticData: { sitemap: false },
   head: () => ({
     meta: [
-      { title: "Ignite interest list — Seeds admin" },
-      { name: "description", content: "People who want to hear about new Ignite classes, including everyone who registered but didn't pay." },
-      { property: "og:title", content: "Ignite interest list — Seeds admin" },
-      { property: "og:description", content: "Email people about new Ignite classes." },
+      { title: "Flight School interest list — Seeds admin" },
+      { name: "description", content: "People who want to hear about new Flight School classes, including everyone who registered but didn't pay." },
+      { property: "og:title", content: "Flight School interest list — Seeds admin" },
+      { property: "og:description", content: "Email people about new Flight School classes." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -27,7 +27,7 @@ export const Route = createFileRoute("/_authenticated/admin/ignite-interest")({
   component: InterestPage,
 });
 
-const SOURCE: Record<string, string> = { unpaid_registration: "Registered, didn't pay", registration: "Registered", signup: "Signed up on /ignite", admin: "Added by admin" };
+const SOURCE: Record<string, string> = { unpaid_registration: "Registered, didn't pay", registration: "Registered", signup: "Signed up on /flight-school", admin: "Added by admin" };
 
 function InterestPage() {
   const qc = useQueryClient();
@@ -63,7 +63,7 @@ function InterestPage() {
   const d = q.data ?? [];
   return (
     <div className="space-y-5">
-      <TabTitle title="Ignite interest list" desc={<>Not tied to any class. Everyone who registered but didn't pay is here, plus anyone who signed up on <Link to="/ignite" className="text-primary underline">/ignite</Link>. Email them when you add a class.</>} />
+      <TabTitle title="Flight School interest list" desc={<>Not tied to any class. Everyone who registered but didn't pay is here, plus anyone who signed up on <Link to="/flight-school" className="text-primary underline">/flight-school</Link>. Email them when you add a class.</>} />
       {q.isPending ? <Loading /> : q.error ? <p role="alert" className="text-sm text-destructive">{(q.error as Error).message}</p> : (
         <>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -178,11 +178,11 @@ function InterestComposer({ open, recipients, classes, onClose, onSend }: {
         }}>
           <label className="block"><span className={fieldLabel}>Button links to</span>
             <select className={`${inputCls} mt-1`} value={slug} onChange={(e) => setSlug(e.target.value)}>
-              <option value="">All upcoming classes (/ignite)</option>
-              {classes.map((c) => <option key={c.slug} value={c.slug}>{c.name} (/ignite/{c.slug})</option>)}
+              <option value="">All upcoming classes (/flight-school)</option>
+              {classes.map((c) => <option key={c.slug} value={c.slug}>{c.name} (/flight-school/{c.slug})</option>)}
             </select>
           </label>
-          <label className="block"><span className={fieldLabel}>Subject</span><input className={`${inputCls} mt-1`} value={subject} maxLength={140} onChange={(e) => setSubject(e.target.value)} placeholder="A new Ignite class just opened" /></label>
+          <label className="block"><span className={fieldLabel}>Subject</span><input className={`${inputCls} mt-1`} value={subject} maxLength={140} onChange={(e) => setSubject(e.target.value)} placeholder="A new Flight School class just opened" /></label>
           <label className="block"><span className={fieldLabel}>Message</span>
             <textarea className={`${inputCls} mt-1 min-h-40`} value={body} maxLength={BODY_MAX + 200} onChange={(e) => setBody(e.target.value)} placeholder={"Hi {first},\n\nSpark runs December 5–6, 1–5 PM Central…"} />
             <span className="mt-1 block text-xs text-muted-foreground">Type {"{first}"} to greet each person by name. Leave a blank line between paragraphs.</span>

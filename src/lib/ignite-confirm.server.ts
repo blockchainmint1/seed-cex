@@ -31,7 +31,7 @@ export async function processIgniteInvoiceEvent(type: string, data: EventData): 
     if (["confirmed", "overpaid"].includes(inv.status) && invoiceBelongs(inv.order_id, reg.id, null)) {
       console.error("[ignite] second payment on an earlier checkout needs refund", { registration: reg.id, invoice: data.invoice_id });
       const { notifyUser } = await import("@/lib/telegram.server");
-      await notifyUser(reg.user_id, "notify_p2p", "⚠️ A second payment arrived for your Ignite seat, which was already paid. Contact support@honest.money so it can be refunded.");
+      await notifyUser(reg.user_id, "notify_p2p", "⚠️ A second payment arrived for your Flight School seat, which was already paid. Contact support@honest.money so it can be refunded.");
     }
     return "duplicate_payment";
   }
@@ -45,7 +45,7 @@ export async function processIgniteInvoiceEvent(type: string, data: EventData): 
       if (flagged?.length) {
         console.error("[peer-pay] duplicate payment needs refund", { link: peer.id, invoice: data.invoice_id });
         const { notifyUser } = await import("@/lib/telegram.server");
-        await notifyUser(reg.user_id, "notify_p2p", "⚠️ A second payment arrived for your Ignite seat, which was already paid. Contact support@honest.money so it can be refunded.");
+        await notifyUser(reg.user_id, "notify_p2p", "⚠️ A second payment arrived for your Flight School seat, which was already paid. Contact support@honest.money so it can be refunded.");
       }
     }
     return "duplicate_payment";
@@ -149,7 +149,7 @@ export async function sendSeatNotices(regId: string): Promise<boolean> {
       name: ((n) => n.charAt(0).toUpperCase() + n.slice(1))(reg.full_name.trim().split(/\s+/)[0] || r.name), amount: Number(reg.amount_usd), paidBy: payerName,
       paidWith: paidInLabel(reg.paid_asset, reg.paid_chain),
       confirmedAt: reg.confirmed_at ?? new Date().toISOString(), timezone: r.timezone, referralUrl: code ? inviteUrl(code) : null,
-      className: cls?.name ?? "Ignite", classSlug: cls?.slug ?? null,
+      className: cls?.name ?? "Flight School", classSlug: cls?.slug ?? null,
       dates: cls ? dateRangeLabel(cls.sessions, cls.timezone) : "To be announced",
       time: cls ? (sharedTimeLabel(cls.sessions, cls.timezone) ?? sessionLines(cls.sessions, cls.timezone).join("; ")) : "To be announced",
       feeUsd: Number(reg.fee_usd ?? 0), minerDiscountUsd: Number(reg.miner_discount_usd ?? 0), depositUsd: Number(reg.deposit_usd ?? reg.amount_usd),
@@ -158,8 +158,8 @@ export async function sendSeatNotices(regId: string): Promise<boolean> {
     if (await claim("ignite:telegram-confirmed")) {
       const { notifyUser } = await import("@/lib/telegram.server");
       await notifyUser(reg.user_id, "notify_p2p", payerName
-        ? `✅ ${payerName} paid your Seeds Ignite seat${cls ? ` in ${cls.name}` : ""}. You're confirmed.${when ? ` See you ${when}.` : ""}`
-        : `✅ Your Seeds Ignite seat${cls ? ` in ${cls.name}` : ""} is confirmed.${when ? ` See you ${when}.` : ""}`);
+        ? `✅ ${payerName} paid your Seeds Flight School seat${cls ? ` in ${cls.name}` : ""}. You're confirmed.${when ? ` See you ${when}.` : ""}`
+        : `✅ Your Seeds Flight School seat${cls ? ` in ${cls.name}` : ""} is confirmed.${when ? ` See you ${when}.` : ""}`);
     }
     if (await claim("ignite:hub-purchase")) {
       await sendHubEvent({

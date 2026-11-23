@@ -20,10 +20,10 @@ export const Route = createFileRoute("/sitemap.xml")({
         const entries: SitemapEntry[] = sitemapStaticPaths(router).map((path) => ({ path }));
         // Help guides live on one dynamic route; list each article.
         for (const a of HELP_ARTICLES) entries.push({ path: `/help/${a.slug}` });
-        // Published Ignite classes each have a page (/ignite/<slug>); drafts never appear.
+        // Published Ignite classes each have a page (/flight-school/<slug>); drafts never appear.
         try {
           const { publicClasses } = await import("@/lib/ignite-classes.server");
-          for (const c of await publicClasses()) entries.push({ path: `/ignite/${c.slug}` });
+          for (const c of await publicClasses()) entries.push({ path: `/flight-school/${c.slug}` });
         } catch (e) { console.error("[sitemap] ignite classes", e instanceof Error ? e.message : e); }
         if (entries.length === 0) {
           return new Response(

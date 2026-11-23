@@ -35,7 +35,7 @@ export const Route = createFileRoute("/_authenticated/welcome")({
   head: () => ({
     meta: [
       { title: "Welcome to Seeds — set up your account" },
-      { name: "description", content: "A short setup guide for new Seeds members: your name, trading pocket, an easy login, alerts, two-factor and the Ignite class." },
+      { name: "description", content: "A short setup guide for new Seeds members: your name, trading pocket, an easy login, alerts, two-factor and the Flight School class." },
       { property: "og:title", content: "Welcome to Seeds — set up your account" },
       { property: "og:description", content: "Set up your Seeds account in a few minutes. Skip any step and come back later." },
       { property: "og:type", content: "website" },
@@ -517,13 +517,13 @@ function StepIgnite() {
 
   return (
     <>
-      <Heading title="Learn to trade at Ignite">
+      <Heading title="Learn to trade at Flight School">
         Live classes on trading with Seeds. HME miners attend free, and every seat comes with a free Cold Storage Coin.
       </Heading>
       {status === "confirmed" ? (
-        <Note tone="ok">You have a seat in {myClass ? `${myClass.name}, ${myClass.dates}` : "Ignite"}. See you there!</Note>
+        <Note tone="ok">You have a seat in {myClass ? `${myClass.name}, ${myClass.dates}` : "Flight School"}. See you there!</Note>
       ) : !next ? (
-        <Card><p className="text-sm text-muted-foreground">No class is open right now. Classes are recorded; see what's coming on the <Link to="/ignite" className="text-primary underline">Ignite page</Link>.</p></Card>
+        <Card><p className="text-sm text-muted-foreground">No class is open right now. Classes are recorded; see what's coming on the <Link to="/flight-school" className="text-primary underline">Flight School page</Link>.</p></Card>
       ) : (
         <div className="rounded-md border border-primary/40 bg-primary/5 p-5">
           <div className="flex items-start gap-3">
@@ -533,7 +533,7 @@ function StepIgnite() {
               <p className="mt-1 text-sm text-muted-foreground">{next.time ? `${next.time} · ` : ""}{next.price} · sessions are recorded</p>
               {seats.data ? <p className="mt-1 text-sm text-muted-foreground">{seats.data.seatsLeft} of {seats.data.capacity} seats left</p> : null}
               {status && status !== "canceled" ? <p className="mt-2 text-sm">You started registering but haven't finished paying yet.</p> : null}
-              <Button asChild className="mt-4"><Link to="/ignite/$slug" params={{ slug: myClass && status && status !== "canceled" ? myClass.slug : next.slug }}>{status && status !== "canceled" ? "Finish registration" : "Reserve your seat"} <ArrowRight /></Link></Button>
+              <Button asChild className="mt-4"><Link to="/flight-school/$slug" params={{ slug: myClass && status && status !== "canceled" ? myClass.slug : next.slug }}>{status && status !== "canceled" ? "Finish registration" : "Reserve your seat"} <ArrowRight /></Link></Button>
             </div>
           </div>
         </div>
@@ -558,7 +558,7 @@ function StepDone({ onFinish }: { onFinish: () => void }) {
   const open = !!seats.data?.next || mine.data?.registration?.status === "confirmed";
   const p = profile.data;
   const fees = useFeePrep();
-  const rows: { done: boolean; label: string; to: "/account/profile" | "/account/security" | "/account/alerts" | "/account/balances/deposit" | "/ignite" }[] = [
+  const rows: { done: boolean; label: string; to: "/account/profile" | "/account/security" | "/account/alerts" | "/account/balances/deposit" | "/flight-school" }[] = [
     { done: Boolean(p?.display_name), label: "Display name", to: "/account/profile" },
     { done: Boolean(link.data), label: keyKind ? "Trading pocket set up" : "HME Wallet trading pocket linked", to: "/account/security" },
     ...(keyKind ? [{ done: Boolean(identity.data?.hmeMember), label: "Easy login with Honest.Money (optional)", to: "/account/profile" as const }] : []),
@@ -566,7 +566,7 @@ function StepDone({ onFinish }: { onFinish: () => void }) {
     { done: fees.data?.ethereum.level === "enough" && fees.data?.base.level === "enough", label: "ETH for network fees (Ethereum and Base)", to: "/account/balances/deposit" },
     { done: Boolean(p?.telegram_verified), label: "Telegram alerts", to: "/account/alerts" },
     { done: Boolean(tf.data), label: "Two-factor sign-in", to: "/account/security" },
-    ...(open ? [{ done: mine.data?.registration?.status === "confirmed", label: "Ignite seat reserved", to: "/ignite" as const }] : []),
+    ...(open ? [{ done: mine.data?.registration?.status === "confirmed", label: "Flight School seat reserved", to: "/flight-school" as const }] : []),
   ];
   const left = rows.filter((r) => !r.done).length;
   return (

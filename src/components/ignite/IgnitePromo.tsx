@@ -83,9 +83,9 @@ export function IgnitePromo() {
         <div className="relative px-6 pb-7 pt-7 sm:px-10 sm:pb-9 sm:pt-9">
           <SiteLogo className="h-8 sm:h-9" />
 
-          <p className="mt-8 font-mono text-xs font-semibold tracking-[0.32em] text-foreground/90 sm:text-sm">INTRODUCING SEEDS</p>
+          <p className="mt-8 font-mono text-xs font-semibold tracking-[0.32em] text-foreground/90 sm:text-sm">SEEDS FLIGHT SCHOOL</p>
           <DialogTitle className="mt-2 font-display leading-none tracking-normal">
-            <span className="block text-[4.25rem] font-extrabold leading-[0.9] tracking-[-0.03em] sm:text-[6.5rem]">IGNITE</span>
+            <span className="block text-[4.25rem] font-extrabold leading-[0.9] tracking-[-0.03em] sm:text-[6.5rem]">{(next?.name ?? "Flight School").toUpperCase()}</span>
             <span className="mt-2 block text-3xl font-semibold tracking-[-0.02em] sm:text-[2.75rem]">Crypto Trading Class</span>
           </DialogTitle>
           <DialogDescription className="mt-3 text-base italic text-primary sm:text-lg">
@@ -113,7 +113,7 @@ export function IgnitePromo() {
               <span className="text-sm font-semibold sm:text-base">{next?.price}{next?.minersFree ? " · free for HME miners" : ""}</span>
             </div>
             <Link
-              to="/ignite/$slug"
+              to="/flight-school/$slug"
               params={{ slug: next?.slug ?? "" }}
               hash="reserve"
               onClick={() => { snooze(); setOpen(false); }}

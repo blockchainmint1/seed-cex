@@ -3,7 +3,7 @@ import { thirdPartyScriptsAllowed } from "./third-party-scripts";
 
 describe("Honest.Money scripts: public pages only", () => {
   test("homepage, Ignite and info pages get them", () => {
-    for (const p of ["/", "/ignite", "/ignite/spark", "/ignite/first-class", "/about/kyc", "/privacy", "/list/"]) expect(thirdPartyScriptsAllowed(p)).toBe(true);
+    for (const p of ["/", "/flight-school", "/flight-school/spark", "/flight-school/ignite", "/flight-school/confirmed", "/about/kyc", "/privacy", "/list/"]) expect(thirdPartyScriptsAllowed(p)).toBe(true);
   });
   test("account, admin, setup guide, sign-in, trading, swaps and P2P never do", () => {
     for (const p of ["/account", "/account/security", "/admin", "/admin/users", "/welcome", "/wallet", "/auth", "/sso",

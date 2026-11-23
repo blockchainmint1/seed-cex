@@ -11,9 +11,9 @@ export const Route = createFileRoute("/coming-soon")({
   head: () => ({
     meta: [
       { title: "Seeds launches November 30, 2026 — Coming soon" },
-      { name: "description", content: "Seeds is in demo mode: set up your account and link your HME Wallet now. Trading goes live November 30, 2026, the first day of the Ignite class." },
+      { name: "description", content: "Seeds is in demo mode: set up your account and link your HME Wallet now. Trading goes live November 30, 2026, the first day of the Flight School class." },
       { property: "og:title", content: "Seeds launches November 30, 2026" },
-      { property: "og:description", content: "Demo mode today, trading on launch day. Reserve a seat in Ignite, the first Seeds crypto trading class." },
+      { property: "og:description", content: "Demo mode today, trading on launch day. Reserve a seat in Spark, the first Flight School crypto trading class from Seeds." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -85,11 +85,11 @@ function ComingSoon() {
             <span className="text-primary">{LAUNCH_DATE_LABEL}.</span>
           </h1>
           <p className="mt-6 max-w-xl text-lg text-muted-foreground">
-            Right now Seeds is open for account setup and wallet linking only. Trading is not live yet. It opens on launch day, the same day our first Ignite trading class begins.
+            Right now Seeds is open for account setup and wallet linking only. Trading is not live yet. It opens on launch day, the same day our first Flight School trading class begins.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link to="/ignite" className="inline-flex items-center gap-2 rounded-md bg-action px-6 py-3 text-sm font-semibold text-action-foreground transition-[filter] hover:brightness-110">
-              See Ignite classes <ArrowRight aria-hidden className="size-4" />
+            <Link to="/flight-school" className="inline-flex items-center gap-2 rounded-md bg-action px-6 py-3 text-sm font-semibold text-action-foreground transition-[filter] hover:brightness-110">
+              See Flight School classes <ArrowRight aria-hidden className="size-4" />
             </Link>
             <Link to="/account" className="inline-flex items-center rounded-md border border-foreground/70 px-6 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-foreground/5">
               Set up my account
@@ -141,10 +141,10 @@ function ComingSoon() {
       <section className="mt-20 overflow-hidden rounded-3xl border border-primary/40 bg-card">
         <div className="grid gap-10 p-6 sm:p-10 lg:grid-cols-[1.3fr_1fr]">
           <div>
-            <p className="font-mono text-[11px] tracking-[0.24em] text-primary uppercase">Learn with Ignite</p>
-            <h2 className="mt-3 font-display text-3xl tracking-tight text-foreground sm:text-5xl">{next ? `Register for ${next.name}.` : "Join an Ignite class."}</h2>
+            <p className="font-mono text-[11px] tracking-[0.24em] text-primary uppercase">Learn with Flight School</p>
+            <h2 className="mt-3 font-display text-3xl tracking-tight text-foreground sm:text-5xl">{next ? `Register for ${next.name}.` : "Join a Flight School class."}</h2>
             <p className="mt-5 max-w-xl text-muted-foreground">
-              Ignite is our live crypto trading class, led by Bobby Gray, founder of the Honest Money Ecosystem. Live sessions walk you through setting up a wallet, getting into crypto and buying and selling on Seeds.
+              Flight School is our live crypto trading class, led by Bobby Gray, founder of the Honest Money Ecosystem. Live sessions walk you through setting up a wallet, getting into crypto and buying and selling on Seeds.
             </p>
             <ul className="mt-6 space-y-2 text-sm">
               {[
@@ -164,7 +164,7 @@ function ComingSoon() {
               <div className="flex gap-3"><Video aria-hidden className="mt-0.5 size-4 shrink-0 text-primary" /><div><dt className="sr-only">Recording</dt><dd className="text-sm text-muted-foreground">{RECORDING_NOTE.replace(/^\*/, "")}</dd></div></div>
               <div className="flex gap-3"><KeyRound aria-hidden className="mt-0.5 size-4 shrink-0 text-primary" /><div><dt className="sr-only">Seats</dt><dd className="font-semibold text-primary">{seatLine}</dd></div></div>
             </dl>
-            <Link to={next ? "/ignite/$slug" : "/ignite"} params={{ slug: next?.slug ?? "" }} hash={next ? "reserve" : undefined} className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-action px-6 py-3 text-sm font-semibold text-action-foreground transition-[filter] hover:brightness-110">
+            <Link to={next ? "/flight-school/$slug" : "/flight-school"} params={{ slug: next?.slug ?? "" }} hash={next ? "reserve" : undefined} className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-action px-6 py-3 text-sm font-semibold text-action-foreground transition-[filter] hover:brightness-110">
               Reserve my seat <ArrowRight aria-hidden className="size-4" />
             </Link>
           </div>
