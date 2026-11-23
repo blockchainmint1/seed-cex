@@ -147,6 +147,7 @@ export const APPROVAL_WHAT: Record<string, string> = {
   trade_leg: "Exchange trade payment", p2p_release: "P2P release", swap_out: "Swap to an outside address", dex_swap: "Pool swap",
   withdrawal: "Withdrawal", two_step: "Two-step swap",
   loan_collateral: "Loan collateral", loan_funding: "Loan sent", loan_repay: "Loan repayment",
+  order: "Exchange order",
 };
 /** A Telegram request still waiting for a tap right now. */
 export function approvalWaiting(a: { status: string; expires_at: string }, now = Date.now()): boolean {

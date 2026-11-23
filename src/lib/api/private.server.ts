@@ -236,47 +236,36 @@ export type PlaceParams =
   | { type: "limit"; symbol: PairDef; side: "buy" | "sell"; price: number; quantity: number }
   | { type: "market"; symbol: PairDef; side: "buy" | "sell"; quantity: number; maxSlippagePct?: number };
 
+/**
+ * API orders follow the same rule as the website (Bobby, Nov 23 2026): nothing is placed until the
+ * owner taps Approve in Telegram. The answer is PENDING_APPROVAL with the orderId it will get;
+ * poll GET /order with that id. After the tap, every fill settles with no further taps.
+ */
 export async function apiPlaceOrder(userId: string, p: PlaceParams) {
-  const { matchOrder } = await import("@/lib/trading.server");
-  const result = await matchOrder(
+  const { requestOrder } = await import("@/lib/order-approval/order-approval.server");
+  const r = await requestOrder(
     userId,
     p.symbol.id,
     p.type === "market"
-      ? { type: "market", side: p.side, amount: p.quantity, slippagePct: p.maxSlippagePct }
+      ? { type: "market", side: p.side, amount: p.quantity, ...(p.maxSlippagePct != null ? { slippagePct: p.maxSlippagePct } : {}) }
       : { type: "limit", side: p.side, price: p.price, amount: p.quantity },
   );
-
-  let settlements: Awaited<ReturnType<typeof import("@/lib/autosettle.server").autoSettleTrades>> = [];
-  if (result.tradeIds.length > 0) {
-    const { autoSettleTrades } = await import("@/lib/autosettle.server");
-    settlements = await autoSettleTrades(result.tradeIds);
-  }
-
-  const executed = result.filled;
   const market = p.type === "market";
   return {
     symbol: symbolOf(p.symbol),
-    orderId: result.orderId,
+    orderId: r.requestId,
     transactTime: Date.now(),
     price: n8(market ? 0 : p.price),
     origQty: n8(p.quantity),
-    executedQty: n8(executed),
-    cummulativeQuoteQty: n8(executed * (result.avgPrice ?? 0)),
-    status: market
-      ? executed >= p.quantity - 1e-8
-        ? "FILLED"
-        : "EXPIRED"
-      : executed >= p.quantity - 1e-8
-        ? "FILLED"
-        : executed > 0
-          ? "PARTIALLY_FILLED"
-          : "NEW",
+    executedQty: n8(0),
+    cummulativeQuoteQty: n8(0),
+    status: "PENDING_APPROVAL",
+    seedsApprovalExpiresAt: new Date(r.expiresAt).getTime(),
     timeInForce: market ? "IOC" : "GTC",
     type: market ? "MARKET" : "LIMIT",
-    ...(market ? { seedsPriceProtection: n8(result.limitPrice) } : {}),
+    ...(market ? { seedsPriceProtection: n8(r.price) } : {}),
     side: p.side.toUpperCase(),
-    fills: result.tradeIds.map((id) => ({ tradeId: id })),
-    settlements,
+    fills: [],
   };
 }
 
@@ -292,6 +281,8 @@ export async function apiCancelOrder(userId: string, orderId: string) {
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) return null;
+  const { endOrderApprovals } = await import("@/lib/order-approval/order-approval.server");
+  await endOrderApprovals([data.id], "You cancelled this order (API).");
   return serializeOrder(data);
 }
 

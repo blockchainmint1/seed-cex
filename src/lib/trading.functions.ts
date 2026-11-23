@@ -142,24 +142,37 @@ export const getMyOrders = createServerFn({ method: "GET" })
     return data ?? [];
   });
 
+/**
+ * Place order (Bobby, Nov 23 2026): nothing is placed until the member taps Approve in Telegram.
+ * That one tap then places the order and pays every fill of it (src/lib/order-approval/).
+ */
 export const placeOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(placeOrderInput)
   .handler(async ({ data, context }) => {
-    const { matchOrder } = await import("./trading.server");
+    const { requestOrder } = await import("./order-approval/order-approval.server");
     const { pair, ...order } = data;
-    const result = await matchOrder(context.userId, pair, order);
-
-    // Instant settlement: crossed fills are delivered straight away, wallet to
-    // wallet. Nothing is ever parked in an escrow address.
-    let settlements: Awaited<ReturnType<typeof import("./autosettle.server").autoSettleTrades>> = [];
-    if (result.tradeIds.length > 0) {
-      const { autoSettleTrades } = await import("./autosettle.server");
-      settlements = await autoSettleTrades(result.tradeIds);
-    }
-
-    return { ...result, settlements };
+    return requestOrder(context.userId, pair, order);
   });
+
+/** The order screen polls this while waiting for the Telegram tap, then shows the result. */
+export const getMyOrderRequest = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { loadMyOrderRequest } = await import("./order-approval/order-approval.server");
+    const r = await loadMyOrderRequest(context.userId, data.id);
+    if (!r) return null;
+    return {
+      id: r.id, status: r.status, orderType: r.order_type, side: r.side, amount: Number(r.amount), price: Number(r.price),
+      error: r.error, result: (r.result ?? null) as unknown as OrderPlacedResult | null,
+    };
+  });
+
+export type OrderPlacedResult = {
+  orderId: string; type: "limit" | "market"; filled: number; resting: number; cancelled: number; avgPrice: number | null; limitPrice: number;
+  tradeIds: string[]; settlements: Array<{ tradeId: string; legs: Array<{ leg: string; ok: boolean; pending?: boolean; error?: string }> }>;
+};
 
 export const cancelOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -167,13 +180,16 @@ export const cancelOrder = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     // Orders are server-written only (security audit C1).
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin
+    const { data: rows, error } = await supabaseAdmin
       .from("orders")
       .update({ status: "cancelled" })
       .eq("id", data.id)
       .eq("user_id", context.userId)
-      .in("status", ["open", "partial"]);
+      .in("status", ["open", "partial"])
+      .select("id");
     if (error) throw new Error(error.message);
+    const { endOrderApprovals } = await import("./order-approval/order-approval.server");
+    await endOrderApprovals((rows ?? []).map((r) => r.id), "You cancelled this order.");
     return { ok: true };
   });
 
@@ -187,6 +203,8 @@ export const cancelAllOrders = createServerFn({ method: "POST" })
     if (data.pair) q = q.eq("pair", data.pair);
     const { data: rows, error } = await q.select("id");
     if (error) throw new Error(error.message);
+    const { endOrderApprovals } = await import("./order-approval/order-approval.server");
+    await endOrderApprovals((rows ?? []).map((r) => r.id), "You cancelled this order.");
     return { cancelled: rows?.length ?? 0 };
   });
 

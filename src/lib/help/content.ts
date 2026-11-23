@@ -581,19 +581,20 @@ export const HELP_ARTICLES: HelpArticle[] = [
   {
     slug: "trade-settlement",
     title: "How a trade settles",
-    summary: "Matched trades settle wallet to wallet. Both traders tap Approve in Telegram within 15 minutes, or the trade is cancelled and nothing moves.",
+    summary: "You tap Approve in Telegram once, when you place an order. After that every fill settles wallet to wallet with no more taps, until the order fills or you cancel it.",
     category: "trading",
-    keywords: ["settlement", "settle", "approve", "escrow", "timeout", "cancelled", "15 minutes"],
+    keywords: ["settlement", "settle", "approve", "escrow", "timeout", "cancelled", "15 minutes", "telegram", "one tap"],
     blocks: [
       { steps: [
-        "Your order matches another member's.",
-        "Both of you get a Telegram message. Tap **Approve** within **15 minutes**.",
-        "When both approve, the taker's pocket sends first. The trade shows **Confirming**.",
+        "You place an order. Seeds sends you one Telegram message showing the order, its price and the most that can leave your pocket. Tap **Approve** (15 minutes for a limit order, 3 for a market order). Nothing is placed until you do.",
+        "A limit order then sits on the book. A market order runs the moment you tap, within the price shown.",
+        "When your order matches another member's, it settles straight away: no more taps. The taker's pocket sends first and the trade shows **Confirming**.",
         "Once that payment is confirmed on its network (2 blocks on TEXITcoin, about six minutes; 3 on Ethereum; 12 on Base and PulseChain), the other pocket sends its side. The trade reads **settled** when both are confirmed.",
       ] },
       { list: [
         "Seeds never sends the second side against a payment that could still be replaced. If a payment disappears or the network rejects it, the trade goes **On hold** for the team, and the member who sent it can't trade until the team has looked.",
-        "If either side doesn't approve in time, or declines, the trade is cancelled and nothing is sent.",
+        "Your one tap only pays fills of that order, at its price or better, and never more than the order's size. Cancel the order and the tap stops working.",
+        "If you don't approve in time, or tap Decline, the order is never placed and nothing is sent.",
         "If a pocket doesn't have the coins ready, the trade is cancelled before anything is sent.",
         "BTC and ETH trades settle with TEXITcoin-based tokens of BTC and ETH, so each fill doesn't need a Bitcoin or Ethereum transfer.",
       ] },

@@ -1,15 +1,17 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getMarketStats, getOrderBook, getPriceSeries, getTape } from "@/lib/market.functions";
 import { LegPanel } from "@/components/trade/LegPanel";
 import {
   cancelAllOrders,
   cancelOrder,
   getMyOrders,
+  getMyOrderRequest,
   getMyTrades,
   placeOrder,
+  type OrderPlacedResult,
 } from "@/lib/trading.functions";
 import { getChainSnapshot } from "@/lib/txc.functions";
 import { getMyTicketFunds } from "@/lib/set-asides.functions";
@@ -156,6 +158,7 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
   const [amount, setAmount] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<string | null>(null);
+  const [waitingFor, setWaitingFor] = useState<{ id: string; side: "buy" | "sell" } | null>(null);
 
   const refreshAll = () => {
     queryClient.invalidateQueries({ queryKey: ["book", PAIR] });
@@ -180,62 +183,97 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
       return submitOrder({ data: { type: "limit", pair: PAIR, side, price: p, amount: a } });
     },
     onSuccess: (res) => {
+      // Nothing is placed until the member taps Approve in Telegram (Bobby, Nov 23 2026).
       setFormError(null);
-      const failed = res.settlements.filter((st) => st.legs.some((l) => !l.ok && !l.pending));
-      const confirming = res.settlements.filter((st) => !failed.includes(st) && st.legs.some((l) => l.ok) && st.legs.some((l) => l.pending)).length;
-      const waiting = res.settlements.filter((st) => !failed.includes(st) && !st.legs.some((l) => l.ok) && st.legs.some((l) => l.pending)).length;
-      const unsettled = failed.length;
-      const reason = failed[0]?.legs.find((l) => !l.ok)?.error?.replace(/^Trade cancelled, nothing was sent: /, "");
-      const settleNote =
-        (unsettled > 0
-          ? ` ${unsettled} trade(s) couldn't settle and were cancelled; nothing was sent for those${reason ? ` (${reason})` : ""}.`
-          : "") +
-        (waiting > 0
-          ? ` ${waiting} trade(s) are waiting for both sides to tap Approve in Telegram (15 minutes). Nothing moves until both do; if either side doesn't, the trade is cancelled.`
-          : "") +
-        (confirming > 0
-          ? ` ${confirming} trade(s) are confirming: the first payment is sent, and the other side is sent once it's confirmed on its network (usually a few minutes).`
-          : "");
-      if (res.tradeIds.length > 0 && unsettled === res.tradeIds.length) {
-        // Matched, but no trade could settle: say so plainly, nothing moved.
-        setReceipt(null);
-        setFormError(
-          `Your order matched ${fmtAmount(res.filled, 4)} ${pair.base}, but the trade couldn't settle, so it was cancelled and nothing was sent${
-            reason ? `: ${reason}` : "."
-          }`,
-        );
-        setAmount("");
-        refreshAll();
-        return;
-      }
-      if (res.type === "market") {
-        const did = side === "buy" ? "Bought" : "Sold";
-        setReceipt(
-          `${did} ${fmtAmount(res.filled, 4)} ${pair.base} at an average of ${
-            res.avgPrice != null ? px(res.avgPrice) : "—"
-          } ${pair.quote} across ${res.tradeIds.length} trade(s).${
-            res.cancelled > 1e-8
-              ? ` The other ${fmtAmount(res.cancelled, 4)} ${pair.base} couldn't fill within your ${slippagePct}% price protection and was cancelled.`
-              : ""
-          }${settleNote}`,
-        );
-      } else {
-        setReceipt(
-          res.filled > 0
-            ? `Filled ${fmtAmount(res.filled, 4)} ${pair.base} across ${res.tradeIds.length} escrowed trade(s)${
-                res.resting > 0 ? `, ${fmtAmount(res.resting, 4)} resting on the book` : ""
-              }.${settleNote}`
-            : "Order resting on the book — no crossing liquidity yet.",
-        );
-      }
+      setReceipt(
+        res.type === "market"
+          ? "Approve this market order in Telegram to run it (3 minutes). It executes the moment you tap, within the price shown there."
+          : "Approve this order in Telegram to place it (15 minutes). After that one tap it trades automatically until it fills or you cancel it.",
+      );
+      setWaitingFor({ id: res.requestId, side: res.side });
       setAmount("");
-      refreshAll();
     },
     onError: (e) => {
       setReceipt(null);
       setFormError(e instanceof Error ? e.message : "Order rejected");
     },
   });
+
+  // While an order waits for its Telegram tap, check every 2 seconds and then show what happened.
+  const fetchRequest = useServerFn(getMyOrderRequest);
+  const request = useQuery({
+    queryKey: ["order-request", waitingFor?.id],
+    queryFn: () => fetchRequest({ data: { id: waitingFor!.id } }),
+    enabled: Boolean(waitingFor),
+    refetchInterval: 2_000,
+  });
+  useEffect(() => {
+    const r = request.data;
+    if (!waitingFor || !r || r.id !== waitingFor.id) return;
+    if (r.status === "pending" || r.status === "placing") return;
+    setWaitingFor(null);
+    if (r.status === "placed" && r.result) {
+      showPlaced(r.result, waitingFor.side);
+    } else {
+      setReceipt(null);
+      setFormError(
+        r.status === "declined"
+          ? "You declined this order in Telegram. Nothing was placed."
+          : r.status === "expired"
+            ? "The order wasn't approved in Telegram in time, so nothing was placed."
+            : `The order wasn't placed${r.error ? `: ${r.error}` : "."}`,
+      );
+    }
+    refreshAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [request.data, waitingFor]);
+
+  function showPlaced(res: OrderPlacedResult, placedSide: "buy" | "sell") {
+    const failed = res.settlements.filter((st) => st.legs.some((l) => !l.ok && !l.pending));
+    const confirming = res.settlements.filter((st) => !failed.includes(st) && st.legs.some((l) => l.ok) && st.legs.some((l) => l.pending)).length;
+    const waiting = res.settlements.filter((st) => !failed.includes(st) && !st.legs.some((l) => l.ok) && st.legs.some((l) => l.pending)).length;
+    const unsettled = failed.length;
+    const reason = failed[0]?.legs.find((l) => !l.ok)?.error?.replace(/^Trade cancelled, nothing was sent: /, "");
+    const settleNote =
+      (unsettled > 0
+        ? ` ${unsettled} trade(s) couldn't settle and were cancelled; nothing was sent for those${reason ? ` (${reason})` : ""}.`
+        : "") +
+      (waiting > 0
+        ? ` ${waiting} trade(s) are waiting for the other side to approve in Telegram (their order was placed before one-tap orders). If they don't within 15 minutes, the trade is cancelled and nothing moves.`
+        : "") +
+      (confirming > 0
+        ? ` ${confirming} trade(s) are confirming: the first payment is sent, and the other side is sent once it's confirmed on its network (usually a few minutes).`
+        : "");
+    if (res.tradeIds.length > 0 && unsettled === res.tradeIds.length) {
+      setReceipt(null);
+      setFormError(
+        `Your order matched ${fmtAmount(res.filled, 4)} ${pair.base}, but the trade couldn't settle, so it was cancelled and nothing was sent${
+          reason ? `: ${reason}` : "."
+        }`,
+      );
+      return;
+    }
+    if (res.type === "market") {
+      const did = placedSide === "buy" ? "Bought" : "Sold";
+      setReceipt(
+        `${did} ${fmtAmount(res.filled, 4)} ${pair.base} at an average of ${
+          res.avgPrice != null ? px(res.avgPrice) : "—"
+        } ${pair.quote} across ${res.tradeIds.length} trade(s).${
+          res.cancelled > 1e-8
+            ? ` The other ${fmtAmount(res.cancelled, 4)} ${pair.base} couldn't fill within your price protection and was cancelled.`
+            : ""
+        }${settleNote}`,
+      );
+    } else {
+      setReceipt(
+        res.filled > 0
+          ? `Filled ${fmtAmount(res.filled, 4)} ${pair.base} across ${res.tradeIds.length} trade(s)${
+              res.resting > 0 ? `, ${fmtAmount(res.resting, 4)} on the book` : ""
+            }.${settleNote}`
+          : "Order on the book. It trades automatically when someone matches it — no more taps.",
+      );
+    }
+  }
 
   const cancel = useMutation({
     mutationFn: (id: string) => killOrder({ data: { id } }),

@@ -55,7 +55,7 @@ const steps = [
   {
     icon: ArrowLeftRight,
     title: "Trade on a real order book",
-    body: "Place limit or market orders. When a match fills, both traders tap Approve in Telegram within 15 minutes, then each pocket sends its side on the blockchain — a real, signed transaction with a real txid.",
+    body: "Place limit or market orders and tap Approve in Telegram once. From then on every match settles by itself: each pocket sends its side on the blockchain — a real, signed transaction with a real txid — until the order fills or you cancel it.",
   },
   {
     icon: Flame,

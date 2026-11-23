@@ -81,7 +81,7 @@ type Status = "Live" | "Being built";
 const STATUS: { area: string; status: Status; note: string }[] = [
   { area: "Public market data", status: "Live", note: "Depth, trades, klines, tickers, exchange info, SSE stream and the CoinMarketCap feed. No key needed." },
   { area: "Signed reads", status: "Live", note: "Account, open orders, order history, order status and your trades." },
-  { area: "Order entry and cancel", status: "Live", note: "LIMIT / GTC orders join the same book as the website and match immediately. MARKET orders take the best prices within a price protection (default 2%) and cancel whatever is left." },
+  { area: "Order entry and cancel", status: "Live", note: "Every new order answers PENDING_APPROVAL and waits for the account owner to tap Approve in Telegram (3 minutes for MARKET, 15 for LIMIT). After the tap the order gets the same orderId, LIMIT / GTC orders join the same book as the website and every fill settles with no further taps; MARKET orders take the best prices within the price protection shown in the tap (default 2%) and cancel whatever is left." },
   { area: "Settlement from HME Wallet trading pockets", status: "Being built", note: "Fills from accounts that trade through a linked HME Wallet pocket record as matched and wait for settlement. Fills settle on-chain right away only for accounts that still hold an earlier Seeds trading authorization." },
   { area: "Withdrawals", status: "Live", note: "Not possible through the API, by design. There is no withdrawal endpoint and no scope that adds one." },
 ];

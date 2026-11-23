@@ -2405,6 +2405,54 @@ export type Database = {
         }
         Relationships: []
       }
+      order_requests: {
+        Row: {
+          amount: number
+          created_at: string
+          decided_at: string | null
+          error: string | null
+          id: string
+          order_type: string
+          pair: string
+          price: number
+          result: Json | null
+          side: string
+          slippage_pct: number | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          decided_at?: string | null
+          error?: string | null
+          id?: string
+          order_type: string
+          pair: string
+          price: number
+          result?: Json | null
+          side: string
+          slippage_pct?: number | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          decided_at?: string | null
+          error?: string | null
+          id?: string
+          order_type?: string
+          pair?: string
+          price?: number
+          result?: Json | null
+          side?: string
+          slippage_pct?: number | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           amount: number

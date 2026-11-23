@@ -15,8 +15,9 @@ import { APPROVAL_TTL_MS, approvalMatches, approvalMetaMatches, approvalTapDecis
  * dex_swap: a Uniswap / PancakeSwap / PulseX swap from the member's pocket back into the same pocket.
  * withdrawal: a Seeds-signed withdrawal to an outside address (src/lib/withdraw/); the tap starts its hold.
  * two_step: one tap for both hops of a two-step swap (src/lib/two-step/), own pocket to own pocket.
+ * order: one tap when an exchange order is placed; it pays every fill of that order (src/lib/order-approval/).
  */
-export type ApprovalPurpose = "trade_leg" | "p2p_release" | "swap_out" | "dex_swap" | "withdrawal" | "two_step" | "loan_collateral" | "loan_funding" | "loan_repay";
+export type ApprovalPurpose = "trade_leg" | "p2p_release" | "swap_out" | "dex_swap" | "withdrawal" | "two_step" | "loan_collateral" | "loan_funding" | "loan_repay" | "order";
 
 export type ApprovalRow = {
   id: string;
@@ -88,6 +89,10 @@ export async function requestSendApproval(p: {
   /** Shown in bold above the buttons, e.g. a far-from-market price (audit R1). */
   warning?: string;
   meta?: Record<string, unknown>;
+  /** Full message text (HTML) instead of the standard "Approve this send?" layout (order taps). */
+  text?: string;
+  /** How long the member has to tap; defaults to APPROVAL_TTL_MS. */
+  ttlMs?: number;
 }): Promise<ApprovalRow> {
   const { data: live } = await supabaseAdmin
     .from("send_approvals")
@@ -125,7 +130,7 @@ export async function requestSendApproval(p: {
     .insert({
       user_id: p.userId, link_id: p.linkId, purpose: p.purpose, ref_id: p.refId, leg: p.leg, asset: symbol,
       amount: p.amount, from_address: p.from, to_address: p.to, meta: (p.meta ?? {}) as never,
-      expires_at: new Date(Date.now() + APPROVAL_TTL_MS).toISOString(), telegram_chat_id: chatId,
+      expires_at: new Date(Date.now() + (p.ttlMs ?? APPROVAL_TTL_MS)).toISOString(), telegram_chat_id: chatId,
     })
     .select(COLS)
     .single();
@@ -143,8 +148,8 @@ export async function requestSendApproval(p: {
   const { approvalButtonData } = await import("./rules");
   const { telegramActionKey, telegramCall } = await import("@/lib/telegram.server");
   const key = await telegramActionKey();
-  const mins = Math.round(APPROVAL_TTL_MS / 60_000);
-  const text =
+  const mins = Math.round((p.ttlMs ?? APPROVAL_TTL_MS) / 60_000);
+  const text = p.text ? `${p.text}\nThis request ends in ${mins} minutes.` :
     `🔐 <b>Approve this send?</b>\n` +
     `<b>${fmt(p.amount)} ${esc(symbol)}</b> from your trading pocket\n` +
     `to <code>${esc(p.to)}</code>\n` +
@@ -260,8 +265,21 @@ export async function cancelApprovals(filter: { purpose?: ApprovalPurpose; refId
   if (filter.refId) q = q.eq("ref_id", filter.refId);
   if (filter.linkId) q = q.eq("link_id", filter.linkId);
   const { data } = await q.select(COLS);
-  for (const r of data ?? []) await editApprovalMessage(norm(r), `❌ <b>Send request closed</b>\n${esc(why)}\nNothing was sent.`);
+  for (const r of data ?? []) {
+    await editApprovalMessage(norm(r), r.purpose === "order"
+      ? `❌ <b>Order approval ended</b>\n${esc(why)}\nNo more trades will be paid from it.`
+      : `❌ <b>Send request closed</b>\n${esc(why)}\nNothing was sent.`);
+  }
   return (data ?? []).length;
+}
+
+/** One line naming what a request was for, used in every edited Telegram message. */
+function describeRow(r: ApprovalRow): string {
+  if (r.purpose === "order") {
+    const line = typeof r.meta["line"] === "string" ? (r.meta["line"] as string) : `Exchange order paying up to ${fmt(r.amount)} ${r.asset}`;
+    return esc(line);
+  }
+  return `${fmt(r.amount)} ${esc(r.asset)} to <code>${esc(r.to_address)}</code>`;
 }
 
 async function editApprovalMessage(r: ApprovalRow, text: string) {
@@ -293,6 +311,11 @@ async function continueAfter(r: ApprovalRow) {
     if (r.purpose === "two_step") {
       const { advanceTwoStep } = await import("@/lib/two-step/two-step.server");
       await advanceTwoStep(r.ref_id);
+      return;
+    }
+    if (r.purpose === "order") {
+      const { continueOrderRequest } = await import("@/lib/order-approval/order-approval.server");
+      await continueOrderRequest(r);
       return;
     }
     if (r.purpose === "trade_leg") {
@@ -341,7 +364,7 @@ export async function handleApprovalTap(cq: CallbackQuery): Promise<string | nul
     await answer("This button isn't valid for this chat.", true);
     return "refused";
   }
-  const what = `${fmt(row.amount)} ${esc(row.asset)} to <code>${esc(row.to_address)}</code>`;
+  const what = describeRow(row);
   if (decision === "already_decided") {
     await answer(row.status === "used" ? "Already approved and sent." : `This request is already ${row.status}.`);
     return "already_decided";
@@ -374,17 +397,27 @@ export async function handleApprovalTap(cq: CallbackQuery): Promise<string | nul
     await continueAfter(row);
     return "blocked";
   }
-  const { data: ok } = await supabaseAdmin.from("send_approvals").update({ status: "approved", decided_at: new Date().toISOString() })
+  // An order tap gets its working life here, in the same update (the DB allows this once, for orders only):
+  // a limit order until it fills or is cancelled, a market order a few minutes to execute.
+  let orderLife: Record<string, unknown> = {};
+  if (row.purpose === "order") {
+    const { ORDER_APPROVAL_LIFETIME_MS, ORDER_MARKET_RUN_MS } = await import("@/lib/order-approval/rules");
+    const ms = row.meta["order_type"] === "market" ? ORDER_MARKET_RUN_MS : ORDER_APPROVAL_LIFETIME_MS;
+    orderLife = { expires_at: new Date(Date.now() + ms).toISOString(), meta: { ...row.meta, approved: true } as never };
+  }
+  const { data: ok } = await supabaseAdmin.from("send_approvals").update({ status: "approved", decided_at: new Date().toISOString(), ...orderLife })
     .eq("id", row.id).eq("status", "pending").gt("expires_at", new Date().toISOString()).select("id");
   if (!ok?.length) { await answer("This request was already decided or ended."); return "already_decided"; }
-  await editApprovalMessage(row, row.purpose === "swap_out"
+  await editApprovalMessage(row, row.purpose === "order"
+    ? `✅ <b>Approved</b>\n${what}\nPlacing your order now. You'll get a message with the result.`
+    : row.purpose === "swap_out"
     ? `✅ <b>Approved</b>\n${what}\nYour open Seeds Swap page sends it now, after one last price check. If you closed that page, nothing is sent.`
     : row.purpose === "dex_swap" || row.purpose === "two_step"
       ? `✅ <b>Approved</b>\n${what}\nSwapping now, after one last price check and a test run. You'll get a message when it's done.`
       : row.purpose === "withdrawal"
       ? `✅ <b>Approved</b>\n${what}\nSeeds sends it after your withdrawal wait (none for beta testers). You can still cancel on Seeds until then.`
       : `✅ <b>Approved</b>\n${what}\nSending now. You'll get a message when it's on the way.`);
-  await answer("Approved. Sending now.");
+  await answer(row.purpose === "order" ? "Approved. Placing your order now." : "Approved. Sending now.");
   await continueAfter({ ...row, status: "approved" });
   return "approved";
 }
@@ -403,7 +436,7 @@ async function approveBlocker(row: ApprovalRow): Promise<string | null> {
     return null;
   }
   const { pocketSender } = await import("./pocket.server");
-  const s = await pocketSender(row.user_id, row.leg as LegId, row.purpose === "trade_leg" ? "trade" : "send");
+  const s = await pocketSender(row.user_id, row.leg as LegId, row.purpose === "trade_leg" || row.purpose === "order" ? "trade" : "send");
   if (!s.ok) return s.reason;
   if (s.link.id !== row.link_id || s.address !== row.from_address) return "Your wallet link changed since this request.";
   return null;
@@ -419,7 +452,9 @@ export async function expireDueApprovals() {
     .select(COLS);
   const rows = (data ?? []).map(norm);
   for (const r of rows) {
-    await editApprovalMessage(r, `⌛ <b>Send request ended</b>\n${fmt(r.amount)} ${esc(r.asset)} to <code>${esc(r.to_address)}</code>\nIt wasn't approved in time, so nothing was sent.`);
+    await editApprovalMessage(r, r.purpose === "order" && r.meta["approved"] === true
+      ? `⌛ <b>Order approval ended</b>\n${describeRow(r)}\nThe order was taken off the book.`
+      : `⌛ <b>Send request ended</b>\n${describeRow(r)}\nIt wasn't approved in time, so nothing was sent.`);
     await continueAfter(r);
   }
   return { expired: rows.length };

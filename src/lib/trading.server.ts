@@ -26,23 +26,35 @@ function simulatedEscrowAddress(leg: Leg, tradeId: string): string {
 }
 
 /** Audit C2: the free-coins check and the hold it leads to run one at a time per member. */
-export async function matchOrder(userId: string, pair: string, input: PlaceOrderInput) {
+/**
+ * Match an order the member has ALREADY approved in Telegram (order-approval.server.ts):
+ * `orderId` is the approved request's id and becomes the order's id, so every fill can find
+ * that one approval; a market order passes the price protection it showed in the tap.
+ */
+export type MatchOptions = { orderId?: string; marketPrice?: number };
+
+export async function matchOrder(userId: string, pair: string, input: PlaceOrderInput, opts: MatchOptions = {}) {
   const { withPocketSpendLock } = await import("@/lib/set-asides.server");
-  return withPocketSpendLock(userId, () => matchOrderUnlocked(userId, pair, input));
+  return withPocketSpendLock(userId, () => matchOrderUnlocked(userId, pair, input, opts));
 }
 
-async function matchOrderUnlocked(userId: string, pair: string, input: PlaceOrderInput) {
+/** Account-level reasons this member can't place orders right now (frozen, repeat failures), or null. */
+export async function orderGateProblem(userId: string): Promise<string | null> {
   // A member whose trade payment vanished can't trade until an admin clears it (audit #3 A1).
   const { tradingFrozenReason } = await import("@/lib/settle/confirm.server");
   const frozen = await tradingFrozenReason(userId);
-  if (frozen) throw new Error(frozen);
+  if (frozen) return frozen;
   // Three failed matches on this member's side in a day pause placing orders (audit R2).
-  {
-    const { orderPauseFor } = await import("@/lib/order-pause.server");
-    const { repeatFailureMessage } = await import("@/lib/order-readiness");
-    const pause = await orderPauseFor(userId);
-    if (pause.paused && pause.untilMs) throw new Error(repeatFailureMessage(pause.untilMs));
-  }
+  const { orderPauseFor } = await import("@/lib/order-pause.server");
+  const { repeatFailureMessage } = await import("@/lib/order-readiness");
+  const pause = await orderPauseFor(userId);
+  if (pause.paused && pause.untilMs) return repeatFailureMessage(pause.untilMs);
+  return null;
+}
+
+async function matchOrderUnlocked(userId: string, pair: string, input: PlaceOrderInput, opts: MatchOptions) {
+  const gate = await orderGateProblem(userId);
+  if (gate) throw new Error(gate);
   const opposite: Side = input.side === "buy" ? "sell" : "buy";
   // Which asset the quote leg delivers: TSD (Omni #39) or USDC (EVM).
   const { baseLeg, quoteLeg } = getPair(pair);
@@ -83,7 +95,8 @@ async function matchOrderUnlocked(userId: string, pair: string, input: PlaceOrde
           : "Nobody is buying right now, so a market sell can't fill. Try a limit order instead.",
       );
     }
-    price = protectionPrice(input.side, best, clampSlippagePct(input.slippagePct));
+    // The protection the member approved in Telegram wins; it is never recomputed after the tap.
+    price = opts.marketPrice ?? protectionPrice(input.side, best, clampSlippagePct(input.slippagePct));
     candidates = candidates.filter((o) =>
       input.side === "buy" ? Number(o.price) <= price + 1e-12 : Number(o.price) >= price - 1e-12,
     );
@@ -104,6 +117,7 @@ async function matchOrderUnlocked(userId: string, pair: string, input: PlaceOrde
   const { data: taker, error: takerError } = await supabaseAdmin
     .from("orders")
     .insert({
+      ...(opts.orderId ? { id: opts.orderId } : {}),
       user_id: userId,
       pair,
       side: input.side,

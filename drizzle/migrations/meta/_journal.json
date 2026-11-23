@@ -540,6 +540,20 @@
       "when": 1795392876581,
       "tag": "0076_step_up_and_factor_trust",
       "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1795397684033,
+      "tag": "0077_order_approval_at_placement",
+      "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1795397823910,
+      "tag": "0078_order_approval_lifetime",
+      "breakpoints": true
     }
   ]
 }
