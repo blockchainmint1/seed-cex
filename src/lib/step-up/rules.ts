@@ -8,12 +8,19 @@
  *   2. a Telegram tap from a trusted chat connected at least 24 hours earlier;
  *   3. a code from 2FA apps that are all trusted and at least 24 hours old;
  *   4. a one-time code to the Honest.Money email (HME members only; the session can't change it).
- * A new 2FA app or Telegram chat is trusted only when it was added right after a fresh sign-in
- * (or another proof); otherwise it shows "Not confirmed yet" until the member confirms it.
+ *
+ * Auditor S1 (Bobby, Nov 23 2026: "strict, but spare new members"): a fresh sign-in counts only when it
+ * happened AFTER the thing being approved came into being (the held key, the new 2FA app / chat, the moment
+ * the unlink/replace screen opened) and within FRESH_SIGNIN_SEC. A session that signed in a few minutes before
+ * doesn't pass on its own. The one exception: the FIRST 2FA app on an account with none, or the FIRST Telegram
+ * chat on an account with none, is trusted straight away when added within FRESH_SIGNIN_SEC of signing in
+ * (the setup guide). Anything else added shows "Not confirmed yet" until the member confirms it.
  */
 
-/** A sign-in younger than this counts as fresh. Agent-chosen (covers the first-time setup guide). */
-export const FRESH_SIGNIN_SEC = 15 * 60;
+/** A sign-in (or authenticator code) must be at most this old to count. Bobby/decisions note: 10 minutes. */
+export const FRESH_SIGNIN_SEC = 10 * 60;
+/** How long an unlink/replace "screen opened at" stamp stays usable. */
+export const INTENT_MAX_MS = 30 * 60_000;
 /** A 2FA app or Telegram chat must be at least this old (and trusted) to prove it's you. */
 export const AGED_MS = 24 * 3600_000;
 export const STEP_UP_TTL_MS = 10 * 60_000;
@@ -27,7 +34,8 @@ export const STEP_UP_PURPOSES: readonly StepUpPurpose[] = ["key_link", "confirm_
 export const PURPOSE_TEXT: Record<StepUpPurpose, string> = {
   key_link: "link a new coin or wallet as your trading pocket",
   confirm_factor: "confirm a new 2FA app or Telegram chat",
-  telegram_unlink: "unlink Telegram from your Seeds account",
+  // Also used when a member replaces a connected chat with a different one (auditor S3).
+  telegram_unlink: "unlink or replace the Telegram chat on your Seeds account",
 };
 
 export const STEP_UP_NEEDED = "Confirm it's you first: sign in again, or use one of the other options shown.";
@@ -35,23 +43,48 @@ export const STEP_UP_NEEDED = "Confirm it's you first: sign in again, or use one
 type AmrEntry = { method?: unknown; timestamp?: unknown };
 export type Claims = { amr?: unknown; client_id?: unknown };
 
-/** Seconds since this session's sign-in (any method except an authenticator code), or null. */
-export function signInAgeSec(claims: Claims | null | undefined, nowSec: number): number | null {
+/** Newest sign-in stamp (any method except an authenticator code), or newest authenticator stamp. Seconds. */
+function latestStamp(claims: Claims | null | undefined, which: "signin" | "totp"): number | null {
   if (!claims || !Array.isArray(claims.amr)) return null;
-  // A connected app's token (AI assistant via OAuth) never counts as a fresh sign-in.
+  // A connected app's token (AI assistant via OAuth) never counts.
   if (claims.client_id != null && claims.client_id !== "") return null;
+  if (which === "totp" && (claims as { aal?: unknown }).aal !== "aal2") return null;
   const stamps = (claims.amr as AmrEntry[])
-    .filter((e) => e && typeof e.method === "string" && e.method !== "totp" && !e.method.startsWith("mfa/")
+    .filter((e) => e && typeof e.method === "string"
+      && (which === "totp" ? e.method === "totp" : e.method !== "totp" && !e.method.startsWith("mfa/"))
       && typeof e.timestamp === "number" && Number.isFinite(e.timestamp))
     .map((e) => e.timestamp as number);
-  if (!stamps.length) return null;
-  const age = nowSec - Math.max(...stamps);
+  return stamps.length ? Math.max(...stamps) : null;
+}
+
+/** Seconds since this session's sign-in (any method except an authenticator code), or null. */
+export function signInAgeSec(claims: Claims | null | undefined, nowSec: number): number | null {
+  const s = latestStamp(claims, "signin");
+  if (s == null) return null;
+  const age = nowSec - s;
   return age < -60 ? null : Math.max(0, age);
 }
 
-export function freshSignIn(claims: Claims | null | undefined, nowSec: number): boolean {
+/** Signed in within FRESH_SIGNIN_SEC (no "after" condition). Only for the first-factor exception. */
+export function recentSignIn(claims: Claims | null | undefined, nowSec: number): boolean {
   const age = signInAgeSec(claims, nowSec);
   return age != null && age <= FRESH_SIGNIN_SEC;
+}
+
+/** S1: signed in within FRESH_SIGNIN_SEC AND at or after `sinceSec`. No `sinceSec` = never fresh (fail closed). */
+export function freshSignIn(claims: Claims | null | undefined, nowSec: number, sinceSec: number | null | undefined): boolean {
+  if (sinceSec == null || !Number.isFinite(sinceSec)) return false;
+  const s = latestStamp(claims, "signin");
+  return s != null && s >= sinceSec && recentSignIn(claims, nowSec);
+}
+
+/** S1 for authenticator codes: a code typed within FRESH_SIGNIN_SEC AND at or after `sinceSec`. */
+export function freshTotpAfter(claims: Claims | null | undefined, nowSec: number, sinceSec: number | null | undefined): boolean {
+  if (sinceSec == null || !Number.isFinite(sinceSec)) return false;
+  const s = latestStamp(claims, "totp");
+  if (s == null || s < sinceSec) return false;
+  const age = nowSec - s;
+  return age >= -60 && age <= FRESH_SIGNIN_SEC;
 }
 
 export type TrustRow = { trustedMs: number | null; addedMs: number };
@@ -104,9 +137,42 @@ export function stepUpPasses(i: { freshSignIn: boolean; freshTotp: boolean; totp
   return i.freshSignIn || (i.freshTotp && i.totpCounts) || i.proof;
 }
 
-/** How a just-added 2FA app or chat starts out: trusted straight away only after a proof on this session. */
-export function newFactorTrust(provenNow: boolean): "fresh_sign_in" | null {
-  return provenNow ? "fresh_sign_in" : null;
+/**
+ * How a just-added 2FA app or chat starts out (S1 exception): trusted straight away only when it is the first of
+ * its kind on the account (no other 2FA app / no other chat) AND the session signed in within FRESH_SIGNIN_SEC,
+ * or when it was added right after a passed "confirm it's you" (replacing a chat). Otherwise "Not confirmed yet".
+ */
+export function newFactorTrust(i: { firstOfKind: boolean; recentSignIn: boolean; steppedUp?: boolean }): "fresh_sign_in" | "step_up" | null {
+  if (i.steppedUp) return "step_up";
+  return i.firstOfKind && i.recentSignIn ? "fresh_sign_in" : null;
+}
+
+/* --------------------- "screen opened at" stamp (unlink / replace Telegram) --------------------- */
+
+async function intentMac(key: string, userId: string, purpose: StepUpPurpose, ts: number): Promise<string> {
+  const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(key), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const mac = new Uint8Array(await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(`seeds-stepup-intent|${userId}|${purpose}|${ts}`)));
+  return b64url(mac);
+}
+
+/** Server-signed "this member opened the screen at ts" stamp; a fresh sign-in must come after it. */
+export async function makeIntent(key: string, userId: string, purpose: StepUpPurpose, nowMs: number): Promise<string> {
+  if (!key) throw new Error("no intent key");
+  const ts = Math.floor(nowMs);
+  return `${ts}.${await intentMac(key, userId, purpose, ts)}`;
+}
+
+/** The stamp's time in ms when it's genuine, for this member and purpose, and younger than INTENT_MAX_MS; else null. */
+export async function readIntent(key: string, token: unknown, userId: string, purpose: StepUpPurpose, nowMs: number): Promise<number | null> {
+  if (!key || typeof token !== "string" || token.length > 80) return null;
+  const m = /^(\d{13})\.([A-Za-z0-9_-]{43})$/.exec(token);
+  if (!m) return null;
+  const ts = Number(m[1]);
+  if (!(ts <= nowMs + 60_000) || nowMs - ts > INTENT_MAX_MS) return null;
+  const want = await intentMac(key, userId, purpose, ts);
+  let diff = want.length ^ m[2]!.length;
+  for (let i = 0; i < want.length; i++) diff |= want.charCodeAt(i) ^ (m[2]!.charCodeAt(i) || 0);
+  return diff === 0 ? ts : null;
 }
 
 /** May a check with this row be spent now? */

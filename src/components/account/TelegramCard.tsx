@@ -28,7 +28,7 @@ export function TelegramCard({ title = "Telegram", desc }: { title?: string; des
   const twoFactorOn = Boolean(useMyTwoFactor().data);
   const [code, setCode] = useState("");
   const [askUnlink, setAskUnlink] = useState(false);
-  const [unlinkProof, setUnlinkProof] = useState<{ ready: boolean; proof: StepUpProof }>({ ready: false, proof: null });
+  const [unlinkProof, setUnlinkProof] = useState<{ ready: boolean; proof: StepUpProof; intent: string | null }>({ ready: false, proof: null, intent: null });
   const loadTrust = useServerFn(getMyFactorTrust);
   const trust = useQuery({ queryKey: ["factor-trust"], queryFn: () => loadTrust(), enabled: Boolean(p?.telegram_verified) });
   const chatUnconfirmed = Boolean(p?.telegram_verified && trust.data?.telegram.connected && !trust.data.telegram.confirmed);
@@ -40,7 +40,7 @@ export function TelegramCard({ title = "Telegram", desc }: { title?: string; des
   const tg = useMutation({
     mutationFn: async (action: "unlink" | "test") => {
       if (action === "test") return test();
-      return unlink({ data: { proof: unlinkProof.proof } });
+      return unlink({ data: { proof: unlinkProof.proof, intent: unlinkProof.intent } });
     },
     onSuccess: (_r, action) => {
       setTgNote({ ok: true, text: action === "unlink" ? "Telegram unlinked." : "Test alert sent." });
@@ -57,7 +57,7 @@ export function TelegramCard({ title = "Telegram", desc }: { title?: string; des
     const tab = window.open("", "_blank");
     try {
       if (twoFactorOn) await proveTwoFactor(code);
-      const { url } = await connect();
+      const { url } = await connect({ data: {} });
       setTgWaitUrl(url);
       setTgNote(null);
       if (tab) tab.location.href = url;
@@ -86,7 +86,7 @@ export function TelegramCard({ title = "Telegram", desc }: { title?: string; des
           {askUnlink ? (
             <div className="basis-full space-y-2 rounded-md border border-border p-3">
               <p className="text-xs text-muted-foreground">Telegram is where you approve coins leaving your pocket and where Seeds warns you, so unlinking it needs you to confirm it's you.</p>
-              <StepUp purpose="telegram_unlink" onChange={(ready, proof) => setUnlinkProof({ ready, proof })} />
+              <StepUp purpose="telegram_unlink" onChange={(ready, proof, intent) => setUnlinkProof({ ready, proof, intent })} />
               <div className="flex gap-2">
                 <Button size="sm" variant="outline" disabled={!unlinkProof.ready || tg.isPending} onClick={() => tg.mutate("unlink")}>Unlink Telegram</Button>
                 <Button size="sm" variant="ghost" onClick={() => setAskUnlink(false)}>Cancel</Button>

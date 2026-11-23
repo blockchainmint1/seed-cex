@@ -15,6 +15,11 @@ describe("published Vault signer record", () => {
     expect(VAULT_KMS_SIGNING_KEY_ID).toBe("seeds-vault-kms-2026-11");
     expect(doc).toContain(`"seeds-vault-kms-2026-11": "${PUB}"`);
   });
+  it("names no AWS account or key number (Bobby, Nov 23: pinning needs only id, public key, fingerprint)", () => {
+    expect(doc).not.toMatch(/\b\d{12}\b/);
+    expect(doc).not.toMatch(/arn:aws:/);
+    expect(doc).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/);
+  });
   it("fingerprint is the SHA-256 of the 32 public-key bytes", () => {
     const bytes = base64urlnopad.decode(PUB);
     expect(bytes.length).toBe(32);

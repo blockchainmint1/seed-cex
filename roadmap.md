@@ -384,8 +384,9 @@
 - [ ] Auditor review of the Nov 23 step-up / factor-trust / Vault-KMS changes before publishing
 
 ## Auditor review Nov 23 — step-up + Vault KMS (waiting on Bobby's picks)
-- [ ] S1 fresh sign-in must come after the request (blocked: Bobby — strict vs. first-factor exception)
-- [ ] S2 confirm/remove each 2FA app separately (blocked: Bobby)
-- [ ] S3 confirm-it's-you before replacing a connected Telegram chat (blocked: Bobby)
-- [ ] S4 AWS identifiers out of the public Vault record (blocked: Bobby)
-- [ ] CloudTrail alarms for the Vault KMS key (blocked: Bobby, then he runs a CloudShell script)
+- [x] S1 fresh sign-in must come after the request; first 2FA/Telegram on an empty account trusted within 10 min of sign-in (Bobby: strict, spare new members)
+- [x] S2 confirm/remove each 2FA app separately, show when added (Bobby: yes)
+- [x] S3 confirm-it's-you before replacing a connected Telegram chat; first connect unchanged (Bobby: yes)
+- [x] S4 AWS identifiers out of the public Vault record (Bobby: take them out)
+- [ ] CloudTrail alarms for the Vault KMS key — script written (seeds-vault-key-alarms.sh); blocked: Bobby runs it in CloudShell
+- [ ] Auditor review of S1–S4 fixes before publish (blocked: auditor)

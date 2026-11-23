@@ -105,16 +105,29 @@ async function requireTelegramChangeCode(userId: string, claims: unknown) {
 /** One-tap Telegram linking: returns a t.me link carrying a single-use code (stored hashed, 15 minutes). */
 export const startTelegramConnect = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .inputValidator((d: unknown) => z.object({
+    proof: z.object({ id: z.string().uuid(), secret: z.string().regex(/^[0-9a-f]{64}$/) }).nullable().optional(),
+    intent: z.string().max(80).nullable().optional(),
+  }).parse(d ?? {}))
+  .handler(async ({ data, context }) => {
     await requireTelegramChangeCode(context.userId, context.claims);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { newStartCode, sha256hex, telegramConfigured } = await import("./telegram.server");
     const { connectUrl } = await import("./telegram-bot");
     if (!telegramConfigured()) throw new Error("Telegram alerts aren't switched on yet. Please try again later.");
     const code = newStartCode();
-    // H1b: a chat connected from a session that just proved it's the member is trusted straight away.
-    const { provenNow } = await import("./step-up/step-up.server");
-    const trustedNow = await provenNow(context.userId, context.claims).catch(() => false);
+    // S3 (Bobby, Nov 23): replacing a connected chat needs "confirm it's you" like unlinking does, so a stolen tab
+    // can't move the member's alarms to its own chat. A first-time connect is unchanged.
+    // S1: a first chat is trusted straight away when the session signed in within 10 minutes; a replacement is
+    // trusted because the step-up just passed; anything else shows "Not confirmed yet".
+    const { firstChatTrusted, requireStepUp, stepUpSince } = await import("./step-up/step-up.server");
+    const { data: cur } = await supabaseAdmin.from("profiles").select("telegram_chat_id, telegram_verified").eq("id", context.userId).maybeSingle();
+    const hadChat = Boolean(cur?.telegram_verified && cur.telegram_chat_id);
+    if (hadChat) {
+      const since = await stepUpSince(context.userId, "telegram_unlink", { kind: "intent", token: data.intent });
+      await requireStepUp(context.userId, context.claims, "telegram_unlink", data.proof, since);
+    }
+    const trustedNow = hadChat ? true : firstChatTrusted(false, context.claims);
     const { error } = await supabaseAdmin.from("profiles")
       .update({ telegram_code: await sha256hex(code), telegram_code_expires_at: new Date(Date.now() + 15 * 60_000).toISOString(), telegram_code_trusted: trustedNow })
       .eq("id", context.userId);
@@ -124,15 +137,20 @@ export const startTelegramConnect = createServerFn({ method: "POST" })
 
 export const unlinkTelegram = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ proof: z.object({ id: z.string().uuid(), secret: z.string().regex(/^[0-9a-f]{64}$/) }).nullable().optional() }).parse(d ?? {}))
+  .inputValidator((d: unknown) => z.object({
+    proof: z.object({ id: z.string().uuid(), secret: z.string().regex(/^[0-9a-f]{64}$/) }).nullable().optional(),
+    intent: z.string().max(80).nullable().optional(),
+  }).parse(d ?? {}))
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: before } = await supabaseAdmin.from("profiles").select("telegram_chat_id, telegram_verified").eq("id", context.userId).maybeSingle();
     // H1: unlinking a working chat silences the member's alarms, so it needs "prove it's you" (sign-in again,
     // a tap in that chat, a day-old confirmed 2FA code, or the Honest.Money email code).
     if (before?.telegram_verified && before.telegram_chat_id) {
-      const { requireStepUp } = await import("./step-up/step-up.server");
-      await requireStepUp(context.userId, context.claims, "telegram_unlink", data.proof);
+      // S1: the fresh sign-in must come after the unlink screen opened (server-signed stamp).
+      const { requireStepUp, stepUpSince } = await import("./step-up/step-up.server");
+      const since = await stepUpSince(context.userId, "telegram_unlink", { kind: "intent", token: data.intent });
+      await requireStepUp(context.userId, context.claims, "telegram_unlink", data.proof, since);
     }
     const { error } = await supabaseAdmin
       .from("profiles")

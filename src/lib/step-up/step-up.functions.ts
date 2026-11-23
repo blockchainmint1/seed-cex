@@ -5,13 +5,24 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 const purpose = z.enum(["key_link", "confirm_factor", "telegram_unlink"]);
 const proofSchema = z.object({ id: z.string().uuid(), secret: z.string().regex(/^[0-9a-f]{64}$/) });
 export const stepUpProofSchema = proofSchema.nullable().optional();
+/** Unlink / replace Telegram: the server-signed "screen opened at" stamp (S1). */
+export const stepUpIntentSchema = z.string().max(80).nullable().optional();
 
-/** Which "prove it's you" options this member has right now (and whether this session is already fresh). */
-export const getMyStepUp = createServerFn({ method: "GET" })
+/** What the fresh sign-in must come after; resolved on the server (S1). */
+export const stepUpSubjectSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("link"), id: z.string().regex(/^[a-f0-9]{32}$/), secret: z.string().regex(/^[a-f0-9]{64}$/) }),
+  z.object({ kind: z.literal("totp"), factorId: z.string().uuid() }),
+  z.object({ kind: z.literal("telegram") }),
+  z.object({ kind: z.literal("intent"), token: stepUpIntentSchema }),
+]).nullable().optional();
+
+/** Which "prove it's you" options this member has right now, and whether this session already signed in after the request. */
+export const getMyStepUp = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .inputValidator((d) => z.object({ purpose, subject: stepUpSubjectSchema }).parse(d))
+  .handler(async ({ data, context }) => {
     const { stepUpState } = await import("./step-up.server");
-    return stepUpState(context.userId, context.claims);
+    return stepUpState(context.userId, context.claims, data.purpose, data.subject ?? null);
   });
 
 /** Send a Telegram "Yes, it's me" tap or an email code. */
@@ -48,12 +59,25 @@ export const getMyFactorTrust = createServerFn({ method: "GET" })
     return myFactorTrust(context.userId);
   });
 
-/** Confirm a "Not confirmed yet" 2FA app or Telegram chat. */
+/** Confirm ONE "Not confirmed yet" 2FA app (by id) or the Telegram chat (auditor S2). */
 export const confirmMyFactor = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ kind: z.enum(["totp", "telegram"]), proof: stepUpProofSchema }).parse(d))
+  .inputValidator((d) => z.object({
+    subject: z.discriminatedUnion("kind", [z.object({ kind: z.literal("totp"), factorId: z.string().uuid() }), z.object({ kind: z.literal("telegram") })]),
+    proof: stepUpProofSchema,
+  }).parse(d))
   .handler(async ({ data, context }) => {
     const { confirmFactor } = await import("./step-up.server");
-    await confirmFactor(context.userId, context.claims, data.kind, data.proof);
+    await confirmFactor(context.userId, context.claims, data.subject, data.proof);
+    return { ok: true };
+  });
+
+/** Remove a 2FA app that isn't confirmed yet — no extra check, since that only makes the account safer (S2). */
+export const removeMyUnconfirmedFactor = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ factorId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { removeUnconfirmedFactor } = await import("./step-up.server");
+    await removeUnconfirmedFactor(context.userId, data.factorId);
     return { ok: true };
   });

@@ -12,6 +12,17 @@ import { CodeField } from "@/components/account/CodeField";
 import { proveTwoFactor } from "@/components/account/two-factor";
 
 export type StepUpProof = { id: string; secret: string } | null;
+/** What the fresh sign-in must come after (server resolves the time). Unlink/replace Telegram uses a server stamp instead. */
+export type StepUpSubject = { kind: "link"; id: string; secret: string } | { kind: "totp"; factorId: string } | { kind: "telegram" };
+
+// The unlink/replace stamp survives a sign-in round trip (the coin / wallet sign-in leaves this page).
+const INTENT_STORE = "seeds-stepup-intent";
+const readStoredIntent = (purpose: StepUpPurpose): string | null => {
+  try { return window.sessionStorage.getItem(`${INTENT_STORE}:${purpose}`); } catch { return null; }
+};
+const storeIntent = (purpose: StepUpPurpose, token: string | null) => {
+  try { if (token) window.sessionStorage.setItem(`${INTENT_STORE}:${purpose}`, token); } catch { /* private mode */ }
+};
 
 /** Open the Honest.Money sign-in window, forcing the password box. Resolves when this tab has the new session. */
 function signInAgainWithHme(): Promise<void> {
@@ -34,13 +45,29 @@ function signInAgainWithHme(): Promise<void> {
  * day-old Telegram chat, a code from day-old 2FA apps, or a code to their Honest.Money email.
  * Calls onChange(true, proof) once the step is unlocked; the server re-checks everything.
  */
-export function StepUp({ purpose, onChange, returnTo }: { purpose: StepUpPurpose; onChange: (ready: boolean, proof: StepUpProof) => void; returnTo?: string }) {
+export function StepUp({ purpose, subject, onChange, returnTo }: {
+  purpose: StepUpPurpose;
+  /** Needed for key_link and confirm_factor; unlink/replace Telegram uses the stored stamp. */
+  subject?: StepUpSubject;
+  onChange: (ready: boolean, proof: StepUpProof, intent: string | null) => void;
+  returnTo?: string;
+}) {
   const qc = useQueryClient();
   const load = useServerFn(getMyStepUp);
   const start = useServerFn(startMyStepUp);
   const check = useServerFn(checkMyStepUp);
   const verifyEmail = useServerFn(verifyMyStepUpEmail);
-  const q = useQuery({ queryKey: ["step-up", purpose], queryFn: () => load(), staleTime: 0 });
+  const subjectKey = subject ? JSON.stringify(subject) : "";
+  const q = useQuery({
+    queryKey: ["step-up", purpose, subjectKey],
+    queryFn: async () => {
+      const s = purpose === "telegram_unlink" ? { kind: "intent" as const, token: readStoredIntent(purpose) } : subject ?? null;
+      const r = await load({ data: { purpose, subject: s } });
+      if (purpose === "telegram_unlink") storeIntent(purpose, r.intent);
+      return r;
+    },
+    staleTime: 0,
+  });
   const [proof, setProof] = useState<StepUpProof>(null);
   const [pending, setPending] = useState<{ method: "telegram" | "email"; id: string; secret: string; sentTo: string } | null>(null);
   const [code, setCode] = useState("");
@@ -51,7 +78,8 @@ export function StepUp({ purpose, onChange, returnTo }: { purpose: StepUpPurpose
   cb.current = onChange;
 
   const ready = Boolean(q.data?.fresh) || proof != null;
-  useEffect(() => { cb.current(ready, proof); }, [ready, proof]);
+  const intent = q.data?.intent ?? null;
+  useEffect(() => { cb.current(ready, proof, intent); }, [ready, proof, intent]);
 
   // Wait for the Telegram tap.
   useEffect(() => {
@@ -73,7 +101,7 @@ export function StepUp({ purpose, onChange, returnTo }: { purpose: StepUpPurpose
     setBusy(true); setNote(null);
     try { await fn(); } catch (e) { setNote(e instanceof Error ? e.message : "That didn't work. Try again."); } finally { setBusy(false); }
   };
-  const refresh = () => qc.invalidateQueries({ queryKey: ["step-up", purpose] });
+  const refresh = () => qc.invalidateQueries({ queryKey: ["step-up", purpose, subjectKey] });
 
   if (q.isLoading) return <p className="text-xs text-muted-foreground">Checking…</p>;
   if (q.error) return <p className="text-xs text-destructive">Couldn't load the security check. Refresh and try again.</p>;
@@ -81,7 +109,7 @@ export function StepUp({ purpose, onChange, returnTo }: { purpose: StepUpPurpose
   if (ready) {
     return (
       <p className="inline-flex items-center gap-2 text-xs text-primary"><Check className="h-3.5 w-3.5" />
-        {proof ? "Confirmed it's you." : "You signed in just now, so this counts as you."}
+        {proof ? "Confirmed it's you." : "You signed in again after this started, so this counts as you."}
       </p>
     );
   }
@@ -89,7 +117,7 @@ export function StepUp({ purpose, onChange, returnTo }: { purpose: StepUpPurpose
   return (
     <div className="space-y-3 rounded-md border border-border p-3 text-sm">
       <p className="flex items-center gap-2 font-medium"><ShieldCheck className="h-4 w-4 text-primary" /> First, confirm it's you</p>
-      <p className="text-xs text-muted-foreground">This keeps someone who got hold of your open Seeds tab from changing where your coins go.</p>
+      <p className="text-xs text-muted-foreground">This keeps someone who got hold of your open Seeds tab from changing where your coins go. Signing in again counts even if you signed in a few minutes ago — it has to happen after this started.</p>
       {o.signIn === "hme" ? (
         <Button size="sm" disabled={busy} onClick={() => run(async () => { await signInAgainWithHme(); await refresh(); })}>
           <KeyRound /> Sign in again with Honest.Money

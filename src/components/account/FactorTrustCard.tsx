@@ -4,44 +4,84 @@ import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Card, Note } from "@/components/account/ui";
 import { StepUp, type StepUpProof } from "@/components/account/StepUp";
-import { confirmMyFactor, getMyFactorTrust } from "@/lib/step-up/step-up.functions";
+import { TWO_FACTOR_QUERY } from "@/components/account/TwoFactorCard";
+import { confirmMyFactor, getMyFactorTrust, removeMyUnconfirmedFactor } from "@/lib/step-up/step-up.functions";
+
+type Item = { kind: "totp"; factorId: string } | { kind: "telegram" };
+const itemKey = (i: Item) => (i.kind === "totp" ? `totp:${i.factorId}` : "telegram");
+const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "unknown time");
 
 /**
- * Auditor H1b (Bobby, Nov 23): a 2FA app or Telegram chat added outside a fresh sign-in shows "Not confirmed yet".
- * An unconfirmed chat can't approve sends; unconfirmed 2FA can't prove it's you. Only shown when something waits.
+ * Auditor H1b + S2 (Bobby, Nov 23): each 2FA app or Telegram chat added outside the setup exception shows
+ * "Not confirmed yet" on its own line, with when it was added. Confirm needs "confirm it's you" with a sign-in
+ * made after that item was added (S1); Remove (2FA apps only) needs no check, since it only makes the account safer.
  */
 export function FactorTrustCard() {
   const qc = useQueryClient();
   const load = useServerFn(getMyFactorTrust);
   const confirm = useServerFn(confirmMyFactor);
+  const remove = useServerFn(removeMyUnconfirmedFactor);
   const q = useQuery({ queryKey: ["factor-trust"], queryFn: () => load() });
+  const [open, setOpen] = useState<Item | null>(null);
   const [gate, setGate] = useState<{ ready: boolean; proof: StepUpProof }>({ ready: false, proof: null });
   const [gateKey, setGateKey] = useState(0);
   const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
+  const done = () => { qc.invalidateQueries({ queryKey: ["factor-trust"] }); qc.invalidateQueries({ queryKey: ["my-profile"] }); qc.invalidateQueries({ queryKey: TWO_FACTOR_QUERY }); };
   const m = useMutation({
-    mutationFn: (kind: "totp" | "telegram") => confirm({ data: { kind, proof: gate.proof } }),
-    onSuccess: () => { setNote({ ok: true, text: "Confirmed." }); qc.invalidateQueries({ queryKey: ["factor-trust"] }); qc.invalidateQueries({ queryKey: ["my-profile"] }); },
+    mutationFn: (item: Item) => confirm({ data: { subject: item, proof: gate.proof } }),
+    onSuccess: () => { setNote({ ok: true, text: "Confirmed." }); setOpen(null); done(); },
     onError: (e: Error) => setNote({ ok: false, text: e.message }),
     onSettled: () => { setGate({ ready: false, proof: null }); setGateKey((k) => k + 1); },
   });
+  const rm = useMutation({
+    mutationFn: (factorId: string) => remove({ data: { factorId } }),
+    onSuccess: () => { setNote({ ok: true, text: "Removed. That app's codes no longer work on your account." }); setOpen(null); done(); },
+    onError: (e: Error) => setNote({ ok: false, text: e.message }),
+  });
   const d = q.data;
   if (!d) return null;
-  const tgWaits = d.telegram.connected && !d.telegram.confirmed;
-  const totpWaits = d.totp.some((f) => !f.confirmed);
-  if (!tgWaits && !totpWaits) return note ? <Note tone={note.ok ? "ok" : "error"}>{note.text}</Note> : null;
+  const items: Array<{ item: Item; label: string; addedAt: string | null; why: string }> = [];
+  if (d.telegram.connected && !d.telegram.confirmed) {
+    items.push({ item: { kind: "telegram" }, label: "Telegram chat", addedAt: d.telegram.addedAt, why: "Until it's confirmed it can't approve coins leaving your pocket." });
+  }
+  d.totp.filter((f) => !f.confirmed).forEach((f, i) => {
+    items.push({ item: { kind: "totp", factorId: f.id }, label: f.name ? `2FA app “${f.name}”` : `2FA app ${i + 1}`, addedAt: f.addedAt, why: "Until it's confirmed its codes can't be used to confirm big changes." });
+  });
+  if (!items.length) return note ? <Note tone={note.ok ? "ok" : "error"}>{note.text}</Note> : null;
   return (
-    <Card title="Not confirmed yet" desc="Added without a fresh sign-in, so Seeds doesn't trust it yet.">
+    <Card title="Not confirmed yet" desc="Added without a fresh sign-in, so Seeds doesn't trust it yet. Check each one.">
       {note ? <div className="mb-3"><Note tone={note.ok ? "ok" : "error"}>{note.text}</Note></div> : null}
-      <ul className="mb-3 space-y-1 text-sm">
-        {tgWaits ? <li>• Your <b>Telegram chat</b> — until it's confirmed it can't approve coins leaving your pocket.</li> : null}
-        {totpWaits ? <li>• A new <b>two-factor app</b> — until it's confirmed its codes can't be used to confirm big changes.</li> : null}
+      <p className="mb-3 text-xs text-muted-foreground">Only confirm what you added yourself. If you don't recognise one, remove it, sign out of Honest.Money everywhere and contact support@honest.money.</p>
+      <ul className="space-y-3">
+        {items.map(({ item, label, addedAt, why }) => {
+          const k = itemKey(item);
+          const isOpen = open != null && itemKey(open) === k;
+          return (
+            <li key={k} className="rounded-md border border-border p-3 text-sm">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <b>{label}</b>
+                <span className="text-xs text-muted-foreground">added {when(addedAt)}</span>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">{why}</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {!isOpen ? <Button size="sm" variant="outline" onClick={() => { setNote(null); setOpen(item); setGate({ ready: false, proof: null }); setGateKey((x) => x + 1); }}>Confirm</Button> : null}
+                {item.kind === "totp" ? (
+                  <Button size="sm" variant="ghost" disabled={rm.isPending} onClick={() => rm.mutate(item.factorId)}>Remove</Button>
+                ) : null}
+              </div>
+              {isOpen ? (
+                <div className="mt-3 space-y-3">
+                  <StepUp key={`${k}-${gateKey}`} purpose="confirm_factor" subject={item} onChange={(ready, proof) => setGate({ ready, proof })} />
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" disabled={!gate.ready || m.isPending} onClick={() => m.mutate(item)}>Yes, I added this — confirm it</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setOpen(null)}>Cancel</Button>
+                  </div>
+                </div>
+              ) : null}
+            </li>
+          );
+        })}
       </ul>
-      <p className="mb-3 text-xs text-muted-foreground">If you didn't add it yourself, don't confirm it: remove it, sign out of Honest.Money everywhere and contact support@honest.money.</p>
-      <StepUp key={gateKey} purpose="confirm_factor" onChange={(ready, proof) => setGate({ ready, proof })} />
-      <div className="mt-3 flex flex-wrap gap-2">
-        {tgWaits ? <Button size="sm" disabled={!gate.ready || m.isPending} onClick={() => m.mutate("telegram")}>Confirm Telegram chat</Button> : null}
-        {totpWaits ? <Button size="sm" disabled={!gate.ready || m.isPending} onClick={() => m.mutate("totp")}>Confirm two-factor app</Button> : null}
-      </div>
     </Card>
   );
 }

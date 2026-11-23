@@ -119,4 +119,10 @@ describe("AWS alarm messages", () => {
     expect(alarmText(JSON.stringify({ AlarmName: "a", NewStateValue: "INSUFFICIENT_DATA" }))).toBeNull();
     expect(alarmText("not json")).toBeNull();
   });
+
+  test("Vault signing-key alarms get Vault advice, not pocket-key advice", () => {
+    const t = alarmText(JSON.stringify({ AlarmName: "Seeds Vault signing key used by another login", NewStateValue: "ALARM" }))!;
+    expect(t).toContain("disable the Vault signing AWS KMS key");
+    expect(t).not.toContain("pocket-key");
+  });
 });

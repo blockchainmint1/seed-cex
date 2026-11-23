@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
-  AGED_MS, FRESH_SIGNIN_SEC, STEP_UP_PER_HOUR, STEP_UP_TRIES, STEP_UP_TTL_MS,
-  factorCounts, freshSignIn, newFactorTrust, parseStepUpData, proofUsable, signInAgeSec, stepUpButtonData,
+  AGED_MS, FRESH_SIGNIN_SEC, INTENT_MAX_MS, STEP_UP_PER_HOUR, STEP_UP_TRIES, STEP_UP_TTL_MS,
+  factorCounts, freshSignIn, freshTotpAfter, makeIntent, readIntent, recentSignIn, newFactorTrust, parseStepUpData, proofUsable, signInAgeSec, stepUpButtonData,
   stepUpOptions, stepUpPasses, stepUpSignatureOk, stepUpTapDecision, totpCounts, trusted,
 } from "./rules";
 
@@ -11,20 +11,72 @@ const DAY = 24 * 3600_000;
 const ID = "11111111-2222-4333-8444-555555555555";
 const USER = "99999999-8888-4777-8666-555555555555";
 
-describe("fresh sign-in (option 1, offered first)", () => {
-  test("signed in 15 minutes ago or less counts; older doesn't", () => {
-    expect(FRESH_SIGNIN_SEC).toBe(900);
-    expect(freshSignIn({ amr: [{ method: "otp", timestamp: NOW_S - 900 }] }, NOW_S)).toBe(true);
-    expect(freshSignIn({ amr: [{ method: "otp", timestamp: NOW_S - 901 }] }, NOW_S)).toBe(false);
+describe("fresh sign-in (option 1, offered first) — S1: must come after the request", () => {
+  const SINCE = NOW_S - 120; // the held key / new factor / unlink screen appeared 2 minutes ago
+  test("10 minutes is the limit (decisions note)", () => {
+    expect(FRESH_SIGNIN_SEC).toBe(600);
+    expect(freshSignIn({ amr: [{ method: "otp", timestamp: NOW_S - 600 }] }, NOW_S, NOW_S - 700)).toBe(true);
+    expect(freshSignIn({ amr: [{ method: "otp", timestamp: NOW_S - 601 }] }, NOW_S, NOW_S - 700)).toBe(false);
+  });
+  test("a sign-in from before the request doesn't count, even a minute old (stolen tab right after login)", () => {
+    expect(freshSignIn({ amr: [{ method: "otp", timestamp: SINCE - 1 }] }, NOW_S, SINCE)).toBe(false);
+    expect(freshSignIn({ amr: [{ method: "otp", timestamp: SINCE }] }, NOW_S, SINCE)).toBe(true);
+    expect(freshSignIn({ amr: [{ method: "otp", timestamp: NOW_S - 30 }] }, NOW_S, SINCE)).toBe(true);
+  });
+  test("nothing to compare against = never fresh", () => {
+    expect(freshSignIn({ amr: [{ method: "otp", timestamp: NOW_S }] }, NOW_S, null)).toBe(false);
+    expect(freshSignIn({ amr: [{ method: "otp", timestamp: NOW_S }] }, NOW_S, Number.NaN)).toBe(false);
   });
   test("an authenticator code is not a sign-in", () => {
     expect(signInAgeSec({ amr: [{ method: "totp", timestamp: NOW_S }] }, NOW_S)).toBeNull();
-    expect(freshSignIn({ amr: [{ method: "otp", timestamp: NOW_S - 5000 }, { method: "totp", timestamp: NOW_S }] }, NOW_S)).toBe(false);
+    expect(freshSignIn({ amr: [{ method: "otp", timestamp: NOW_S - 5000 }, { method: "totp", timestamp: NOW_S }] }, NOW_S, SINCE)).toBe(false);
   });
   test("a connected app's token never counts, and no claims = not fresh", () => {
-    expect(freshSignIn({ amr: [{ method: "otp", timestamp: NOW_S }], client_id: "ai-app" }, NOW_S)).toBe(false);
-    expect(freshSignIn(null, NOW_S)).toBe(false);
-    expect(freshSignIn({}, NOW_S)).toBe(false);
+    expect(freshSignIn({ amr: [{ method: "otp", timestamp: NOW_S }], client_id: "ai-app" }, NOW_S, SINCE)).toBe(false);
+    expect(freshSignIn(null, NOW_S, SINCE)).toBe(false);
+    expect(freshSignIn({}, NOW_S, SINCE)).toBe(false);
+  });
+  test("authenticator codes follow the same 'after the request' rule", () => {
+    const c = (ts: number) => ({ aal: "aal2", amr: [{ method: "totp", timestamp: ts }] });
+    expect(freshTotpAfter(c(NOW_S - 10), NOW_S, SINCE)).toBe(true);
+    expect(freshTotpAfter(c(SINCE - 1), NOW_S, SINCE)).toBe(false);
+    expect(freshTotpAfter({ aal: "aal1", amr: [{ method: "totp", timestamp: NOW_S }] }, NOW_S, SINCE)).toBe(false);
+    expect(freshTotpAfter(c(NOW_S), NOW_S, null)).toBe(false);
+  });
+});
+
+describe("new members aren't slowed down (S1 exception)", () => {
+  test("first 2FA app / first chat, added within 10 minutes of signing in, is trusted", () => {
+    expect(recentSignIn({ amr: [{ method: "otp", timestamp: NOW_S - 600 }] }, NOW_S)).toBe(true);
+    expect(newFactorTrust({ firstOfKind: true, recentSignIn: true })).toBe("fresh_sign_in");
+  });
+  test("a second 2FA app or a later chat is 'Not confirmed yet', however recent the sign-in", () => {
+    expect(newFactorTrust({ firstOfKind: false, recentSignIn: true })).toBeNull();
+  });
+  test("first of its kind but signed in over 10 minutes ago: 'Not confirmed yet'", () => {
+    expect(recentSignIn({ amr: [{ method: "otp", timestamp: NOW_S - 601 }] }, NOW_S)).toBe(false);
+    expect(newFactorTrust({ firstOfKind: true, recentSignIn: false })).toBeNull();
+  });
+  test("a replacement chat added right after a passed check is trusted", () => {
+    expect(newFactorTrust({ firstOfKind: false, recentSignIn: false, steppedUp: true })).toBe("step_up");
+  });
+});
+
+describe("unlink / replace Telegram 'screen opened at' stamp", () => {
+  const KEY = "test-key";
+  test("genuine stamp reads back its time for the same member and purpose", async () => {
+    const t = await makeIntent(KEY, USER, "telegram_unlink", NOW);
+    expect(await readIntent(KEY, t, USER, "telegram_unlink", NOW + 60_000)).toBe(NOW);
+  });
+  test("refused for another member, purpose, key, a changed time, or after 30 minutes", async () => {
+    const t = await makeIntent(KEY, USER, "telegram_unlink", NOW);
+    expect(INTENT_MAX_MS).toBe(30 * 60_000);
+    expect(await readIntent(KEY, t, ID, "telegram_unlink", NOW)).toBeNull();
+    expect(await readIntent(KEY, t, USER, "key_link", NOW)).toBeNull();
+    expect(await readIntent("other", t, USER, "telegram_unlink", NOW)).toBeNull();
+    expect(await readIntent(KEY, t.replace(String(NOW), String(NOW - 600_000)), USER, "telegram_unlink", NOW)).toBeNull();
+    expect(await readIntent(KEY, t, USER, "telegram_unlink", NOW + INTENT_MAX_MS + 1)).toBeNull();
+    expect(await readIntent(KEY, null, USER, "telegram_unlink", NOW)).toBeNull();
   });
 });
 
@@ -48,13 +100,6 @@ describe("Telegram / 2FA count only when trusted and a day old", () => {
   test("a trusted chat may approve sends straight away (age only matters for 'prove it's you')", () => {
     expect(trusted({ trustedMs: NOW, addedMs: NOW })).toBe(true);
     expect(trusted({ trustedMs: null, addedMs: NOW - 9 * DAY })).toBe(false);
-  });
-});
-
-describe("new 2FA app / Telegram chat", () => {
-  test("trusted right away only after a fresh sign-in, otherwise 'Not confirmed yet'", () => {
-    expect(newFactorTrust(true)).toBe("fresh_sign_in");
-    expect(newFactorTrust(false)).toBeNull();
   });
 });
 

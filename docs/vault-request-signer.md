@@ -16,7 +16,7 @@ which may only `kms:Sign` and `kms:GetPublicKey` on this one key.
 | `signing_key_id` | `seeds-vault-kms-2026-11` |
 | Public key (base64url, no padding, 32 bytes) | `6_06ZOHGeDeGX7O1ToRTAmdiGs0_AOSSX70VbTd9IjA` |
 | SHA-256 fingerprint of the 32 decoded bytes | `0556577f852b0cf2a05a1c75ecbf806e6657ce193393d9e800137b6537c86d4d` |
-| Where the private key lives | AWS KMS, us-east-1, account 150646524089, key `33a25a5a-d6d9-46eb-a4bb-1ab785b7d9f9` |
+| Where the private key lives | AWS KMS (Seeds' AWS account; the exact key is named only in the server setting) |
 | Status | active |
 | Signed bytes | `vaultRequestBytes` in `src/lib/key-signin/vault-protocol.ts`, a verbatim copy of Seeds Key's `src/lib/seeds-key/vault-protocol.ts` (SHA-256 `fa3d955bae6c947b83d1bea2b7200aad956e061baeb03f4b975ba0591d1379a9`) |
 

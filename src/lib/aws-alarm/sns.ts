@@ -80,9 +80,13 @@ export function alarmText(message: string): string | null {
   const reason = typeof a["NewStateReason"] === "string" ? (a["NewStateReason"] as string).slice(0, 400) : "";
   const desc = typeof a["AlarmDescription"] === "string" ? (a["AlarmDescription"] as string).slice(0, 300) : "";
   if (state === "ALARM") {
-    return `🚨 <b>Seeds AWS security alarm</b>\n<b>${esc(name)}</b>${desc ? `\n${esc(desc)}` : ""}\n${esc(reason)}\n\n` +
-      `If nobody at Seeds is moving or re-locking keys right now: disable the pocket-key AWS KMS key, then replace the AWS login. ` +
-      `Members then re-link; their coins stay in their wallets.`;
+    // Vault signing-key alarms (names contain "Vault"): that key only signs HME Vault link requests, never coins.
+    const advice = /vault/i.test(name)
+      ? `If nobody at Seeds is working on the HME Vault signing key right now: disable the Vault signing AWS KMS key, then replace the AWS login. ` +
+        `HME Vault sign-ins stop until a new key is published and pinned; no coins can move with this key.`
+      : `If nobody at Seeds is moving or re-locking keys right now: disable the pocket-key AWS KMS key, then replace the AWS login. ` +
+        `Members then re-link; their coins stay in their wallets.`;
+    return `🚨 <b>Seeds AWS security alarm</b>\n<b>${esc(name)}</b>${desc ? `\n${esc(desc)}` : ""}\n${esc(reason)}\n\n` + advice;
   }
   if (state === "OK") return `✅ <b>Seeds AWS alarm cleared</b>\n${esc(name)}`;
   return null;

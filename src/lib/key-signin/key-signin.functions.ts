@@ -186,8 +186,9 @@ export const confirmKeyLink = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const r = await myLinkRequest(data.id, data.secret, context.userId);
     if (!r || !r.claimed_at) throw new Error("That link request ran out. Start again.");
+    // S1: a fresh sign-in counts only when it came after this browser received the held key.
     const { requireStepUp } = await import("../step-up/step-up.server");
-    await requireStepUp(context.userId, context.claims, "key_link", data.proof);
+    await requireStepUp(context.userId, context.claims, "key_link", data.proof, Date.parse(r.claimed_at));
     const { confirmHeldReplace } = await import("./replace.server");
     await confirmHeldReplace({ challengeId: data.id, code: null, stepUpDone: true });
     return { ok: true };

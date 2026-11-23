@@ -253,7 +253,7 @@ function KeySignin() {
                 If yes, it becomes your trading pocket (pocket 1106). Its addresses are different from any pocket you had before, so deposit to the new ones.
                 If you didn't just do this yourself, or the name is different, choose "No" — nothing changes.
               </p>
-              <StepUp key={stepUpKey} purpose="key_link" onChange={(ready, proof) => setStepUp({ ready, proof })} />
+              <StepUp key={stepUpKey} purpose="key_link" subject={{ kind: "link", id: held.id, secret: held.secret }} onChange={(ready, proof) => setStepUp({ ready, proof })} />
               <div className="flex flex-wrap gap-2">
                 <Button disabled={!stepUp.ready} onClick={() => void approveLink()}>Yes, that's mine — link it</Button>
                 <Button variant="outline" onClick={refuse}>No, that's not mine</Button>
