@@ -13,7 +13,7 @@ export const Route = createFileRoute("/coming-soon")({
       { title: "Seeds launches November 30, 2026 — Coming soon" },
       { name: "description", content: "Seeds is in demo mode: set up your account and link your HME Wallet now. Trading goes live November 30, 2026, the first day of the To the Moon class." },
       { property: "og:title", content: "Seeds launches November 30, 2026" },
-      { property: "og:description", content: "Demo mode today, trading on launch day. Reserve a seat in Spark, the first To the Moon crypto trading class from Seeds." },
+      { property: "og:description", content: "Demo mode today, trading on launch day. Reserve a seat in Ignite, the first To the Moon crypto trading class from Seeds." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],

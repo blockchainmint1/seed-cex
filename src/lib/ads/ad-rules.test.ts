@@ -18,7 +18,7 @@ describe("who may advertise", () => {
 
 describe("links", () => {
   test("Seeds pages and https addresses are allowed", () => {
-    expect(safeAdLink("/to-the-moon/spark")).toBe("/to-the-moon/spark");
+    expect(safeAdLink("/to-the-moon/ignite")).toBe("/to-the-moon/ignite");
     expect(safeAdLink("https://texitcoin.org/build")).toBe("https://texitcoin.org/build");
   });
   test("unsafe links are refused", () => {

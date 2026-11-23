@@ -143,7 +143,7 @@ export const TEMPLATES: { [K in TemplateName]: Def<K> } = {
     category: "ignite",
     subject: () => "Finish reserving your To the Moon seat",
     render: (p) => <IgniteReminderEmail {...p} />,
-    sample: { name: "Alex", amount: 499, dates: "December 5–6, 2026", time: "1:00–5:00 PM CST", seatsLeft: 42, className: "Ignite", classSlug: "ignite" },
+    sample: { name: "Alex", amount: 499, dates: "December 5–6, 2026", time: "1:00–5:00 PM CST", seatsLeft: 42, className: "Spark", classSlug: "spark" },
   },
   "ignite-message": {
     label: "To the Moon: message from Seeds",
@@ -157,7 +157,7 @@ export const TEMPLATES: { [K in TemplateName]: Def<K> } = {
     category: "ignite",
     subject: (p) => p.subject,
     render: (p) => <IgniteInterestEmail {...p} />,
-    sample: { subject: "A new To the Moon class just opened", paragraphs: ["Hi Alex,", "Ignite runs December 5–6, 1–5 PM Central. Seats are limited."], classSlug: "ignite", unsubscribeUrl: "https://seeds.honest.money/api/public/email/unsubscribe?t=sample" },
+    sample: { subject: "A new To the Moon class just opened", paragraphs: ["Hi Alex,", "Spark runs December 5–6, 1–5 PM Central. Seats are limited."], classSlug: "spark", unsubscribeUrl: "https://seeds.honest.money/api/public/email/unsubscribe?t=sample" },
   },
 };
 

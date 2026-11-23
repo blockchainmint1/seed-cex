@@ -119,7 +119,7 @@ export function pickAds(ads: readonly Ad[], spot: AdSpot, opts: { coinSlug?: str
 }
 
 const HOUSE_START = "2026-11-01T00:00:00Z";
-/** To the Moon's first class (Spark) ends Dec 4 2026, 6:30 PM CST. */
+/** To the Moon's first class (Ignite) ends Dec 4 2026, 6:30 PM CST. */
 const IGNITE_UNTIL = "2026-12-05T00:30:00Z";
 
 function house(id: string, spot: AdSpot, x: Omit<Ad, "id" | "spot" | "advertiser" | "advertiser_kind" | "coin_slug" | "starts_at" | "ends_at"> & { ends_at?: string | null }): ShownAd {
@@ -134,7 +134,7 @@ function house(id: string, spot: AdSpot, x: Omit<Ad, "id" | "spot" | "advertiser
 export function houseAds(spot: AdSpot, nowMs: number): ShownAd[] {
   const all: ShownAd[] =
     spot === "home_spotlight" ? [
-      house("ignite", spot, { title: "Spark · To the Moon trading class", body: "Five evenings, Nov 30 – Dec 4. Learn to trade without handing over your keys.", cta_label: "See the class", link: "/to-the-moon/spark", accent: "green", ends_at: IGNITE_UNTIL }),
+      house("ignite", spot, { title: "Ignite · To the Moon trading class", body: "Five evenings, Nov 30 – Dec 4. Learn to trade without handing over your keys.", cta_label: "See the class", link: "/to-the-moon/ignite", accent: "green", ends_at: IGNITE_UNTIL }),
       house("ai", spot, { title: "Seeds AI baskets", body: "Build a coin basket with plain rules, see the daily prices behind every move, and approve each trade.", cta_label: "Try a basket", link: "/ai", accent: "ivory" }),
       house("list", spot, { title: "List your coin on Seeds", body: "No trading-volume or market-maker requirements. Listing fees are paid by coin teams, never by traders.", cta_label: "Apply to list", link: "/list", accent: "amber" }),
       house("how", spot, { title: "How Seeds works", body: "Trades settle wallet to wallet from your own trading pocket. Seeds never holds your coins.", cta_label: "Read how it works", link: "/how-it-works", accent: "forest" }),
@@ -143,7 +143,7 @@ export function houseAds(spot: AdSpot, nowMs: number): ShownAd[] {
       house("list", spot, { title: "List your coin on Seeds", body: "Coin teams can apply for a Seeds market. Traders never pay a listing fee.", cta_label: "Apply to list", link: "/list", accent: "amber" }),
     ]
     : spot === "coin_banner" ? [
-      house("ignite", spot, { title: "Spark · To the Moon trading class · Nov 30 – Dec 4 · 5:00–6:30 PM CST", body: "Learn to trade without giving up your keys.", cta_label: "See the class", link: "/to-the-moon/spark", accent: "green", ends_at: IGNITE_UNTIL }),
+      house("ignite", spot, { title: "Ignite · To the Moon trading class · Nov 30 – Dec 4 · 5:00–6:30 PM CST", body: "Learn to trade without giving up your keys.", cta_label: "See the class", link: "/to-the-moon/ignite", accent: "green", ends_at: IGNITE_UNTIL }),
     ]
     : [];
   return all.filter((a) => isRunning(a, nowMs));

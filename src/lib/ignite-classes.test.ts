@@ -29,7 +29,7 @@ describe("class price", () => {
   test("no discount when the class isn't free for miners", () => {
     expect(classPrice({ feeUsd: 99, depositUsd: 400, minersFree: false }, "miner").totalUsd).toBe(499);
   });
-  test("Spark (the first class) stays $400", () => {
+  test("Ignite (the first class) stays $400", () => {
     expect(classPrice({ feeUsd: 0, depositUsd: 400, minersFree: true }, "not_miner").totalUsd).toBe(400);
   });
 });
@@ -41,7 +41,7 @@ describe("schedule wording", () => {
     expect(sessionsLabel(spark)).toBe("2 live sessions · 4 hours each");
     expect(sessionLines(spark, TZ)).toEqual(["Sat, December 5 · 1–5\u00a0PM CST", "Sun, December 6 · 1–5\u00a0PM CST"]);
   });
-  test("Spark (the first class) reads Nov 30–Dec 4, 5:00–6:30 PM Central", () => {
+  test("Ignite (the first class) reads Nov 30–Dec 4, 5:00–6:30 PM Central", () => {
     expect(dateRangeLabel(first, TZ)).toBe("November 30–December 4, 2026");
     expect(sharedTimeLabel(first, TZ)).toBe("5:00–6:30 PM CST");
     expect(sessionsLabel(first)).toBe("5 live sessions · 90 minutes each");
@@ -62,13 +62,13 @@ describe("who can register", () => {
   test("already over", () => expect(canRegister({ status: "open", endsAt: "2026-11-01T00:00:00Z" }, 5, now)).toBe(false));
   test("upcoming list hides drafts, finished and past classes, soonest first", () => {
     const list = [
-      { slug: "ignite", status: "open", startsAt: "2026-12-05T19:00:00Z", endsAt: "2026-12-06T23:00:00Z" },
-      { slug: "spark", status: "open", startsAt: "2026-11-30T23:00:00Z", endsAt: "2026-12-05T00:30:00Z" },
+      { slug: "spark", status: "open", startsAt: "2026-12-05T19:00:00Z", endsAt: "2026-12-06T23:00:00Z" },
+      { slug: "ignite", status: "open", startsAt: "2026-11-30T23:00:00Z", endsAt: "2026-12-05T00:30:00Z" },
       { slug: "draft", status: "draft", startsAt: "2026-12-10T19:00:00Z", endsAt: "2026-12-10T23:00:00Z" },
       { slug: "old", status: "open", startsAt: "2026-10-01T19:00:00Z", endsAt: "2026-10-01T23:00:00Z" },
       { slug: "done", status: "done", startsAt: "2026-12-20T19:00:00Z", endsAt: "2026-12-20T23:00:00Z" },
     ];
-    expect(upcomingClasses(list, now).map((c) => c.slug)).toEqual(["spark", "ignite"]);
+    expect(upcomingClasses(list, now).map((c) => c.slug)).toEqual(["ignite", "spark"]);
   });
 });
 

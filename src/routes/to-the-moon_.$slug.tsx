@@ -139,7 +139,7 @@ function ClassPage() {
           <div className="mt-10"><ParticipationGuide depositUsd={c.depositUsd} /></div>
           <p className="mt-6 max-w-2xl text-xs text-muted-foreground">Class enrollment and exchange accounts are separate: reserving a seat doesn't open or fund a Seeds account. Educational content doesn't guarantee profits or trading results.</p>
         </div>
-        {c.slug === "spark" && <BobbyLetter />}
+        {c.slug === "ignite" && <BobbyLetter />}
         <div className="mt-16 rounded-3xl border border-border bg-card/60 p-6 sm:p-8">
           <h2 className="font-display text-2xl">Can't make these dates?</h2>
           <p className="mt-2 text-muted-foreground">Leave your email and we'll tell you when the next class opens.</p>
