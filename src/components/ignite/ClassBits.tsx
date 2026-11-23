@@ -38,7 +38,9 @@ export function ClassCard({ c }: { c: PublicClass }) {
         <div className="flex gap-2"><MapPin aria-hidden className="mt-0.5 size-4 shrink-0 text-primary" /><div><dt className="sr-only">Where</dt><dd>{c.location}</dd></div></div>
         <div className="flex gap-2"><Users aria-hidden className="mt-0.5 size-4 shrink-0 text-primary" /><div><dt className="sr-only">Instructor</dt><dd>With {c.instructorName}</dd></div></div>
       </dl>
-      <div className="mt-5 h-2 overflow-hidden rounded-full bg-muted" aria-hidden><div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} /></div>
+      {!soldOut && (
+        <div className="mt-5 h-2 overflow-hidden rounded-full bg-muted" aria-hidden><div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} /></div>
+      )}
       <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="font-display text-2xl">{usd0(c.feeUsd + c.depositUsd)}</p>
