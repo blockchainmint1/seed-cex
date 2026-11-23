@@ -910,14 +910,14 @@ export const HELP_ARTICLES: HelpArticle[] = [
   {
     slug: "list-coin",
     title: "List your coin on Seeds",
-    summary: "Three packages: Seed, Sapling and Grove. You pay in crypto when you apply, and get it all back if Seeds declines the coin.",
+    summary: "Three packages: Sapling, Grove and Forest. You pay in crypto when you apply, and get it all back if Seeds declines the coin.",
     category: "more",
-    keywords: ["listing", "list", "token", "project", "coin team", "package", "seed", "sapling", "grove"],
+    keywords: ["listing", "list", "token", "project", "coin team", "package", "sapling", "grove", "forest"],
     blocks: [
       { list: [
-        "**Seed:** a TSD market, P2P, Seeds AI eligibility, a safety check, an announcement, a \"New\" badge for 14 days and a public price feed.",
-        "**Sapling:** everything in Seed, plus a second market (TXC or USDC), a 14-day homepage spotlight, a how-to-buy guide, a live AMA and one trading contest.",
-        "**Grove:** everything in Sapling, up to three markets, a 30-day spotlight plus a launch-week pop-up, a feature in a To the Moon session, priority setup with a named contact, monthly reports for three months and three monthly contests.",
+        "**Sapling:** a TSD market, P2P, Seeds AI eligibility, a safety check, an announcement, a \"New\" badge for 14 days and a public price feed.",
+        "**Grove:** everything in Sapling, plus a second market (TXC or USDC), a 14-day homepage spotlight, a how-to-buy guide, a live AMA and one trading contest.",
+        "**Forest:** everything in Grove, up to three markets, a 30-day spotlight plus a launch-week pop-up, a feature in a To the Moon session, priority setup with a named contact, monthly reports for three months and three monthly contests.",
       ] },
       { steps: ["Apply on the List page and pay in crypto through NectarPay (a promo code, if you have one, goes in the form).", "Seeds reviews the coin.", "If accepted, Seeds sets it up. If declined, your payment is refunded in full.", "Your market opens."] },
       { p: "No trading-volume minimums, no liquidity deposits and no market-maker requirements. Declined applicants get their payment back in full. Current prices are on the List page." },

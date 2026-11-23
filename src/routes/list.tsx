@@ -49,7 +49,7 @@ const WHY: { icon: typeof Wallet; title: string; body: ReactNode }[] = [
 ];
 
 const compareRows = (prices: ListingPrices): [string, string, string][] => [
-  ["Listing price", "About $2,000–$15,000 at starter exchanges, often plus tokens", `${usd(prices.seed)}, ${usd(prices.sapling)} or ${usd(prices.grove)}`],
+  ["Listing price", "About $2,000–$15,000 at starter exchanges, often plus tokens", `${usd(prices.sapling)}, ${usd(prices.grove)} or ${usd(prices.forest)}`],
   ["Liquidity deposit or market maker", "Often required — from a few hundred dollars per market to $20,000+ in coins", "None"],
   ["Minimum trading volume", "Common; quiet coins get delisted", "None"],
   ["Trading fees on your holders", "Usually about 0.1–0.2% of every trade", "None from Seeds — only network and outside fees, at cost"],
@@ -67,7 +67,7 @@ function ListOnSeeds() {
   const search = Route.useSearch();
   const prices = Route.useLoaderData() ?? DEFAULT_PRICES;
   const packages = pricedPackages(prices);
-  const [pkg, setPkg] = useState<PackageId>(search.package ?? "sapling");
+  const [pkg, setPkg] = useState<PackageId>(search.package ?? "grove");
   const choose = (id: PackageId) => {
     setPkg(id);
     document.getElementById("apply")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -143,7 +143,7 @@ function ListOnSeeds() {
         <p className="mt-3 max-w-2xl text-muted-foreground">One price per coin, paid by your team. Traders never pay to trade your coin on Seeds.</p>
         <div className="mt-8 grid gap-4 lg:grid-cols-3">
           {packages.map((p) => {
-            const mid = p.id === "sapling";
+            const mid = p.id === "grove";
             return (
               <div key={p.id} className={`flex flex-col rounded-2xl border bg-card p-6 sm:p-8 ${mid ? "border-primary" : "border-border"}`}>
                 <p className="font-mono text-[11px] tracking-[0.24em] text-muted-foreground uppercase">{p.tag}</p>

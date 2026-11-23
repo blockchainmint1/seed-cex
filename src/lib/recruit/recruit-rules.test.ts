@@ -11,8 +11,8 @@ const base: LeadFacts = {
 
 describe("the 1,000 paid listings goal", () => {
   const prices = [1000, 2500, 5000];
-  it("1,000 listings bring $1,000,000 if all are Seed packages", () => expect(listingGoal(0, prices).goalLowUsd).toBe(1_000_000));
-  it("1,000 listings bring $5,000,000 if all are Grove packages", () => expect(listingGoal(0, prices).goalHighUsd).toBe(5_000_000));
+  it("1,000 listings bring $1,000,000 if all are Sapling packages", () => expect(listingGoal(0, prices).goalLowUsd).toBe(1_000_000));
+  it("1,000 listings bring $5,000,000 if all are Forest packages", () => expect(listingGoal(0, prices).goalHighUsd).toBe(5_000_000));
   it("25 paid leaves 975 to go, 2.5% of the way", () => {
     const g = listingGoal(25, prices);
     expect(g.remaining).toBe(975);

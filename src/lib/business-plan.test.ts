@@ -2,17 +2,17 @@ import { describe, expect, it } from "bun:test";
 import { coinGiveawayBudget, finderFee, listingRevenue } from "./business-plan";
 
 describe("listing revenue", () => {
-  it("prices packages at $1,000 / $2,500 / $5,000", () =>
-    expect(listingRevenue({ seed: 1, sapling: 1, grove: 1 }).gross).toBe(8500));
-  it("ten Grove listings bring $25,000", () => expect(listingRevenue({ sapling: 10 }).gross).toBe(25000));
-  it("a 20% finder's fee is $200 / $500 / $1,000", () => {
-    expect(finderFee("seed")).toBe(200);
-    expect(finderFee("sapling")).toBe(500);
-    expect(finderFee("grove")).toBe(1000);
+  it("prices packages at $10,000 / $25,000 / $50,000", () =>
+    expect(listingRevenue({ sapling: 1, grove: 1, forest: 1 }).gross).toBe(85000));
+  it("ten Grove listings bring $250,000", () => expect(listingRevenue({ grove: 10 }).gross).toBe(250000));
+  it("a 20% finder's fee is $2,000 / $5,000 / $10,000", () => {
+    expect(finderFee("sapling")).toBe(2000);
+    expect(finderFee("grove")).toBe(5000);
+    expect(finderFee("forest")).toBe(10000);
   });
   it("finder's fees only come out of the referred share", () =>
-    expect(listingRevenue({ grove: 4 }, 0.5)).toEqual({ gross: 20000, finderFees: 2000, net: 18000 }));
-  it("ignores negative counts", () => expect(listingRevenue({ seed: -3 }).gross).toBe(0));
+    expect(listingRevenue({ forest: 4 }, 0.5)).toEqual({ gross: 200000, finderFees: 20000, net: 180000 }));
+  it("ignores negative counts", () => expect(listingRevenue({ sapling: -3 }).gross).toBe(0));
 });
 
 describe("conference coin budget", () => {

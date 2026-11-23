@@ -1,13 +1,13 @@
 /**
  * List on Seeds (pure, tested): the three listing packages and the rules for
- * an application. Starting prices are Bobby's (Nov 18 2026): $1,000 / $2,500 / $5,000,
+ * an application. Starting prices are Bobby's (Nov 23 2026): $10,000 / $25,000 / $50,000,
  * paid by the coin's team — never by traders. Admins can change prices
  * (listing_prices); the numbers here are only the fallback when that read fails.
  * Payment: NectarPay checkout right after applying (Bobby, Nov 23 2026); a
  * declined coin is refunded by hand.
  */
 
-export type PackageId = "seed" | "sapling" | "grove";
+export type PackageId = "sapling" | "grove" | "forest";
 
 export type ListingPackage = {
   id: PackageId;
@@ -24,9 +24,9 @@ export type ListingPackage = {
 
 export const LISTING_PACKAGES: ListingPackage[] = [
   {
-    id: "seed",
+    id: "sapling",
     name: "Sapling",
-    priceUsd: 1000,
+    priceUsd: 10000,
     tag: "Get your coin trading",
     markets: 1,
     features: [
@@ -41,9 +41,9 @@ export const LISTING_PACKAGES: ListingPackage[] = [
     ],
   },
   {
-    id: "sapling",
+    id: "grove",
     name: "Grove",
-    priceUsd: 2500,
+    priceUsd: 25000,
     tag: "Bring your community",
     markets: 2,
     features: [
@@ -56,9 +56,9 @@ export const LISTING_PACKAGES: ListingPackage[] = [
     later: ["1 trading contest for your coin"],
   },
   {
-    id: "grove",
+    id: "forest",
     name: "Forest",
-    priceUsd: 5000,
+    priceUsd: 50000,
     tag: "Full launch",
     markets: 3,
     features: [
@@ -164,7 +164,7 @@ export function canApply(sentInLast24h: number): boolean {
 // ---------------------------------------------------------------------------
 
 export type ListingPrices = Record<PackageId, number>;
-export const PACKAGE_IDS: PackageId[] = ["seed", "sapling", "grove"];
+export const PACKAGE_IDS: PackageId[] = ["sapling", "grove", "forest"];
 export const DEFAULT_PRICES: ListingPrices = Object.fromEntries(LISTING_PACKAGES.map((p) => [p.id, p.priceUsd])) as ListingPrices;
 export const MIN_PRICE_USD = 1;
 export const MAX_PRICE_USD = 1_000_000;

@@ -32,9 +32,9 @@ export const BUSINESS_PLAN: BusinessPlan = {
       summary: "Listing fees today. Everything else is a proposal.",
       blocks: [
         { kind: "table", title: "Money in", head: ["Source", "Price", "Status"], rows: [
-          ["Listing: Sapling package", usd(1000), "On /list now"],
-          ["Listing: Grove package", usd(2500), "On /list now"],
-          ["Listing: Forest package", usd(5000), "On /list now"],
+          ["Listing: Sapling package", usd(10000), "On /list now"],
+          ["Listing: Grove package", usd(25000), "On /list now"],
+          ["Listing: Forest package", usd(50000), "On /list now"],
           ["Trading fees", "None, ever", "Promise on the site"],
           ["Swap fee", "None for now", "Can be revisited"],
           ["To the Moon $400 deposit", "Not income", "Goes back to the student for trading"],
@@ -179,7 +179,7 @@ export const BUSINESS_PLAN: BusinessPlan = {
           { title: "Creator page", body: "seeds.honest.money/c/{name}: their profile, their invite link, their contest results.", status: "proposed" },
         ] },
         { kind: "items", title: "What we can offer (since there's no fee to share)", items: [
-          { title: "Finder's fee on listings", body: `If a creator brings a coin team that pays and goes live, they get ${usd(finderFee("seed"))} / ${usd(finderFee("sapling"))} / ${usd(finderFee("grove"))} (20%). Same deal as any listing affiliate.`, status: "proposed" },
+          { title: "Finder's fee on listings", body: `If a creator brings a coin team that pays and goes live, they get ${usd(finderFee("sapling"))} / ${usd(finderFee("grove"))} / ${usd(finderFee("forest"))} (20%). Same deal as any listing affiliate.`, status: "proposed" },
           { title: "Flat paid sponsorships", body: "A fixed fee per video, stream or post. Simple, and we know the cost up front.", status: "decide" },
           { title: "A guest spot in To the Moon", body: "Teach one session. They get exposure, we get their audience in the room.", status: "proposed" },
           { title: "Creator trading contests", body: "A creator hosts a contest for their followers, prizes from a coin team. After launch.", status: "proposed" },
@@ -213,9 +213,9 @@ export const BUSINESS_PLAN: BusinessPlan = {
       summary: "Anyone who brings a paying coin team gets paid, starting with the BitMart list.",
       blocks: [
         { kind: "table", title: "Proposed finder's fee (20%)", head: ["Package", "Price", "Finder gets", "Seeds keeps"], rows: [
-          ["Sapling", usd(1000), usd(finderFee("seed")), usd(1000 - finderFee("seed"))],
-          ["Grove", usd(2500), usd(finderFee("sapling")), usd(2500 - finderFee("sapling"))],
-          ["Forest", usd(5000), usd(finderFee("grove")), usd(5000 - finderFee("grove"))],
+          ["Sapling", usd(10000), usd(finderFee("sapling")), usd(10000 - finderFee("sapling"))],
+          ["Grove", usd(25000), usd(finderFee("grove")), usd(25000 - finderFee("grove"))],
+          ["Forest", usd(50000), usd(finderFee("forest")), usd(50000 - finderFee("forest"))],
         ] },
         { kind: "items", title: "Proposed rules", items: [
           { title: "Paid only after the coin is paid in full and live", body: "Nothing for applications that are declined or never pay." },
@@ -287,7 +287,7 @@ export const BUSINESS_PLAN: BusinessPlan = {
       blocks: [
         { kind: "text", text: "BitMart stopped deposits on July 26, 2026, ended all trading on August 26, and plans to close for good on January 31, 2027 (BitMart's own notice). Projects say their market-making money is stuck there, a claimholder group has formed, and BitMart is offering a restructuring plan. Before the shutdown it was adding roughly 80–90 new coins a month (its own counts). Every one of those teams lost a market overnight, and many paid around $30,000 to list there." },
         { kind: "table", title: "Our pitch next to theirs", head: ["", "BitMart and similar", "Seeds"], rows: [
-          ["Listing fee", "About $30,000 (one project's published deal); others more", "$1,000 / $2,500 / $5,000"],
+          ["Listing fee", "About $30,000 (one project's published deal); others more", "$10,000 / $25,000 / $50,000"],
           ["Market-maker money", "Often required, held by the exchange", "None; nothing to get stuck"],
           ["Who holds your community's coins", "The exchange", "Each member, in their own wallet"],
           ["If the exchange shuts down", "Funds frozen, as at BitMart", "Coins were never there"],

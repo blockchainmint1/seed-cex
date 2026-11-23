@@ -95,7 +95,7 @@ function Result({ label, value, strong }: { label: string; value: string; strong
 }
 
 function ListingCalc() {
-  const [mix, setMix] = useState<Record<PackageId, number>>({ seed: 6, sapling: 3, grove: 1 });
+  const [mix, setMix] = useState<Record<PackageId, number>>({ sapling: 6, grove: 3, forest: 1 });
   const [referred, setReferred] = useState(50);
   const r = listingRevenue(mix, referred / 100);
   return (

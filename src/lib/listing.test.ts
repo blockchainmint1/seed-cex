@@ -2,26 +2,26 @@ import { describe, expect, test } from "bun:test";
 import { APPLY_LIMIT_PER_DAY, canApply, cleanApplication, LISTING_PACKAGES, packageById } from "./listing";
 
 const good = {
-  package: "sapling", coinName: "Example", ticker: "$exm", network: "pulsechain",
+  package: "grove", coinName: "Example", ticker: "$exm", network: "pulsechain",
   contract: "0x2b591e99afE9f32eAA6214f7B7629768c40Eeb39", website: "example.org",
   community: "t.me/example", contactName: "Ana", contactEmail: "Ana@Example.org", contactTelegram: "@ana_team", notes: "",
 };
 
 describe("listing packages", () => {
   test("three packages at $1,000, $2,500 and $5,000", () => {
-    expect(LISTING_PACKAGES.map((p) => [p.id, p.priceUsd])).toEqual([["seed", 1000], ["sapling", 2500], ["grove", 5000]]);
+    expect(LISTING_PACKAGES.map((p) => [p.id, p.priceUsd])).toEqual([["sapling", 10000], ["grove", 25000], ["forest", 50000]]);
   });
   test("markets grow 1 → 2 → 3", () => {
     expect(LISTING_PACKAGES.map((p) => p.markets)).toEqual([1, 2, 3]);
   });
   test("trading contests come only with Sapling and Grove, and are marked as starting later", () => {
-    expect(packageById("seed")!.later ?? []).toEqual([]);
-    expect(packageById("sapling")!.later!.join(" ")).toContain("1 trading contest");
-    expect(packageById("grove")!.later!.join(" ")).toContain("3 trading contests");
+    expect(packageById("sapling")!.later ?? []).toEqual([]);
+    expect(packageById("grove")!.later!.join(" ")).toContain("1 trading contest");
+    expect(packageById("forest")!.later!.join(" ")).toContain("3 trading contests");
     expect(LISTING_PACKAGES.flatMap((p) => p.features).some((f) => /contest/i.test(f))).toBe(false);
   });
   test("every package opens the coin to Seeds AI baskets", () => {
-    expect(packageById("seed")!.features.some((f) => f.includes("AI basket"))).toBe(true);
+    expect(packageById("sapling")!.features.some((f) => f.includes("AI basket"))).toBe(true);
   });
 });
 
@@ -68,16 +68,16 @@ import {
 
 describe("editable prices", () => {
   test("defaults are $1,000 / $2,500 / $5,000", () => {
-    expect(DEFAULT_PRICES).toEqual({ seed: 1000, sapling: 2500, grove: 5000 });
+    expect(DEFAULT_PRICES).toEqual({ sapling: 10000, grove: 25000, forest: 50000 });
   });
   test("stored prices replace the defaults; broken or missing rows fall back", () => {
-    expect(pricesFromRows([{ package: "seed", price_usd: "750" }, { package: "grove", price_usd: 0 }])).toEqual({ seed: 750, sapling: 2500, grove: 5000 });
+    expect(pricesFromRows([{ package: "sapling", price_usd: "750" }, { package: "forest", price_usd: 0 }])).toEqual({ sapling: 750, grove: 25000, forest: 50000 });
     expect(pricesFromRows(null)).toEqual(DEFAULT_PRICES);
   });
   test("admin prices must be $1–$1,000,000 with at most 2 decimals", () => {
-    expect(cleanPrices({ seed: "$1,200", sapling: 2500, grove: "4999.50" })).toEqual({ seed: 1200, sapling: 2500, grove: 4999.5 });
-    expect(() => cleanPrices({ seed: 0, sapling: 2500, grove: 5000 })).toThrow(/Sapling price/);
-    expect(() => cleanPrices({ seed: 1000, sapling: 2500.555, grove: 5000 })).toThrow(/2 decimals/);
+    expect(cleanPrices({ sapling: "$1,200", grove: 2500, forest: "4999.50" })).toEqual({ sapling: 1200, grove: 2500, forest: 4999.5 });
+    expect(() => cleanPrices({ sapling: 0, grove: 2500, forest: 5000 })).toThrow(/Sapling price/);
+    expect(() => cleanPrices({ sapling: 1000, grove: 2500.555, forest: 5000 })).toThrow(/2 decimals/);
   });
 });
 
@@ -101,17 +101,17 @@ describe("promo codes", () => {
   });
   test("paused, ended, used-up and wrong-package codes are refused", () => {
     const now = Date.parse("2026-11-23T12:00:00Z");
-    expect(promoProblem(promo(), "seed", now)).toBeNull();
-    expect(promoProblem(promo({ active: false }), "seed", now)).toBe("That code isn't valid.");
-    expect(promoProblem(null, "seed", now)).toBe("That code isn't valid.");
-    expect(promoProblem(promo({ expiresAt: "2026-11-23T11:59:59Z" }), "seed", now)).toBe("That code has ended.");
-    expect(promoProblem(promo({ maxUses: 5, uses: 5 }), "seed", now)).toBe("That code has been used up.");
-    expect(promoProblem(promo({ packages: ["grove"] }), "seed", now)).toBe("That code works only with Forest.");
+    expect(promoProblem(promo(), "sapling", now)).toBeNull();
+    expect(promoProblem(promo({ active: false }), "sapling", now)).toBe("That code isn't valid.");
+    expect(promoProblem(null, "sapling", now)).toBe("That code isn't valid.");
+    expect(promoProblem(promo({ expiresAt: "2026-11-23T11:59:59Z" }), "sapling", now)).toBe("That code has ended.");
+    expect(promoProblem(promo({ maxUses: 5, uses: 5 }), "sapling", now)).toBe("That code has been used up.");
+    expect(promoProblem(promo({ packages: ["forest"] }), "sapling", now)).toBe("That code works only with Forest.");
   });
   test("admin input: percent is at most 100; ticking every package means all", () => {
     const now = Date.parse("2026-11-23T12:00:00Z");
     expect(() => cleanPromoInput({ code: "BIG", kind: "percent", value: 101 }, now)).toThrow(/100/);
-    expect(cleanPromoInput({ code: "all3", kind: "amount", value: 250, packages: ["seed", "sapling", "grove"] }, now).packages).toBeNull();
+    expect(cleanPromoInput({ code: "all3", kind: "amount", value: 250, packages: ["sapling", "grove", "forest"] }, now).packages).toBeNull();
     expect(() => cleanPromoInput({ code: "OLD", kind: "percent", value: 10, expiresAt: "2026-11-01" }, now)).toThrow(/future/);
   });
   test("labels", () => {

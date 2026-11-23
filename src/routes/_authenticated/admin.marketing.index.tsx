@@ -57,7 +57,7 @@ function Goal({ o, onStage, active }: { o: Awaited<ReturnType<typeof getRecruitO
   const g = o.goal;
   const usd = (v: number) => `$${n(v)}`;
   return (
-    <Card title={`Goal: ${n(g.goal)} paid listings`} desc={`${n(g.goal)} listings bring in ${usd(g.goalLowUsd)} if every team picks the Seed package, up to ${usd(g.goalHighUsd)} if every team picks Grove.`}>
+    <Card title={`Goal: ${n(g.goal)} paid listings`} desc={`${n(g.goal)} listings bring in ${usd(g.goalLowUsd)} if every team picks the Sapling package, up to ${usd(g.goalHighUsd)} if every team picks Forest.`}>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Stat label="Paid listings" value={n(g.paid)} tone={g.paid ? "good" : undefined} />
         <Stat label="Still to go" value={n(g.remaining)} tone="warn" />
