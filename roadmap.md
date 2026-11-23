@@ -409,8 +409,8 @@
 - [x] /ignite overview with upcoming classes + seats; /ignite/<class> pages (agenda, benefits, instructor + photo, price); no inaugural wording; Ignite in About menu
 - [x] Admin: class manager (instructor + photo, seats, fee, deposit, requirements, sessions), registrants by class, email a whole class, move a seat, miner marks, interest list
 - [x] Miner discount rules: class fee waived (deposit kept) when the miner check says "miner"; admin mark wins; unknown = full fee
-- [ ] Honest.Money adds POST /api/public/minetxc/miner-status (request drafted) (blocked: Honest.Money team)
-- [ ] Open Spark to the public once the miner check answers (blocked: miner-status endpoint, then Bobby's go-ahead)
+- [x] Honest.Money miner check live (POST /api/public/hme/members/mining, mining:read on for Seeds; verified live Nov 23 — miners, non-miners and unknowns all answer correctly; unsigned calls get 401)
+- [ ] Open Spark to the public (blocked: Bobby's go-ahead)
 - [ ] Spark instructor photo + final agenda/requirements (blocked: Bobby supplies)
 
 - [x] Rename the class program to Flight School (/flight-school; old /ignite links forward); first class → Spark, Dec 5–6 class → Ignite; 20 standby class names saved (Bobby, Nov 23)
