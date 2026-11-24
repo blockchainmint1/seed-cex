@@ -19,7 +19,7 @@ export const getEvmPortfolio = createServerFn({ method: "POST" })
     const { fetchEvmBalances } = await import("./evm.server");
     const { shared } = await import("./cache/shared-cache.server");
     const { CACHE_TIMES, balanceKey } = await import("./cache/shared-cache-rules");
-    const chains = ["base", "ethereum", "bsc", "zcu", "pulsechain"] as const;
+    const chains = ["base", "ethereum", "bsc", "zcu", "pulsechain", "hyperevm"] as const;
     // One copy per chain, kept only when that chain answered; gas checks and sends read live.
     const results = await Promise.all(chains.map((c) =>
       shared(balanceKey(`evm-${c}`, data.address), { ...CACHE_TIMES.balance, force: data.fresh, good: (rows) => rows.length > 0 && rows.every((r) => r.online) },
@@ -29,6 +29,6 @@ export const getEvmPortfolio = createServerFn({ method: "POST" })
 
 export const getEvmStatus = createServerFn({ method: "GET" }).handler(async () => {
   const { fetchEvmStatus } = await import("./evm.server");
-  const chains = ["base", "ethereum", "bsc", "pulsechain"] as const;
+  const chains = ["base", "ethereum", "bsc", "pulsechain", "hyperevm"] as const;
   return Promise.all(chains.map((c) => fetchEvmStatus(c)));
 });

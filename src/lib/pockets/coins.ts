@@ -45,7 +45,7 @@ export const POCKET_SPECS: Record<PocketCoin, PocketSpec> = {
   ISK: { id: "ISK", name: "ISK", curve: "secp256k1", purpose: 44, coinType: 969696, covers: ["ISK"], hmeToday: true, signing: "ready", balanceReadable: true },
   BTC: { id: "BTC", name: "Bitcoin", curve: "secp256k1", purpose: 84, coinType: 0, covers: ["BTC"], hmeToday: true, signing: "ready", balanceReadable: true },
   LTC: { id: "LTC", name: "Litecoin", curve: "secp256k1", purpose: 44, coinType: 2, covers: ["LTC"], hmeToday: true, signing: "ready", balanceReadable: true },
-  EVM: { id: "EVM", name: "Ethereum / BNB Chain / Base / PulseChain", curve: "secp256k1", purpose: 44, coinType: 60, covers: ["ETH", "BNB", "USDC", "USDT", "HEX", "PLS", "pHEX"], hmeToday: true, signing: "ready", balanceReadable: true },
+  EVM: { id: "EVM", name: "Ethereum / BNB Chain / Base / PulseChain / HyperEVM", curve: "secp256k1", purpose: 44, coinType: 60, covers: ["ETH", "BNB", "USDC", "USDT", "HEX", "PLS", "pHEX", "HYPE"], hmeToday: true, signing: "ready", balanceReadable: true },
   DOGE: { id: "DOGE", name: "Dogecoin", curve: "secp256k1", purpose: 44, coinType: 3, covers: ["DOGE"], hmeToday: false, signing: "ready", balanceReadable: true },
   BCH: { id: "BCH", name: "Bitcoin Cash", curve: "secp256k1", purpose: 44, coinType: 145, covers: ["BCH"], hmeToday: false, signing: "ready", balanceReadable: true },
   ZEC: { id: "ZEC", name: "Zcash (transparent)", curve: "secp256k1", purpose: 44, coinType: 133, covers: ["ZEC"], hmeToday: false, signing: "planned", balanceReadable: true },

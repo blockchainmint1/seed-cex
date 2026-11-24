@@ -109,6 +109,8 @@ const HEX_PULSE = [
   { symbol: "PLS", name: "PulseChain", gecko: "pulsechain", dexChain: "pulsechain", token: "0xA1077a294dDE1B09bB078844df40758a5D0f9a27" /* WPLS */ },
   { symbol: "HEX", name: "HEX", gecko: "hex", dexChain: "ethereum", token: "0x2b591e99afE9f32eAA6214f7B7629768c40Eeb39" },
   { symbol: "pHEX", name: "HEX (PulseChain)", gecko: "hex-pulsechain", dexChain: "pulsechain", token: "0x2b591e99afE9f32eAA6214f7B7629768c40Eeb39" },
+  // HYPE: CoinGecko id is unambiguous; DexScreener backup reads WHYPE on HyperEVM (never Solana copycats).
+  { symbol: "HYPE", name: "Hyperliquid", gecko: "hyperliquid", dexChain: "hyperevm", token: "0x5555555555555555555555555555555555555555" },
 ] as const;
 
 function quoteOf(c: (typeof HEX_PULSE)[number], price: number, change24h: number | null, volume24h: number | null, marketCap: number | null): Quote {

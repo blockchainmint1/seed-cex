@@ -19,6 +19,7 @@ export const CONFIRMATIONS_NEEDED: Record<string, number> = {
   base: 12, // cheap blocks: a deeper wait
   bsc: 15,
   pulsechain: 12,
+  hyperevm: 30, // ~1-2s blocks: a deeper wait
   zcu: 12,
 };
 

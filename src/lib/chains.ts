@@ -6,7 +6,7 @@
  * directly.
  */
 
-export type ChainId = "txc" | "ethereum" | "base" | "bsc" | "ltc" | "isk" | "zcu" | "btc" | "pulsechain";
+export type ChainId = "txc" | "ethereum" | "base" | "bsc" | "ltc" | "isk" | "zcu" | "btc" | "pulsechain" | "hyperevm";
 
 /** Every settlement leg Seeds can deliver on-chain. */
 export type LegId =
@@ -22,7 +22,8 @@ export type LegId =
   | "weth"
   | "pls"
   | "hex"
-  | "phex";
+  | "phex"
+  | "hype";
 
 /** HEX's contract: the same address on Ethereum and PulseChain, but two separate coins with their own prices. */
 export const HEX_CONTRACT = "0x2b591e99afE9f32eAA6214f7B7629768c40Eeb39";
@@ -170,6 +171,18 @@ export const CHAINS: ChainDef[] = [
     ],
     explorer: "https://scan.pulsechain.com/address/",
   },
+  {
+    // HyperEVM: Hyperliquid's Ethereum-style network (chain 999). HYPE is its native coin, and the
+    // member's one EVM pocket address works here too. HyperCore (Hyperliquid's own order-book chain)
+    // is not supported: Seeds only reads and sends HYPE on HyperEVM.
+    id: "hyperevm",
+    name: "HyperEVM (Hyperliquid)",
+    evmChainId: 999,
+    nativeSymbol: "HYPE",
+    sharedPath: "m/44'/60'/9'/0/0",
+    assets: [{ symbol: "HYPE", contract: null, decimals: 18 }],
+    explorer: "https://hyperevmscan.io/address/",
+  },
 ];
 
 export const CHAIN_IDS = CHAINS.map((c) => c.id) as [ChainId, ...ChainId[]];
@@ -232,6 +245,7 @@ export const LEGS: Record<LegId, LegDef> = {
   pls: { id: "pls", symbol: "PLS", kind: "evm", evmChains: ["pulsechain"], native: true },
   hex: { id: "hex", symbol: "HEX", kind: "evm", evmChains: ["ethereum"] },
   phex: { id: "phex", symbol: "pHEX", kind: "evm", evmChains: ["pulsechain"] },
+  hype: { id: "hype", symbol: "HYPE", kind: "evm", evmChains: ["hyperevm"], native: true },
 };
 
 /** Every leg that settles as an Omni property on TEXITcoin. */
@@ -271,7 +285,8 @@ export type PairId =
   | "ETH_TSD"
   | "PLS_TSD"
   | "HEX_TSD"
-  | "PHEX_TSD";
+  | "PHEX_TSD"
+  | "HYPE_TSD";
 
 export type PairDef = {
   id: PairId;
@@ -407,6 +422,18 @@ export const PAIRS: PairDef[] = [
     blurb: "HEX on PulseChain (pHEX) priced in Texas Stable Dollars — a separate coin from Ethereum HEX, sent on PulseChain.",
     native: false,
     priceDigits: 8,
+  },
+  {
+    id: "HYPE_TSD",
+    slug: "hype-tsd",
+    label: "HYPE / TSD",
+    base: "HYPE",
+    quote: "TSD",
+    baseLeg: "hype",
+    quoteLeg: "tsd",
+    blurb: "Hyperliquid (HYPE) priced in Texas Stable Dollars — the real HYPE, sent on HyperEVM (never the Solana copycats).",
+    native: false,
+    priceDigits: 4,
   },
 ];
 

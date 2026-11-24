@@ -440,3 +440,5 @@
 - [ ] Auditor review of the arriving-coins reads (blocked: auditor)
 
 - [ ] Build Hyperliquid (HYPE) support once Bobby picks a slice: 1 hold/deposit/withdraw on HyperEVM (~1 day), 2 trade HYPE/TSD (+1–2 days), 3 HyperCore sending (+2–3 days), 4 swap route (+2–3 days, not recommended). Scope note: seeds-hyperliquid-scope-2026-11-24.md (blocked: Bobby's slice choice)
+- [x] Hyperliquid hold + send + trade: HYPE on HyperEVM — balances, deposits, Seeds-sent withdrawals, HYPE/TSD market (Bobby, Nov 24)
+- [ ] Auditor review of Hyperliquid support before publishing (blocked: auditor)

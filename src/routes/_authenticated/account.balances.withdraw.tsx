@@ -32,7 +32,7 @@ export const Route = createFileRoute("/_authenticated/account/balances/withdraw"
   component: Withdraw,
 });
 
-const FEE_COIN: Record<string, string> = { "txc-omni": "TXC", ethereum: "ETH", base: "ETH", bsc: "BNB", zcu: "ZCU", pulsechain: "PLS" };
+const FEE_COIN: Record<string, string> = { "txc-omni": "TXC", ethereum: "ETH", base: "ETH", bsc: "BNB", zcu: "ZCU", pulsechain: "PLS", hyperevm: "HYPE" };
 
 function Withdraw() {
   const search = Route.useSearch();

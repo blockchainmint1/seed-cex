@@ -18,7 +18,7 @@
  * is not covered by either.
  */
 
-export type NodeNetwork = "ethereum" | "base" | "bsc" | "pulsechain" | "solana" | "tron" | "xrp" | "cosmos";
+export type NodeNetwork = "ethereum" | "base" | "bsc" | "pulsechain" | "solana" | "tron" | "xrp" | "cosmos" | "hyperevm";
 export type NodeEndpoint = { url: string; headers: Record<string, string>; provider: "alchemy" | "nownodes" | "liquify" | "public";
   /** Same machine as an earlier entry: a read fallback only, never a second confirmation. */
   backupOnly?: boolean;
@@ -53,6 +53,8 @@ const PUBLIC_URLS: Record<NodeNetwork, string[]> = {
   solana: ["https://api.mainnet-beta.solana.com", "https://solana-rpc.publicnode.com"],
   tron: ["https://api.trongrid.io", "https://tron-rpc.publicnode.com"],
   xrp: ["https://xrplcluster.com", "https://xrpl.ws", "https://s1.ripple.com:51234", "https://s2.ripple.com:51234"],
+  // Hyperliquid's own server + dRPC: two separate operators, so a deposit can be confirmed on both.
+  hyperevm: ["https://rpc.hyperliquid.xyz/evm", "https://hyperevm.drpc.org"],
   cosmos: ["https://cosmos-rest.publicnode.com", "https://rest.cosmos.directory/cosmoshub"],
 };
 

@@ -11,7 +11,7 @@
  */
 import { POCKET_SPECS, type PocketCoin } from "@/lib/pockets/coins";
 
-export type EvmChain = "ethereum" | "base" | "bsc" | "zcu" | "pulsechain";
+export type EvmChain = "ethereum" | "base" | "bsc" | "zcu" | "pulsechain" | "hyperevm";
 
 export type DepositNetwork = {
   /** Unique across the catalog, used in URLs. */
@@ -28,7 +28,7 @@ export type DepositNetwork = {
   seedsSends?: boolean;
 };
 
-export type MarketPath = "/trade/tsd-txc" | "/trade/btc-tsd" | "/trade/eth-tsd" | "/trade/tsd-usdc" | "/trade/ltc-tsd" | "/trade/isk-tsd" | "/trade/zcu-tsd" | "/trade/pls-tsd" | "/trade/hex-tsd" | "/trade/phex-tsd";
+export type MarketPath = "/trade/tsd-txc" | "/trade/btc-tsd" | "/trade/eth-tsd" | "/trade/tsd-usdc" | "/trade/ltc-tsd" | "/trade/isk-tsd" | "/trade/zcu-tsd" | "/trade/pls-tsd" | "/trade/hex-tsd" | "/trade/phex-tsd" | "/trade/hype-tsd";
 export type DepositAsset = { symbol: string; name: string; networks: DepositNetwork[]; market?: MarketPath };
 
 const EVM_NOTE = "Same 0x address on every EVM network. Pick the network you are sending on — the coins only show on that network.";
@@ -43,6 +43,14 @@ const PULSE_NOTES = (coin: string) => [
   "Keep a little PLS at this address to pay PulseChain network fees.",
 ];
 const pulse = (coin: string): DepositNetwork => ({ id: "pulsechain", label: "PulseChain", pocket: "EVM", evmChain: "pulsechain", notes: PULSE_NOTES(coin), seedsSends: true });
+
+const HYPE_NOTES = [
+  "HME Wallet can't send on HyperEVM yet. Seeds sends it out for you instead: to an address you choose, after a hold you can cancel.",
+  "Send HYPE on HyperEVM (network 999) only. Not from HyperCore, Solana or any other network — Solana \"HYPE\" tokens are copycats.",
+  "Moving HYPE off Hyperliquid's exchange (HyperCore)? Transfer it to HyperEVM there first, then send it here.",
+  "Keep a little HYPE at this address to pay HyperEVM network fees (each send costs well under a cent).",
+];
+const hyperevm: DepositNetwork = { id: "hyperevm", label: "HyperEVM", pocket: "EVM", evmChain: "hyperevm", notes: HYPE_NOTES, seedsSends: true };
 
 const HME_CANT = "HME Wallet can't hold this coin. To take it out, withdraw it through Seeds or swap it back to TSD.";
 const EXTRA_NOTES: Record<"DOGE" | "BCH" | "XRP" | "TRX" | "SOL" | "ZEC", string[]> = {
@@ -74,6 +82,7 @@ export const DEPOSIT_ASSETS: DepositAsset[] = [
     "To see or send it in HME Wallet, add HEX as a custom token: 0x2b591e99afE9f32eAA6214f7B7629768c40Eeb39.",
   ])] },
   { symbol: "pHEX", name: "HEX on PulseChain", market: "/trade/phex-tsd", networks: [pulse("pHEX")] },
+  { symbol: "HYPE", name: "Hyperliquid", market: "/trade/hype-tsd", networks: [hyperevm] },
   ...(["DOGE", "BCH", "XRP", "TRX", "SOL", "ZEC"] as const).map((c): DepositAsset => ({
     symbol: c, name: POCKET_SPECS[c].name.replace(" (transparent)", ""),
     networks: [{ id: c.toLowerCase(), label: POCKET_SPECS[c].name, pocket: c, notes: EXTRA_NOTES[c] }],

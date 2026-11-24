@@ -68,6 +68,7 @@ import { Route as ToTheMoonConfirmedRouteImport } from './routes/to-the-moon_.co
 import { Route as TradeBtcTsdRouteImport } from './routes/trade.btc-tsd'
 import { Route as TradeEthTsdRouteImport } from './routes/trade.eth-tsd'
 import { Route as TradeHexTsdRouteImport } from './routes/trade.hex-tsd'
+import { Route as TradeHypeTsdRouteImport } from './routes/trade.hype-tsd'
 import { Route as TradeIskTsdRouteImport } from './routes/trade.isk-tsd'
 import { Route as TradeLtcTsdRouteImport } from './routes/trade.ltc-tsd'
 import { Route as TradePhexTsdRouteImport } from './routes/trade.phex-tsd'
@@ -460,6 +461,11 @@ const TradeEthTsdRoute = TradeEthTsdRouteImport.update({
 const TradeHexTsdRoute = TradeHexTsdRouteImport.update({
   id: '/trade/hex-tsd',
   path: '/trade/hex-tsd',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TradeHypeTsdRoute = TradeHypeTsdRouteImport.update({
+  id: '/trade/hype-tsd',
+  path: '/trade/hype-tsd',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TradeIskTsdRoute = TradeIskTsdRouteImport.update({
@@ -1051,6 +1057,7 @@ export interface FileRoutesByFullPath {
   '/trade/btc-tsd': typeof TradeBtcTsdRoute
   '/trade/eth-tsd': typeof TradeEthTsdRoute
   '/trade/hex-tsd': typeof TradeHexTsdRoute
+  '/trade/hype-tsd': typeof TradeHypeTsdRoute
   '/trade/isk-tsd': typeof TradeIskTsdRoute
   '/trade/ltc-tsd': typeof TradeLtcTsdRoute
   '/trade/phex-tsd': typeof TradePhexTsdRoute
@@ -1207,6 +1214,7 @@ export interface FileRoutesByTo {
   '/trade/btc-tsd': typeof TradeBtcTsdRoute
   '/trade/eth-tsd': typeof TradeEthTsdRoute
   '/trade/hex-tsd': typeof TradeHexTsdRoute
+  '/trade/hype-tsd': typeof TradeHypeTsdRoute
   '/trade/isk-tsd': typeof TradeIskTsdRoute
   '/trade/ltc-tsd': typeof TradeLtcTsdRoute
   '/trade/phex-tsd': typeof TradePhexTsdRoute
@@ -1364,6 +1372,7 @@ export interface FileRoutesById {
   '/trade/btc-tsd': typeof TradeBtcTsdRoute
   '/trade/eth-tsd': typeof TradeEthTsdRoute
   '/trade/hex-tsd': typeof TradeHexTsdRoute
+  '/trade/hype-tsd': typeof TradeHypeTsdRoute
   '/trade/isk-tsd': typeof TradeIskTsdRoute
   '/trade/ltc-tsd': typeof TradeLtcTsdRoute
   '/trade/phex-tsd': typeof TradePhexTsdRoute
@@ -1524,6 +1533,7 @@ export interface FileRouteTypes {
     | '/trade/btc-tsd'
     | '/trade/eth-tsd'
     | '/trade/hex-tsd'
+    | '/trade/hype-tsd'
     | '/trade/isk-tsd'
     | '/trade/ltc-tsd'
     | '/trade/phex-tsd'
@@ -1680,6 +1690,7 @@ export interface FileRouteTypes {
     | '/trade/btc-tsd'
     | '/trade/eth-tsd'
     | '/trade/hex-tsd'
+    | '/trade/hype-tsd'
     | '/trade/isk-tsd'
     | '/trade/ltc-tsd'
     | '/trade/phex-tsd'
@@ -1836,6 +1847,7 @@ export interface FileRouteTypes {
     | '/trade/btc-tsd'
     | '/trade/eth-tsd'
     | '/trade/hex-tsd'
+    | '/trade/hype-tsd'
     | '/trade/isk-tsd'
     | '/trade/ltc-tsd'
     | '/trade/phex-tsd'
@@ -1988,6 +2000,7 @@ export interface RootRouteChildren {
   TradeBtcTsdRoute: typeof TradeBtcTsdRoute
   TradeEthTsdRoute: typeof TradeEthTsdRoute
   TradeHexTsdRoute: typeof TradeHexTsdRoute
+  TradeHypeTsdRoute: typeof TradeHypeTsdRoute
   TradeIskTsdRoute: typeof TradeIskTsdRoute
   TradeLtcTsdRoute: typeof TradeLtcTsdRoute
   TradePhexTsdRoute: typeof TradePhexTsdRoute
@@ -2466,6 +2479,13 @@ declare module '@tanstack/react-router' {
       path: '/trade/hex-tsd'
       fullPath: '/trade/hex-tsd'
       preLoaderRoute: typeof TradeHexTsdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/trade/hype-tsd': {
+      id: '/trade/hype-tsd'
+      path: '/trade/hype-tsd'
+      fullPath: '/trade/hype-tsd'
+      preLoaderRoute: typeof TradeHypeTsdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/trade/isk-tsd': {
@@ -3385,6 +3405,7 @@ const rootRouteChildren: RootRouteChildren = {
   TradeBtcTsdRoute: TradeBtcTsdRoute,
   TradeEthTsdRoute: TradeEthTsdRoute,
   TradeHexTsdRoute: TradeHexTsdRoute,
+  TradeHypeTsdRoute: TradeHypeTsdRoute,
   TradeIskTsdRoute: TradeIskTsdRoute,
   TradeLtcTsdRoute: TradeLtcTsdRoute,
   TradePhexTsdRoute: TradePhexTsdRoute,

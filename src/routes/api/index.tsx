@@ -44,6 +44,7 @@ const LEG_LABEL: Record<string, string> = {
   pls: "PLS on PulseChain",
   hex: "HEX on Ethereum",
   phex: "pHEX (HEX on PulseChain)",
+  hype: "HYPE (Hyperliquid, on HyperEVM)",
 };
 
 function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {

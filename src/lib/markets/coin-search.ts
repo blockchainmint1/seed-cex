@@ -19,6 +19,8 @@ const HOME: Record<string, { to: string; label: string }> = {
 /** Where this coin trades on Seeds. Matched by symbol AND name so a copycat token sharing a ticker doesn't link. */
 export function seedsPlace(symbol: string, name: string): SeedsPlace | null {
   const s = symbol.toUpperCase();
+  // HYPE: only the real Hyperliquid (by name) — many copycat "HYPE" tokens share the ticker.
+  if (s === "HYPE") return name.toLowerCase() === "hyperliquid" ? { kind: "book", to: "/trade/hype-tsd", label: "Trade HYPE/TSD on Seeds" } : null;
   const home = HOME[s];
   if (home) return { kind: "book", ...home };
   const m = THOR_MARKETS.find((t) => t.base === s);

@@ -673,6 +673,13 @@
       "when": 1795468025280,
       "tag": "0095_affiliate_listings_classes_setup",
       "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "7",
+      "when": 1795540599905,
+      "tag": "0096_hyperliquid_hype_leg",
+      "breakpoints": true
     }
   ]
 }

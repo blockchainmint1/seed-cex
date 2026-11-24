@@ -13,8 +13,8 @@ describe("second side waits for the first side's confirmations (audit #3 A1, Bob
     expect(confirmationsNeeded("pulsechain")).toBe(12);
   });
   test("an unknown network waits the deepest listed depth", () => {
-    expect(confirmationsNeeded("mystery")).toBe(15);
-    expect(confirmationsNeeded(null)).toBe(15);
+    expect(confirmationsNeeded("mystery")).toBe(30);
+    expect(confirmationsNeeded(null)).toBe(30);
   });
 
   test("the seller isn't paid while the buyer's send has 0 or 1 of 2 blocks", () => {
