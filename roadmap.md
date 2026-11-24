@@ -449,3 +449,8 @@
 - [x] Monero (Seeds side): watch wallets, balances, deposits, Seeds-sent withdrawals; switch-on checklist written (Bobby, Nov 24)
 - [ ] Monero server live: add MONERO_WALLET_RPC_URL/TOKEN, schedule /api/public/jobs/monero, small real test (blocked: Bobby's team builds the server)
 - [ ] XMR/TSD market (blocked: after the first real Monero send works)
+
+- [x] Cardano (ADA): Seeds signs ADA sends (Koios), withdrawals + deposits open behind the same rules; tokens never spent (Bobby, Nov 24)
+- [ ] First real ADA deposit + withdrawal, small amount (blocked: a tester with ADA)
+- [ ] Stellar, TON, Sui: HME Wallet + Seeds Key share new 1106 keys (blocked: HME Wallet and Seeds Key teams, handoff sent)
+- [ ] Auditor review of Cardano signing (blocked: auditor)

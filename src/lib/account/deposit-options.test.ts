@@ -52,3 +52,12 @@ describe("deposit catalog", () => {
     expect(findAsset("phex")!.symbol).toBe("pHEX");
   });
 });
+
+import { test as t2, expect as e2 } from "bun:test";
+import { withdrawCoin } from "@/lib/withdraw/catalog";
+t2("Cardano deposits open only when Seeds can send ADA back out", () => {
+  const net = findNetwork(findAsset("ADA"), "ada")!;
+  e2(depositState(net, true, { ADA: "addr1x" }, "Telegram not connected").ok).toBe(false);
+  e2(depositState(net, true, { ADA: "addr1x" }, null).ok).toBe(true);
+  e2(withdrawCoin("ADA", "ada")?.kind).toBe("ada");
+});

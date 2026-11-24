@@ -15,7 +15,8 @@ import { maybeBroadcast } from "@/lib/broadcast-rules";
 import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { ed25519 } from "@noble/curves/ed25519.js";
 import { bytesToHex } from "@noble/hashes/utils.js";
-import { bech32 } from "@scure/base";
+import { bech32, hex } from "@scure/base";
+import { cardanoBaseAddress, xprvToXpub } from "@/lib/pockets/cardano";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { decryptDelegatedKey } from "@/lib/delegation.server";
 import { linkRef } from "@/lib/pocket-key-format";
@@ -280,7 +281,14 @@ export async function withPocketKey<T>(link: KeyedLink, pocket: PocketCoin, addr
     for (const k of Object.keys(keys)) keys[k] = "";
     if (!xprv) throw new Error(`Seeds doesn't hold the ${pocket} key for this pocket.`);
     priv = receivePrivateKey(pocket, xprv);
-    if (addressOfKey(pocket, priv) !== address) throw new Error("The stored key doesn't match your pocket address. Nothing was sent.");
+    // Cardano base addresses also carry the stake key, so check from the account key instead.
+    let owns: boolean;
+    if (pocket === "ADA") {
+      const acct = hex.decode(xprv);
+      owns = cardanoBaseAddress(xprvToXpub(acct)) === address;
+      acct.fill(0);
+    } else owns = addressOfKey(pocket, priv) === address;
+    if (!owns) throw new Error("The stored key doesn't match your pocket address. Nothing was sent.");
     return await fn(priv);
   } finally {
     priv?.fill(0);

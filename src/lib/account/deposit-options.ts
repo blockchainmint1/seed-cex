@@ -64,6 +64,12 @@ const monero: DepositNetwork = { id: "xmr", label: "Monero", pocket: "XMR", seed
   "This is Trezor's Monero wallet for your recovery phrase — Ledger makes a different wallet from the same words.",
 ] };
 
+const cardano: DepositNetwork = { id: "ada", label: "Cardano", pocket: "ADA", seedsSends: true, notes: [
+  "HME Wallet can't send Cardano yet. Seeds sends it out for you: to an address you choose, after a hold you can cancel.",
+  "Send ADA on the Cardano network only (addresses start addr1). Other Cardano tokens sent here stay put — Seeds only moves ADA.",
+  "This is the standard Cardano wallet for your recovery phrase (the method Yoroi, Eternl and Lace use).",
+] };
+
 const HME_CANT = "HME Wallet can't hold this coin. To take it out, withdraw it through Seeds or swap it back to TSD.";
 const EXTRA_NOTES: Record<"DOGE" | "BCH" | "XRP" | "TRX" | "SOL" | "ZEC", string[]> = {
   DOGE: [HME_CANT, "Send DOGE on the Dogecoin network only."],
@@ -96,6 +102,7 @@ export const DEPOSIT_ASSETS: DepositAsset[] = [
   { symbol: "pHEX", name: "HEX on PulseChain", market: "/trade/phex-tsd", networks: [pulse("pHEX")] },
   { symbol: "HYPE", name: "Hyperliquid", market: "/trade/hype-tsd", networks: [hyperevm] },
   { symbol: "XMR", name: "Monero", networks: [monero] },
+  { symbol: "ADA", name: "Cardano", networks: [cardano] },
   { symbol: "AVAX", name: "Avalanche", market: "/trade/avax-tsd", networks: [avalanche] },
   ...(["DOGE", "BCH", "XRP", "TRX", "SOL", "ZEC"] as const).map((c): DepositAsset => ({
     symbol: c, name: POCKET_SPECS[c].name.replace(" (transparent)", ""),

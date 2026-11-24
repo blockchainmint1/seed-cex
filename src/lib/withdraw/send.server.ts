@@ -111,6 +111,11 @@ export async function readBalance(c: WithdrawCoin, address: string): Promise<Bal
         const u = await solLamports(address);
         return { units: u, feeUnits: u };
       }
+      case "ada": {
+        const { adaLovelace } = await import("@/lib/pockets/cardano-io.server");
+        const u = await adaLovelace(address);
+        return { units: u, feeUnits: u };
+      }
       case "xmr": {
         // Live unlocked balance from the member's watch wallet on Seeds' Monero server.
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -249,6 +254,17 @@ export async function sendWithdrawal(c: WithdrawCoin, link: Link, from: string, 
       await record(tx.signature);
       await solSend(tx.base64);
       return tx.signature;
+    }
+    case "ada": {
+      const { adaUtxos, adaTtl, adaParams, adaSubmit } = await import("@/lib/pockets/cardano-io.server");
+      const { buildCardanoTransfer } = await import("@/lib/pockets/cardano-tx");
+      const [utxos, ttl, params] = await Promise.all([adaUtxos(from), adaTtl(), adaParams()]);
+      const tx = await withPocketKey(link, "ADA", from, async (priv) =>
+        buildCardanoTransfer({ signingKey: priv, fromAddress: from, toAddress: to, lovelace: units, utxos, params, ttl }));
+      await record(tx.txid);
+      const id = await adaSubmit(tx.cborHex);
+      if (id && id !== tx.txid) throw new Error("Cardano returned a different transaction id. Check the explorer before retrying.");
+      return tx.txid;
     }
     case "xmr": {
       const { sendMonero } = await import("@/lib/monero/wallet.server");
