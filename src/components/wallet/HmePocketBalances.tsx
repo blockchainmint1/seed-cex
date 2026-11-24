@@ -87,7 +87,7 @@ export function HmePocketBalances({ addresses, linkId }: { addresses: Record<str
       <table className="w-full text-left text-sm">
         <thead className="border-y border-border font-mono text-xs text-muted-foreground"><tr><th className="py-3 pr-3">Asset</th><th className="py-3 pr-3">Network</th><th className="py-3 text-right">In pocket</th><th className="py-3 text-right">Receive</th></tr></thead>
         <tbody>{visibleRows.map((r) => <tr key={`${r.symbol}-${r.network}`} className="border-b border-border/60">
-          <td className="py-3 pr-3 font-semibold">{r.symbol}</td><td className="py-3 pr-3 text-muted-foreground">{r.network}{"notInHme" in r && r.notInHme ? <span className="ml-2 whitespace-nowrap rounded-sm border border-warn/60 px-1.5 py-0.5 font-mono text-[10px] text-foreground">Not in HME Wallet</span> : null}</td>
+          <td className="py-3 pr-3 font-semibold">{r.symbol}</td><td className="py-3 pr-3 text-muted-foreground">{r.network}</td>
           <td data-qa-mask className="py-3 text-right num text-xs">{r.balance === null ? (query.isFetching ? "Checking…" : "Not available") : r.balance.toLocaleString("en-US", { maximumFractionDigits: 8 })}<Arriving amount={r.arriving} /></td>
           <td className="py-2 pl-3 text-right">{"canReceive" in r && r.canReceive === false ? null : <Button variant="ghost" size="icon" title={`Receive ${r.symbol} on ${r.network}`} aria-label={`Receive ${r.symbol} on ${r.network}`} onClick={() => { if (r.address) { setCopied(false); setReceive({ ...r, address: r.address }); } }}><QrCode /></Button>}</td>
         </tr>)}</tbody>
@@ -100,7 +100,7 @@ export function HmePocketBalances({ addresses, linkId }: { addresses: Record<str
         <Link to="/swap" className="text-primary underline">swap {stranded.length > 1 ? "them" : "it"} back to TSD</Link> before you revoke Seeds’ access.
       </p>
     ) : null}
-    <p className="mt-3 text-xs text-muted-foreground">Confirmed funds at this pocket’s receive addresses; coins still waiting for a block show as “arriving” and can’t be spent yet. Native BTC, LTC and ETH are separate from their exchange-settlement tokens.{hasExtra ? " Coins marked “Not in HME Wallet” live only in this Seeds pocket." : ""}</p>
+    <p className="mt-3 text-xs text-muted-foreground">Confirmed funds at this pocket’s receive addresses; coins still waiting for a block show as “arriving” and can’t be spent yet. Native BTC, LTC and ETH are separate from their exchange-settlement tokens.</p>
     {query.isError ? <p role="alert" className="mt-2 text-sm text-destructive">Balances could not be synced. Refresh to retry.</p> : null}
     <Dialog open={Boolean(receive)} onOpenChange={(open) => { if (!open) setReceive(null); }}>
       <DialogContent className="w-[calc(100%-2rem)] max-w-sm">

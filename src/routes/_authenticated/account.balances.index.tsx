@@ -7,7 +7,6 @@ import { HmeWalletLinkCard } from "@/components/wallet/HmeWalletLinkCard";
 import { fmtCoin, fmtUsd, usePocketBalances, usePocketLink } from "@/components/account/use-pocket";
 import { Arriving } from "@/components/account/Arriving";
 import { revokeCheck, listCoins } from "@/lib/pockets/hme-support";
-import { withdrawRoute } from "@/lib/account/deposit-options";
 import { rowKey, useSetAsides } from "@/components/account/use-set-asides";
 
 /** Coins with no THORChain/Maya pool: trade them on their Seeds TSD market instead. */
@@ -108,7 +107,7 @@ function SpotBalances() {
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <span className="font-semibold">{r.asset.symbol}</span>
-                <span className="block text-xs text-muted-foreground">{r.net.label}{withdrawRoute(r.net) !== "hme" ? " · not in HME Wallet" : ""}</span>
+                <span className="block text-xs text-muted-foreground">{r.net.label}</span>
               </div>
               <div data-qa-mask className="text-right">
                 <span className="num block">{r.balance == null ? (balances.isFetching ? "Checking…" : "—") : fmtCoin(r.balance)}</span>
@@ -146,14 +145,12 @@ function SpotBalances() {
           </thead>
           <tbody>
             {shown.map((r) => {
-              const route = withdrawRoute(r.net);
               return (
                 <tr key={`${r.asset.symbol}-${r.net.id}`} className="border-b border-border/60 last:border-0">
                   <td className="px-3 py-2.5">
                     <span className="font-semibold">{r.asset.symbol}</span>
                     <span className="block text-xs text-muted-foreground">
                       {r.net.label}
-                      {route !== "hme" ? <span className="ml-1.5 whitespace-nowrap rounded-sm border border-warn/60 px-1 py-0.5 font-mono text-[10px] text-foreground">Not in HME Wallet</span> : null}
                     </span>
                   </td>
                   <td className="num px-3 py-2.5 text-right">

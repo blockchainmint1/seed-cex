@@ -402,11 +402,11 @@ export const HELP_ARTICLES: HelpArticle[] = [
   {
     slug: "coins-hme-cant-hold",
     title: "Coins HME Wallet can't hold",
-    summary: "Some coins in your pocket are marked \"Not in HME Wallet\". They can leave only by swapping to TSD on Seeds.",
+    summary: "Some coins in your pocket can't be held by HME Wallet. They can leave only by swapping to TSD on Seeds.",
     category: "wallet",
     keywords: ["not in hme wallet", "doge", "bch", "xrp", "trx", "sol", "zec", "stuck"],
     blocks: [
-      { p: "Seeds handles some coins that HME Wallet doesn't show yet. They're labelled **Not in HME Wallet** on your Balances tab." },
+      { p: "Seeds handles some coins that HME Wallet doesn't show yet. They sit in your Seeds trading pocket only." },
       { list: [
         "**DOGE, BCH, XRP, TRX, SOL:** to take them out, swap them to TSD on Seeds.",
         "**ZEC:** balances show, but deposits are closed until Seeds can send it back out.",
@@ -963,8 +963,8 @@ export const HELP_FAQS: HelpFaq[] = [
   { category: "account", q: "Can an API key withdraw my coins?", a: "No. Keys can read, or read and trade. Withdrawals always go through HME Wallet, or a Seeds withdrawal checked by email code, authenticator code and Telegram tap.", article: "api-keys" },
   { category: "wallet", q: "What is the trading pocket?", a: "A separate part of your HME Wallet just for trading on Seeds, kept apart from your savings. Seeds can only see and use that pocket.", article: "link-wallet" },
   { category: "wallet", q: "Where do I link, re-link or disconnect my wallet?", a: "All on Account → **Security**: **Link HME Wallet**, **Add new coins**, **Re-link HME Wallet** and revoke. Every change is kept in **Wallet link history**.", article: "link-wallet" },
-  { category: "wallet", q: "What happens to my coins if I revoke the link?", a: "Revoking on Seeds only deletes Seeds' trading key. Your coins stay in your pocket. Swap any coin marked \"Not in HME Wallet\" back to TSD first, because HME Wallet can't send those.", article: "revoke-link" },
-  { category: "wallet", q: "What does \"Not in HME Wallet\" mean?", a: "Seeds can see that coin in your pocket, but HME Wallet can't show or send it yet. Take it out by swapping to TSD on Seeds.", article: "coins-hme-cant-hold" },
+  { category: "wallet", q: "What happens to my coins if I revoke the link?", a: "Revoking on Seeds only deletes Seeds' trading key. Your coins stay in your pocket. Swap any coin HME Wallet can't hold back to TSD first, because HME Wallet can't send those.", article: "revoke-link" },
+  { category: "wallet", q: "Which coins can HME Wallet not hold?", a: "Seeds can see coins like DOGE, BCH, XRP, TRX, SOL and ZEC in your pocket, but HME Wallet can't show or send them yet. Take them out by swapping to TSD on Seeds.", article: "coins-hme-cant-hold" },
   { category: "trading", q: "What's the difference between a limit and a market order?", a: "A limit order waits for your price. A market order fills right away from the best offers, and anything beyond your price protection (1%, 2% or 5%) is cancelled.", article: "limit-market-orders" },
   { category: "trading", q: "Why does part of my balance say \"In trades\"?", a: "Coins promised to your open orders, to trades being paid and to P2P sales are set aside, and so are coins in a withdrawal or swap that's waiting for your approval (going out). They stay in your own pocket, but Seeds won't withdraw, swap or promise them to another order until you cancel the order or the trade finishes. If they leave your pocket some other way, like a send from HME Wallet, Seeds checks again a minute later and, if they're still missing, cancels your newest orders that are no longer covered and tells you in Telegram and by email. USDC and USDT have to be on one network to cover an order, because a fill is paid from one network.", links: [{ label: "Your open orders", to: "/activity" }] },
   { category: "trading", q: "My order matched. Why haven't the coins moved?", a: "Both traders must tap **Approve** in Telegram within 15 minutes. Then the first side is sent, and the second side goes out once the first is confirmed on its network, usually a few minutes. If either side doesn't approve, the trade is cancelled and nothing moves.", article: "trade-settlement" },
