@@ -69,11 +69,10 @@ export async function fetchBtcBalance(address: string): Promise<BtcBalance> {
   };
 }
 
-/** Confirmed spendable outputs at an address. */
+/** Spendable outputs at an address: confirmed coins plus its own change still waiting for a block (book-self-change.ts). */
 export async function fetchBtcUtxos(address: string): Promise<BtcUtxo[]> {
-  const rows = await book<Array<{ txid: string; vout: number; value: string; height?: number }>>(
-    `/utxo/${encodeURIComponent(address)}?confirmed=true`,
-  );
+  const { bookSpendableRows } = await import("@/lib/utxo/book-self-change.server");
+  const rows = await bookSpendableRows(BOOK, headers(), address);
   if (!rows) throw new Error("Could not read Bitcoin UTXOs (indexer unreachable)");
   return rows.map((r) => ({
     txid: r.txid,

@@ -55,9 +55,11 @@ async function tryEach<T>(eps: NodeEndpoint[], label: string, final: boolean, ca
 
 // ---------- Dogecoin / Bitcoin Cash (Blockbook) ----------
 
+/** Confirmed coins plus the pocket's own change still waiting for a block (book-self-change.ts). */
 export async function bookUtxos(coin: "DOGE" | "BCH", address: string): Promise<SpendableUtxo[]> {
-  const rows = await fetchJson<Array<{ txid: string; vout: number; value: string }>>(
-    `${BOOK[coin]}/utxo/${encodeURIComponent(address)}?confirmed=true`, { headers: bookHeaders() });
+  const { bookSpendableRows } = await import("@/lib/utxo/book-self-change.server");
+  const rows = await bookSpendableRows(BOOK[coin], bookHeaders(), address);
+  if (!rows) throw new Error(`${coin} coin list unreachable`);
   return rows.map((r) => ({ txid: r.txid, vout: r.vout, value: BigInt(r.value) }));
 }
 

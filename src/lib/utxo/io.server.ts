@@ -69,9 +69,9 @@ export function isValidUtxoAddress(chain: UtxoChainId, address: string): boolean
  */
 export async function loadUtxosFor(chain: UtxoChainId, address: string, opts: { atLeast?: number } = {}): Promise<Utxo[]> {
   if (chain === "ltc") {
-    const rows = await book<Array<{ txid: string; vout: number; value: string; height?: number }>>(
-      `/utxo/${encodeURIComponent(address)}?confirmed=true`,
-    );
+    // Confirmed coins plus the pocket's own change still waiting for a block (book-self-change.ts).
+    const { bookSpendableRows } = await import("@/lib/utxo/book-self-change.server");
+    const rows = await bookSpendableRows(LTC_BOOK, bookHeaders(), address);
     if (!rows) throw new Error("Could not read Litecoin UTXOs (indexer unreachable)");
     const script = bytesToHex(addressToScriptFor(address, p2pkhVersionOf("ltc")));
     return rows.map((r) => ({

@@ -421,3 +421,8 @@
 - [x] Desktop rocket 50% larger (24rem at lg, 37.5rem at xl)
 - [x] A few twinkling stars + distant pinpoints around the rocket
 - [x] Miner check & classes audit: K1 (failure log + admin status), K3 (member handle removed), K4 (safe seat moves), softer non-miner note; K2 sent to Honest.Money; K5/K6 deferred
+
+## Pocket change bug (Mati, Nov 23)
+- [x] TXC/ISK: own change still confirming counts; TSD fee uses smallest coin
+- [x] Same own-change rule for LTC/BTC/DOGE/BCH pockets
+- [ ] Learn coin-splitting ("break a coin into smaller parts") from File Fingerprint / Passage and apply to Seeds pockets (Bobby)
