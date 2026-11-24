@@ -131,3 +131,33 @@ export function myReferralStats(rows: AffiliateRow[], ownerId: string): MyReferr
     listings: sum("listingsPaid"), listingUsd: sum("listingUsd"),
   };
 }
+
+/** Most people listed under "Who joined" on Account → Referrals (newest first). */
+export const MAX_MY_REFERRALS_LISTED = 200;
+export type MyReferral = { name: string; joinedAt: string; linkedWallet: boolean; setupDone: boolean };
+/**
+ * The people a member brought in, as that member may see them: username, when they joined,
+ * whether they linked a wallet and finished the setup guide. Nothing about balances or trades.
+ */
+export function myReferralPeople(
+  referrals: { user_id: string; recorded_at: string }[],
+  profiles: { id: string; display_name: string | null; onboarding_status: string | null }[],
+  linkedIds: Iterable<string>,
+): MyReferral[] {
+  const prof = new Map(profiles.map((p) => [p.id, p]));
+  const linked = new Set(linkedIds);
+  const seen = new Set<string>();
+  return [...referrals]
+    .sort((a, b) => b.recorded_at.localeCompare(a.recorded_at))
+    .filter((r) => (seen.has(r.user_id) ? false : (seen.add(r.user_id), true)))
+    .slice(0, MAX_MY_REFERRALS_LISTED)
+    .map((r) => {
+      const p = prof.get(r.user_id);
+      return {
+        name: p?.display_name?.trim() || "New member",
+        joinedAt: r.recorded_at,
+        linkedWallet: linked.has(r.user_id),
+        setupDone: p?.onboarding_status === "done",
+      };
+    });
+}

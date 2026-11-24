@@ -25,9 +25,9 @@ export const getMyReferralStats = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { myReferralStats } = await import("./affiliates");
+    const { myReferralStats, myReferralPeople, MAX_MY_REFERRALS_LISTED } = await import("./affiliates");
     const { data: own } = await supabaseAdmin.from("referral_codes").select("code_lc").eq("user_id", context.userId);
-    if (!own?.length) return myReferralStats([], context.userId);
+    if (!own?.length) return { ...myReferralStats([], context.userId), people: [] };
     const since = new Date(Date.now() - 30 * 86_400_000).toISOString();
     const { data, error } = await supabaseAdmin.rpc("admin_affiliates", { _since: since });
     if (error) throw new Error("Couldn't load your referral results.");
@@ -40,5 +40,17 @@ export const getMyReferralStats = createServerFn({ method: "GET" })
       setupLinked: Number(r.setup_linked), setupDone: Number(r.setup_done),
       listingsPaid: Number(r.listings_paid), listingsStarted: 0, listingUsd: Number(r.listing_usd),
     }));
-    return myReferralStats(rows, context.userId);
+    // Who joined: username, join date, wallet linked, setup finished — nothing about money.
+    const { data: refs } = await supabaseAdmin.from("referrals").select("user_id, recorded_at")
+      .in("code_lc", own.map((o) => o.code_lc)).neq("user_id", context.userId)
+      .order("recorded_at", { ascending: false }).limit(MAX_MY_REFERRALS_LISTED);
+    const ids = (refs ?? []).map((r) => r.user_id);
+    const [profs, links] = ids.length
+      ? await Promise.all([
+          supabaseAdmin.from("profiles").select("id, display_name, onboarding_status").in("id", ids),
+          supabaseAdmin.from("hme_links").select("user_id").eq("status", "active").in("user_id", ids),
+        ])
+      : [{ data: [] }, { data: [] }];
+    const people = myReferralPeople(refs ?? [], profs.data ?? [], (links.data ?? []).map((l) => l.user_id));
+    return { ...myReferralStats(rows, context.userId), people };
   });

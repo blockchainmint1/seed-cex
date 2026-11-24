@@ -31,3 +31,31 @@ describe("a member's own referral totals", () => {
     expect(myReferralStats([], "me").signupsAll).toBe(0);
   });
 });
+
+import { MAX_MY_REFERRALS_LISTED, myReferralPeople } from "./affiliates";
+
+describe("who joined through my link", () => {
+  const refs = [
+    { user_id: "a", recorded_at: "2026-11-20T10:00:00Z" },
+    { user_id: "b", recorded_at: "2026-11-22T10:00:00Z" },
+  ];
+  const profs = [
+    { id: "a", display_name: "rob", onboarding_status: "done" },
+    { id: "b", display_name: null, onboarding_status: null },
+  ];
+  test("newest first, with username, wallet linked and setup finished", () => {
+    expect(myReferralPeople(refs, profs, ["a"])).toEqual([
+      { name: "New member", joinedAt: "2026-11-22T10:00:00Z", linkedWallet: false, setupDone: false },
+      { name: "rob", joinedAt: "2026-11-20T10:00:00Z", linkedWallet: true, setupDone: true },
+    ]);
+  });
+  test("only name, join date, wallet linked and setup — never balances or trades", () => {
+    const [p] = myReferralPeople(refs, profs, []);
+    expect(Object.keys(p ?? {}).sort()).toEqual(["joinedAt", "linkedWallet", "name", "setupDone"]);
+  });
+  test("lists at most 200 people", () => {
+    expect(MAX_MY_REFERRALS_LISTED).toBe(200);
+    const many = Array.from({ length: 250 }, (_, i) => ({ user_id: `u${i}`, recorded_at: `2026-11-01T00:00:${String(i % 60).padStart(2, "0")}Z` }));
+    expect(myReferralPeople(many, [], []).length).toBe(200);
+  });
+});

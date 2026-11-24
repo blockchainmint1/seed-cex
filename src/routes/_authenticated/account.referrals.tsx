@@ -5,7 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { QRCodeSVG } from "qrcode.react";
 import { Check, Copy, Share2 } from "lucide-react";
 import { getMyInvite, getMyReferralStats } from "@/lib/referral.functions";
-import type { MyReferralStats } from "@/lib/affiliates";
+import type { MyReferral, MyReferralStats } from "@/lib/affiliates";
 import { Button } from "@/components/ui/button";
 import { Card, Note, TabTitle } from "@/components/account/ui";
 
@@ -78,9 +78,9 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
 function ReferralResults() {
   const load = useServerFn(getMyReferralStats);
   const q = useQuery({ queryKey: ["my-referral-stats"], queryFn: () => load(), staleTime: 60_000 });
-  const s: MyReferralStats | undefined = q.data;
+  const s: (MyReferralStats & { people: MyReferral[] }) | undefined = q.data;
   return (
-    <Card title="What your link brought in" desc="Totals only — we never show who joined or what they hold.">
+    <Card title="What your link brought in" desc="Never anyone's balance or trades.">
       {q.isPending ? (
         <p className="text-sm text-muted-foreground">Adding up your referrals…</p>
       ) : q.isError || !s ? (
@@ -95,11 +95,50 @@ function ReferralResults() {
             <Stat label="Class seats" value={n(s.classSeats)} sub={s.classSeats ? `${usd(s.classUsd)} paid` : "To the Moon seats paid"} />
             <Stat label="Coin listings" value={n(s.listings)} sub={s.listings ? `${usd(s.listingUsd)} paid` : "listings paid"} />
           </div>
+          <WhoJoined people={s.people} total={s.signupsAll} />
           <p className="text-xs text-muted-foreground">
             Seeds' own counts. Class seats and listings count when the buyer used your link or joined Seeds through it. Honest.Money keeps the official referral credit.
           </p>
         </div>
       )}
     </Card>
+  );
+}
+
+const day = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+
+function Yes({ on }: { on: boolean }) {
+  return on
+    ? <span className="inline-flex items-center gap-1 text-primary"><Check className="h-3.5 w-3.5" /> Yes</span>
+    : <span className="text-muted-foreground">Not yet</span>;
+}
+
+function WhoJoined({ people, total }: { people: MyReferral[]; total: number }) {
+  return (
+    <div>
+      <h4 className="font-display text-sm font-bold">Who joined</h4>
+      {!people.length ? (
+        <p className="mt-1 text-sm text-muted-foreground">Nobody has joined through your link yet.</p>
+      ) : (
+        <div className="mt-2 overflow-x-auto rounded-sm border border-border">
+          <table className="w-full min-w-[30rem] text-sm">
+            <thead className="bg-muted/40 text-left font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
+              <tr><th className="px-3 py-2 font-medium">Member</th><th className="px-3 py-2 font-medium">Joined</th><th className="px-3 py-2 font-medium">Linked a wallet</th><th className="px-3 py-2 font-medium">Finished setup</th></tr>
+            </thead>
+            <tbody>
+              {people.map((p, i) => (
+                <tr key={`${p.joinedAt}-${i}`} className="border-t border-border">
+                  <td className="px-3 py-2 font-medium break-all">{p.name}</td>
+                  <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">{day(p.joinedAt)}</td>
+                  <td className="px-3 py-2"><Yes on={p.linkedWallet} /></td>
+                  <td className="px-3 py-2"><Yes on={p.setupDone} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {total > people.length && people.length ? <p className="mt-1 text-xs text-muted-foreground">Showing the newest {people.length} of {total}.</p> : null}
+    </div>
   );
 }
