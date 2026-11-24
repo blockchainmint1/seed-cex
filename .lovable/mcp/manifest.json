@@ -143,7 +143,8 @@
                 "PLS_TSD",
                 "HEX_TSD",
                 "PHEX_TSD",
-                "HYPE_TSD"
+                "HYPE_TSD",
+                "AVAX_TSD"
               ],
               "description": "Only this pair, e.g. TSD_TXC or BTC_TSD."
             },
