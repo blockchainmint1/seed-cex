@@ -13,7 +13,7 @@ import { bytesToHex } from "@noble/hashes/utils.js";
 import { getChain, type UtxoChainId } from "@/lib/chains";
 import { broadcastRawTx, fetchTxConfirmations, rpc, rpcBatch, rpcConfigured, scanAddressUtxos } from "@/lib/rpc.server";
 import { addressToScriptFor, type Utxo } from "@/lib/txc/tx.server";
-import { EXPLORER_BASE, EXPLORER_UTXO_LIMIT, MAX_COINS_TO_VERIFY, checkCoinsAgainstNode, fastListShort, indexerUsableForSend, parseExplorerUtxos, parseIndexedTip, type ExplorerChain, type NodeCoin } from "@/lib/utxo/explorer-rules";
+import { EXPLORER_BASE, EXPLORER_UTXO_LIMIT, MAX_COINS_TO_VERIFY, MAX_MEMPOOL_TXS_TO_CHECK, checkCoinsAgainstNode, fastListShort, indexerUsableForSend, mergeCoins, parseExplorerUtxos, parseIndexedTip, selfChangeCoins, type ExplorerChain, type NodeCoin, type NodeTx } from "@/lib/utxo/explorer-rules";
 
 const LTC_BOOK = "https://ltcbook.nownodes.io/api/v2";
 const DEFAULT_FEE_RATE: Record<UtxoChainId, number> = { txc: 10, ltc: 8, isk: 10 };
@@ -87,22 +87,31 @@ export async function loadUtxosFor(chain: UtxoChainId, address: string, opts: { 
   // scantxoutset walks the whole coin set (~10 s, one at a time). Used only when it
   // has caught up with our node, the list is complete (indexerUsableForSend) and our
   // node confirms every coin's size and owner (checkCoinsAgainstNode).
-  if (chain === "txc" && rpcConfigured("txc")) {
-    const fast = await loadIndexerUtxosForSend(address);
-    if (fast && !fastListShort(fast, opts.atLeast)) return fast;
-  }
-
+  // The pocket's own change still waiting for a block counts too (selfChangeCoins), but
+  // only next to a list whose mempool-spent coins were dropped — never on top of the
+  // coin it came from.
   if (rpcConfigured(chain)) {
+    const own = selfChangeInMempool(chain, address);
+    if (chain === "txc") {
+      const fast = await loadIndexerUtxosForSend(address);
+      if (fast) {
+        const all = mergeCoins(fast, await own);
+        if (!fastListShort(all, opts.atLeast)) return all;
+      }
+    }
     const scan = await scanAddressUtxos(chain, [address]);
     if (scan) {
-      return dropSpentInMempool(chain, scan.utxos.map((u) => ({
+      const checked = await dropSpentInMempool(chain, scan.utxos.map((u) => ({
         txid: u.txid,
         vout: u.vout,
         scriptPubKey: u.scriptPubKey,
         amount: u.amount,
         height: u.height,
       })));
+      const change = await own;
+      return checked.verified ? mergeCoins(checked.coins, change) : checked.coins;
     }
+    await own;
   }
 
   // Public explorer is the TXC/ISK fallback when our node is down.
@@ -115,14 +124,38 @@ export async function loadUtxosFor(chain: UtxoChainId, address: string, opts: { 
  * same gettxout batch as the fast path (include_mempool) and drop those. If our node
  * can't answer, or the pocket is too big to check, the scan is used as it was.
  */
-async function dropSpentInMempool(chain: "txc" | "isk", coins: Utxo[]): Promise<Utxo[]> {
-  if (!coins.length || coins.length > MAX_COINS_TO_VERIFY) return coins;
+async function dropSpentInMempool(chain: "txc" | "isk", coins: Utxo[]): Promise<{ coins: Utxo[]; verified: boolean }> {
+  if (!coins.length) return { coins, verified: true };
+  if (coins.length > MAX_COINS_TO_VERIFY) return { coins, verified: false };
   try {
     const replies = await rpcBatch<NodeCoin>(chain, coins.map((u) => ({ method: "gettxout", params: [u.txid, u.vout, true] })), 6_000);
     const check = checkCoinsAgainstNode(coins, replies);
-    return check.kind === "ok" ? check.coins : coins;
+    return check.kind === "ok" ? { coins: check.coins, verified: true } : { coins, verified: false };
   } catch {
-    return coins;
+    return { coins, verified: false };
+  }
+}
+
+/**
+ * Change this pocket sent back to itself that is still waiting for a block. Our node
+ * decodes each mempool transaction; an output counts only when this address signed every
+ * input (selfChangeCoins) and gettxout still shows it unspent at that exact size. Any
+ * problem, or a busy mempool, returns nothing — the balance is then confirmed coins only.
+ */
+async function selfChangeInMempool(chain: "txc" | "isk", address: string): Promise<Utxo[]> {
+  try {
+    const script = bytesToHex(addressToScriptFor(address, p2pkhVersionOf(chain)));
+    const ids = await rpc<string[]>(chain, "getrawmempool", [], 4_000);
+    if (!Array.isArray(ids) || ids.length === 0 || ids.length > MAX_MEMPOOL_TXS_TO_CHECK) return [];
+    const txs = await rpcBatch<NodeTx>(chain, ids.map((id) => ({ method: "getrawtransaction", params: [id, true] })), 6_000);
+    // A transaction that confirmed meanwhile can't be read this way; the confirmed list has it.
+    const coins = selfChangeCoins(txs.filter((t): t is NodeTx => !(t instanceof Error) && t != null), script);
+    if (!coins.length) return [];
+    const replies = await rpcBatch<NodeCoin>(chain, coins.map((u) => ({ method: "gettxout", params: [u.txid, u.vout, true] })), 6_000);
+    const check = checkCoinsAgainstNode(coins, replies, { unconfirmedOk: true });
+    return check.kind === "ok" ? check.coins.filter((c) => c.scriptPubKey === script) : [];
+  } catch {
+    return [];
   }
 }
 

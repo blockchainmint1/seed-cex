@@ -189,7 +189,7 @@ export type OmniSendResult = {
 async function carrierUtxos(address: string): Promise<Utxo[]> {
   const { loadUtxosFor } = await import("@/lib/utxo/io.server");
   const coins = await loadUtxosFor("txc", address, { atLeast: CARRIER_MARGIN_TXC * 2 });
-  return [...coins].sort((a, b) => b.amount - a.amount);
+  return coins;
 }
 
 /**
@@ -211,20 +211,17 @@ export async function omniSimpleSend(params: OmniSendParams): Promise<OmniSendRe
     );
   }
 
-  // Take just enough inputs to cover the fee; Omni carriers are tiny. The fee follows
-  // the network's going rate and never passes Seeds' limit (src/lib/utxo/fee-cap.ts).
+  // The smallest coin that covers the fee, so big coins aren't tied up waiting for a
+  // block (utxo/carrier-coins.ts). The fee follows the network's going rate and never
+  // passes Seeds' limit (src/lib/utxo/fee-cap.ts).
   const { feeRateFor } = await import("@/lib/utxo/io.server");
+  const { pickCarrierCoins } = await import("@/lib/utxo/carrier-coins");
   const feeRate = await feeRateFor("txc");
-  const chosen: Utxo[] = [];
-  let totalSats = 0;
-  let feeSats = 0;
-  for (const u of utxos) {
-    chosen.push(u);
-    totalSats += Math.round(u.amount * 1e8);
-    feeSats = omniCarrierFeeSats(chosen.length, feeRate);
-    if (totalSats >= feeSats + Math.round(CARRIER_MARGIN_TXC * 1e8)) break;
-  }
-  if (totalSats < feeSats + Math.round(CARRIER_MARGIN_TXC * 1e8)) {
+  const pick = pickCarrierCoins(utxos, (n) => omniCarrierFeeSats(n, feeRate), Math.round(CARRIER_MARGIN_TXC * 1e8));
+  const chosen: Utxo[] = pick.chosen;
+  const totalSats = pick.totalSats;
+  const feeSats = pick.feeSats;
+  if (!pick.enough) {
     throw new Error(
       `Insufficient TXC for the Omni miner fee: have ${(totalSats / 1e8).toFixed(8)}, need ${((feeSats / 1e8) + CARRIER_MARGIN_TXC).toFixed(8)}`,
     );

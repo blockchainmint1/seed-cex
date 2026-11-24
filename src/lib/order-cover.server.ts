@@ -5,8 +5,8 @@
  * aside for a coin, the newest orders on that coin are cancelled (ordersToCancel in
  * set-asides.ts) and the member is told by Telegram and email.
  *
- * A shortfall must show on BOTH the quick explorer read (it counts coins still waiting to
- * confirm, like the change from a send) and our own node before anything is cancelled,
+ * A shortfall must show on BOTH the quick explorer read and our own node (which also
+ * counts the pocket's own change still waiting for a block) before anything is cancelled,
  * and an unreadable balance never cancels anything.
  *
  * Audit C1: and it must still be there on a later run (coverStrike, at least 45 seconds

@@ -6,6 +6,10 @@
  * a time). Display reads use the explorer first. TXC sends use Seeds' own TXC
  * indexer only after every coin is double-checked with our node (checkCoinsAgainstNode).
  */
+import { ripemd160 } from "@noble/hashes/legacy.js";
+import { sha256 } from "@noble/hashes/sha2.js";
+import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
+
 export const EXPLORER_BASE = {
   txc: "https://mempool.texitcoin.org",
   isk: "https://mempool.iskandercoin.com",
@@ -90,8 +94,9 @@ const sats = (coins: number) => Math.round(coins * 1e8);
  * and owner script must match exactly (an understated size would otherwise turn into
  * miner fee, since legacy signatures don't cover input amounts). Coins our node says
  * are spent, unknown or unconfirmed are dropped — that can only lower a balance.
+ * `unconfirmedOk` keeps 0-confirmation coins (the pocket's own change, see selfChangeCoins).
  */
-export function checkCoinsAgainstNode<C extends CoinLike>(coins: C[], replies: Array<NodeCoin | Error>): CoinCheck<C> {
+export function checkCoinsAgainstNode<C extends CoinLike>(coins: C[], replies: Array<NodeCoin | Error>, opts: { unconfirmedOk?: boolean } = {}): CoinCheck<C> {
   if (replies.length !== coins.length) return { kind: "unknown" };
   const ok: C[] = [];
   for (let i = 0; i < coins.length; i++) {
@@ -102,7 +107,8 @@ export function checkCoinsAgainstNode<C extends CoinLike>(coins: C[], replies: A
     if (typeof r.value !== "number" || !Number.isFinite(r.value) || typeof r.scriptPubKey?.hex !== "string") return { kind: "unknown" };
     if (sats(r.value) !== sats(coin.amount)) return { kind: "mismatch", reason: `${coin.txid}:${coin.vout} is ${r.value} on our node, ${coin.amount} on the indexer` };
     if (r.scriptPubKey.hex.toLowerCase() !== coin.scriptPubKey.toLowerCase()) return { kind: "mismatch", reason: `${coin.txid}:${coin.vout} belongs to a different address on our node` };
-    if (!(r.confirmations >= 1)) continue;
+    // unconfirmedOk: only for the pocket's own change (selfChangeCoins), never other coins.
+    if (!(r.confirmations >= 1) && !(opts.unconfirmedOk && r.confirmations === 0)) continue;
     ok.push({ ...coin, amount: sats(r.value) / 1e8 });
   }
   return { kind: "ok", coins: ok };
@@ -112,4 +118,87 @@ export function checkCoinsAgainstNode<C extends CoinLike>(coins: C[], replies: A
 export function fastListShort(coins: Array<{ amount: number }>, atLeast: number | undefined): boolean {
   if (!atLeast || !(atLeast > 0)) return false;
   return coins.reduce((s, c) => s + sats(c.amount), 0) < sats(atLeast);
+}
+
+/**
+ * Bug from Mati (Nov 23 2026): a TSD payment spent his one 1,000 TXC coin to pay a tiny
+ * network fee, and the 999.99 TXC change sat waiting for a block for ~6 minutes. Seeds
+ * only counted confirmed coins, so his pocket read as 0.0001 TXC and his sell order was
+ * refused. Change the pocket sent to itself can't be taken back by anyone else, so it
+ * counts — but only when our own node shows every input of that transaction was signed
+ * by this same address. Coins from anyone else still wait for a block.
+ */
+
+/** Our node's `getrawtransaction txid true` answer for a mempool transaction. */
+export type NodeTx = {
+  txid?: unknown;
+  vin?: Array<{ coinbase?: unknown; ismweb?: unknown; scriptSig?: { asm?: unknown } }>;
+  vout?: Array<{ n?: unknown; value?: unknown; ismweb?: unknown; scriptPubKey?: { hex?: unknown } }>;
+};
+
+/** Most mempool transactions one balance read will look through; a busier mempool counts confirmed coins only. */
+export const MAX_MEMPOOL_TXS_TO_CHECK = 300;
+
+const P2PKH_SCRIPT = /^76a914([0-9a-f]{40})88ac$/;
+const PUBKEY_HEX = /^(0[23][0-9a-f]{64}|04[0-9a-f]{128})$/;
+const SIG_ALL = /^[0-9a-fA-F]{16,146}\[ALL\]$/;
+
+/** The 20-byte key hash inside a pay-to-address script, or null for any other script. */
+export function p2pkhHashOf(scriptHex: string): string | null {
+  return P2PKH_SCRIPT.exec(scriptHex.toLowerCase())?.[1] ?? null;
+}
+
+function hash160Hex(pubkeyHex: string): string {
+  return bytesToHex(ripemd160(sha256(hexToBytes(pubkeyHex))));
+}
+
+/** Did this one address sign every input? (P2PKH signature + key, no coinbase, no MWEB.) */
+function signedOnlyBy(tx: NodeTx, ownHash: string): boolean {
+  if (!Array.isArray(tx.vin) || tx.vin.length === 0) return false;
+  for (const i of tx.vin) {
+    if (!i || i.coinbase !== undefined || i.ismweb === true) return false;
+    const asm = i.scriptSig?.asm;
+    if (typeof asm !== "string") return false;
+    const parts = asm.trim().split(" ");
+    if (parts.length !== 2) return false;
+    const [sig, key] = parts as [string, string];
+    if (!SIG_ALL.test(sig) || !PUBKEY_HEX.test(key.toLowerCase())) return false;
+    if (hash160Hex(key.toLowerCase()) !== ownHash) return false;
+  }
+  return true;
+}
+
+/**
+ * Outputs paying `scriptHex` in mempool transactions whose every input this same address
+ * signed (its own change). Amounts here are only a starting point: the caller re-reads
+ * each one with gettxout before it counts (checkCoinsAgainstNode with unconfirmedOk).
+ */
+export function selfChangeCoins(txs: NodeTx[], scriptHex: string): Array<{ txid: string; vout: number; scriptPubKey: string; amount: number; height: number }> {
+  const script = scriptHex.toLowerCase();
+  const ownHash = p2pkhHashOf(script);
+  if (!ownHash) return [];
+  const out: Array<{ txid: string; vout: number; scriptPubKey: string; amount: number; height: number }> = [];
+  for (const tx of txs) {
+    if (!tx || typeof tx.txid !== "string" || !TXID.test(tx.txid) || !Array.isArray(tx.vout)) continue;
+    const mine = tx.vout.filter((o) => o && o.ismweb !== true && typeof o.scriptPubKey?.hex === "string" && o.scriptPubKey.hex.toLowerCase() === script);
+    if (!mine.length || !signedOnlyBy(tx, ownHash)) continue;
+    for (const o of mine) {
+      if (!Number.isInteger(o.n) || (o.n as number) < 0 || typeof o.value !== "number" || !Number.isFinite(o.value) || o.value <= 0) continue;
+      out.push({ txid: tx.txid.toLowerCase(), vout: o.n as number, scriptPubKey: script, amount: sats(o.value) / 1e8, height: 0 });
+    }
+  }
+  return out;
+}
+
+/** Add coins to a list without counting the same coin twice. */
+export function mergeCoins<C extends { txid: string; vout: number }>(base: C[], extra: C[]): C[] {
+  const seen = new Set(base.map((c) => `${c.txid.toLowerCase()}:${c.vout}`));
+  const out = [...base];
+  for (const c of extra) {
+    const k = `${c.txid.toLowerCase()}:${c.vout}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(c);
+  }
+  return out;
 }
