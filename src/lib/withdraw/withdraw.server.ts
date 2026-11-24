@@ -105,6 +105,18 @@ async function tell(userId: string, telegram: string, thing: string, lines: stri
   }
 }
 
+/** Monero only: Seeds' Monero server must be connected and the member's pocket watched first. */
+async function moneroBlocker(userId: string, linkId: string | null, address: string | null): Promise<string | null> {
+  const { moneroServerReady } = await import("@/lib/monero/rpc.server");
+  if (!moneroServerReady()) return "Seeds' Monero server isn't connected yet.";
+  if (!linkId || !address) return null;
+  const { requestWatch } = await import("@/lib/monero/wallet.server");
+  await requestWatch(userId, linkId, address);
+  const { data } = await supabaseAdmin.from("monero_wallets").select("status").eq("link_id", linkId).maybeSingle();
+  if (data?.status === "failed") return "Seeds couldn't set up reading your Monero pocket. Contact support@honest.money.";
+  return data?.status === "ready" ? null : "Seeds is getting ready to read your Monero pocket (a few minutes).";
+}
+
 /** What the withdraw screen needs for one coin (or just the rules when `key` is unknown). */
 export async function withdrawContext(userId: string, tester: boolean, key: string | null) {
   const coin = key ? withdrawCoinByKey(key) : null;
@@ -116,7 +128,8 @@ export async function withdrawContext(userId: string, tester: boolean, key: stri
   ]);
   const readiness = link ? await readinessFor(userId, link.id) : null;
   const address = coin && link ? link.addresses[coin.pocket] ?? null : null;
-  const blocker = sendBlocker({ link: link ? { mode: link.mode, hasKey: link.hasKey, address: coin ? address : "-" } : null, tester, frozen: lim.frozen, symbol: coin?.symbol ?? "", networkLabel: coin?.networkLabel ?? "", kind: who.kind })
+  const moneroDown = coin?.kind === "xmr" ? await moneroBlocker(userId, link?.id ?? null, address) : null;
+  const blocker = moneroDown ?? sendBlocker({ link: link ? { mode: link.mode, hasKey: link.hasKey, address: coin ? address : "-" } : null, tester, frozen: lim.frozen, symbol: coin?.symbol ?? "", networkLabel: coin?.networkLabel ?? "", kind: who.kind })
     ?? (!who.hasEmail ? NEEDS_EMAIL_TO_WITHDRAW : null)
     ?? (readiness ? readinessProblem(readiness, who.pocket.kind, who.pocket.viaLink) : null);
   return {

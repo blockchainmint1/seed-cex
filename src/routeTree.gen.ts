@@ -138,6 +138,7 @@ import { Route as ApiPublicIgnitePhotoIdRouteImport } from './routes/api/public/
 import { Route as ApiPublicJobsAiDailyRouteImport } from './routes/api/public/jobs/ai-daily'
 import { Route as ApiPublicJobsLoansRouteImport } from './routes/api/public/jobs/loans'
 import { Route as ApiPublicJobsMarketSnapshotRouteImport } from './routes/api/public/jobs/market-snapshot'
+import { Route as ApiPublicJobsMoneroRouteImport } from './routes/api/public/jobs/monero'
 import { Route as ApiPublicJobsPulseWithdrawalsRouteImport } from './routes/api/public/jobs/pulse-withdrawals'
 import { Route as ApiPublicJobsSendApprovalsRouteImport } from './routes/api/public/jobs/send-approvals'
 import { Route as ApiPublicJobsTsdRoutesRouteImport } from './routes/api/public/jobs/tsd-routes'
@@ -847,6 +848,11 @@ const ApiPublicJobsMarketSnapshotRoute =
     path: '/api/public/jobs/market-snapshot',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicJobsMoneroRoute = ApiPublicJobsMoneroRouteImport.update({
+  id: '/api/public/jobs/monero',
+  path: '/api/public/jobs/monero',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicJobsPulseWithdrawalsRoute =
   ApiPublicJobsPulseWithdrawalsRouteImport.update({
     id: '/api/public/jobs/pulse-withdrawals',
@@ -1135,6 +1141,7 @@ export interface FileRoutesByFullPath {
   '/api/public/jobs/ai-daily': typeof ApiPublicJobsAiDailyRoute
   '/api/public/jobs/loans': typeof ApiPublicJobsLoansRoute
   '/api/public/jobs/market-snapshot': typeof ApiPublicJobsMarketSnapshotRoute
+  '/api/public/jobs/monero': typeof ApiPublicJobsMoneroRoute
   '/api/public/jobs/pulse-withdrawals': typeof ApiPublicJobsPulseWithdrawalsRoute
   '/api/public/jobs/send-approvals': typeof ApiPublicJobsSendApprovalsRoute
   '/api/public/jobs/tsd-routes': typeof ApiPublicJobsTsdRoutesRoute
@@ -1290,6 +1297,7 @@ export interface FileRoutesByTo {
   '/api/public/jobs/ai-daily': typeof ApiPublicJobsAiDailyRoute
   '/api/public/jobs/loans': typeof ApiPublicJobsLoansRoute
   '/api/public/jobs/market-snapshot': typeof ApiPublicJobsMarketSnapshotRoute
+  '/api/public/jobs/monero': typeof ApiPublicJobsMoneroRoute
   '/api/public/jobs/pulse-withdrawals': typeof ApiPublicJobsPulseWithdrawalsRoute
   '/api/public/jobs/send-approvals': typeof ApiPublicJobsSendApprovalsRoute
   '/api/public/jobs/tsd-routes': typeof ApiPublicJobsTsdRoutesRoute
@@ -1452,6 +1460,7 @@ export interface FileRoutesById {
   '/api/public/jobs/ai-daily': typeof ApiPublicJobsAiDailyRoute
   '/api/public/jobs/loans': typeof ApiPublicJobsLoansRoute
   '/api/public/jobs/market-snapshot': typeof ApiPublicJobsMarketSnapshotRoute
+  '/api/public/jobs/monero': typeof ApiPublicJobsMoneroRoute
   '/api/public/jobs/pulse-withdrawals': typeof ApiPublicJobsPulseWithdrawalsRoute
   '/api/public/jobs/send-approvals': typeof ApiPublicJobsSendApprovalsRoute
   '/api/public/jobs/tsd-routes': typeof ApiPublicJobsTsdRoutesRoute
@@ -1614,6 +1623,7 @@ export interface FileRouteTypes {
     | '/api/public/jobs/ai-daily'
     | '/api/public/jobs/loans'
     | '/api/public/jobs/market-snapshot'
+    | '/api/public/jobs/monero'
     | '/api/public/jobs/pulse-withdrawals'
     | '/api/public/jobs/send-approvals'
     | '/api/public/jobs/tsd-routes'
@@ -1769,6 +1779,7 @@ export interface FileRouteTypes {
     | '/api/public/jobs/ai-daily'
     | '/api/public/jobs/loans'
     | '/api/public/jobs/market-snapshot'
+    | '/api/public/jobs/monero'
     | '/api/public/jobs/pulse-withdrawals'
     | '/api/public/jobs/send-approvals'
     | '/api/public/jobs/tsd-routes'
@@ -1930,6 +1941,7 @@ export interface FileRouteTypes {
     | '/api/public/jobs/ai-daily'
     | '/api/public/jobs/loans'
     | '/api/public/jobs/market-snapshot'
+    | '/api/public/jobs/monero'
     | '/api/public/jobs/pulse-withdrawals'
     | '/api/public/jobs/send-approvals'
     | '/api/public/jobs/tsd-routes'
@@ -2047,6 +2059,7 @@ export interface RootRouteChildren {
   ApiPublicJobsAiDailyRoute: typeof ApiPublicJobsAiDailyRoute
   ApiPublicJobsLoansRoute: typeof ApiPublicJobsLoansRoute
   ApiPublicJobsMarketSnapshotRoute: typeof ApiPublicJobsMarketSnapshotRoute
+  ApiPublicJobsMoneroRoute: typeof ApiPublicJobsMoneroRoute
   ApiPublicJobsPulseWithdrawalsRoute: typeof ApiPublicJobsPulseWithdrawalsRoute
   ApiPublicJobsSendApprovalsRoute: typeof ApiPublicJobsSendApprovalsRoute
   ApiPublicJobsTsdRoutesRoute: typeof ApiPublicJobsTsdRoutesRoute
@@ -2984,6 +2997,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicJobsMarketSnapshotRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/jobs/monero': {
+      id: '/api/public/jobs/monero'
+      path: '/api/public/jobs/monero'
+      fullPath: '/api/public/jobs/monero'
+      preLoaderRoute: typeof ApiPublicJobsMoneroRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/jobs/pulse-withdrawals': {
       id: '/api/public/jobs/pulse-withdrawals'
       path: '/api/public/jobs/pulse-withdrawals'
@@ -3460,6 +3480,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicJobsAiDailyRoute: ApiPublicJobsAiDailyRoute,
   ApiPublicJobsLoansRoute: ApiPublicJobsLoansRoute,
   ApiPublicJobsMarketSnapshotRoute: ApiPublicJobsMarketSnapshotRoute,
+  ApiPublicJobsMoneroRoute: ApiPublicJobsMoneroRoute,
   ApiPublicJobsPulseWithdrawalsRoute: ApiPublicJobsPulseWithdrawalsRoute,
   ApiPublicJobsSendApprovalsRoute: ApiPublicJobsSendApprovalsRoute,
   ApiPublicJobsTsdRoutesRoute: ApiPublicJobsTsdRoutesRoute,

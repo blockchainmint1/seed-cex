@@ -30,5 +30,19 @@ export const getMyExtraPocketBalances = createServerFn({ method: "GET" })
       r.balance = v.balance;
       r.arriving = v.arriving;
     }));
+    // Monero: read from the last scan by Seeds' Monero server (display only; sends read live).
+    const xmr = extraPocketAddresses(data).XMR;
+    if (xmr) {
+      const { moneroServerReady } = await import("@/lib/monero/rpc.server");
+      if (moneroServerReady()) {
+        const { data: link } = await supabaseAdmin.from("hme_links").select("id").eq("user_id", context.userId).eq("status", "active").maybeSingle();
+        if (link) {
+          const { requestWatch, storedReading } = await import("@/lib/monero/wallet.server");
+          await requestWatch(context.userId, link.id, xmr);
+          const r = await storedReading(link.id);
+          rows.push({ coin: "XMR", address: xmr, balance: r.balance, arriving: r.arriving });
+        }
+      }
+    }
     return rows;
   });

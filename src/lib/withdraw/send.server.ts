@@ -35,6 +35,10 @@ export async function destinationProblem(c: WithdrawCoin, to: string, own: strin
     const { isValidUtxoAddress } = await import("@/lib/utxo/io.server");
     return isValidUtxoAddress(c.utxoChain!, t) ? null : `That isn't a ${c.networkLabel} address.`;
   }
+  if (c.kind === "xmr") {
+    const { isMoneroAddress } = await import("@/lib/monero/rules");
+    return isMoneroAddress(t) ? null : "That isn't a Monero address (it starts with 4 or 8 and is 95 characters).";
+  }
   if (c.kind === "omni") {
     const { isValidUtxoAddress } = await import("@/lib/utxo/io.server");
     return isValidUtxoAddress("txc", t) ? null : "That isn't a TEXITcoin address. TSD goes to a TEXITcoin address.";
@@ -105,6 +109,15 @@ export async function readBalance(c: WithdrawCoin, address: string): Promise<Bal
       case "sol": {
         const { solLamports } = await import("@/lib/xchain/send-io.server");
         const u = await solLamports(address);
+        return { units: u, feeUnits: u };
+      }
+      case "xmr": {
+        // Live unlocked balance from the member's watch wallet on Seeds' Monero server.
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { data } = await supabaseAdmin.from("monero_wallets").select("link_id").eq("address", address).eq("status", "ready").limit(1).maybeSingle();
+        if (!data) return { units: null, feeUnits: null };
+        const { liveUnlocked } = await import("@/lib/monero/wallet.server");
+        const u = await liveUnlocked(data.link_id);
         return { units: u, feeUnits: u };
       }
     }
@@ -236,6 +249,10 @@ export async function sendWithdrawal(c: WithdrawCoin, link: Link, from: string, 
       await record(tx.signature);
       await solSend(tx.base64);
       return tx.signature;
+    }
+    case "xmr": {
+      const { sendMonero } = await import("@/lib/monero/wallet.server");
+      return sendMonero(link, from, to, units, record);
     }
   }
 }

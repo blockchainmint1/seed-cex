@@ -687,6 +687,13 @@
       "when": 1795540827955,
       "tag": "0097_avalanche_avax_leg",
       "breakpoints": true
+    },
+    {
+      "idx": 98,
+      "version": "7",
+      "when": 1795541125510,
+      "tag": "0098_monero_wallets",
+      "breakpoints": true
     }
   ]
 }

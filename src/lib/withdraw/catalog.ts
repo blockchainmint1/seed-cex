@@ -8,7 +8,7 @@
 import type { ChainId } from "@/lib/chains";
 import type { PocketCoin } from "@/lib/pockets/coins";
 
-export type WithdrawKind = "evm" | "utxo" | "omni" | "btc" | "doge" | "bch" | "xrp" | "trx" | "sol";
+export type WithdrawKind = "evm" | "utxo" | "omni" | "btc" | "doge" | "bch" | "xrp" | "trx" | "sol" | "xmr";
 
 export type WithdrawCoin = {
   /** "<symbol>:<network id>", e.g. "USDC:base". */
@@ -84,6 +84,8 @@ export const WITHDRAW_COINS: WithdrawCoin[] = [
     keepNote: "Keep about 1 TRX behind for TRON's network fee.", explorerTx: "https://tronscan.org/#/transaction/", addressHint: "T…" },
   { key: "SOL:sol", symbol: "SOL", network: "sol", networkLabel: "Solana", pocket: "SOL", kind: "sol", decimals: 9, addressAsset: "SOL.SOL",
     keepNote: "About 0.002 SOL stays behind for fees and Solana's account minimum.", explorerTx: "https://solscan.io/tx/", addressHint: "Solana address" },
+  { key: "XMR:xmr", symbol: "XMR", network: "xmr", networkLabel: "Monero", pocket: "XMR", kind: "xmr", decimals: 12,
+    keepNote: "A small Monero network fee (usually under 0.0001 XMR) comes out of your pocket on top. Coins you just received can be sent after about 20 minutes.", explorerTx: "https://xmrchain.net/tx/", addressHint: "4… or 8…" },
 ];
 
 export function withdrawCoin(symbol: string | undefined, network: string | undefined): WithdrawCoin | null {

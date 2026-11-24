@@ -40,7 +40,7 @@ export type BalanceRow = {
   arriving: number;
 };
 
-const EXTRA = ["DOGE", "BCH", "ZEC", "XRP", "TRX", "SOL"];
+const EXTRA = ["DOGE", "BCH", "ZEC", "XRP", "TRX", "SOL", "XMR"];
 
 /** Live balances of every coin at the pocket's receive addresses, plus USD estimates. */
 export function usePocketBalances(addresses: Record<string, string> | undefined, linkId: string | undefined) {

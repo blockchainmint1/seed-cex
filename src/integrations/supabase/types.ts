@@ -2708,6 +2708,75 @@ export type Database = {
         }
         Relationships: []
       }
+      monero_rpc_lease: {
+        Row: {
+          holder: string | null
+          id: number
+          until: string
+        }
+        Insert: {
+          holder?: string | null
+          id?: number
+          until?: string
+        }
+        Update: {
+          holder?: string | null
+          id?: number
+          until?: string
+        }
+        Relationships: []
+      }
+      monero_wallets: {
+        Row: {
+          address: string
+          balance_units: number | null
+          created_at: string
+          error: string | null
+          link_id: string
+          restore_height: number | null
+          scanned_at: string | null
+          scanned_height: number | null
+          status: string
+          tries: number
+          unlocked_units: number | null
+          updated_at: string
+          user_id: string
+          wallet_name: string
+        }
+        Insert: {
+          address: string
+          balance_units?: number | null
+          created_at?: string
+          error?: string | null
+          link_id: string
+          restore_height?: number | null
+          scanned_at?: string | null
+          scanned_height?: number | null
+          status?: string
+          tries?: number
+          unlocked_units?: number | null
+          updated_at?: string
+          user_id: string
+          wallet_name: string
+        }
+        Update: {
+          address?: string
+          balance_units?: number | null
+          created_at?: string
+          error?: string | null
+          link_id?: string
+          restore_height?: number | null
+          scanned_at?: string | null
+          scanned_height?: number | null
+          status?: string
+          tries?: number
+          unlocked_units?: number | null
+          updated_at?: string
+          user_id?: string
+          wallet_name?: string
+        }
+        Relationships: []
+      }
       nectarpay_events: {
         Row: {
           event_id: string
@@ -5456,6 +5525,11 @@ export type Database = {
           hm_member_id: string
           user_id: string
         }[]
+      }
+      monero_release_lease: { Args: { _holder: string }; Returns: undefined }
+      monero_take_lease: {
+        Args: { _holder: string; _seconds: number }
+        Returns: boolean
       }
       purge_expired_delegations: { Args: never; Returns: number }
       purge_expired_wallet_challenges: { Args: never; Returns: number }
