@@ -427,3 +427,6 @@
 - [x] Same own-change rule for LTC/BTC/DOGE/BCH pockets
 - [x] Learn coin-splitting from File Fingerprint / Passage (Bobby)
 - [x] Small fee coins on TSD payments + node read-back check (Bobby: yes)
+
+## Manual class seat (Bobby, Nov 24)
+- [x] Add gdpolley to Ignite (paid TSD direct to the SEEDS wallet, tx 0fbc7c8f…); Ignite → 101 seats
