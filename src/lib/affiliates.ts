@@ -105,3 +105,29 @@ export function codesFromMemberCheck(askedIds: readonly string[], answer: unknow
   }
   return out;
 }
+
+/**
+ * What a member sees about their own invite link on Account → Referrals: totals only, for the
+ * codes this member owns. Never names, balances, TSD held or trade amounts of the people they
+ * brought in — those stay on Admin → Affiliates.
+ */
+export type MyReferralStats = {
+  codes: string[];
+  clicksAll: number; clicks30d: number;
+  signupsAll: number; signups30d: number;
+  setupLinked: number; setupDone: number; activeMembers: number;
+  classSeats: number; classUsd: number;
+  listings: number; listingUsd: number;
+};
+export function myReferralStats(rows: AffiliateRow[], ownerId: string): MyReferralStats {
+  const mine = rows.filter((r) => r.ownerId === ownerId);
+  const sum = (k: keyof AffiliateRow) => mine.reduce((t, r) => t + (Number(r[k]) || 0), 0);
+  return {
+    codes: mine.map((r) => r.code),
+    clicksAll: sum("clicksAll"), clicks30d: sum("clicksPeriod"),
+    signupsAll: sum("signupsAll"), signups30d: sum("signupsPeriod"),
+    setupLinked: sum("setupLinked"), setupDone: sum("setupDone"), activeMembers: sum("activeMembers"),
+    classSeats: sum("ignitePaid"), classUsd: sum("igniteUsd"),
+    listings: sum("listingsPaid"), listingUsd: sum("listingUsd"),
+  };
+}

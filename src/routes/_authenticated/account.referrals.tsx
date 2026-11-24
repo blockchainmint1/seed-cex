@@ -4,7 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { QRCodeSVG } from "qrcode.react";
 import { Check, Copy, Share2 } from "lucide-react";
-import { getMyInvite } from "@/lib/referral.functions";
+import { getMyInvite, getMyReferralStats } from "@/lib/referral.functions";
+import type { MyReferralStats } from "@/lib/affiliates";
 import { Button } from "@/components/ui/button";
 import { Card, Note, TabTitle } from "@/components/account/ui";
 
@@ -51,11 +52,54 @@ function ReferralsTab() {
                 </Button>
                 {canShare ? <Button variant="outline" onClick={() => navigator.share({ title: "Join me on Seeds", url }).catch(() => {})}><Share2 /> Share</Button> : null}
               </div>
-              <p className="text-xs text-muted-foreground">Code: <span className="font-mono">{q.data?.code}</span>. Honest.Money keeps the referral records.</p>
+              <p className="text-xs text-muted-foreground">Code: <span className="font-mono">{q.data?.code}</span>. </p>
             </div>
           </div>
         </Card>
       )}
+      {url ? <ReferralResults /> : null}
     </div>
+  );
+}
+
+const n = (v: number) => v.toLocaleString("en-US");
+const usd = (v: number) => `$${Math.round(v).toLocaleString("en-US")}`;
+
+function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <div className="rounded-sm border border-border bg-background px-4 py-3">
+      <p className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">{label}</p>
+      <p className="mt-1 font-display text-2xl font-extrabold tabular-nums">{value}</p>
+      {sub ? <p className="mt-0.5 text-xs text-muted-foreground">{sub}</p> : null}
+    </div>
+  );
+}
+
+function ReferralResults() {
+  const load = useServerFn(getMyReferralStats);
+  const q = useQuery({ queryKey: ["my-referral-stats"], queryFn: () => load(), staleTime: 60_000 });
+  const s: MyReferralStats | undefined = q.data;
+  return (
+    <Card title="What your link brought in" desc="Totals only — we never show who joined or what they hold.">
+      {q.isPending ? (
+        <p className="text-sm text-muted-foreground">Adding up your referrals…</p>
+      ) : q.isError || !s ? (
+        <Note tone="warn">We couldn't load your referral results just now. Try again in a minute.</Note>
+      ) : (
+        <div className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <Stat label="Link clicks" value={n(s.clicksAll)} sub={`${n(s.clicks30d)} in the last 30 days`} />
+            <Stat label="New members" value={n(s.signupsAll)} sub={`${n(s.signups30d)} in the last 30 days`} />
+            <Stat label="Linked a wallet" value={n(s.setupLinked)} sub={`${n(s.setupDone)} finished the setup guide`} />
+            <Stat label="Trading on Seeds" value={n(s.activeMembers)} sub="made at least one trade or swap" />
+            <Stat label="Class seats" value={n(s.classSeats)} sub={s.classSeats ? `${usd(s.classUsd)} paid` : "To the Moon seats paid"} />
+            <Stat label="Coin listings" value={n(s.listings)} sub={s.listings ? `${usd(s.listingUsd)} paid` : "listings paid"} />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Seeds' own counts. Class seats and listings count when the buyer used your link or joined Seeds through it. Honest.Money keeps the official referral credit.
+          </p>
+        </div>
+      )}
+    </Card>
   );
 }
