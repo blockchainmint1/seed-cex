@@ -1,0 +1,37 @@
+import { describe, expect, test } from "bun:test";
+import { LISTED_TOKENS, looksLikeJunk, tokenRows } from "./erc-tokens";
+
+const DAI = "0x6b175474e89094c44da98b954eedeac495271d0f";
+
+describe("Ethereum and Base tokens on the Balances page", () => {
+  test("every swappable Ethereum/Base token is listed, but USDC/USDT/HEX keep their own rows", () => {
+    const syms = LISTED_TOKENS.map((t) => `${t.chain}:${t.symbol}`);
+    expect(syms).toContain("ethereum:DAI");
+    expect(syms).toContain("ethereum:WBTC");
+    expect(syms).toContain("base:VVV");
+    expect(syms).not.toContain("ethereum:USDC");
+    expect(syms).not.toContain("base:USDC");
+  });
+  test("a listed token not held shows 0; unreadable network shows unknown", () => {
+    const rows = tokenRows({ ethereum: [], base: null });
+    expect(rows.find((r) => r.symbol === "DAI")!.balance).toBe(0);
+    expect(rows.find((r) => r.symbol === "VVV")!.balance).toBeNull();
+  });
+  test("held DAI shows its amount; an unknown held token is added as not swappable", () => {
+    const rows = tokenRows({
+      ethereum: [
+        { chain: "ethereum", contract: DAI, symbol: "DAI", name: "Dai", decimals: 18, raw: "0x" + (25n * 10n ** 18n).toString(16) },
+        { chain: "ethereum", contract: "0x" + "1".repeat(40), symbol: "PEPE", name: "Pepe", decimals: 18, raw: "0x" + (10n ** 18n).toString(16) },
+      ],
+      base: [],
+    });
+    expect(rows.find((r) => r.symbol === "DAI")!.balance).toBe(25);
+    expect(rows.find((r) => r.symbol === "PEPE")).toMatchObject({ balance: 1, swappable: false });
+  });
+  test("spam airdrops are hidden", () => {
+    expect(looksLikeJunk({ symbol: "Visit claim-eth.com", name: "x", decimals: 18 })).toBe(true);
+    expect(looksLikeJunk({ symbol: "USDC", name: "Get rewards at usdc.io", decimals: 6 })).toBe(true);
+    expect(looksLikeJunk({ symbol: "PEPE", name: "Pepe", decimals: 18 })).toBe(false);
+    expect(looksLikeJunk({ symbol: null, name: "x", decimals: 18 })).toBe(true);
+  });
+});

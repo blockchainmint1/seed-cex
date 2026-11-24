@@ -1,5 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { getEvmTokenRows } from "@/lib/evm.functions";
+import { DEPOSIT_ASSETS } from "@/lib/account/deposit-options";
+import type { TokenRow } from "@/lib/account/erc-tokens";
 import { ArrowDownToLine, ArrowUpFromLine, RefreshCw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, Note, TabTitle } from "@/components/account/ui";
@@ -11,6 +16,16 @@ import { rowKey, useSetAsides } from "@/components/account/use-set-asides";
 
 /** Coins with no THORChain/Maya pool: trade them on their Seeds TSD market instead. */
 const NO_SWAP = new Set(["PLS", "HEX", "pHEX"]);
+const PAGE = 25;
+/** Coins Seeds is adding next; shown so members see the full list (no balance or actions yet). */
+const COMING_SOON = [
+  { symbol: "XLM", name: "Stellar" },
+  { symbol: "TON", name: "Toncoin" },
+  { symbol: "SUI", name: "Sui" },
+];
+const CHAIN_LABEL = { ethereum: "Ethereum", base: "Base" } as const;
+
+type Extra = { key: string; symbol: string; network: string; kind: "token" | "relink" | "soon"; balance: number | null; token?: TokenRow };
 
 export const Route = createFileRoute("/_authenticated/account/balances/")({
   staticData: { sitemap: false },
@@ -34,6 +49,17 @@ function SpotBalances() {
   const held = useSetAsides(rows, Boolean(l));
   const [hideZero, setHideZero] = useState(false);
   const [q, setQ] = useState("");
+  const [page, setPage] = useState(0);
+  const tokenRead = useServerFn(getEvmTokenRows);
+  const evm = l?.addresses?.["EVM"];
+  const tokens = useQuery({
+    queryKey: ["erc20-rows", evm],
+    enabled: Boolean(evm),
+    staleTime: 60_000,
+    refetchInterval: 180_000,
+    queryFn: () => tokenRead({ data: { address: evm! } }),
+  });
+  useEffect(() => setPage(0), [q, hideZero]);
 
   if (link.isPending) return <p className="text-sm text-muted-foreground">Checking your trading pocket…</p>;
   if (!l)
@@ -50,6 +76,26 @@ function SpotBalances() {
     if (!term) return true;
     return [r.asset.symbol, r.asset.name, r.net.label].some((s) => s.toLowerCase().includes(term));
   });
+  const have = new Set(rows.map((r) => `${r.asset.symbol}-${r.net.id}`));
+  const extras: Extra[] = [
+    ...(tokens.data ?? []).map((t): Extra => ({ key: `tok-${t.chain}-${t.contract}`, symbol: t.symbol, network: `${CHAIN_LABEL[t.chain]} · ${t.swappable ? "token" : "token not checked by Seeds"}`, kind: "token", balance: t.balance, token: t })),
+    ...DEPOSIT_ASSETS.flatMap((a) => a.networks.filter((n) => !have.has(`${a.symbol}-${n.id}`)).map((n): Extra => ({ key: `relink-${a.symbol}-${n.id}`, symbol: a.symbol, network: n.label, kind: "relink", balance: null }))),
+    ...COMING_SOON.map((c): Extra => ({ key: `soon-${c.symbol}`, symbol: c.symbol, network: c.name, kind: "soon", balance: null })),
+  ];
+  const extrasShown = extras.filter((x) => {
+    if (hideZero && !((x.balance ?? 0) > 0)) return false;
+    if (!term) return true;
+    return [x.symbol, x.network, x.token?.name ?? ""].some((s) => s.toLowerCase().includes(term));
+  });
+  type Item = { main: (typeof shown)[number] } | { extra: Extra };
+  const all: Item[] = [...shown.map((r) => ({ main: r })), ...extrasShown.map((x) => ({ extra: x }))];
+  const pages = Math.max(1, Math.ceil(all.length / PAGE));
+  const cur = Math.min(page, pages - 1);
+  const pageItems = all.slice(cur * PAGE, cur * PAGE + PAGE);
+  const pageMain = pageItems.flatMap((i) => ("main" in i ? [i.main] : []));
+  const pageExtra = pageItems.flatMap((i) => ("extra" in i ? [i.extra] : []));
+  const extraNote = (x: Extra) => x.kind === "soon" ? "Coming soon" : x.kind === "relink" ? "Re-link your wallet to add" : null;
+
   const stranded = revokeCheck(rows.filter((r) => r.net.pocket === r.asset.symbol).map((r) => ({ coin: r.asset.symbol, balance: r.balance }))).stranded;
 
   return (
@@ -102,7 +148,7 @@ function SpotBalances() {
       </div>
 
       <ul className="divide-y divide-border rounded-md border border-border md:hidden">
-        {shown.map((r) => (
+        {pageMain.map((r) => (
           <li key={`${r.asset.symbol}-${r.net.id}`} className="px-4 py-3">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -128,7 +174,21 @@ function SpotBalances() {
             </div>
           </li>
         ))}
-        {!shown.length ? <li className="px-4 py-6 text-center text-sm text-muted-foreground">{hideZero ? "No coins with a balance yet." : "No coins match."}</li> : null}
+        {pageExtra.map((x) => (
+          <li key={x.key} className="px-4 py-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <span className="font-semibold">{x.symbol}</span>
+                <span className="block text-xs text-muted-foreground">{x.network}</span>
+              </div>
+              <div data-qa-mask className="text-right">
+                <span className="num block">{extraNote(x) ?? (x.balance == null ? (tokens.isFetching ? "Checking…" : "—") : fmtCoin(x.balance))}</span>
+              </div>
+            </div>
+            {x.token?.swappable ? <div className="mt-2 text-xs font-semibold text-primary"><Link to="/swap">Swap</Link></div> : null}
+          </li>
+        ))}
+        {!all.length ? <li className="px-4 py-6 text-center text-sm text-muted-foreground">{hideZero ? "No coins with a balance yet." : "No coins match."}</li> : null}
       </ul>
 
       <div className="hidden overflow-x-auto rounded-md border border-border md:block">
@@ -144,7 +204,7 @@ function SpotBalances() {
             </tr>
           </thead>
           <tbody>
-            {shown.map((r) => {
+            {pageMain.map((r) => {
               return (
                 <tr key={`${r.asset.symbol}-${r.net.id}`} className="border-b border-border/60 last:border-0">
                   <td className="px-3 py-2.5">
@@ -169,12 +229,41 @@ function SpotBalances() {
                 </tr>
               );
             })}
-            {!shown.length ? (
+            {pageExtra.map((x) => (
+              <tr key={x.key} className="border-b border-border/60 last:border-0">
+                <td className="px-3 py-2.5">
+                  <span className="font-semibold">{x.symbol}</span>
+                  <span className="block text-xs text-muted-foreground">{x.network}</span>
+                </td>
+                <td data-qa-mask className="num px-3 py-2.5 text-right">
+                  {extraNote(x) ? <span className="text-xs text-muted-foreground">{extraNote(x)}</span> : x.balance == null ? (tokens.isFetching ? "Checking…" : "Not available") : fmtCoin(x.balance)}
+                </td>
+                <td className="num px-3 py-2.5 text-right text-muted-foreground">—</td>
+                <td data-qa-mask className="num px-3 py-2.5 text-right">{extraNote(x) || x.balance == null ? "—" : fmtCoin(x.balance)}</td>
+                <td className="num px-3 py-2.5 text-right text-muted-foreground">—</td>
+                <td className="px-3 py-2 text-right whitespace-nowrap">
+                  {x.token?.swappable ? <Link to="/swap" className="px-1 text-xs font-semibold text-primary hover:underline">Swap</Link> : null}
+                </td>
+              </tr>
+            ))}
+            {!all.length ? (
               <tr><td colSpan={6} className="px-3 py-6 text-center text-sm text-muted-foreground">{hideZero ? "No coins with a balance yet." : "No coins match."}</td></tr>
             ) : null}
           </tbody>
         </table>
       </div>
+      {pages > 1 ? (
+        <nav aria-label="Balance pages" className="flex flex-wrap items-center justify-between gap-3 text-sm">
+          <span className="text-muted-foreground">
+            {cur * PAGE + 1}–{Math.min(all.length, cur * PAGE + PAGE)} of {all.length} coins
+          </span>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" disabled={cur === 0} onClick={() => setPage(cur - 1)}>Previous</Button>
+            <span className="num text-muted-foreground">Page {cur + 1} of {pages}</span>
+            <Button variant="outline" size="sm" disabled={cur >= pages - 1} onClick={() => setPage(cur + 1)}>Next</Button>
+          </div>
+        </nav>
+      ) : null}
       {stranded.length ? (
         <Note tone="warn">
           You hold {listCoins(stranded.map((s) => s.coin))} in this pocket. HME Wallet can't hold {stranded.length > 1 ? "these coins" : "this coin"} —{" "}
@@ -183,7 +272,7 @@ function SpotBalances() {
       ) : null}
       {balances.isError ? <Note tone="error">Balances could not be synced. Refresh to retry.</Note> : null}
       <p className="text-xs text-muted-foreground">
-        These are the coins at your trading pocket's own addresses — your HME Wallet holds the keys. Coins on other networks your pocket hasn't shared don't show here.
+        These are the coins at your trading pocket's own addresses — your HME Wallet holds the keys. Tokens on Ethereum and Base marked "not checked by Seeds" were found in your pocket but aren't on Seeds' list — check them before trusting their value. "Coming soon" coins can't be deposited yet.
       </p>
     </div>
   );
