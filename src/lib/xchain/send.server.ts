@@ -89,7 +89,7 @@ function ltcScript(address: string): Uint8Array | undefined {
 }
 
 /** Native coins with fewer than 8 decimals need the amount rounded before quoting. */
-const NATIVE_DECIMALS: Partial<Record<SendKind, number>> = { xrp: 6, trx: 6 };
+const NATIVE_DECIMALS: Partial<Record<SendKind, number>> = { xrp: 6, trx: 6, ada: 6 };
 
 function addressOfKey(pocket: PocketCoin, priv: Uint8Array): string {
   if (pocket === "SOL") return solAddress(ed25519.getPublicKey(priv));
@@ -172,6 +172,17 @@ async function signAndBroadcast(
       await record("txid", tx.signature);
       await solSend(tx.base64);
       return { txid: tx.signature };
+    }
+    case "ada": {
+      const { adaUtxos, adaTtl, adaParams, adaSubmit } = await import("@/lib/pockets/cardano-io.server");
+      const { buildCardanoTransfer } = await import("@/lib/pockets/cardano-tx");
+      const lovelace = amount / 100n;
+      const [utxos, ttl, params] = await Promise.all([adaUtxos(fromAddress), adaTtl(), adaParams()]);
+      const tx = buildCardanoTransfer({ signingKey: priv, fromAddress, toAddress: plan.vault, lovelace, utxos, params, ttl, memo: plan.memo });
+      await record("txid", tx.txid);
+      const id = await adaSubmit(tx.cborHex);
+      if (id && id !== tx.txid) throw new Error("Cardano returned a different transaction id. Check the explorer before retrying.");
+      return { txid: tx.txid };
     }
     case "evm":
     case "erc20": {
@@ -430,7 +441,14 @@ async function sendSwapFromPocketUnlocked(userId: string, isAdmin: boolean, inpu
     for (const k of Object.keys(keys)) keys[k] = "";
     if (!xprv) throw new Error(`Seeds doesn't hold the ${from.network} key for this pocket.`);
     priv = receivePrivateKey(src.pocket, xprv);
-    if (addressOfKey(src.pocket, priv) !== fromAddress) throw new Error("The stored key doesn't match your pocket address. Nothing was sent.");
+    // Cardano base addresses also carry the stake key, so check from the account key instead.
+    let owns: boolean;
+    if (src.pocket === "ADA") {
+      const acct = hex.decode(xprv);
+      owns = cardanoBaseAddress(xprvToXpub(acct)) === fromAddress;
+      acct.fill(0);
+    } else owns = addressOfKey(src.pocket, priv) === fromAddress;
+    if (!owns) throw new Error("The stored key doesn't match your pocket address. Nothing was sent.");
 
     const sent = await signAndBroadcast(src.kind, priv, from, fromAddress, amount, plan, record);
     await update({ status: "sent", txid: sent.txid, approve_txid: sent.approveTxid ?? null });

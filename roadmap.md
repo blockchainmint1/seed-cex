@@ -460,3 +460,7 @@
 - [x] Z5: AVAX research link to /trade/avax-tsd
 - [x] Z4: second Cardano data provider
 - [x] Z3: view-key derivation once per member (accepted)
+
+## Swap routes for new coins (Nov 24)
+- [x] ADA swaps through Maya (built; needs audit + one small real test swap)
+- [ ] Keep watching for routes: XMR, HYPE, XLM, TON, SUI (none on THORChain/Maya today)

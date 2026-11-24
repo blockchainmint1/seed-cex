@@ -3,7 +3,7 @@ import { ed25519 } from "@noble/curves/ed25519.js";
 import { sha512 } from "@noble/hashes/sha2.js";
 import { blake2b } from "@noble/hashes/blake2.js";
 import { hex } from "@scure/base";
-import { ADA_MAX_FEE, buildCardanoTransfer, cardanoAddressBytes, cbor, extendedPublicKey, signExtended } from "./cardano-tx";
+import { ADA_MAX_FEE, buildCardanoTransfer, memoAuxData, cardanoAddressBytes, cbor, extendedPublicKey, signExtended } from "./cardano-tx";
 import { cardanoBaseAddress, softPrivateChild, xprvToXpub } from "./cardano";
 
 const params = { minFeeA: 44n, minFeeB: 155381n, coinsPerUtxoByte: 4310n };
@@ -68,5 +68,20 @@ describe("cardano transfer", () => {
   test("witness signature verifies against the pocket's payment key", () => {
     const msg = blake2b(new Uint8Array([1, 2, 3]), { dkLen: 32 });
     expect(ed25519.verify(signExtended(key, msg), msg, extendedPublicKey(key))).toBe(true);
+  });
+});
+
+describe("swap memo metadata (Maya)", () => {
+  test("memo goes in label 674 msg, split into 64-byte pieces", () => {
+    const m = "=:b:bc1qus60fujtuqfeu50zans4sx7vdk0k9xsryukpqw:2431778/1/0:dh:10-extra-text-to-pass-64";
+    const aux = memoAuxData(m);
+    const msg = (aux.get(674) as Map<string, string[]>).get("msg")!;
+    expect(msg.join("")).toBe(m);
+    expect(msg.every((x) => x.length <= 64)).toBe(true);
+    expect(msg.length).toBe(2);
+  });
+  test("non-text or oversized memos are refused", () => {
+    expect(() => memoAuxData("é")).toThrow();
+    expect(() => memoAuxData("x".repeat(251))).toThrow();
   });
 });

@@ -1,8 +1,8 @@
 /**
  * Rules for sending a THORChain or Maya swap from a member's trading pocket (pure, tested).
  *
- * THORChain: every coin Seeds can sign. Maya: only Bitcoin, Ether and Ethereum
- * tokens (USDC/USDT) — the coins Seeds signs that Maya also trades. Either way a
+ * THORChain: every coin Seeds can sign. Maya: only Bitcoin, Ether, Ethereum
+ * tokens (USDC/USDT) and Cardano — the coins Seeds signs that Maya also trades. Either way a
  * route is send-ready only after two independent servers confirm the vault.
  * During the pilot only admins can send, with per-swap and daily dollar caps
  * enforced again inside the database (reserve_swap_send).
@@ -21,6 +21,8 @@ export const SEND_PROTOCOLS: Protocol[] = ["thorchain", "maya"];
  */
 export const MAYA_SEND_ASSETS = new Set<string>([
   "BTC.BTC", "ETH.ETH", "ETH.USDC-0XA0B86991C6218B36C1D19D4A2E9EB0CE3606EB48", "ETH.USDT-0XDAC17F958D2EE523A2206206994597C13D831EC7",
+  // Cardano: plain ADA send to Maya's vault, memo as CIP-20 metadata (label 674), matching live Maya inbounds Nov 24 2026.
+  "ADA.ADA",
 ]);
 /** Pilot switch: until each coin has had a small real-money test, only admins can send. */
 export const SEND_PILOT_ADMIN_ONLY = true;
@@ -36,7 +38,7 @@ export const MIN_SEND_QUOTE_SECONDS = 120;
 /** The fresh quote we sign may be at most this much worse than the one the member saw. */
 export const REQUOTE_TOLERANCE = 0.01;
 
-export type SendKind = "btc" | "ltc" | "evm" | "erc20" | "doge" | "bch" | "xrp" | "trx" | "sol";
+export type SendKind = "btc" | "ltc" | "evm" | "erc20" | "doge" | "bch" | "xrp" | "trx" | "sol" | "ada";
 
 const NATIVE: Record<string, { pocket: PocketCoin; kind: SendKind }> = {
   "BTC.BTC": { pocket: "BTC", kind: "btc" },
@@ -47,6 +49,7 @@ const NATIVE: Record<string, { pocket: PocketCoin; kind: SendKind }> = {
   "XRP.XRP": { pocket: "XRP", kind: "xrp" },
   "TRON.TRX": { pocket: "TRX", kind: "trx" },
   "SOL.SOL": { pocket: "SOL", kind: "sol" },
+  "ADA.ADA": { pocket: "ADA", kind: "ada" },
 };
 
 /** Which pocket key pays for this coin into `protocol`, and how — or null when Seeds can't send it there yet. */
@@ -59,7 +62,7 @@ export function sendSource(c: SwapCoin, protocol: Protocol = SEND_PROTOCOL): { p
 }
 
 const RECEIVE_BY_CHAIN: Record<string, PocketCoin> = {
-  BTC: "BTC", LTC: "LTC", DOGE: "DOGE", BCH: "BCH", XRP: "XRP", TRON: "TRX", SOL: "SOL", ZEC: "ZEC",
+  BTC: "BTC", LTC: "LTC", DOGE: "DOGE", BCH: "BCH", XRP: "XRP", TRON: "TRX", SOL: "SOL", ZEC: "ZEC", ADA: "ADA",
   ETH: "EVM", BSC: "EVM", AVAX: "EVM", BASE: "EVM", ARB: "EVM",
 };
 /** The pocket whose own address can receive this coin ("send it back to my pocket"). */

@@ -14,7 +14,7 @@ import { bech32, hex } from "@scure/base";
 const N = ed25519.Point.Fn.ORDER;
 
 // ---- minimal CBOR (definite lengths only) ----
-type Cbor = bigint | number | Uint8Array | Cbor[] | Map<number, Cbor> | boolean | null;
+type Cbor = bigint | number | string | Uint8Array | Cbor[] | Map<number | string, Cbor> | boolean | null;
 function head(major: number, n: bigint): number[] {
   const m = major << 5;
   if (n < 24n) return [m | Number(n)];
@@ -33,7 +33,8 @@ export function cbor(v: Cbor): Uint8Array {
       const b = BigInt(x);
       if (b < 0n) throw new Error("negative ints not used");
       out.push(...head(0, b));
-    } else if (x instanceof Uint8Array) { out.push(...head(2, BigInt(x.length))); out.push(...x); }
+    } else if (typeof x === "string") { const b = new TextEncoder().encode(x); out.push(...head(3, BigInt(b.length))); out.push(...b); }
+    else if (x instanceof Uint8Array) { out.push(...head(2, BigInt(x.length))); out.push(...x); }
     else if (Array.isArray(x)) { out.push(...head(4, BigInt(x.length))); x.forEach(enc); }
     else { out.push(...head(5, BigInt(x.size))); for (const [k, val] of x) { enc(k); enc(val); } }
   };
@@ -93,21 +94,36 @@ export const ADA_DUST_TO_FEE = 200_000n;
 
 export type AdaPlan = { inputs: AdaUtxo[]; fee: bigint; change: bigint };
 
-function body(inputs: AdaUtxo[], to: Uint8Array, amount: bigint, change: bigint, from: Uint8Array, fee: bigint, ttl: number) {
+/**
+ * CIP-20 message metadata (label 674, {msg: [chunks]}) — the form Maya reads a swap memo
+ * from (checked against live Maya ADA inbounds, Nov 24 2026). Chunks are ≤64 bytes; memos are ASCII.
+ */
+export function memoAuxData(memo: string): Map<number | string, Cbor> {
+  if (!/^[\x20-\x7e]+$/.test(memo) || memo.length > 250) throw new Error("Swap memo must be plain text up to 250 characters.");
+  const chunks: string[] = [];
+  for (let i = 0; i < memo.length; i += 64) chunks.push(memo.slice(i, i + 64));
+  return new Map<number | string, Cbor>([[674, new Map<number | string, Cbor>([["msg", chunks]])]]);
+}
+
+function body(inputs: AdaUtxo[], to: Uint8Array, amount: bigint, change: bigint, from: Uint8Array, fee: bigint, ttl: number, auxHash?: Uint8Array) {
   const outs: Cbor[] = [[to, amount]];
   if (change > 0n) outs.push([from, change]);
-  return new Map<number, Cbor>([
+  const m = new Map<number | string, Cbor>([
     [0, inputs.map((u) => [hex.decode(u.txHash), u.index])],
     [1, outs],
     [2, fee],
     [3, ttl],
   ]);
+  if (auxHash) m.set(7, auxHash);
+  return m;
 }
-const FAKE_WITNESS = new Map<number, Cbor>([[0, [[new Uint8Array(32), new Uint8Array(64)]]]]);
+const FAKE_WITNESS = new Map<number | string, Cbor>([[0, [[new Uint8Array(32), new Uint8Array(64)]]]]);
 
 export type AdaTransfer = {
   signingKey: Uint8Array; fromAddress: string; toAddress: string; lovelace: bigint;
   utxos: AdaUtxo[]; params: AdaParams; ttl: number;
+  /** Optional swap memo, carried as CIP-20 metadata. */
+  memo?: string;
 };
 
 /**
@@ -120,6 +136,8 @@ export function buildCardanoTransfer(t: AdaTransfer): { txid: string; cborHex: s
   if (t.lovelace < minOut) throw new Error(`Cardano needs at least ${Number(minOut) / 1e6} ADA in one send.`);
   const usable = t.utxos.filter((u) => !u.hasTokens).sort((a, b) => (b.lovelace > a.lovelace ? 1 : b.lovelace < a.lovelace ? -1 : 0));
   const minChange = minAdaOutput(t.params, from.length);
+  const aux = t.memo ? memoAuxData(t.memo) : null;
+  const auxHash = aux ? blake2b(cbor(aux), { dkLen: 32 }) : undefined;
   const inputs: AdaUtxo[] = [];
   let total = 0n;
   for (const u of usable) {
@@ -128,7 +146,7 @@ export function buildCardanoTransfer(t: AdaTransfer): { txid: string; cborHex: s
     for (let i = 0; i < 4; i++) {
       change = total - t.lovelace - fee;
       const hasChange = change >= minChange;
-      const size = BigInt(cbor([body(inputs, to, t.lovelace, hasChange ? change : 0n, from, fee || 200_000n, t.ttl), FAKE_WITNESS, true, null]).length);
+      const size = BigInt(cbor([body(inputs, to, t.lovelace, hasChange ? change : 0n, from, fee || 200_000n, t.ttl, auxHash), FAKE_WITNESS, true, aux]).length);
       const need = t.params.minFeeA * size + t.params.minFeeB + 200n;
       if (need === fee) { ok = true; break; }
       fee = need;
@@ -141,12 +159,12 @@ export function buildCardanoTransfer(t: AdaTransfer): { txid: string; cborHex: s
     }
     if (!ok && change > 0n) continue;
     if (fee > ADA_MAX_FEE) throw new Error("Cardano network fee would be unusually high. Nothing was sent.");
-    const b = body(inputs, to, t.lovelace, change, from, fee, t.ttl);
+    const b = body(inputs, to, t.lovelace, change, from, fee, t.ttl, auxHash);
     const bodyBytes = cbor(b);
     const hash = blake2b(bodyBytes, { dkLen: 32 });
     const sig = signExtended(t.signingKey, hash);
     const vkey = extendedPublicKey(t.signingKey);
-    const tx = cbor([b, new Map<number, Cbor>([[0, [[vkey, sig]]]]), true, null]);
+    const tx = cbor([b, new Map<number | string, Cbor>([[0, [[vkey, sig]]]]), true, aux]);
     return { txid: hex.encode(hash), cborHex: hex.encode(tx), fee, change };
   }
   throw new Error(`Not enough ADA: keep about ${Number(minChange) / 1e6 + 0.2} ADA behind for the fee and Cardano's minimum, or send everything except the fee. Nothing was sent.`);

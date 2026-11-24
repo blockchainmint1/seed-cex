@@ -11,7 +11,12 @@ describe("which coins Seeds can send", () => {
     for (const id of ["BTC", "LTC", "ETH", "DOGE", "BCH", "XRP", "TRX", "SOL", "USDC", "USDT"]) expect(sendSource(c(id))).not.toBeNull();
   });
   test("Zcash, other networks and TRON tokens are not sendable yet", () => {
-    for (const id of ["ZEC", "BNB", "AVAX", "ETH.BASE", "USDT.TRON", "USDC.BSC", "ADA", "DASH"]) expect(sendSource(c(id))).toBeNull();
+    for (const id of ["ZEC", "BNB", "AVAX", "ETH.BASE", "USDT.TRON", "USDC.BSC", "DASH"]) expect(sendSource(c(id))).toBeNull();
+  });
+  test("Cardano sends only into Maya, from the ADA pocket, and comes back to it", () => {
+    expect(sendSource(c("ADA"), "maya")).toEqual({ pocket: "ADA", kind: "ada" });
+    expect(sendSource(c("ADA"), "thorchain")).toBeNull();
+    expect(receivePocket(c("ADA"))).toBe("ADA");
   });
   test("Ethereum tokens pay from the EVM pocket through the router", () => {
     expect(sendSource(c("USDC"))).toEqual({ pocket: "EVM", kind: "erc20" });
@@ -99,7 +104,7 @@ describe("sending into Maya", () => {
     expect(sendSource(c("USDT"), "maya")).toEqual({ pocket: "EVM", kind: "erc20" });
   });
   test("other coins are not sent into Maya, even ones Seeds sends into THORChain", () => {
-    for (const id of ["LTC", "DOGE", "XRP", "SOL", "ZEC", "DASH", "ADA", "WSTETH", "MOCA", "ETH.ARB", "USDC.ARB"]) expect(sendSource(c(id), "maya")).toBeNull();
+    for (const id of ["LTC", "DOGE", "XRP", "SOL", "ZEC", "DASH", "WSTETH", "MOCA", "ETH.ARB", "USDC.ARB"]) expect(sendSource(c(id), "maya")).toBeNull();
     expect(sendSource(c("LTC"))).not.toBeNull();
   });
   test("a coin THORChain can send but Maya can't says so", () => {
