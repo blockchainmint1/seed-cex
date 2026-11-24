@@ -73,6 +73,7 @@ export const WITHDRAW_COINS: WithdrawCoin[] = [
   evm("PLS", "pulsechain", "PulseChain", "pulsechain", 18, undefined, PULSESCAN),
   evm("pHEX", "pulsechain", "PulseChain", "pulsechain", 8, "PLS", PULSESCAN),
   evm("HYPE", "hyperevm", "HyperEVM", "hyperevm", 18, undefined, "https://hyperevmscan.io/tx/"),
+  evm("AVAX", "avalanche", "Avalanche C-Chain", "avalanche", 18, undefined, "https://snowtrace.io/tx/"),
   { key: "DOGE:doge", symbol: "DOGE", network: "doge", networkLabel: "Dogecoin", pocket: "DOGE", kind: "doge", decimals: 8, addressAsset: "DOGE.DOGE",
     keepNote: "A little DOGE stays behind for the network fee.", explorerTx: "https://blockchair.com/dogecoin/transaction/", addressHint: "D…" },
   { key: "BCH:bch", symbol: "BCH", network: "bch", networkLabel: "Bitcoin Cash", pocket: "BCH", kind: "bch", decimals: 8, addressAsset: "BCH.BCH",
@@ -95,7 +96,7 @@ export function withdrawCoinByKey(key: string): WithdrawCoin | null {
 }
 
 /** Native EVM coin of a network (pays its fee). */
-export const EVM_NATIVE: Record<string, string> = { ethereum: "ETH", base: "ETH", bsc: "BNB", zcu: "ZCU", pulsechain: "PLS", hyperevm: "HYPE" };
+export const EVM_NATIVE: Record<string, string> = { ethereum: "ETH", base: "ETH", bsc: "BNB", zcu: "ZCU", pulsechain: "PLS", hyperevm: "HYPE", avalanche: "AVAX" };
 
 /** Never pay more than this in network fees for one EVM withdrawal, in the network's own coin. */
-export const EVM_MAX_FEE: Record<string, number> = { ethereum: 0.02, base: 0.002, bsc: 0.01, zcu: 10, pulsechain: 5000, hyperevm: 0.01 };
+export const EVM_MAX_FEE: Record<string, number> = { ethereum: 0.02, base: 0.002, bsc: 0.01, zcu: 10, pulsechain: 5000, hyperevm: 0.01, avalanche: 0.05 };

@@ -11,7 +11,7 @@
  */
 import { POCKET_SPECS, type PocketCoin } from "@/lib/pockets/coins";
 
-export type EvmChain = "ethereum" | "base" | "bsc" | "zcu" | "pulsechain" | "hyperevm";
+export type EvmChain = "ethereum" | "base" | "bsc" | "zcu" | "pulsechain" | "hyperevm" | "avalanche";
 
 export type DepositNetwork = {
   /** Unique across the catalog, used in URLs. */
@@ -28,7 +28,7 @@ export type DepositNetwork = {
   seedsSends?: boolean;
 };
 
-export type MarketPath = "/trade/tsd-txc" | "/trade/btc-tsd" | "/trade/eth-tsd" | "/trade/tsd-usdc" | "/trade/ltc-tsd" | "/trade/isk-tsd" | "/trade/zcu-tsd" | "/trade/pls-tsd" | "/trade/hex-tsd" | "/trade/phex-tsd" | "/trade/hype-tsd";
+export type MarketPath = "/trade/tsd-txc" | "/trade/btc-tsd" | "/trade/eth-tsd" | "/trade/tsd-usdc" | "/trade/ltc-tsd" | "/trade/isk-tsd" | "/trade/zcu-tsd" | "/trade/pls-tsd" | "/trade/hex-tsd" | "/trade/phex-tsd" | "/trade/hype-tsd" | "/trade/avax-tsd";
 export type DepositAsset = { symbol: string; name: string; networks: DepositNetwork[]; market?: MarketPath };
 
 const EVM_NOTE = "Same 0x address on every EVM network. Pick the network you are sending on — the coins only show on that network.";
@@ -51,6 +51,12 @@ const HYPE_NOTES = [
   "Keep a little HYPE at this address to pay HyperEVM network fees (each send costs well under a cent).",
 ];
 const hyperevm: DepositNetwork = { id: "hyperevm", label: "HyperEVM", pocket: "EVM", evmChain: "hyperevm", notes: HYPE_NOTES, seedsSends: true };
+
+const avalanche: DepositNetwork = { id: "avalanche", label: "Avalanche C-Chain", pocket: "EVM", evmChain: "avalanche", seedsSends: true, notes: [
+  "HME Wallet can't send on Avalanche yet. Seeds sends it out for you instead: to an address you choose, after a hold you can cancel.",
+  "Send AVAX on the C-Chain only (addresses start 0x). Not from the X-Chain or P-Chain — those coins won't arrive.",
+  "Keep a little AVAX at this address to pay Avalanche network fees.",
+] };
 
 const HME_CANT = "HME Wallet can't hold this coin. To take it out, withdraw it through Seeds or swap it back to TSD.";
 const EXTRA_NOTES: Record<"DOGE" | "BCH" | "XRP" | "TRX" | "SOL" | "ZEC", string[]> = {
@@ -83,6 +89,7 @@ export const DEPOSIT_ASSETS: DepositAsset[] = [
   ])] },
   { symbol: "pHEX", name: "HEX on PulseChain", market: "/trade/phex-tsd", networks: [pulse("pHEX")] },
   { symbol: "HYPE", name: "Hyperliquid", market: "/trade/hype-tsd", networks: [hyperevm] },
+  { symbol: "AVAX", name: "Avalanche", market: "/trade/avax-tsd", networks: [avalanche] },
   ...(["DOGE", "BCH", "XRP", "TRX", "SOL", "ZEC"] as const).map((c): DepositAsset => ({
     symbol: c, name: POCKET_SPECS[c].name.replace(" (transparent)", ""),
     networks: [{ id: c.toLowerCase(), label: POCKET_SPECS[c].name, pocket: c, notes: EXTRA_NOTES[c] }],

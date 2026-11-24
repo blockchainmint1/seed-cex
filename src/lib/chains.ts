@@ -6,7 +6,7 @@
  * directly.
  */
 
-export type ChainId = "txc" | "ethereum" | "base" | "bsc" | "ltc" | "isk" | "zcu" | "btc" | "pulsechain" | "hyperevm";
+export type ChainId = "txc" | "ethereum" | "base" | "bsc" | "ltc" | "isk" | "zcu" | "btc" | "pulsechain" | "hyperevm" | "avalanche";
 
 /** Every settlement leg Seeds can deliver on-chain. */
 export type LegId =
@@ -23,7 +23,8 @@ export type LegId =
   | "pls"
   | "hex"
   | "phex"
-  | "hype";
+  | "hype"
+  | "avax";
 
 /** HEX's contract: the same address on Ethereum and PulseChain, but two separate coins with their own prices. */
 export const HEX_CONTRACT = "0x2b591e99afE9f32eAA6214f7B7629768c40Eeb39";
@@ -183,6 +184,16 @@ export const CHAINS: ChainDef[] = [
     assets: [{ symbol: "HYPE", contract: null, decimals: 18 }],
     explorer: "https://hyperevmscan.io/address/",
   },
+  {
+    // Avalanche C-Chain: Ethereum-style (chain 43114); same EVM pocket address. X/P-Chains are not supported.
+    id: "avalanche",
+    name: "Avalanche C-Chain",
+    evmChainId: 43114,
+    nativeSymbol: "AVAX",
+    sharedPath: "m/44'/60'/9'/0/0",
+    assets: [{ symbol: "AVAX", contract: null, decimals: 18 }],
+    explorer: "https://snowtrace.io/address/",
+  },
 ];
 
 export const CHAIN_IDS = CHAINS.map((c) => c.id) as [ChainId, ...ChainId[]];
@@ -246,6 +257,7 @@ export const LEGS: Record<LegId, LegDef> = {
   hex: { id: "hex", symbol: "HEX", kind: "evm", evmChains: ["ethereum"] },
   phex: { id: "phex", symbol: "pHEX", kind: "evm", evmChains: ["pulsechain"] },
   hype: { id: "hype", symbol: "HYPE", kind: "evm", evmChains: ["hyperevm"], native: true },
+  avax: { id: "avax", symbol: "AVAX", kind: "evm", evmChains: ["avalanche"], native: true },
 };
 
 /** Every leg that settles as an Omni property on TEXITcoin. */
@@ -286,7 +298,8 @@ export type PairId =
   | "PLS_TSD"
   | "HEX_TSD"
   | "PHEX_TSD"
-  | "HYPE_TSD";
+  | "HYPE_TSD"
+  | "AVAX_TSD";
 
 export type PairDef = {
   id: PairId;
@@ -432,6 +445,18 @@ export const PAIRS: PairDef[] = [
     baseLeg: "hype",
     quoteLeg: "tsd",
     blurb: "Hyperliquid (HYPE) priced in Texas Stable Dollars — the real HYPE, sent on HyperEVM (never the Solana copycats).",
+    native: false,
+    priceDigits: 4,
+  },
+  {
+    id: "AVAX_TSD",
+    slug: "avax-tsd",
+    label: "AVAX / TSD",
+    base: "AVAX",
+    quote: "TSD",
+    baseLeg: "avax",
+    quoteLeg: "tsd",
+    blurb: "Avalanche (AVAX) priced in Texas Stable Dollars — sent on Avalanche's C-Chain.",
     native: false,
     priceDigits: 4,
   },

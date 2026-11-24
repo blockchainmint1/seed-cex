@@ -680,6 +680,13 @@
       "when": 1795540599905,
       "tag": "0096_hyperliquid_hype_leg",
       "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "7",
+      "when": 1795540827955,
+      "tag": "0097_avalanche_avax_leg",
+      "breakpoints": true
     }
   ]
 }

@@ -65,6 +65,7 @@ import { Route as ResearchIdRouteImport } from './routes/research.$id'
 import { Route as SwapTokensRouteImport } from './routes/swap_.tokens'
 import { Route as ToTheMoonSlugRouteImport } from './routes/to-the-moon_.$slug'
 import { Route as ToTheMoonConfirmedRouteImport } from './routes/to-the-moon_.confirmed'
+import { Route as TradeAvaxTsdRouteImport } from './routes/trade.avax-tsd'
 import { Route as TradeBtcTsdRouteImport } from './routes/trade.btc-tsd'
 import { Route as TradeEthTsdRouteImport } from './routes/trade.eth-tsd'
 import { Route as TradeHexTsdRouteImport } from './routes/trade.hex-tsd'
@@ -446,6 +447,11 @@ const ToTheMoonSlugRoute = ToTheMoonSlugRouteImport.update({
 const ToTheMoonConfirmedRoute = ToTheMoonConfirmedRouteImport.update({
   id: '/to-the-moon_/confirmed',
   path: '/to-the-moon/confirmed',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TradeAvaxTsdRoute = TradeAvaxTsdRouteImport.update({
+  id: '/trade/avax-tsd',
+  path: '/trade/avax-tsd',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TradeBtcTsdRoute = TradeBtcTsdRouteImport.update({
@@ -1054,6 +1060,7 @@ export interface FileRoutesByFullPath {
   '/swap/tokens': typeof SwapTokensRoute
   '/to-the-moon/$slug': typeof ToTheMoonSlugRoute
   '/to-the-moon/confirmed': typeof ToTheMoonConfirmedRoute
+  '/trade/avax-tsd': typeof TradeAvaxTsdRoute
   '/trade/btc-tsd': typeof TradeBtcTsdRoute
   '/trade/eth-tsd': typeof TradeEthTsdRoute
   '/trade/hex-tsd': typeof TradeHexTsdRoute
@@ -1211,6 +1218,7 @@ export interface FileRoutesByTo {
   '/swap/tokens': typeof SwapTokensRoute
   '/to-the-moon/$slug': typeof ToTheMoonSlugRoute
   '/to-the-moon/confirmed': typeof ToTheMoonConfirmedRoute
+  '/trade/avax-tsd': typeof TradeAvaxTsdRoute
   '/trade/btc-tsd': typeof TradeBtcTsdRoute
   '/trade/eth-tsd': typeof TradeEthTsdRoute
   '/trade/hex-tsd': typeof TradeHexTsdRoute
@@ -1369,6 +1377,7 @@ export interface FileRoutesById {
   '/swap_/tokens': typeof SwapTokensRoute
   '/to-the-moon_/$slug': typeof ToTheMoonSlugRoute
   '/to-the-moon_/confirmed': typeof ToTheMoonConfirmedRoute
+  '/trade/avax-tsd': typeof TradeAvaxTsdRoute
   '/trade/btc-tsd': typeof TradeBtcTsdRoute
   '/trade/eth-tsd': typeof TradeEthTsdRoute
   '/trade/hex-tsd': typeof TradeHexTsdRoute
@@ -1530,6 +1539,7 @@ export interface FileRouteTypes {
     | '/swap/tokens'
     | '/to-the-moon/$slug'
     | '/to-the-moon/confirmed'
+    | '/trade/avax-tsd'
     | '/trade/btc-tsd'
     | '/trade/eth-tsd'
     | '/trade/hex-tsd'
@@ -1687,6 +1697,7 @@ export interface FileRouteTypes {
     | '/swap/tokens'
     | '/to-the-moon/$slug'
     | '/to-the-moon/confirmed'
+    | '/trade/avax-tsd'
     | '/trade/btc-tsd'
     | '/trade/eth-tsd'
     | '/trade/hex-tsd'
@@ -1844,6 +1855,7 @@ export interface FileRouteTypes {
     | '/swap_/tokens'
     | '/to-the-moon_/$slug'
     | '/to-the-moon_/confirmed'
+    | '/trade/avax-tsd'
     | '/trade/btc-tsd'
     | '/trade/eth-tsd'
     | '/trade/hex-tsd'
@@ -1997,6 +2009,7 @@ export interface RootRouteChildren {
   SwapTokensRoute: typeof SwapTokensRoute
   ToTheMoonSlugRoute: typeof ToTheMoonSlugRoute
   ToTheMoonConfirmedRoute: typeof ToTheMoonConfirmedRoute
+  TradeAvaxTsdRoute: typeof TradeAvaxTsdRoute
   TradeBtcTsdRoute: typeof TradeBtcTsdRoute
   TradeEthTsdRoute: typeof TradeEthTsdRoute
   TradeHexTsdRoute: typeof TradeHexTsdRoute
@@ -2458,6 +2471,13 @@ declare module '@tanstack/react-router' {
       path: '/to-the-moon/confirmed'
       fullPath: '/to-the-moon/confirmed'
       preLoaderRoute: typeof ToTheMoonConfirmedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/trade/avax-tsd': {
+      id: '/trade/avax-tsd'
+      path: '/trade/avax-tsd'
+      fullPath: '/trade/avax-tsd'
+      preLoaderRoute: typeof TradeAvaxTsdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/trade/btc-tsd': {
@@ -3402,6 +3422,7 @@ const rootRouteChildren: RootRouteChildren = {
   SwapTokensRoute: SwapTokensRoute,
   ToTheMoonSlugRoute: ToTheMoonSlugRoute,
   ToTheMoonConfirmedRoute: ToTheMoonConfirmedRoute,
+  TradeAvaxTsdRoute: TradeAvaxTsdRoute,
   TradeBtcTsdRoute: TradeBtcTsdRoute,
   TradeEthTsdRoute: TradeEthTsdRoute,
   TradeHexTsdRoute: TradeHexTsdRoute,

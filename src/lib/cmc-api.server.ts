@@ -37,6 +37,7 @@ const ASSET_META: Record<string, { name: string; canWithdraw: boolean; canDeposi
   PLS: { name: "PulseChain", canWithdraw: true, canDeposit: true, type: "coin" },
   HEX: { name: "HEX (Ethereum)", canWithdraw: true, canDeposit: true, type: "token" },
   pHEX: { name: "HEX (PulseChain)", canWithdraw: true, canDeposit: true, type: "token" },
+  AVAX: { name: "Avalanche", canWithdraw: true, canDeposit: true, type: "coin" },
   HYPE: { name: "Hyperliquid", canWithdraw: true, canDeposit: true, type: "coin" },
 };
 

@@ -443,3 +443,5 @@
 - [x] Hyperliquid hold + send + trade: HYPE on HyperEVM — balances, deposits, Seeds-sent withdrawals, HYPE/TSD market (Bobby, Nov 24)
 - [ ] Auditor review of Hyperliquid support before publishing (blocked: auditor)
 - [ ] Monero (XMR): hold + send + trade — keys at 1106 already accepted; needs a Seeds-run Monero server for balances and sends (blocked: Bobby OK on the server)
+- [x] Avalanche (AVAX on C-Chain): balances, deposits, Seeds-sent withdrawals, AVAX/TSD book (Bobby, Nov 24)
+- [ ] Cardano, Stellar, TON, Sui: need new key families from HME Wallet/Seeds Key + members re-link + a signer each (blocked: Bobby's go-ahead)

@@ -16,6 +16,7 @@ const NODE_NETWORK: Partial<Record<ChainId, NodeNetwork>> = {
   bsc: "bsc",
   pulsechain: "pulsechain",
   hyperevm: "hyperevm",
+  avalanche: "avalanche",
 };
 
 /** backupOnly = a second address for a machine already listed (never counts as a second opinion). */

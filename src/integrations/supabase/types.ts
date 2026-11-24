@@ -5677,6 +5677,7 @@ export type Database = {
         | "hex"
         | "phex"
         | "hype"
+        | "avax"
       escrow_status:
         | "awaiting_funding"
         | "funding_seen"
@@ -5849,6 +5850,7 @@ export const Constants = {
         "hex",
         "phex",
         "hype",
+        "avax",
       ],
       escrow_status: [
         "awaiting_funding",

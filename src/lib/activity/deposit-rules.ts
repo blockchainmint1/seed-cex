@@ -15,7 +15,7 @@ export type HistoryNetwork = (typeof HISTORY_NETWORKS)[number];
 
 export const NETWORK_LABEL: Record<string, string> = {
   txc: "TEXITcoin", "txc-omni": "TEXITcoin · Omni", isk: "Iskandercoin", ethereum: "Ethereum", base: "Base", bsc: "BNB Chain",
-  ltc: "Litecoin", btc: "Bitcoin", zcu: "ZeroChill", pulsechain: "PulseChain", hyperevm: "HyperEVM", doge: "Dogecoin", bch: "Bitcoin Cash",
+  ltc: "Litecoin", btc: "Bitcoin", zcu: "ZeroChill", pulsechain: "PulseChain", hyperevm: "HyperEVM", avalanche: "Avalanche", doge: "Dogecoin", bch: "Bitcoin Cash",
   xrp: "XRP Ledger", trx: "TRON", sol: "Solana",
 };
 

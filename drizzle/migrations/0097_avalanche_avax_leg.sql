@@ -1,0 +1,1 @@
+ALTER TYPE public.escrow_leg ADD VALUE IF NOT EXISTS 'avax';

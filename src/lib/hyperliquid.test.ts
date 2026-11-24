@@ -23,3 +23,15 @@ describe("Hyperliquid (HYPE on HyperEVM)", () => {
     expect(confirmationsNeeded("hyperevm")).toBe(30);
   });
 });
+
+describe("Avalanche (AVAX on C-Chain)", () => {
+  test("C-Chain is network 43114 with AVAX, same EVM pocket", () => {
+    expect(getChain("avalanche").evmChainId).toBe(43114);
+    expect(getPair("avax-tsd").baseLeg).toBe("avax");
+  });
+  test("AVAX withdrawals have a 0.05 AVAX fee cap and wait 12 blocks", () => {
+    expect(withdrawCoin("AVAX", "avalanche")).not.toBeNull();
+    expect(EVM_MAX_FEE["avalanche"]).toBe(0.05);
+    expect(confirmationsNeeded("avalanche")).toBe(12);
+  });
+});
