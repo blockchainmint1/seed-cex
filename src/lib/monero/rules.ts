@@ -55,9 +55,9 @@ export function isMoneroAddress(a: string): boolean {
   }
 }
 
-export type TransferPreview = { amount: bigint; fee: bigint; destinations: { address: string; amount: bigint }[]; changeAddress?: string; changeAmount?: bigint };
+export type TransferPreview = { amount: bigint; fee: bigint; destinations: { address: string; amount: bigint }[]; changeAddress?: string; changeAmount?: bigint; unlockTime?: bigint };
 
-type DescribeReply = { desc?: Array<{ recipients?: Array<{ address?: unknown; amount?: unknown }>; fee?: unknown; change_address?: unknown; change_amount?: unknown }> };
+type DescribeReply = { desc?: Array<{ recipients?: Array<{ address?: unknown; amount?: unknown }>; fee?: unknown; change_address?: unknown; change_amount?: unknown; unlock_time?: unknown }> };
 
 /**
  * Read wallet-rpc's describe_transfer answer for an unsigned set into a preview, or null when it
@@ -78,9 +78,10 @@ export function previewFromDescribe(r: DescribeReply): TransferPreview | null {
   }
   const fee = num(t.fee);
   const changeAmount = num(t.change_amount ?? 0);
-  if (fee == null || changeAmount == null) return null;
+  const unlockTime = num(t.unlock_time ?? null);
+  if (fee == null || changeAmount == null || unlockTime == null) return null;
   const amount = destinations.reduce((s, x) => s + x.amount, 0n);
-  return { amount, fee, destinations, changeAddress: typeof t.change_address === "string" ? t.change_address : "", changeAmount };
+  return { amount, fee, destinations, changeAddress: typeof t.change_address === "string" ? t.change_address : "", changeAmount, unlockTime };
 }
 
 /** Why a built (not yet sent) transfer must be refused, or null. The server's answer is checked, never trusted. */
@@ -90,6 +91,8 @@ export function previewProblem(p: TransferPreview, want: { to: string; units: bi
   if (d.address !== want.to) return "The Monero server built a payment to a different address. Nothing was sent.";
   if (d.amount !== want.units || p.amount !== want.units) return "The Monero server built a payment for a different amount. Nothing was sent.";
   if (want.from !== undefined && (p.changeAmount ?? 0n) > 0n && p.changeAddress !== want.from) return "The Monero server built a payment whose change goes somewhere else. Nothing was sent.";
+  // Audit Y1: a crafted set could lock the recipient's coins for years.
+  if (p.unlockTime !== undefined && p.unlockTime !== 0n) return "The Monero server built a payment that locks the coins. Nothing was sent.";
   if (p.fee <= 0n) return "The Monero server didn't report a network fee. Nothing was sent.";
   if (unitsToXmr(p.fee) > XMR_MAX_FEE) return "Monero network fees are unusually high right now. Nothing was sent — ask again later.";
   return null;
@@ -104,4 +107,11 @@ export function displayBalance(balance: bigint, unlocked: bigint): { balance: nu
 /** The server is usable only when both its address and its access token are set. */
 export function moneroConfigured(env: { url?: string | undefined; token?: string | undefined }): boolean {
   return Boolean(env.url?.startsWith("https://") && env.token && env.token.length >= 24);
+}
+
+/** Audit Y1: the signer's own reading must match the watch server's, field by field. */
+export function samePreview(a: TransferPreview, b: TransferPreview): boolean {
+  return a.amount === b.amount && a.fee === b.fee && (a.changeAddress ?? "") === (b.changeAddress ?? "") && (a.changeAmount ?? 0n) === (b.changeAmount ?? 0n)
+    && (a.unlockTime ?? 0n) === (b.unlockTime ?? 0n) && a.destinations.length === b.destinations.length
+    && a.destinations.every((d, i) => d.address === b.destinations[i]!.address && d.amount === b.destinations[i]!.amount);
 }

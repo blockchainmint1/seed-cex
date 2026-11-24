@@ -151,7 +151,10 @@ async function selfChangeInMempool(chain: "txc" | "isk", address: string): Promi
     // A transaction that confirmed meanwhile can't be read this way; the confirmed list has it.
     const read = txs.filter((t): t is NodeTx => !(t instanceof Error) && t != null);
     const { seedsMadeAmong } = await import("@/lib/utxo/seeds-made.server");
-    const made = await seedsMadeAmong(chain, read.map((t) => String(t.txid ?? "")));
+    // Audit Y2: only ask about transactions that pay this pocket.
+    const paying = read.filter((t) => Array.isArray(t.vout) && t.vout.some((o) => o?.scriptPubKey?.hex === script));
+    if (!paying.length) return [];
+    const made = await seedsMadeAmong(chain, paying.map((t) => String(t.txid ?? "")));
     const coins = selfChangeCoins(read, script, made);
     if (!coins.length) return [];
     const replies = await rpcBatch<NodeCoin>(chain, coins.map((u) => ({ method: "gettxout", params: [u.txid, u.vout, true] })), 6_000);

@@ -6,7 +6,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { bytesToHex } from "@noble/hashes/utils.js";
 import { keccak_256 } from "@noble/hashes/sha3.js";
 import { scReduce } from "@/lib/pockets/monero";
-import { previewFromDescribe, previewProblem, restoreHeight, watchWalletName } from "./rules";
+import { previewFromDescribe, previewProblem, samePreview, restoreHeight, watchWalletName } from "./rules";
 import { MoneroRpcError, moneroRpc, moneroServerReady, moneroSignerReady, throwawayPassword, walletPassword, walletRpc } from "./rpc.server";
 
 const LEASE_SECONDS = 90;
@@ -165,11 +165,14 @@ export async function sendMonero(link: { id: string; ciphertext: string | null }
           destinations: [{ amount: Number(units), address: to }], account_index: 0, priority: 0, do_not_relay: true,
         }, 50_000);
         if (!built.unsigned_txset) throw new Error("The Monero server didn't build an unsigned payment. Nothing was sent.");
-        const desc = await walletRpc<Parameters<typeof previewFromDescribe>[0]>("describe_transfer", { unsigned_txset: built.unsigned_txset }, 20_000);
-        const preview = previewFromDescribe(desc);
+        // Audit Y1: the offline signer reads the set itself; the online watch server's reading is only a second check.
+        const signerDesc = await moneroRpc<Parameters<typeof previewFromDescribe>[0]>("signer", "describe_transfer", { unsigned_txset: built.unsigned_txset }, 20_000);
+        const preview = previewFromDescribe(signerDesc);
         if (!preview) throw new Error("Seeds couldn't read back the Monero payment. Nothing was sent.");
         const problem = previewProblem(preview, { to, units, from });
         if (problem) throw new Error(problem);
+        const watchPreview = previewFromDescribe(await walletRpc<Parameters<typeof previewFromDescribe>[0]>("describe_transfer", { unsigned_txset: built.unsigned_txset }, 20_000));
+        if (!watchPreview || !samePreview(preview, watchPreview)) throw new Error("The two Monero servers disagree about this payment. Nothing was sent.");
         const s = await moneroRpc<{ signed_txset?: string; tx_hash_list?: string[] }>("signer", "sign_transfer", { unsigned_txset: built.unsigned_txset, export_raw: false }, 50_000);
         const txid = s.tx_hash_list?.[0];
         if (!s.signed_txset || !txid || (s.tx_hash_list?.length ?? 0) !== 1 || !/^[0-9a-f]{64}$/i.test(txid)) throw new Error("The Monero signer gave an unexpected answer. Nothing was sent.");

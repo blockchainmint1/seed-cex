@@ -31,13 +31,13 @@ describe("Monero rules", () => {
   });
   test("the recipient is read from what will be signed, not from the request (Z2)", () => {
     const other = A.replace("4A", "4B");
-    const p = previewFromDescribe({ desc: [{ recipients: [{ address: other, amount: 5 }], fee: 30_000_000, change_address: A, change_amount: 7 }] })!;
+    const p = previewFromDescribe({ desc: [{ recipients: [{ address: other, amount: 5 }], fee: 30_000_000, change_address: A, change_amount: 7, unlock_time: 0 }] })!;
     expect(previewProblem(p, { to: A, units: 5n, from: A })).toContain("different address");
-    const good = previewFromDescribe({ desc: [{ recipients: [{ address: other, amount: 5 }], fee: 30_000_000, change_address: A, change_amount: 7 }] })!;
+    const good = previewFromDescribe({ desc: [{ recipients: [{ address: other, amount: 5 }], fee: 30_000_000, change_address: A, change_amount: 7, unlock_time: 0 }] })!;
     expect(previewProblem(good, { to: other, units: 5n, from: A })).toBeNull();
   });
   test("change to anyone but the pocket is refused", () => {
-    const p = previewFromDescribe({ desc: [{ recipients: [{ address: A, amount: 5 }], fee: 30_000_000, change_address: A.replace("4A", "4C"), change_amount: 7 }] })!;
+    const p = previewFromDescribe({ desc: [{ recipients: [{ address: A, amount: 5 }], fee: 30_000_000, change_address: A.replace("4A", "4C"), change_amount: 7, unlock_time: 0 }] })!;
     expect(previewProblem(p, { to: A, units: 5n, from: A.replace("4A", "4D") })).toContain("change");
   });
   test("two transactions in one set, or malformed numbers, can't be read", () => {
@@ -52,5 +52,23 @@ describe("Monero rules", () => {
     expect(moneroConfigured({ url: "https://xmr.example", token: "x".repeat(32) })).toBe(true);
     expect(moneroConfigured({ url: "http://xmr.example", token: "x".repeat(32) })).toBe(false);
     expect(moneroConfigured({ url: "https://xmr.example", token: "short" })).toBe(false);
+  });
+});
+
+import { describe as d2, expect as e2, test as t2 } from "bun:test";
+import { previewFromDescribe as pfd, previewProblem as pp, samePreview } from "./rules";
+d2("audit Y1", () => {
+  const A = "pocket", B = "dest";
+  const base = { recipients: [{ address: B, amount: 5 }], fee: 30_000_000, change_address: A, change_amount: 7 };
+  t2("refuses a payment that locks the coins", () => {
+    const p = pfd({ desc: [{ ...base, unlock_time: 100 }] })!;
+    e2(pp(p, { to: B, units: 5n, from: A })).toContain("locks");
+    e2(pp(pfd({ desc: [{ ...base, unlock_time: 0 }] })!, { to: B, units: 5n, from: A })).toBeNull();
+  });
+  t2("signer and watch readings must match", () => {
+    const a = pfd({ desc: [{ ...base, unlock_time: 0 }] })!;
+    const b = pfd({ desc: [{ ...base, recipients: [{ address: "evil", amount: 5 }], unlock_time: 0 }] })!;
+    e2(samePreview(a, a)).toBe(true);
+    e2(samePreview(a, b)).toBe(false);
   });
 });

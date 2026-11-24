@@ -11,6 +11,8 @@ const TXID = /^[0-9a-f]{64}$/i;
 export async function recordSeedsBroadcast(chain: string, txid: string | null | undefined): Promise<void> {
   if (!txid || !TXID.test(txid)) return;
   try {
+    // Audit Y2: now and then drop records older than 14 days (no waiting transaction lives that long).
+    if (Math.random() < 0.02) await supabaseAdmin.from("seeds_broadcasts").delete().lt("created_at", new Date(Date.now() - 14 * 86_400_000).toISOString());
     await supabaseAdmin.from("seeds_broadcasts").upsert({ chain, txid: txid.toLowerCase() }, { onConflict: "chain,txid", ignoreDuplicates: true });
   } catch { /* change from it just waits for a block */ }
 }
@@ -20,9 +22,14 @@ export async function seedsMadeAmong(chain: string, txids: string[]): Promise<Se
   const ids = [...new Set(txids.filter((t) => TXID.test(t)).map((t) => t.toLowerCase()))];
   if (!ids.length) return new Set();
   try {
-    const { data, error } = await supabaseAdmin.from("seeds_broadcasts").select("txid").eq("chain", chain).in("txid", ids.slice(0, 200));
-    if (error || !data) return new Set();
-    return new Set(data.map((r) => r.txid));
+    // Audit Y2: ask in batches of 100 instead of silently dropping ids past 200.
+    const out = new Set<string>();
+    for (let i = 0; i < ids.length; i += 100) {
+      const { data, error } = await supabaseAdmin.from("seeds_broadcasts").select("txid").eq("chain", chain).in("txid", ids.slice(i, i + 100));
+      if (error || !data) return new Set();
+      for (const r of data) out.add(r.txid);
+    }
+    return out;
   } catch {
     return new Set();
   }

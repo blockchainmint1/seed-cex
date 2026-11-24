@@ -44,7 +44,7 @@ describe("a pocket's own change counts while it waits for a block", () => {
   });
   test("only plain pay-to-address scripts are understood", () => {
     expect(p2pkhHashOf(MATI_SCRIPT)).toBe("e468cdbd1176d17e89de29d6d4cc9072e970619f");
-    expect(p2pkhHashOf("a914e468cdbd1176d17e89de29d6d4cc9072e970619f87", new Set([TXID]))).toBeNull();
+    expect(p2pkhHashOf("a914e468cdbd1176d17e89de29d6d4cc9072e970619f87")).toBeNull();
     expect(selfChangeCoins([matiTx()], "a914e468cdbd1176d17e89de29d6d4cc9072e970619f87", new Set([TXID]))).toEqual([]);
   });
   test("our node must still show the change unspent at that size; other coins still need a block", () => {
