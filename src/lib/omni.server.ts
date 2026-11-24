@@ -236,7 +236,7 @@ export async function omniSimpleSend(params: OmniSendParams): Promise<OmniSendRe
     amountStr,
   ]);
 
-  let raw = await rpc<string>("txc", "createrawtransaction", [
+  let raw: string = await rpc<string>("txc", "createrawtransaction", [
     chosen.map((u) => ({ txid: u.txid, vout: u.vout })),
     [],
   ]);
@@ -254,9 +254,53 @@ export async function omniSimpleSend(params: OmniSendParams): Promise<OmniSendRe
     feeTxc,
   ]);
 
+  // Fee coins (utxo/fee-coins.ts, Bobby Nov 24): when the pocket is out of small coins,
+  // hand the change back as a few 0.01 TXC coins plus the rest, so the next TSD payments
+  // don't tie up the member's main TXC. Only the change back to the pocket is reshaped.
+  const ownScript = chosen[0]!.scriptPubKey.toLowerCase();
+  const prevtxs = chosen.map((u) => ({ txid: u.txid, vout: u.vout, scriptPubKey: u.scriptPubKey, value: u.amount }));
+  const want = { from: params.fromAddress, to: params.toAddress, propertyId, amount: params.amount };
+  const { addFeeCoins, feeCoinPlan, omniSendMismatch, spareFeeCoins } = await import("@/lib/utxo/fee-coins");
+  const readBack = async (hex: string) =>
+    omniPath()
+      .then((path) => rpc<import("@/lib/utxo/fee-coins").OmniDecodedSend>("txc", "omni_decodetransaction", [hex, prevtxs], 12_000, path))
+      .catch((e) => {
+        console.error("[omni] read-back failed", (e as Error).message);
+        return null;
+      });
+  type Decoded = { vout: Array<{ value: number; scriptPubKey?: { hex?: string } }> };
+  const plain = await rpc<Decoded>("txc", "decoderawtransaction", [raw]);
+  const changeSats = plain.vout.filter((o) => o.scriptPubKey?.hex?.toLowerCase() === ownScript).reduce((sum, o) => sum + Math.round(o.value * 1e8), 0);
+  const plan = feeCoinPlan({ spare: spareFeeCoins(utxos, chosen, feeSats + Math.round(CARRIER_MARGIN_TXC * 1e8)), changeSats, feeRate });
+  let readBackDone = false;
+  if (plan.pieces > 0) {
+    try {
+      const split = addFeeCoins(raw, ownScript, plan.pieces, plan.extraFeeSats);
+      // Bobby's rule: a reshaped payment goes out only if our node reads it back as the
+      // same TSD send. Otherwise the plain node-built payment is used.
+      const problem = omniSendMismatch(await readBack(split), want);
+      if (problem) console.error(`[omni] fee coins dropped: ${problem}`);
+      else {
+        raw = split;
+        readBackDone = true;
+      }
+    } catch (e) {
+      console.error("[omni] fee coins skipped", (e as Error).message);
+    }
+  }
+  if (!readBackDone) {
+    // The plain payment is checked too when the node can read it; a payment it reads as
+    // anything else is refused. (If the read-back itself is unavailable, as before.)
+    const back = await readBack(raw);
+    if (back) {
+      const problem = omniSendMismatch(back, want);
+      if (problem) throw new Error(`The TSD payment was not sent: ${problem}`);
+    }
+  }
+
   // Fee the node actually built (inputs minus outputs) — a dust change it drops would
   // raise it — must stay within Seeds' limit before anything is signed.
-  const decoded = await rpc<{ vout: Array<{ value: number }> }>("txc", "decoderawtransaction", [raw]);
+  const decoded = await rpc<Decoded>("txc", "decoderawtransaction", [raw]);
   const builtFeeSats = totalSats - decoded.vout.reduce((sum, o) => sum + Math.round(o.value * 1e8), 0);
   const builtProblem = feeCapProblem("txc", builtFeeSats);
   if (builtProblem) throw new Error(builtProblem);

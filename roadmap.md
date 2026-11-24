@@ -426,4 +426,4 @@
 - [x] TXC/ISK: own change still confirming counts; TSD fee uses smallest coin
 - [x] Same own-change rule for LTC/BTC/DOGE/BCH pockets
 - [x] Learn coin-splitting from File Fingerprint / Passage (Bobby)
-- [ ] Small fee coins on TSD payments (blocked: Bobby's yes/no)
+- [x] Small fee coins on TSD payments + node read-back check (Bobby: yes)
