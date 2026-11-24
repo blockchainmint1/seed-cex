@@ -13,6 +13,7 @@ import { Change, Price, Spark, thorMarketsQuery, marketsErrorText } from "@/comp
 import { MarketsSponsoredRow } from "@/components/ads/AdSpots";
 import { liveAdsQuery } from "@/components/ads/live-ads";
 import { adsForSpot } from "@/lib/ads/ad-rules";
+import { CoinSearch } from "@/components/markets/research/CoinSearch";
 
 const title = "Crypto Markets in TSD — TXC, ISK, ZCU, BTC, ETH & more | Seeds";
 const description =
@@ -75,7 +76,12 @@ function MarketsPage() {
   const thorRows = q.data ?? [];
   // Home coins (Seeds' own order books) come first in the unsorted order; the table opens sorted by 24h volume.
   const allRows = useMemo(() => [...(h.data ?? []), ...thorRows.map(fromThor)], [h.data, thorRows]);
-  const rows = useMemo(() => sortRows(allRows, sort), [allRows, sort]);
+  const [find, setFind] = useState("");
+  const rows = useMemo(() => {
+    const f = find.trim().toLowerCase();
+    const sorted = sortRows(allRows, sort);
+    return f ? sorted.filter((m) => m.base.toLowerCase().includes(f) || m.name.toLowerCase().includes(f)) : sorted;
+  }, [allRows, sort, find]);
   const live = useQuery({ ...liveAdsQuery, initialData: ads ?? undefined });
   const sponsored = adsForSpot(live.data?.ads ?? [], "markets_row", { nowMs: live.data?.nowMs ?? 0 })[0];
 
@@ -101,7 +107,12 @@ function MarketsPage() {
         THORChain, all priced in TSD. One TSD is one dollar. Tap a column heading to sort, or a market to open it.
       </p>
 
-      <div className="mt-6 overflow-x-auto rounded-sm border border-border">
+      <div className="mt-6 flex flex-wrap items-center gap-3">
+        <CoinSearch value={find} onChange={setFind} />
+        <Link to="/research" className="font-mono text-[11px] tracking-wider text-primary uppercase hover:underline">Research any coin →</Link>
+      </div>
+
+      <div className="mt-4 overflow-x-auto rounded-sm border border-border">
         <table className="w-full text-left">
           <thead className="bg-surface font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
             <tr>
@@ -120,13 +131,13 @@ function MarketsPage() {
             {!rows.length ? (
               <tr>
                 <td colSpan={8} className="px-4 py-10 text-center text-sm text-muted-foreground">
-                  {q.error ? marketsErrorText(q.error) : "Loading prices…"}
+                  {find.trim() && allRows.length ? `No Seeds market for "${find.trim()}" — pick it from the search list to research it.` : q.error ? marketsErrorText(q.error) : "Loading prices…"}
                 </td>
               </tr>
             ) : (
               rows.map((m) => <MarketRowView key={m.key} m={m} />)
             )}
-            {rows.length && !thorRows.length ? (
+            {rows.length && !thorRows.length && !find.trim() ? (
               <tr>
                 <td colSpan={8} className="px-4 py-4 text-center text-xs text-muted-foreground">
                   {q.error ? marketsErrorText(q.error) : "Loading THORChain prices…"}

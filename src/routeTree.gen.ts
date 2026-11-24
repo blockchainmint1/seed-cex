@@ -60,6 +60,8 @@ import { Route as P2pIndexRouteImport } from './routes/p2p.index'
 import { Route as PayTokenRouteImport } from './routes/pay.$token'
 import { Route as ProofCodeRouteImport } from './routes/proof.code'
 import { Route as RegisterConfirmedRouteImport } from './routes/register_.confirmed'
+import { Route as ResearchIndexRouteImport } from './routes/research.index'
+import { Route as ResearchIdRouteImport } from './routes/research.$id'
 import { Route as SwapTokensRouteImport } from './routes/swap_.tokens'
 import { Route as ToTheMoonSlugRouteImport } from './routes/to-the-moon_.$slug'
 import { Route as ToTheMoonConfirmedRouteImport } from './routes/to-the-moon_.confirmed'
@@ -418,6 +420,16 @@ const ProofCodeRoute = ProofCodeRouteImport.update({
 const RegisterConfirmedRoute = RegisterConfirmedRouteImport.update({
   id: '/register_/confirmed',
   path: '/register/confirmed',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResearchIndexRoute = ResearchIndexRouteImport.update({
+  id: '/research/',
+  path: '/research/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResearchIdRoute = ResearchIdRouteImport.update({
+  id: '/research/$id',
+  path: '/research/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SwapTokensRoute = SwapTokensRouteImport.update({
@@ -1032,6 +1044,7 @@ export interface FileRoutesByFullPath {
   '/pay/$token': typeof PayTokenRoute
   '/proof/code': typeof ProofCodeRoute
   '/register/confirmed': typeof RegisterConfirmedRoute
+  '/research/$id': typeof ResearchIdRoute
   '/swap/tokens': typeof SwapTokensRoute
   '/to-the-moon/$slug': typeof ToTheMoonSlugRoute
   '/to-the-moon/confirmed': typeof ToTheMoonConfirmedRoute
@@ -1051,6 +1064,7 @@ export interface FileRoutesByFullPath {
   '/loans/': typeof LoansIndexRoute
   '/markets/': typeof MarketsIndexRoute
   '/p2p/': typeof P2pIndexRoute
+  '/research/': typeof ResearchIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/account/ai': typeof AuthenticatedAccountAiRoute
   '/account/alerts': typeof AuthenticatedAccountAlertsRoute
@@ -1186,6 +1200,7 @@ export interface FileRoutesByTo {
   '/pay/$token': typeof PayTokenRoute
   '/proof/code': typeof ProofCodeRoute
   '/register/confirmed': typeof RegisterConfirmedRoute
+  '/research/$id': typeof ResearchIdRoute
   '/swap/tokens': typeof SwapTokensRoute
   '/to-the-moon/$slug': typeof ToTheMoonSlugRoute
   '/to-the-moon/confirmed': typeof ToTheMoonConfirmedRoute
@@ -1205,6 +1220,7 @@ export interface FileRoutesByTo {
   '/loans': typeof LoansIndexRoute
   '/markets': typeof MarketsIndexRoute
   '/p2p': typeof P2pIndexRoute
+  '/research': typeof ResearchIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/account/ai': typeof AuthenticatedAccountAiRoute
   '/account/alerts': typeof AuthenticatedAccountAlertsRoute
@@ -1341,6 +1357,7 @@ export interface FileRoutesById {
   '/pay/$token': typeof PayTokenRoute
   '/proof/code': typeof ProofCodeRoute
   '/register_/confirmed': typeof RegisterConfirmedRoute
+  '/research/$id': typeof ResearchIdRoute
   '/swap_/tokens': typeof SwapTokensRoute
   '/to-the-moon_/$slug': typeof ToTheMoonSlugRoute
   '/to-the-moon_/confirmed': typeof ToTheMoonConfirmedRoute
@@ -1360,6 +1377,7 @@ export interface FileRoutesById {
   '/loans/': typeof LoansIndexRoute
   '/markets/': typeof MarketsIndexRoute
   '/p2p/': typeof P2pIndexRoute
+  '/research/': typeof ResearchIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/_authenticated/account/ai': typeof AuthenticatedAccountAiRoute
   '/_authenticated/account/alerts': typeof AuthenticatedAccountAlertsRoute
@@ -1499,6 +1517,7 @@ export interface FileRouteTypes {
     | '/pay/$token'
     | '/proof/code'
     | '/register/confirmed'
+    | '/research/$id'
     | '/swap/tokens'
     | '/to-the-moon/$slug'
     | '/to-the-moon/confirmed'
@@ -1518,6 +1537,7 @@ export interface FileRouteTypes {
     | '/loans/'
     | '/markets/'
     | '/p2p/'
+    | '/research/'
     | '/.lovable/oauth/consent'
     | '/account/ai'
     | '/account/alerts'
@@ -1653,6 +1673,7 @@ export interface FileRouteTypes {
     | '/pay/$token'
     | '/proof/code'
     | '/register/confirmed'
+    | '/research/$id'
     | '/swap/tokens'
     | '/to-the-moon/$slug'
     | '/to-the-moon/confirmed'
@@ -1672,6 +1693,7 @@ export interface FileRouteTypes {
     | '/loans'
     | '/markets'
     | '/p2p'
+    | '/research'
     | '/.lovable/oauth/consent'
     | '/account/ai'
     | '/account/alerts'
@@ -1807,6 +1829,7 @@ export interface FileRouteTypes {
     | '/pay/$token'
     | '/proof/code'
     | '/register_/confirmed'
+    | '/research/$id'
     | '/swap_/tokens'
     | '/to-the-moon_/$slug'
     | '/to-the-moon_/confirmed'
@@ -1826,6 +1849,7 @@ export interface FileRouteTypes {
     | '/loans/'
     | '/markets/'
     | '/p2p/'
+    | '/research/'
     | '/.lovable/oauth/consent'
     | '/_authenticated/account/ai'
     | '/_authenticated/account/alerts'
@@ -1957,6 +1981,7 @@ export interface RootRouteChildren {
   PayTokenRoute: typeof PayTokenRoute
   ProofCodeRoute: typeof ProofCodeRoute
   RegisterConfirmedRoute: typeof RegisterConfirmedRoute
+  ResearchIdRoute: typeof ResearchIdRoute
   SwapTokensRoute: typeof SwapTokensRoute
   ToTheMoonSlugRoute: typeof ToTheMoonSlugRoute
   ToTheMoonConfirmedRoute: typeof ToTheMoonConfirmedRoute
@@ -1976,6 +2001,7 @@ export interface RootRouteChildren {
   LoansIndexRoute: typeof LoansIndexRoute
   MarketsIndexRoute: typeof MarketsIndexRoute
   P2pIndexRoute: typeof P2pIndexRoute
+  ResearchIndexRoute: typeof ResearchIndexRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   AiCoinIdRoute: typeof AiCoinIdRoute
   ApiPublicAdEventRoute: typeof ApiPublicAdEventRoute
@@ -2384,6 +2410,20 @@ declare module '@tanstack/react-router' {
       path: '/register/confirmed'
       fullPath: '/register/confirmed'
       preLoaderRoute: typeof RegisterConfirmedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/research/': {
+      id: '/research/'
+      path: '/research'
+      fullPath: '/research/'
+      preLoaderRoute: typeof ResearchIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/research/$id': {
+      id: '/research/$id'
+      path: '/research/$id'
+      fullPath: '/research/$id'
+      preLoaderRoute: typeof ResearchIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/swap_/tokens': {
@@ -3338,6 +3378,7 @@ const rootRouteChildren: RootRouteChildren = {
   PayTokenRoute: PayTokenRoute,
   ProofCodeRoute: ProofCodeRoute,
   RegisterConfirmedRoute: RegisterConfirmedRoute,
+  ResearchIdRoute: ResearchIdRoute,
   SwapTokensRoute: SwapTokensRoute,
   ToTheMoonSlugRoute: ToTheMoonSlugRoute,
   ToTheMoonConfirmedRoute: ToTheMoonConfirmedRoute,
@@ -3357,6 +3398,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoansIndexRoute: LoansIndexRoute,
   MarketsIndexRoute: MarketsIndexRoute,
   P2pIndexRoute: P2pIndexRoute,
+  ResearchIndexRoute: ResearchIndexRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   AiCoinIdRoute: AiCoinIdRoute,
   ApiPublicAdEventRoute: ApiPublicAdEventRoute,
