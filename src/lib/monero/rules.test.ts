@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { displayBalance, isMoneroAddress, moneroConfigured, previewProblem, restoreHeight, unitsToXmr, watchWalletName, xmrToUnits, XMR_MAX_FEE } from "./rules";
+import { displayBalance, isMoneroAddress, moneroConfigured, previewFromDescribe, previewProblem, restoreHeight, unitsToXmr, watchWalletName, xmrToUnits, XMR_MAX_FEE } from "./rules";
 
 const A = "4A4meFan68GQTKM2GJemCwBkfbVP2UsH2ZLPxWKquxhF93ruBpNL3PjSQzkKWFX5ELS8P4MKc4DVqb5sDFuswXJFCRuGsea";
 
@@ -28,6 +28,22 @@ describe("Monero rules", () => {
     expect(previewProblem({ ...ok, destinations: [{ address: A, amount: 6n }] }, { to: A, units: 5n })).toContain("different amount");
     expect(previewProblem(ok, { to: A.replace("4A", "4B"), units: 5n })).toContain("different address");
     expect(previewProblem({ ...ok, fee: xmrToUnits(XMR_MAX_FEE) + 1n }, { to: A, units: 5n })).toContain("unusually high");
+  });
+  test("the recipient is read from what will be signed, not from the request (Z2)", () => {
+    const other = A.replace("4A", "4B");
+    const p = previewFromDescribe({ desc: [{ recipients: [{ address: other, amount: 5 }], fee: 30_000_000, change_address: A, change_amount: 7 }] })!;
+    expect(previewProblem(p, { to: A, units: 5n, from: A })).toContain("different address");
+    const good = previewFromDescribe({ desc: [{ recipients: [{ address: other, amount: 5 }], fee: 30_000_000, change_address: A, change_amount: 7 }] })!;
+    expect(previewProblem(good, { to: other, units: 5n, from: A })).toBeNull();
+  });
+  test("change to anyone but the pocket is refused", () => {
+    const p = previewFromDescribe({ desc: [{ recipients: [{ address: A, amount: 5 }], fee: 30_000_000, change_address: A.replace("4A", "4C"), change_amount: 7 }] })!;
+    expect(previewProblem(p, { to: A, units: 5n, from: A.replace("4A", "4D") })).toContain("change");
+  });
+  test("two transactions in one set, or malformed numbers, can't be read", () => {
+    expect(previewFromDescribe({ desc: [] })).toBeNull();
+    expect(previewFromDescribe({ desc: [{ recipients: [], fee: 1 }, { recipients: [], fee: 1 }] })).toBeNull();
+    expect(previewFromDescribe({ desc: [{ recipients: [{ address: A, amount: -1 }], fee: 1 }] })).toBeNull();
   });
   test("locked coins show only as arriving", () => {
     expect(displayBalance(3_000_000_000_000n, 1_000_000_000_000n)).toEqual({ balance: 1, arriving: 2 });

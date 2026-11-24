@@ -1,8 +1,8 @@
 /**
  * Monero rules (pure, tested). Seeds reads and sends members' Monero through its own
  * Monero server (monerod + monero-wallet-rpc behind an HTTPS proxy). Watch wallets on that
- * server hold only the member's VIEW key; the spend key is used only inside one send, in a
- * throwaway wallet that is closed (and wiped by the server) right after.
+ * server hold only the member's VIEW key. Sends use cold signing: the watch wallet builds an
+ * unsigned set, Seeds reads it back (describe_transfer), and a separate RAM-only signer signs it.
  */
 import { sha256 } from "@noble/hashes/sha2.js";
 import { bytesToHex, utf8ToBytes } from "@noble/hashes/utils.js";
@@ -55,14 +55,41 @@ export function isMoneroAddress(a: string): boolean {
   }
 }
 
-export type TransferPreview = { amount: bigint; fee: bigint; destinations: { address: string; amount: bigint }[] };
+export type TransferPreview = { amount: bigint; fee: bigint; destinations: { address: string; amount: bigint }[]; changeAddress?: string; changeAmount?: bigint };
+
+type DescribeReply = { desc?: Array<{ recipients?: Array<{ address?: unknown; amount?: unknown }>; fee?: unknown; change_address?: unknown; change_amount?: unknown }> };
+
+/**
+ * Read wallet-rpc's describe_transfer answer for an unsigned set into a preview, or null when it
+ * isn't exactly one transaction with well-formed numbers. This is what the signer will actually
+ * sign, so the recipient comes from here — never from what Seeds asked for (audit Z2).
+ */
+export function previewFromDescribe(r: DescribeReply): TransferPreview | null {
+  const d = r.desc;
+  if (!Array.isArray(d) || d.length !== 1) return null;
+  const t = d[0]!;
+  const num = (v: unknown): bigint | null => (typeof v === "number" && Number.isSafeInteger(v) && v >= 0) || (typeof v === "string" && /^\d+$/.test(v)) ? BigInt(v as never) : null;
+  if (!Array.isArray(t.recipients)) return null;
+  const destinations: { address: string; amount: bigint }[] = [];
+  for (const x of t.recipients) {
+    const a = num(x?.amount);
+    if (typeof x?.address !== "string" || a == null) return null;
+    destinations.push({ address: x.address, amount: a });
+  }
+  const fee = num(t.fee);
+  const changeAmount = num(t.change_amount ?? 0);
+  if (fee == null || changeAmount == null) return null;
+  const amount = destinations.reduce((s, x) => s + x.amount, 0n);
+  return { amount, fee, destinations, changeAddress: typeof t.change_address === "string" ? t.change_address : "", changeAmount };
+}
 
 /** Why a built (not yet sent) transfer must be refused, or null. The server's answer is checked, never trusted. */
-export function previewProblem(p: TransferPreview, want: { to: string; units: bigint }): string | null {
+export function previewProblem(p: TransferPreview, want: { to: string; units: bigint; from?: string }): string | null {
   if (p.destinations.length !== 1) return "The Monero server built a payment to the wrong number of addresses. Nothing was sent.";
   const d = p.destinations[0]!;
   if (d.address !== want.to) return "The Monero server built a payment to a different address. Nothing was sent.";
   if (d.amount !== want.units || p.amount !== want.units) return "The Monero server built a payment for a different amount. Nothing was sent.";
+  if (want.from !== undefined && (p.changeAmount ?? 0n) > 0n && p.changeAddress !== want.from) return "The Monero server built a payment whose change goes somewhere else. Nothing was sent.";
   if (p.fee <= 0n) return "The Monero server didn't report a network fee. Nothing was sent.";
   if (unitsToXmr(p.fee) > XMR_MAX_FEE) return "Monero network fees are unusually high right now. Nothing was sent — ask again later.";
   return null;

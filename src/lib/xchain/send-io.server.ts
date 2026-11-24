@@ -58,7 +58,7 @@ async function tryEach<T>(eps: NodeEndpoint[], label: string, final: boolean, ca
 /** Confirmed coins plus the pocket's own change still waiting for a block (book-self-change.ts). */
 export async function bookUtxos(coin: "DOGE" | "BCH", address: string): Promise<SpendableUtxo[]> {
   const { bookSpendableRows } = await import("@/lib/utxo/book-self-change.server");
-  const rows = await bookSpendableRows(BOOK[coin], bookHeaders(), address);
+  const rows = await bookSpendableRows(coin.toLowerCase(), BOOK[coin], bookHeaders(), address);
   if (!rows) throw new Error(`${coin} coin list unreachable`);
   return rows.map((r) => ({ txid: r.txid, vout: r.vout, value: BigInt(r.value) }));
 }
@@ -81,6 +81,8 @@ export async function bookBroadcast(coin: "DOGE" | "BCH", hex: string): Promise<
   });
   const json = (await res.json().catch(() => null)) as { result?: string; error?: string } | null;
   if (!res.ok || !json?.result) throw new Error(`${coin} broadcast rejected: ${json?.error ?? `HTTP ${res.status}`}`);
+  const { recordSeedsBroadcast } = await import("@/lib/utxo/seeds-made.server");
+  await recordSeedsBroadcast(coin.toLowerCase(), json.result);
   return json.result;
 }
 

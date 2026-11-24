@@ -454,3 +454,9 @@
 - [ ] First real ADA deposit + withdrawal, small amount (blocked: a tester with ADA)
 - [ ] Stellar, TON, Sui: HME Wallet + Seeds Key share new 1106 keys (blocked: HME Wallet and Seeds Key teams, handoff sent)
 - [ ] Auditor review of Cardano signing (blocked: auditor)
+
+- [x] Audit Z1/Z2: Monero cold-signing (key never on Monero server)
+- [x] Audit X1: only spend unconfirmed change from Seeds-made parents
+- [x] Z5: AVAX research link to /trade/avax-tsd
+- [x] Z4: second Cardano data provider
+- [x] Z3: view-key derivation once per member (accepted)

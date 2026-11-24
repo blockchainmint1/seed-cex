@@ -6,8 +6,8 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { bytesToHex } from "@noble/hashes/utils.js";
 import { keccak_256 } from "@noble/hashes/sha3.js";
 import { scReduce } from "@/lib/pockets/monero";
-import { previewProblem, restoreHeight, watchWalletName } from "./rules";
-import { MoneroRpcError, moneroServerReady, walletPassword, walletRpc } from "./rpc.server";
+import { previewFromDescribe, previewProblem, restoreHeight, watchWalletName } from "./rules";
+import { MoneroRpcError, moneroRpc, moneroServerReady, moneroSignerReady, throwawayPassword, walletPassword, walletRpc } from "./rpc.server";
 
 const LEASE_SECONDS = 90;
 
@@ -46,7 +46,11 @@ export async function storedReading(linkId: string): Promise<{ balance: number |
 
 type Row = { link_id: string; user_id: string; address: string; wallet_name: string; restore_height: number | null; status: string; tries: number };
 
-/** Create the watch wallet for a pending row: unlocks the pocket key once, hands the server the VIEW key only. */
+/**
+ * Create the watch wallet for a pending row: unlocks the pocket key once per member (rows leave
+ * "pending" after success or 10 tries), hands the server the VIEW key only. Audit Z3: accepted by
+ * Bobby Nov 24 2026 as the one scheduled key unlock, because Monero balances can't be read without it.
+ */
 async function register(row: Row): Promise<void> {
   const { data: link } = await supabaseAdmin.from("hme_links").select("id, key_ciphertext, created_at, status").eq("id", row.link_id).maybeSingle();
   if (!link || link.status !== "active" || !link.key_ciphertext) {
@@ -125,37 +129,57 @@ export async function liveUnlocked(linkId: string): Promise<bigint | null> {
 }
 
 /**
- * Send `units` XMR from the member's pocket. The spend key goes into a throwaway wallet on Seeds'
- * Monero server, the payment is built WITHOUT relaying, checked here (address, amount, fee cap),
- * the txid recorded, then relayed. The throwaway wallet is closed either way; the server wipes it.
+ * Send `units` XMR from the member's pocket by cold signing (audit Z1/Z2):
+ * 1. the VIEW-ONLY watch wallet exports its outputs;
+ * 2. the separate offline signer (RAM-only wallet dir, own token) loads the spend key into a
+ *    throwaway wallet with a random, never-stored password, imports the outputs and exports key images;
+ * 3. the watch wallet imports the key images and builds an UNSIGNED set;
+ * 4. Seeds reads that set back (describe_transfer) and checks recipient, amount, change and fee cap;
+ * 5. the signer signs it, the throwaway wallet is closed WITHOUT saving;
+ * 6. the txid is recorded, then the watch server submits it.
+ * The watch server never sees the spend key.
  */
 export async function sendMonero(link: { id: string; ciphertext: string | null }, from: string, to: string, units: bigint, record: (txid: string) => Promise<void>): Promise<string> {
-  const { data: w } = await supabaseAdmin.from("monero_wallets").select("restore_height, status").eq("link_id", link.id).maybeSingle();
+  if (!moneroSignerReady()) throw new Error("Seeds' Monero signer isn't connected yet. Nothing was sent.");
+  const { data: w } = await supabaseAdmin.from("monero_wallets").select("link_id, user_id, address, wallet_name, restore_height, status, tries").eq("link_id", link.id).maybeSingle();
   if (!w || w.status !== "ready" || w.restore_height == null) throw new Error("Seeds hasn't finished reading your Monero pocket yet. Nothing was sent.");
-  const tempName = `seeds-send-${crypto.randomUUID()}`;
+  const row = w as Row;
   return withLease(`send:${link.id}`, async () => {
+    await scan(row); // opens + refreshes the watch wallet
+    const { outputs_data_hex } = await walletRpc<{ outputs_data_hex: string }>("export_outputs", { all: true }, 30_000);
+    const signerName = `seeds-sign-${crypto.randomUUID()}`;
     const { withPocketKey } = await import("@/lib/xchain/send.server");
-    await withPocketKey(link, "XMR", from, async (spend) => {
+    const signed = await withPocketKey(link, "XMR", from, async (spend) => {
       const view = scReduce(keccak_256(spend));
       try {
-        await walletRpc("generate_from_keys", {
-          filename: tempName, address: from, spendkey: bytesToHex(spend), viewkey: bytesToHex(view),
-          password: await walletPassword(tempName), restore_height: w.restore_height, autosave_current: false,
+        await moneroRpc("signer", "generate_from_keys", {
+          filename: signerName, address: from, spendkey: bytesToHex(spend), viewkey: bytesToHex(view),
+          password: throwawayPassword(), restore_height: row.restore_height, autosave_current: false,
         }, 60_000);
       } finally { view.fill(0); }
+      try {
+        await moneroRpc("signer", "import_outputs", { outputs_data_hex }, 30_000);
+        const ki = await moneroRpc<{ signed_key_images?: unknown[] }>("signer", "export_key_images", { all: true }, 30_000);
+        await walletRpc("import_key_images", { signed_key_images: ki.signed_key_images ?? [] }, 30_000);
+        const built = await walletRpc<{ unsigned_txset?: string }>("transfer", {
+          destinations: [{ amount: Number(units), address: to }], account_index: 0, priority: 0, do_not_relay: true,
+        }, 50_000);
+        if (!built.unsigned_txset) throw new Error("The Monero server didn't build an unsigned payment. Nothing was sent.");
+        const desc = await walletRpc<Parameters<typeof previewFromDescribe>[0]>("describe_transfer", { unsigned_txset: built.unsigned_txset }, 20_000);
+        const preview = previewFromDescribe(desc);
+        if (!preview) throw new Error("Seeds couldn't read back the Monero payment. Nothing was sent.");
+        const problem = previewProblem(preview, { to, units, from });
+        if (problem) throw new Error(problem);
+        const s = await moneroRpc<{ signed_txset?: string; tx_hash_list?: string[] }>("signer", "sign_transfer", { unsigned_txset: built.unsigned_txset, export_raw: false }, 50_000);
+        const txid = s.tx_hash_list?.[0];
+        if (!s.signed_txset || !txid || (s.tx_hash_list?.length ?? 0) !== 1 || !/^[0-9a-f]{64}$/i.test(txid)) throw new Error("The Monero signer gave an unexpected answer. Nothing was sent.");
+        return { signed_txset: s.signed_txset, txid };
+      } finally {
+        await moneroRpc("signer", "close_wallet", { autosave_current: false }).catch(() => null);
+      }
     });
-    await walletRpc("refresh", {}, 50_000);
-    const built = await walletRpc<{ amount: number | string; fee: number | string; tx_hash: string; tx_metadata: string }>("transfer", {
-      destinations: [{ amount: Number(units), address: to }], account_index: 0, priority: 0, ring_size: 16,
-      do_not_relay: true, get_tx_metadata: true, get_tx_key: false,
-    }, 50_000);
-    const problem = previewProblem(
-      { amount: BigInt(String(built.amount)), fee: BigInt(String(built.fee)), destinations: [{ address: to, amount: BigInt(String(built.amount)) }] },
-      { to, units },
-    );
-    if (problem) throw new Error(problem);
-    await record(built.tx_hash);
-    await walletRpc("relay_tx", { hex: built.tx_metadata }, 30_000);
-    return built.tx_hash;
+    await record(signed.txid);
+    await walletRpc("submit_transfer", { tx_data_hex: signed.signed_txset }, 30_000);
+    return signed.txid;
   }, 30_000);
 }

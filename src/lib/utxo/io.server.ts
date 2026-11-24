@@ -71,7 +71,7 @@ export async function loadUtxosFor(chain: UtxoChainId, address: string, opts: { 
   if (chain === "ltc") {
     // Confirmed coins plus the pocket's own change still waiting for a block (book-self-change.ts).
     const { bookSpendableRows } = await import("@/lib/utxo/book-self-change.server");
-    const rows = await bookSpendableRows(LTC_BOOK, bookHeaders(), address);
+    const rows = await bookSpendableRows("ltc", LTC_BOOK, bookHeaders(), address);
     if (!rows) throw new Error("Could not read Litecoin UTXOs (indexer unreachable)");
     const script = bytesToHex(addressToScriptFor(address, p2pkhVersionOf("ltc")));
     return rows.map((r) => ({
@@ -149,7 +149,10 @@ async function selfChangeInMempool(chain: "txc" | "isk", address: string): Promi
     if (!Array.isArray(ids) || ids.length === 0 || ids.length > MAX_MEMPOOL_TXS_TO_CHECK) return [];
     const txs = await rpcBatch<NodeTx>(chain, ids.map((id) => ({ method: "getrawtransaction", params: [id, true] })), 6_000);
     // A transaction that confirmed meanwhile can't be read this way; the confirmed list has it.
-    const coins = selfChangeCoins(txs.filter((t): t is NodeTx => !(t instanceof Error) && t != null), script);
+    const read = txs.filter((t): t is NodeTx => !(t instanceof Error) && t != null);
+    const { seedsMadeAmong } = await import("@/lib/utxo/seeds-made.server");
+    const made = await seedsMadeAmong(chain, read.map((t) => String(t.txid ?? "")));
+    const coins = selfChangeCoins(read, script, made);
     if (!coins.length) return [];
     const replies = await rpcBatch<NodeCoin>(chain, coins.map((u) => ({ method: "gettxout", params: [u.txid, u.vout, true] })), 6_000);
     const check = checkCoinsAgainstNode(coins, replies, { unconfirmedOk: true });
@@ -258,6 +261,8 @@ export async function broadcastFor(chain: UtxoChainId, hex: string): Promise<str
     if (!res.ok || !json?.result) {
       throw new Error(`Litecoin broadcast rejected: ${json?.error ?? `HTTP ${res.status}`}`);
     }
+    const { recordSeedsBroadcast } = await import("@/lib/utxo/seeds-made.server");
+    await recordSeedsBroadcast("ltc", json.result);
     return json.result;
   }
   return broadcastRawTx(chain, hex);

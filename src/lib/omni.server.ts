@@ -349,6 +349,8 @@ export async function omniSimpleSend(params: OmniSendParams): Promise<OmniSendRe
 
   if (params.beforeBroadcast) await params.beforeBroadcast(signed.txid);
   const txid = await rpc<string>("txc", "sendrawtransaction", [signed.hex]);
+  const { recordSeedsBroadcast } = await import("@/lib/utxo/seeds-made.server");
+  await recordSeedsBroadcast("txc", txid);
   return { txid, amount: params.amount, to: params.toAddress, from: params.fromAddress, propertyId, hex: signed.hex };
 }
 

@@ -141,7 +141,8 @@ export async function broadcastTogether(chain: LockChain, hexes: string[]): Prom
   const bad = res.find((r) => !r.allowed);
   if (bad) throw new Error(`The node rejected the settlement: ${bad["reject-reason"] ?? "unknown"}`);
   const out: string[] = [];
-  for (const h of hexes) out.push(await rpc<string>(c, "sendrawtransaction", [h]));
+  const { recordSeedsBroadcast } = await import("@/lib/utxo/seeds-made.server");
+  for (const h of hexes) { const id = await rpc<string>(c, "sendrawtransaction", [h]); await recordSeedsBroadcast(c, id); out.push(id); }
   return out;
 }
 

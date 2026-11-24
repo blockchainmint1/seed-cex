@@ -210,7 +210,10 @@ export async function fetchAllNodeStatus(): Promise<NodeStatus[]> {
 
 /** Broadcast a signed raw transaction. Returns the txid. */
 export async function broadcastRawTx(chain: RpcChain, rawHex: string): Promise<string> {
-  return rpc<string>(chain, "sendrawtransaction", [rawHex]);
+  const txid = await rpc<string>(chain, "sendrawtransaction", [rawHex]);
+  const { recordSeedsBroadcast } = await import("@/lib/utxo/seeds-made.server");
+  await recordSeedsBroadcast(chain, txid);
+  return txid;
 }
 
 /** Confirmation count for a broadcast txid, or null if unknown to the node. */

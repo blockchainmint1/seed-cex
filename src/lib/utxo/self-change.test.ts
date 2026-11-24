@@ -23,26 +23,29 @@ const matiTx = (vin: NodeTx["vin"] = [{ ismweb: false, scriptSig: { asm: MATI_SI
 
 describe("a pocket's own change counts while it waits for a block", () => {
   test("Mati's 999.9999196 TXC change counts for his pocket", () => {
-    const coins = selfChangeCoins([matiTx()], MATI_SCRIPT);
+    const coins = selfChangeCoins([matiTx()], MATI_SCRIPT, new Set([TXID]));
     expect(coins).toEqual([{ txid: TXID, vout: 0, scriptPubKey: MATI_SCRIPT, amount: 999.9999196, height: 0 }]);
   });
   test("the seller's 0.0000546 TXC from the same payment does not count for the seller (someone else signed it)", () => {
-    expect(selfChangeCoins([matiTx()], SELLER_SCRIPT)).toEqual([]);
+    expect(selfChangeCoins([matiTx()], SELLER_SCRIPT, new Set([TXID]))).toEqual([]);
   });
   test("one input signed by a different key → nothing counts", () => {
     const tx = matiTx([{ scriptSig: { asm: MATI_SIG } }, { scriptSig: { asm: OTHER_SIG } }]);
-    expect(selfChangeCoins([tx], MATI_SCRIPT)).toEqual([]);
+    expect(selfChangeCoins([tx], MATI_SCRIPT, new Set([TXID]))).toEqual([]);
   });
   test("MWEB inputs, mined coins and inputs we can't read → nothing counts", () => {
-    expect(selfChangeCoins([matiTx([{ ismweb: true, scriptSig: { asm: MATI_SIG } }])], MATI_SCRIPT)).toEqual([]);
-    expect(selfChangeCoins([matiTx([{ coinbase: "03abcd" }])], MATI_SCRIPT)).toEqual([]);
-    expect(selfChangeCoins([matiTx([{ scriptSig: {} }])], MATI_SCRIPT)).toEqual([]);
-    expect(selfChangeCoins([matiTx([])], MATI_SCRIPT)).toEqual([]);
+    expect(selfChangeCoins([matiTx([{ ismweb: true, scriptSig: { asm: MATI_SIG } }])], MATI_SCRIPT, new Set([TXID]))).toEqual([]);
+    expect(selfChangeCoins([matiTx([{ coinbase: "03abcd" }])], MATI_SCRIPT, new Set([TXID]))).toEqual([]);
+    expect(selfChangeCoins([matiTx([{ scriptSig: {} }])], MATI_SCRIPT, new Set([TXID]))).toEqual([]);
+    expect(selfChangeCoins([matiTx([])], MATI_SCRIPT, new Set([TXID]))).toEqual([]);
+  });
+  test("X1: Mati's change doesn't count if Seeds didn't broadcast that payment", () => {
+    expect(selfChangeCoins([matiTx()], MATI_SCRIPT, new Set())).toEqual([]);
   });
   test("only plain pay-to-address scripts are understood", () => {
     expect(p2pkhHashOf(MATI_SCRIPT)).toBe("e468cdbd1176d17e89de29d6d4cc9072e970619f");
-    expect(p2pkhHashOf("a914e468cdbd1176d17e89de29d6d4cc9072e970619f87")).toBeNull();
-    expect(selfChangeCoins([matiTx()], "a914e468cdbd1176d17e89de29d6d4cc9072e970619f87")).toEqual([]);
+    expect(p2pkhHashOf("a914e468cdbd1176d17e89de29d6d4cc9072e970619f87", new Set([TXID]))).toBeNull();
+    expect(selfChangeCoins([matiTx()], "a914e468cdbd1176d17e89de29d6d4cc9072e970619f87", new Set([TXID]))).toEqual([]);
   });
   test("our node must still show the change unspent at that size; other coins still need a block", () => {
     const coin = { txid: TXID, vout: 0, scriptPubKey: MATI_SCRIPT, amount: 999.9999196 };

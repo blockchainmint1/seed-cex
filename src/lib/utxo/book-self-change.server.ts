@@ -8,7 +8,7 @@ import { bookCoinsWithOwnChange, waitingTxids, type BookTx, type BookUtxoRow } f
  * `base` = a Blockbook /api/v2 URL. Returns null when the coin list can't be read.
  * A transaction that can't be looked up just doesn't count yet.
  */
-export async function bookSpendableRows(base: string, headers: HeadersInit, address: string): Promise<BookUtxoRow[] | null> {
+export async function bookSpendableRows(chain: string, base: string, headers: HeadersInit, address: string): Promise<BookUtxoRow[] | null> {
   const get = async <T>(path: string): Promise<T | null> => {
     try {
       const res = await fetch(`${base}${path}`, { headers, signal: AbortSignal.timeout(10_000) });
@@ -19,8 +19,10 @@ export async function bookSpendableRows(base: string, headers: HeadersInit, addr
   };
   const rows = await get<BookUtxoRow[]>(`/utxo/${encodeURIComponent(address)}`);
   if (!Array.isArray(rows)) return null;
+  const { seedsMadeAmong } = await import("@/lib/utxo/seeds-made.server");
+  const made = await seedsMadeAmong(chain, waitingTxids(rows));
   const ids = waitingTxids(rows);
   const txs: Record<string, BookTx | null> = {};
   await Promise.all(ids.map(async (id) => { txs[id] = await get<BookTx>(`/tx/${id}`); }));
-  return bookCoinsWithOwnChange(rows, txs, address);
+  return bookCoinsWithOwnChange(rows, txs, address, made);
 }

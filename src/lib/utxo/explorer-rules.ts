@@ -173,7 +173,8 @@ function signedOnlyBy(tx: NodeTx, ownHash: string): boolean {
  * signed (its own change). Amounts here are only a starting point: the caller re-reads
  * each one with gettxout before it counts (checkCoinsAgainstNode with unconfirmedOk).
  */
-export function selfChangeCoins(txs: NodeTx[], scriptHex: string): Array<{ txid: string; vout: number; scriptPubKey: string; amount: number; height: number }> {
+/** Audit X1: only change whose parent Seeds itself broadcast (`seedsMade`) counts; a member-made parent could be replaced. */
+export function selfChangeCoins(txs: NodeTx[], scriptHex: string, seedsMade: ReadonlySet<string>): Array<{ txid: string; vout: number; scriptPubKey: string; amount: number; height: number }> {
   const script = scriptHex.toLowerCase();
   const ownHash = p2pkhHashOf(script);
   if (!ownHash) return [];
@@ -181,7 +182,7 @@ export function selfChangeCoins(txs: NodeTx[], scriptHex: string): Array<{ txid:
   for (const tx of txs) {
     if (!tx || typeof tx.txid !== "string" || !TXID.test(tx.txid) || !Array.isArray(tx.vout)) continue;
     const mine = tx.vout.filter((o) => o && o.ismweb !== true && typeof o.scriptPubKey?.hex === "string" && o.scriptPubKey.hex.toLowerCase() === script);
-    if (!mine.length || !signedOnlyBy(tx, ownHash)) continue;
+    if (!mine.length || !seedsMade.has(tx.txid.toLowerCase()) || !signedOnlyBy(tx, ownHash)) continue;
     for (const o of mine) {
       if (!Number.isInteger(o.n) || (o.n as number) < 0 || typeof o.value !== "number" || !Number.isFinite(o.value) || o.value <= 0) continue;
       out.push({ txid: tx.txid.toLowerCase(), vout: o.n as number, scriptPubKey: script, amount: sats(o.value) / 1e8, height: 0 });

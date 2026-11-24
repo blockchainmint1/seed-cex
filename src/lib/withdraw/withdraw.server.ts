@@ -107,8 +107,9 @@ async function tell(userId: string, telegram: string, thing: string, lines: stri
 
 /** Monero only: Seeds' Monero server must be connected and the member's pocket watched first. */
 async function moneroBlocker(userId: string, linkId: string | null, address: string | null): Promise<string | null> {
-  const { moneroServerReady } = await import("@/lib/monero/rpc.server");
-  if (!moneroServerReady()) return "Seeds' Monero server isn't connected yet.";
+  const { moneroSignerReady } = await import("@/lib/monero/rpc.server");
+  // Deposits and withdrawals both need the separate signer: no deposit may be one-way.
+  if (!moneroSignerReady()) return "Seeds' Monero server isn't connected yet.";
   if (!linkId || !address) return null;
   const { requestWatch } = await import("@/lib/monero/wallet.server");
   await requestWatch(userId, linkId, address);

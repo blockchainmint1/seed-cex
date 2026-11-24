@@ -4307,6 +4307,24 @@ export type Database = {
         }
         Relationships: []
       }
+      seeds_broadcasts: {
+        Row: {
+          chain: string
+          created_at: string
+          txid: string
+        }
+        Insert: {
+          chain: string
+          created_at?: string
+          txid: string
+        }
+        Update: {
+          chain?: string
+          created_at?: string
+          txid?: string
+        }
+        Relationships: []
+      }
       send_approvals: {
         Row: {
           amount: number

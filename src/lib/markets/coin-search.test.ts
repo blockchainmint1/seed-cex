@@ -34,6 +34,10 @@ describe("where a coin trades on Seeds", () => {
   test("a copycat sharing the BTC ticker does not link", () => {
     expect(seedsPlace("BTC", "Bitcoin Hyper Moon")).toBeNull();
   });
+  test("Avalanche links to its AVAX/TSD book (Z5), a copycat AVAX doesn't", () => {
+    expect(seedsPlace("AVAX", "Avalanche")).toEqual({ kind: "book", to: "/trade/avax-tsd", label: "Trade AVAX/TSD on Seeds" });
+    expect(seedsPlace("AVAX", "Avax Doge")).toBeNull();
+  });
   test("real Hyperliquid links to HYPE/TSD; a copycat HYPE doesn't", () => {
     expect(seedsPlace("HYPE", "Hyperliquid")).toEqual({ kind: "book", to: "/trade/hype-tsd", label: "Trade HYPE/TSD on Seeds" });
     expect(seedsPlace("HYPE", "Hyperliquid (Solana)")).toBeNull();

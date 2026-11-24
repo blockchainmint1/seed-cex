@@ -21,6 +21,8 @@ export function seedsPlace(symbol: string, name: string): SeedsPlace | null {
   const s = symbol.toUpperCase();
   // HYPE: only the real Hyperliquid (by name) — many copycat "HYPE" tokens share the ticker.
   if (s === "HYPE") return name.toLowerCase() === "hyperliquid" ? { kind: "book", to: "/trade/hype-tsd", label: "Trade HYPE/TSD on Seeds" } : null;
+  // AVAX: its own AVAX/TSD book (audit Z5), only for the real Avalanche.
+  if (s === "AVAX") return name.toLowerCase() === "avalanche" ? { kind: "book", to: "/trade/avax-tsd", label: "Trade AVAX/TSD on Seeds" } : null;
   const home = HOME[s];
   if (home) return { kind: "book", ...home };
   const m = THOR_MARKETS.find((t) => t.base === s);

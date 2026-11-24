@@ -80,7 +80,7 @@ export async function fetchBtcArriving(address: string): Promise<number> {
 /** Spendable outputs at an address: confirmed coins plus its own change still waiting for a block (book-self-change.ts). */
 export async function fetchBtcUtxos(address: string): Promise<BtcUtxo[]> {
   const { bookSpendableRows } = await import("@/lib/utxo/book-self-change.server");
-  const rows = await bookSpendableRows(BOOK, headers(), address);
+  const rows = await bookSpendableRows("btc", BOOK, headers(), address);
   if (!rows) throw new Error("Could not read Bitcoin UTXOs (indexer unreachable)");
   return rows.map((r) => ({
     txid: r.txid,
@@ -105,6 +105,13 @@ export async function fetchBtcFeeRate(): Promise<number> {
 
 /** Push a signed transaction. Returns the network's txid. */
 export async function broadcastBtcTx(hex: string): Promise<string> {
+  const txid = await broadcastBtcTxRaw(hex);
+  const { recordSeedsBroadcast } = await import("@/lib/utxo/seeds-made.server");
+  await recordSeedsBroadcast("btc", txid);
+  return txid;
+}
+
+async function broadcastBtcTxRaw(hex: string): Promise<string> {
   let res: Response | null = null;
   try {
     res = await fetch(`${BOOK}/sendtx/`, {

@@ -694,6 +694,13 @@
       "when": 1795541125510,
       "tag": "0098_monero_wallets",
       "breakpoints": true
+    },
+    {
+      "idx": 99,
+      "version": "7",
+      "when": 1795544108660,
+      "tag": "0099_seeds_broadcasts",
+      "breakpoints": true
     }
   ]
 }

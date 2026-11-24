@@ -21,20 +21,27 @@ describe("Litecoin/Bitcoin/Dogecoin/Bitcoin Cash pockets: own change counts whil
       { txid: OLD, vout: 0, value: "1000000000", height: 100, confirmations: 5 },
       { txid: T1, vout: 1, value: "949990000", confirmations: 0 },
     ];
-    const out = bookCoinsWithOwnChange(rows, { [T1]: changeTx() }, ME);
+    const out = bookCoinsWithOwnChange(rows, { [T1]: changeTx() }, ME, new Set([T1]));
     expect(out).toEqual([{ txid: T1, vout: 1, value: "949990000", confirmations: 0 }]);
   });
   test("an incoming payment from someone else still waits for a block", () => {
     const rows = [{ txid: T1, vout: 1, value: "949990000", confirmations: 0 }];
-    expect(bookCoinsWithOwnChange(rows, { [T1]: changeTx("ltc1qsomeoneelse") }, ME)).toEqual([]);
+    expect(bookCoinsWithOwnChange(rows, { [T1]: changeTx("ltc1qsomeoneelse") }, ME, new Set([T1]))).toEqual([]);
   });
   test("a waiting coin whose transaction couldn't be looked up doesn't count", () => {
     const rows = [{ txid: PARENT, vout: 0, value: "100", confirmations: 0 }, { txid: OLD, vout: 3, value: "7", height: 9 }];
-    expect(bookCoinsWithOwnChange(rows, {}, ME)).toEqual([{ txid: OLD, vout: 3, value: "7", height: 9 }]);
+    expect(bookCoinsWithOwnChange(rows, {}, ME, new Set([T1]))).toEqual([{ txid: OLD, vout: 3, value: "7", height: 9 }]);
   });
   test("a size that doesn't match the transaction → not counted", () => {
     const rows = [{ txid: T1, vout: 1, value: "999999999", confirmations: 0 }];
-    expect(bookCoinsWithOwnChange(rows, { [T1]: changeTx() }, ME)).toEqual([]);
+    expect(bookCoinsWithOwnChange(rows, { [T1]: changeTx() }, ME, new Set([T1]))).toEqual([]);
+  });
+  test("X1: change from a payment the member made themselves waits for a block, and its spent coin is still dropped", () => {
+    const rows = [
+      { txid: OLD, vout: 0, value: "1000000000", height: 100, confirmations: 5 },
+      { txid: T1, vout: 1, value: "949990000", confirmations: 0 },
+    ];
+    expect(bookCoinsWithOwnChange(rows, { [T1]: changeTx() }, ME, new Set())).toEqual([]);
   });
   test("too many waiting transactions → none are looked up", () => {
     const rows = Array.from({ length: MAX_BOOK_CHANGE_TXS + 1 }, (_, i) => ({ txid: i.toString(16).padStart(64, "0"), vout: 0, value: "1", confirmations: 0 }));

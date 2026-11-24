@@ -214,7 +214,9 @@ async function resendLeg(
     const def = getLeg(l.leg);
     if (isOmniLeg(l.leg)) {
       const { rpc } = await import("@/lib/rpc.server");
-      await rpc<string>("txc", "sendrawtransaction", [raw]);
+      const id = await rpc<string>("txc", "sendrawtransaction", [raw]);
+      const { recordSeedsBroadcast } = await import("@/lib/utxo/seeds-made.server");
+      await recordSeedsBroadcast("txc", id);
     } else if (def.kind === "utxo") {
       const { broadcastFor } = await import("@/lib/utxo/io.server");
       await broadcastFor(def.chain as never, raw);

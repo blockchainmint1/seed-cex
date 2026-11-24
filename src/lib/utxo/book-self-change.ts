@@ -40,7 +40,8 @@ export function waitingTxids(rows: BookUtxoRow[]): string[] {
  * (looked up in `txs`) was paid for entirely from this address. A confirmed coin that
  * one of those transactions already spends is left out, so nothing counts twice.
  */
-export function bookCoinsWithOwnChange(rows: BookUtxoRow[], txs: Record<string, BookTx | null | undefined>, address: string): BookUtxoRow[] {
+/** Audit X1: own change counts only when Seeds itself broadcast its parent (`seedsMade`). */
+export function bookCoinsWithOwnChange(rows: BookUtxoRow[], txs: Record<string, BookTx | null | undefined>, address: string, seedsMade: ReadonlySet<string>): BookUtxoRow[] {
   const own: BookUtxoRow[] = [];
   const spent = new Set<string>();
   for (const r of rows) {
@@ -50,11 +51,13 @@ export function bookCoinsWithOwnChange(rows: BookUtxoRow[], txs: Record<string, 
     const allMine = tx.vin.every((i) => i && i.coinbase === undefined && i.isAddress === true && onlyThis(i.addresses, address)
       && typeof i.txid === "string" && TXID.test(i.txid) && Number.isInteger(i.vout));
     if (!allMine) continue;
+    // Whoever made it, the confirmed coins it spends are gone; only Seeds-made change is re-spent (X1).
+    for (const i of tx.vin) spent.add(`${String(i.txid).toLowerCase()}:${i.vout}`);
+    if (!seedsMade.has(r.txid.toLowerCase())) continue;
     const out = tx.vout.find((o) => o && o.n === r.vout);
     if (!out || out.isAddress !== true || !onlyThis(out.addresses, address)) continue;
     if (typeof out.value !== "string" || !DIGITS.test(out.value) || out.value !== String(r.value) || out.value === "0") continue;
     own.push(r);
-    for (const i of tx.vin) spent.add(`${String(i.txid).toLowerCase()}:${i.vout}`);
   }
   const kept = rows.filter((r) => confirmed(r) && !spent.has(`${r.txid.toLowerCase()}:${r.vout}`));
   return [...kept, ...own];
