@@ -438,3 +438,5 @@
 
 - [x] Balances show coins on their way as a grey "arriving" note (BTC, TXC, TSD, LTC, ISK, DOGE/BCH/ZEC/DASH); never counted or spendable (Bobby: yes, Nov 24)
 - [ ] Auditor review of the arriving-coins reads (blocked: auditor)
+
+- [ ] Build Hyperliquid (HYPE) support once Bobby picks a slice: 1 hold/deposit/withdraw on HyperEVM (~1 day), 2 trade HYPE/TSD (+1–2 days), 3 HyperCore sending (+2–3 days), 4 swap route (+2–3 days, not recommended). Scope note: seeds-hyperliquid-scope-2026-11-24.md (blocked: Bobby's slice choice)

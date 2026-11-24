@@ -71,7 +71,7 @@ function CoinResearchPage() {
       ) : (
         <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_20rem]">
           <div className="space-y-6">
-            <MarketDataCard profile={p} base={p?.symbol ?? ""} loading={r.isLoading} />
+            <MarketDataCard profile={p} base={p?.symbol ?? ""} loading={r.isLoading} priceSource="cmc" />
             <AboutPanel profile={p} name={p?.name ?? ""} />
           </div>
           <LinksCard profile={p} name={p?.name ?? ""} />

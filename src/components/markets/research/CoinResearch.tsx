@@ -48,7 +48,7 @@ function Row({ k, children, hint }: { k: string; children: React.ReactNode; hint
 }
 
 /** Sidebar card: global market data (CoinMarketCap), CMC-style. */
-export function MarketDataCard({ profile, base, loading }: { profile: CoinProfile | null; base: string; loading: boolean }) {
+export function MarketDataCard({ profile, base, loading, priceSource = "thor" }: { profile: CoinProfile | null; base: string; loading: boolean; priceSource?: "thor" | "cmc" }) {
   if (!profile) {
     return (
       <section className={`${card} p-4`}>
@@ -90,7 +90,11 @@ export function MarketDataCard({ profile, base, loading }: { profile: CoinProfil
           </div>
         ))}
       </div>
-      <p className="mt-3 text-[11px] text-muted-foreground">Across every exchange, from CoinMarketCap. The price at the top of this page is THORChain's.</p>
+      <p className="mt-3 text-[11px] text-muted-foreground">
+        {priceSource === "cmc"
+          ? "Across every exchange, from CoinMarketCap — the same source as the price at the top of this page."
+          : "Across every exchange, from CoinMarketCap. The price at the top of this page is THORChain's."}
+      </p>
     </section>
   );
 }
