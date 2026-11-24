@@ -35,3 +35,18 @@ describe("Ethereum and Base tokens on the Balances page", () => {
     expect(looksLikeJunk({ symbol: null, name: "x", decimals: 18 })).toBe(true);
   });
 });
+
+import { describe as dT2, expect as eT2, test as tT2 } from "bun:test";
+import { looksLikeImpostor, shortContract, tokenRows as rowsT2 } from "./erc-tokens";
+dT2("audit T2: impostor tokens", () => {
+  tT2("an unlisted token calling itself USDT or WBTC is hidden", () => {
+    eT2(looksLikeImpostor("USDT")).toBe(true);
+    eT2(looksLikeImpostor("wbtc")).toBe(true);
+    eT2(looksLikeImpostor("NIZA")).toBe(false);
+    const rows = rowsT2({ ethereum: [{ chain: "ethereum", contract: "0x" + "1".repeat(40), symbol: "USDT", name: "Tether USD", decimals: 6, raw: "10000000000" }], base: [] });
+    eT2(rows.some((r) => r.contract === "0x" + "1".repeat(40))).toBe(false);
+  });
+  tT2("unknown rows show a short contract", () => {
+    eT2(shortContract("0x1234567890abcdef1234567890abcdef12345678")).toBe("0x1234…5678");
+  });
+});

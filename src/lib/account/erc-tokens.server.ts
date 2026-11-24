@@ -29,7 +29,10 @@ export async function fetchHeldTokens(chain: TokenChain, address: string): Promi
   if (!res || !Array.isArray(res.tokenBalances)) return null;
   const held = res.tokenBalances.filter((t) => t.tokenBalance && /^0x[0-9a-f]+$/i.test(t.tokenBalance) && BigInt(t.tokenBalance) > 0n).slice(0, MAX_TOKENS);
   return Promise.all(held.map(async (t) => {
-    const m = await alchemy<{ symbol?: string | null; name?: string | null; decimals?: number | null }>(chain, "alchemy_getTokenMetadata", [t.contractAddress]);
+    // Audit T1: token details are the same for everyone, so one shared copy per contract (kept a week).
+    const { shared } = await import("@/lib/cache/shared-cache.server");
+    const m = await shared(`erc20-meta:${chain}:${t.contractAddress.toLowerCase()}`, { freshMs: 7 * 86_400_000, maxStaleMs: 30 * 86_400_000, good: (v) => v != null },
+      () => alchemy<{ symbol?: string | null; name?: string | null; decimals?: number | null }>(chain, "alchemy_getTokenMetadata", [t.contractAddress]));
     return { chain, contract: t.contractAddress.toLowerCase(), symbol: m?.symbol ?? null, name: m?.name ?? null, decimals: m?.decimals ?? null, raw: t.tokenBalance! };
   }));
 }

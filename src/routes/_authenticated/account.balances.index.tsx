@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getEvmTokenRows } from "@/lib/evm.functions";
+import { shortContract } from "@/lib/account/erc-tokens";
 import { DEPOSIT_ASSETS } from "@/lib/account/deposit-options";
 import type { TokenRow } from "@/lib/account/erc-tokens";
 import { ArrowDownToLine, ArrowUpFromLine, RefreshCw, Search } from "lucide-react";
@@ -78,7 +79,7 @@ function SpotBalances() {
   });
   const have = new Set(rows.map((r) => `${r.asset.symbol}-${r.net.id}`));
   const extras: Extra[] = [
-    ...(tokens.data ?? []).map((t): Extra => ({ key: `tok-${t.chain}-${t.contract}`, symbol: t.symbol, network: `${CHAIN_LABEL[t.chain]} · ${t.swappable ? "token" : "token not checked by Seeds"}`, kind: "token", balance: t.balance, token: t })),
+    ...(tokens.data ?? []).map((t): Extra => ({ key: `tok-${t.chain}-${t.contract}`, symbol: t.symbol, network: `${CHAIN_LABEL[t.chain]} · ${t.swappable ? "token" : `token ${shortContract(t.contract)} · not checked by Seeds`}`, kind: "token", balance: t.balance, token: t })),
     ...DEPOSIT_ASSETS.flatMap((a) => a.networks.filter((n) => !have.has(`${a.symbol}-${n.id}`)).map((n): Extra => ({ key: `relink-${a.symbol}-${n.id}`, symbol: a.symbol, network: n.label, kind: "relink", balance: null }))),
     ...COMING_SOON.map((c): Extra => ({ key: `soon-${c.symbol}`, symbol: c.symbol, network: c.name, kind: "soon", balance: null })),
   ];

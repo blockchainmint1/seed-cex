@@ -32,6 +32,21 @@ export const LISTED_TOKENS: ListedToken[] = SWAP_COINS.flatMap((c) => {
   return [{ chain, contract, symbol: c.symbol, name: c.name, swappable: true }];
 });
 
+/** Symbols a fake token might borrow (audit T2): every listed token plus the big names with their own rows. */
+const PROTECTED_SYMBOLS = new Set(["USDC", "USDT", "HEX", "ETH", "WETH", "BTC", "WBTC", "CBBTC", "DAI", "TSD", "TXC", ...LISTED_TOKENS.map((t) => t.symbol.toUpperCase())]);
+
+/** An unlisted token using a listed coin's symbol is an impostor (only the real contract may use it). */
+export function looksLikeImpostor(symbol: string | null): boolean {
+  if (!symbol) return false;
+  const s = symbol.toUpperCase().replace(/^\$/, "").replace(/[.\-_]E$/, "");
+  return PROTECTED_SYMBOLS.has(s) || PROTECTED_SYMBOLS.has(symbol.toUpperCase());
+}
+
+/** Short contract shown on unknown rows, e.g. 0x1234…abcd. */
+export function shortContract(c: string): string {
+  return `${c.slice(0, 6)}…${c.slice(-4)}`;
+}
+
 /** A held token's name looks like spam (links, "claim", odd characters) or is unreadable. */
 export function looksLikeJunk(t: Pick<HeldToken, "symbol" | "name" | "decimals">): boolean {
   if (!t.symbol || t.decimals == null || t.decimals < 0 || t.decimals > 36) return true;
@@ -59,7 +74,7 @@ export function tokenRows(held: Partial<Record<TokenChain, HeldToken[] | null>>)
   });
   const listed = new Set(LISTED_TOKENS.map((t) => key(t.chain, t.contract)));
   for (const [k, h] of byKey) {
-    if (listed.has(k) || MAIN_ROWS.has(k) || looksLikeJunk(h)) continue;
+    if (listed.has(k) || MAIN_ROWS.has(k) || looksLikeJunk(h) || looksLikeImpostor(h.symbol)) continue;
     const balance = tokenUnits(h.raw, h.decimals!);
     if (!(balance > 0)) continue;
     out.push({ chain: h.chain, contract: h.contract.toLowerCase(), symbol: h.symbol!, name: h.name ?? h.symbol!, swappable: false, balance });
