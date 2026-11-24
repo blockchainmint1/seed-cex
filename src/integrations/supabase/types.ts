@@ -4280,6 +4280,84 @@ export type Database = {
           },
         ]
       }
+      relay_swaps: {
+        Row: {
+          amount_in: number
+          amount_in_wei: string
+          amount_out: number | null
+          amount_usd: number
+          approval_id: string | null
+          created_at: string
+          deposit_txid: string | null
+          direction: string
+          error: string | null
+          id: string
+          link_id: string
+          min_out_wei: string
+          out_txid: string | null
+          pocket: string
+          quoted_out_wei: string | null
+          request_id: string | null
+          shown_out: number
+          slippage_bps: number
+          status: string
+          step_at: string
+          updated_at: string
+          user_id: string
+          working_until: string | null
+        }
+        Insert: {
+          amount_in: number
+          amount_in_wei: string
+          amount_out?: number | null
+          amount_usd?: number
+          approval_id?: string | null
+          created_at?: string
+          deposit_txid?: string | null
+          direction: string
+          error?: string | null
+          id?: string
+          link_id: string
+          min_out_wei: string
+          out_txid?: string | null
+          pocket: string
+          quoted_out_wei?: string | null
+          request_id?: string | null
+          shown_out: number
+          slippage_bps: number
+          status?: string
+          step_at?: string
+          updated_at?: string
+          user_id: string
+          working_until?: string | null
+        }
+        Update: {
+          amount_in?: number
+          amount_in_wei?: string
+          amount_out?: number | null
+          amount_usd?: number
+          approval_id?: string | null
+          created_at?: string
+          deposit_txid?: string | null
+          direction?: string
+          error?: string | null
+          id?: string
+          link_id?: string
+          min_out_wei?: string
+          out_txid?: string | null
+          pocket?: string
+          quoted_out_wei?: string | null
+          request_id?: string | null
+          shown_out?: number
+          slippage_bps?: number
+          status?: string
+          step_at?: string
+          updated_at?: string
+          user_id?: string
+          working_until?: string | null
+        }
+        Relationships: []
+      }
       second_factor_trust: {
         Row: {
           added_at: string
@@ -5622,6 +5700,10 @@ export type Database = {
           _to_address: string
           _user_id: string
         }
+        Returns: string
+      }
+      reserve_relay_swap: {
+        Args: { _daily_max_usd: number; _per_swap_max_usd: number; _row: Json }
         Returns: string
       }
       reserve_swap_send: {

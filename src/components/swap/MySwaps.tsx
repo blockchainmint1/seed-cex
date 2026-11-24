@@ -10,12 +10,16 @@ import { cancelMyDexSwap, getDexSwaps } from "@/lib/dex/dex.functions";
 import { DEX_STATUS_LABEL, dexStepIndex, dexSteps, type DexStatus } from "@/lib/dex/swap-rules";
 import { DEX_NETWORKS, type DexNetwork } from "@/lib/dex/venues";
 import { cancelMyTwoStepSwap, getTwoStepSwaps } from "@/lib/two-step/two-step.functions";
+import { cancelMyRelaySwap, getRelaySwaps } from "@/lib/relay/relay.functions";
+import { RELAY_STATUS_LABEL, type RelayStatus } from "@/lib/relay/rules";
+import { getChain } from "@/lib/chains";
 import { TWO_STEP_LABEL, twoStepIndex, twoStepSteps, type TwoStepStatus } from "@/lib/two-step/rules";
 
 type SendRow = Awaited<ReturnType<typeof getSwapSendContext>>["sends"][number];
 type RouteRow = Awaited<ReturnType<typeof getTsdRoutes>>["routes"][number];
 type DexRow = Awaited<ReturnType<typeof getDexSwaps>>["swaps"][number];
 type TwoRow = Awaited<ReturnType<typeof getTwoStepSwaps>>["swaps"][number];
+type RelayRow = Awaited<ReturnType<typeof getRelaySwaps>>["swaps"][number];
 
 const num = (n: number | null | undefined, d = 8) => (n == null || !Number.isFinite(n) ? "—" : n.toLocaleString("en-US", { maximumFractionDigits: d }));
 const when = (iso: string) => new Date(iso).toLocaleString("en-US", { dateStyle: "short", timeStyle: "short" });
@@ -83,6 +87,18 @@ export function MySwaps({ signedIn, sends }: { signedIn: boolean; sends: SendRow
     mutationFn: (id: string) => cancelTwo({ data: { id } }),
     onSettled: () => qc.invalidateQueries({ queryKey: ["two-step-swaps"] }),
   });
+  const fetchRelay = useServerFn(getRelaySwaps);
+  const { data: relayData } = useQuery({
+    queryKey: ["relay-swaps"],
+    queryFn: () => fetchRelay(),
+    enabled: signedIn,
+    refetchInterval: (q) => (q.state.data?.swaps.some((r) => !r.terminal) ? 10_000 : 60_000),
+  });
+  const cancelRelay = useServerFn(cancelMyRelaySwap);
+  const stopRelay = useMutation({
+    mutationFn: (id: string) => cancelRelay({ data: { id } }),
+    onSettled: () => qc.invalidateQueries({ queryKey: ["relay-swaps"] }),
+  });
   const routes: RouteRow[] = data?.routes ?? [];
   const dexRows: DexRow[] = dexData?.swaps ?? [];
   // Older swaps may predate the server hiding TSD steps; never show one twice.
@@ -92,6 +108,7 @@ export function MySwaps({ signedIn, sends }: { signedIn: boolean; sends: SendRow
     ...sends.filter((s) => !legIds.has(s.id)).map((s) => ({ kind: "send" as const, at: s.created_at, s })),
     ...dexRows.map((d) => ({ kind: "dex" as const, at: d.created_at, d })),
     ...(twoData?.swaps ?? []).map((t) => ({ kind: "two" as const, at: t.created_at, t })),
+    ...(relayData?.swaps ?? []).map((x) => ({ kind: "relay" as const, at: x.created_at, x })),
   ].sort((a, b) => b.at.localeCompare(a.at));
   if (!rows.length) return null;
 
@@ -100,6 +117,7 @@ export function MySwaps({ signedIn, sends }: { signedIn: boolean; sends: SendRow
       <h2 className="border-b border-border px-4 py-3 font-mono text-[11px] tracking-[0.2em] uppercase">My swaps</h2>
       <ul className="divide-y divide-border">
         {rows.map((row) => {
+          if (row.kind === "relay") return <RelayItem key={`r-${row.x.id}`} x={row.x} onCancel={() => stopRelay.mutate(row.x.id)} cancelling={stopRelay.isPending} />;
           if (row.kind === "two") return <TwoStepItem key={`w-${row.t.id}`} t={row.t} onCancel={() => stopTwo.mutate(row.t.id)} cancelling={stopTwo.isPending} />;
           if (row.kind === "dex") return <DexItem key={`d-${row.d.id}`} d={row.d} onCancel={() => stopDex.mutate(row.d.id)} cancelling={stopDex.isPending} />;
           if (row.kind === "send") {
@@ -172,6 +190,38 @@ export function MySwaps({ signedIn, sends }: { signedIn: boolean; sends: SendRow
       {stopTwo.error ? <p role="alert" className="px-4 pb-3 font-mono text-xs text-destructive">{(stopTwo.error as Error).message}</p> : null}
       {stopDex.error ? <p role="alert" className="px-4 pb-3 font-mono text-xs text-destructive">{(stopDex.error as Error).message}</p> : null}
     </div>
+  );
+}
+
+/** A Relay swap (ETH <-> HYPE): one row. */
+function RelayItem({ x, onCancel, cancelling }: { x: RelayRow; onCancel: () => void; cancelling: boolean }) {
+  const stopped = ["failed", "declined", "expired", "cancelled", "refunded"].includes(x.status);
+  const explorer = (c: string) => getChain(c as never).explorer.replace(/\/address\/$/, "/tx/");
+  return (
+    <li className="space-y-2 px-4 py-3 text-xs">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <span className="font-semibold">
+          {num(x.amount_in)} {x.symbolIn} → {x.symbolOut}
+          <span className="ml-2 font-mono text-[10px] font-normal text-muted-foreground">Relay</span>
+        </span>
+        <span className={`font-mono text-[11px] ${x.status === "done" ? "text-primary" : stopped ? "text-destructive" : ""}`}>{RELAY_STATUS_LABEL[x.status as RelayStatus] ?? x.status}</span>
+      </div>
+      <p className="font-mono text-[11px] text-muted-foreground">
+        {x.status === "done" && x.amount_out != null ? `Got ≈ ${num(x.amount_out)} ${x.symbolOut}` : `Expecting ≈ ${num(x.shown_out)} ${x.symbolOut}`} · {when(x.created_at)}
+      </p>
+      {x.error ? <p className="text-[11px] text-muted-foreground">{x.error}</p> : null}
+      {x.deposit_txid ? (
+        <a href={`${explorer(x.fromChain)}${x.deposit_txid}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-mono text-[11px] text-primary underline">
+          See the deposit on the explorer <ExternalLink className="h-3 w-3" />
+        </a>
+      ) : null}
+      {x.status === "awaiting_approval" ? (
+        <div className="flex flex-wrap items-center gap-2 border-t border-border pt-2">
+          <span className="flex-1 text-[11px]">Tap Approve in Telegram to start. Nothing moves until you do.</span>
+          <button type="button" disabled={cancelling} onClick={onCancel} className="h-8 rounded-md border border-border px-3 disabled:opacity-50">Cancel</button>
+        </div>
+      ) : null}
+    </li>
   );
 }
 

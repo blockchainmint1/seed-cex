@@ -16,7 +16,9 @@ import { BRIDGE_USDC_ETH, TSD_DEX, isTsdDex } from "@/lib/dex/swap-rules";
 export type SwapSide =
   | { kind: "tsd" }
   | { kind: "coin"; id: SwapCoinId }
-  | { kind: "token"; network: DexNetwork; address: string; symbol: string; name?: string };
+  | { kind: "token"; network: DexNetwork; address: string; symbol: string; name?: string }
+  /** HYPE on Hyperliquid's HyperEVM, swapped with Ether through Relay. */
+  | { kind: "hype" };
 
 export type TwoStepDirection = "dex_then_x" | "x_then_dex";
 
@@ -24,7 +26,8 @@ export type RouteOption =
   | { kind: "xchain"; from: SwapCoinId; to: SwapCoinId }
   | { kind: "tsd"; direction: "buy" | "sell"; coin: SwapCoinId }
   | { kind: "dex"; network: DexNetwork; tokenIn: string; tokenOut: string }
-  | { kind: "two"; direction: TwoStepDirection; network: DexNetwork; token: string; coin: SwapCoinId; mids: SwapCoinId[] };
+  | { kind: "two"; direction: TwoStepDirection; network: DexNetwork; token: string; coin: SwapCoinId; mids: SwapCoinId[] }
+  | { kind: "relay"; direction: "to_hype" | "from_hype" };
 
 export type SwapPlan = { options: RouteOption[]; problem: string | null };
 
@@ -63,7 +66,7 @@ export function normalizeSide(s: SwapSide): SwapSide {
 export function sameSide(a: SwapSide, b: SwapSide): boolean {
   const x = normalizeSide(a), y = normalizeSide(b);
   if (x.kind !== y.kind) return false;
-  if (x.kind === "tsd") return true;
+  if (x.kind === "tsd" || x.kind === "hype") return true;
   if (x.kind === "coin" && y.kind === "coin") return x.id === y.id;
   if (x.kind === "token" && y.kind === "token") return x.network === y.network && sameAddr(x.address, y.address);
   return false;
@@ -106,6 +109,13 @@ export function planSwap(fromIn: SwapSide, toIn: SwapSide): SwapPlan {
   const from = normalizeSide(fromIn), to = normalizeSide(toIn);
   const none = (problem: string): SwapPlan => ({ options: [], problem });
   if (sameSide(from, to)) return none("Pick two different coins.");
+
+  // HYPE: Relay, with Ether on Ethereum on the other side (same pocket address on both networks).
+  if (from.kind === "hype" || to.kind === "hype") {
+    const other = from.kind === "hype" ? to : from;
+    if (other.kind === "coin" && other.id === "ETH") return { options: [{ kind: "relay", direction: from.kind === "hype" ? "from_hype" : "to_hype" }], problem: null };
+    return none("HYPE swaps go through Relay with ETH on Ethereum for now. Swap to ETH first, then ETH to HYPE.");
+  }
 
   // TSD on one side: TSD Bridge first (or last), then THORChain/Maya or an Ethereum pool.
   if (from.kind === "tsd" || to.kind === "tsd") {

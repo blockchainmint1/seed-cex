@@ -98,3 +98,16 @@ describe("two-step helpers", () => {
     expect(floorAmount(-1, 8)).toBe("0");
   });
 });
+
+describe("HYPE through Relay", () => {
+  test("ETH → HYPE and HYPE → ETH go through Relay", () => {
+    expect(planSwap(coin("ETH"), { kind: "hype" }).options).toEqual([{ kind: "relay", direction: "to_hype" }]);
+    expect(planSwap({ kind: "hype" }, coin("ETH")).options).toEqual([{ kind: "relay", direction: "from_hype" }]);
+  });
+  test("HYPE with anything but ETH says to go through ETH", () => {
+    const p = planSwap({ kind: "hype" }, coin("BTC"));
+    expect(p.options).toEqual([]);
+    expect(p.problem).toMatch(/ETH/);
+    expect(planSwap({ kind: "tsd" }, { kind: "hype" }).options).toEqual([]);
+  });
+});

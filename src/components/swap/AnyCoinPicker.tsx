@@ -56,6 +56,7 @@ export function AnyCoinPicker({ open, title, onClose, onPick }: { open: boolean;
     [typed],
   );
   const showTsd = !typed || "tsd texas stable dollar".includes(typed);
+  const showHype = !typed || "hype hyperliquid".includes(typed);
   const pick = (s: SwapSide) => { onPick(normalizeSide(s)); onClose(); };
   const tokenRows = searching
     ? (settled ? (res.data ?? []) : []).map((t) => ({ address: t.address, symbol: t.symbol, name: t.name, liquidityUsd: t.liquidityUsd as number | null, ageDays: t.ageDays as number | null }))
@@ -92,6 +93,19 @@ export function AnyCoinPicker({ open, title, onClose, onPick }: { open: boolean;
                   <span>
                     <span className="block font-semibold">TSD <span className="font-normal text-muted-foreground">· TEXITcoin</span></span>
                     <span className="block text-xs text-muted-foreground">Converted through TSD Bridge</span>
+                  </span>
+                </button>
+              </li>
+            </>
+          ) : null}
+          {showHype ? (
+            <>
+              <li className={groupHead}>Hyperliquid</li>
+              <li>
+                <button type="button" className={rowBtn} onClick={() => pick({ kind: "hype" })}>
+                  <span>
+                    <span className="block font-semibold">HYPE <span className="font-normal text-muted-foreground">· Hyperliquid</span></span>
+                    <span className="block text-xs text-muted-foreground">Swapped with ETH through Relay</span>
                   </span>
                 </button>
               </li>

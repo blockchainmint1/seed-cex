@@ -463,4 +463,5 @@
 
 ## Swap routes for new coins (Nov 24)
 - [x] ADA swaps through Maya (built; needs audit + one small real test swap)
-- [ ] Keep watching for routes: XMR, HYPE, XLM, TON, SUI (none on THORChain/Maya today)
+- [x] HYPE ⇄ ETH through Relay (built; needs audit + small real test swaps)
+- [ ] Keep watching for routes: XMR, XLM, TON, SUI (none on THORChain/Maya today); Relay/deBridge may reach some

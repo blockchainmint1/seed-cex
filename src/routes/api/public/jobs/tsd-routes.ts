@@ -20,7 +20,10 @@ export const Route = createFileRoute("/api/public/jobs/tsd-routes")({
         // Two-step swaps (pool hop + THORChain/Maya hop under one tap); their hops are moved by the lines above too.
         const { advanceOpenTwoSteps } = await import("@/lib/two-step/two-step.server");
         const twoStep = await advanceOpenTwoSteps().catch((e) => { console.error("[two-step] job failed", e); return null; });
-        return Response.json({ ok: true, ...result, ai, dex, twoStep });
+        // Relay swaps (ETH on Ethereum <-> HYPE on HyperEVM).
+        const { advanceOpenRelaySwaps } = await import("@/lib/relay/relay.server");
+        const relay = await advanceOpenRelaySwaps().catch((e) => { console.error("[relay-swap] job failed", e); return null; });
+        return Response.json({ ok: true, ...result, ai, dex, twoStep, relay });
       },
     },
   },

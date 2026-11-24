@@ -21,10 +21,12 @@ import { AnyCoinPicker } from "@/components/swap/AnyCoinPicker";
 import { CrossChainRoutes, type XRoute } from "@/components/swap/CrossChainResult";
 import { PocketSwap, QuoteDetails, type DexCoin, type DexQuoteResult } from "@/components/swap/DexResult";
 import { TwoStepResult, type TwoStepQuoteResult } from "@/components/swap/TwoStepResult";
+import { RelayResult, type RelayQuoteResult } from "@/components/swap/RelayResult";
+import { quoteRelaySwap } from "@/lib/relay/relay.functions";
 
 type SwapSearch = { from?: string; to?: string; amount?: string };
-const sideOk = (v: unknown): v is string => v === "TSD" || (typeof v === "string" && Boolean(swapCoin(v as SwapCoinId)));
-const toSide = (v: string): SwapSide => (v === "TSD" ? { kind: "tsd" } : { kind: "coin", id: v as SwapCoinId });
+const sideOk = (v: unknown): v is string => v === "TSD" || v === "HYPE" || (typeof v === "string" && Boolean(swapCoin(v as SwapCoinId)));
+const toSide = (v: string): SwapSide => (v === "TSD" ? { kind: "tsd" } : v === "HYPE" ? { kind: "hype" } : { kind: "coin", id: v as SwapCoinId });
 
 export const Route = createFileRoute("/swap")({
   staticData: { sitemap: true },
@@ -70,6 +72,7 @@ const fmtNum = (n: number | null | undefined) =>
 /** Symbol + network for any side of a swap. */
 function sideLabel(s: SwapSide): { symbol: string; network: string } {
   if (s.kind === "tsd") return { symbol: "TSD", network: "TEXITcoin" };
+  if (s.kind === "hype") return { symbol: "HYPE", network: "Hyperliquid" };
   if (s.kind === "coin") {
     const c = swapCoin(s.id)!;
     return { symbol: c.symbol, network: c.network };
@@ -81,6 +84,7 @@ function sideLabel(s: SwapSide): { symbol: string; network: string } {
 function asDexCoin(s: SwapSide, address: string): DexCoin {
   if (s.kind === "tsd") return { address: TSD_DEX, symbol: "TSD", name: "Texas Stable Dollar" };
   if (s.kind === "token") return { address: s.address, symbol: s.symbol, name: s.name ?? s.symbol };
+  if (s.kind === "hype") return { address, symbol: "HYPE", name: "Hyperliquid" };
   const c = swapCoin(s.id)!;
   return { address, symbol: c.symbol, name: c.name };
 }
@@ -90,12 +94,14 @@ type Result =
   | { kind: "tsd"; opt: Extract<RouteOption, { kind: "tsd" }>; out: number | null; label: string; data: Awaited<ReturnType<typeof getTsdRouteQuote>>; error?: undefined }
   | { kind: "dex"; opt: Extract<RouteOption, { kind: "dex" }>; out: number | null; label: string; data: DexQuoteResult; error?: undefined }
   | { kind: "two"; opt: Extract<RouteOption, { kind: "two" }>; out: number | null; label: string; data: TwoStepQuoteResult; error?: undefined }
+  | { kind: "relay"; opt: Extract<RouteOption, { kind: "relay" }>; out: number | null; label: string; data: RelayQuoteResult; error?: undefined }
   | { kind: "error"; opt: RouteOption; out: null; label: string; error: string };
 
 function optionLabel(o: RouteOption): string {
   if (o.kind === "xchain") return "THORChain / Maya";
   if (o.kind === "tsd") return "TSD Bridge + THORChain / Maya";
   if (o.kind === "dex") return `Pools on ${DEX_NETWORKS[o.network].name}`;
+  if (o.kind === "relay") return "Relay";
   return `Two steps on ${DEX_NETWORKS[o.network].name}`;
 }
 
@@ -142,6 +148,7 @@ function SwapPage() {
   const fetchTsd = useServerFn(getTsdRouteQuote);
   const fetchDex = useServerFn(quoteDexSwap);
   const fetchTwo = useServerFn(quoteTwoStepSwap);
+  const fetchRelay = useServerFn(quoteRelaySwap);
   const quote = useMutation({
     mutationFn: async (): Promise<Result[]> => {
       const opts = outside ? plan.options.filter((o) => o.kind === "xchain") : plan.options;
@@ -161,6 +168,10 @@ function SwapPage() {
             const d = await fetchDex({ data: { network: o.network, tokenIn: o.tokenIn, tokenOut: o.tokenOut, amount } });
             const name = d.best ? `${d.best.venueName} on ${DEX_NETWORKS[o.network].name}${d.tsd ? " + TSD Bridge" : ""}` : label;
             return { kind: "dex", opt: o, out: d.best?.amountOut ?? null, label: name, data: d };
+          }
+          if (o.kind === "relay") {
+            const d = await fetchRelay({ data: { direction: o.direction, amount } });
+            return { kind: "relay", opt: o, out: d.out, label, data: d };
           }
           const d = await fetchTwo({ data: { direction: o.direction, network: o.network, token: o.token, coin: o.coin, amount } });
           const name = d.ok && d.mid && d.protocol
@@ -388,6 +399,7 @@ function SwapPage() {
               <li>TSD on one side: TSD Bridge turns it into USDC in your own pocket first (or last).</li>
               <li>When no single network reaches (like PEPE → BTC): two swaps through a plain coin such as ETH or USDC, with one Telegram tap.</li>
               <li>When more than one can do it, every route is asked and the best price is picked for you. You can choose another.</li>
+              <li>HYPE on Hyperliquid swaps with ETH through Relay, an outside bridge, paid back to the same pocket address.</li>
               <li>Every swap waits for your Approve tap in Telegram and pays back into your own pocket.</li>
             </ul>
           </div>
@@ -555,6 +567,7 @@ function Selected({ r, from, to, amount, destination, signedIn, sendCtx, linkCtx
       </>
     );
   }
+  if (r.kind === "relay") return <RelayResult q={r.data} amount={amount} />;
   if (r.kind === "two") {
     return <TwoStepResult q={r.data} amount={amount} symbolIn={sideLabel(from).symbol} symbolOut={sideLabel(to).symbol} />;
   }
