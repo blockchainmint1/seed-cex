@@ -430,3 +430,8 @@
 
 ## Manual class seat (Bobby, Nov 24)
 - [x] Add gdpolley to Ignite (paid TSD direct to the SEEDS wallet, tx 0fbc7c8f…); Ignite → 101 seats
+
+- [x] Bobby BTC deposit to Vault pocket (bc1qlqhd…) not showing: still waiting for a block (1 sat/vB fee); shows once confirmed
+- [x] Vault 27feb4ae already has full trading access (keys handed over)
+- [ ] Vault 27feb4ae can place orders once it connects Telegram (needs 2FA first) (blocked: Bobby sets up 2FA + Telegram on that account)
+- [ ] Beta tester (no limits) for Vault 27feb4ae (blocked: needs an Honest.Money membership, or Bobby asks to change that rule)
