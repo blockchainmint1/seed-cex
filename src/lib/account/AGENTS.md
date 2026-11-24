@@ -1,0 +1,2 @@
+# Account
+- Balances page lists every supported coin (main rows from deposit-options, "Re-link to add" for networks the link lacks, "Coming soon" XLM/TON/SUI) plus Ethereum/Base ERC-20s from src/lib/account/erc-tokens.ts (tested: swap-list tokens always, other held tokens via Alchemy labelled "not checked by Seeds", junk hidden), 25 per page. Token rows are display only. Why: members see everything Seeds can trade without Seeds vouching for unknown tokens.
