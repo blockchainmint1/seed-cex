@@ -47,6 +47,11 @@ export function shortContract(c: string): string {
   return `${c.slice(0, 6)}…${c.slice(-4)}`;
 }
 
+/** Token names come from the token contract and can be any length; cap before rendering (audit T3). */
+export function capName(name: string): string {
+  return name.length > 40 ? `${name.slice(0, 39)}…` : name;
+}
+
 /** A held token's name looks like spam (links, "claim", odd characters) or is unreadable. */
 export function looksLikeJunk(t: Pick<HeldToken, "symbol" | "name" | "decimals">): boolean {
   if (!t.symbol || t.decimals == null || t.decimals < 0 || t.decimals > 36) return true;
@@ -77,7 +82,7 @@ export function tokenRows(held: Partial<Record<TokenChain, HeldToken[] | null>>)
     if (listed.has(k) || MAIN_ROWS.has(k) || looksLikeJunk(h) || looksLikeImpostor(h.symbol)) continue;
     const balance = tokenUnits(h.raw, h.decimals!);
     if (!(balance > 0)) continue;
-    out.push({ chain: h.chain, contract: h.contract.toLowerCase(), symbol: h.symbol!, name: h.name ?? h.symbol!, swappable: false, balance });
+    out.push({ chain: h.chain, contract: h.contract.toLowerCase(), symbol: h.symbol!, name: capName(h.name ?? h.symbol!), swappable: false, balance });
   }
   return out;
 }

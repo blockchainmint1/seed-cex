@@ -50,3 +50,14 @@ dT2("audit T2: impostor tokens", () => {
     eT2(shortContract("0x1234567890abcdef1234567890abcdef12345678")).toBe("0x1234…5678");
   });
 });
+
+import { describe as dT3, expect as eT3, test as tT3 } from "bun:test";
+import { capName, tokenRows as rowsT3 } from "./erc-tokens";
+dT3("audit T3: token names are capped before rendering", () => {
+  tT3("a very long name from the contract is shortened", () => {
+    eT3(capName("x".repeat(200)).length).toBe(40);
+    eT3(capName("Pepe")).toBe("Pepe");
+    const rows = rowsT3({ ethereum: [{ chain: "ethereum", contract: "0x" + "2".repeat(40), symbol: "PEPE", name: "P".repeat(500), decimals: 18, raw: "0x" + (10n ** 18n).toString(16) }], base: [] });
+    eT3(rows.find((r) => r.symbol === "PEPE")!.name.length).toBe(40);
+  });
+});
