@@ -17,5 +17,10 @@ export const getAddressStats = createServerFn({ method: "GET" })
     const { shared } = await import("./cache/shared-cache.server");
     const { CACHE_TIMES, balanceKey } = await import("./cache/shared-cache-rules");
     // Display only; sends read the chain live.
-    return shared(balanceKey("txc", data.address), { ...CACHE_TIMES.balance, force: data.fresh, good: (s) => s.online }, () => fetchAddressStats(data.address));
+    // `arriving` = TXC still waiting for a block from someone else, only for the grey note.
+    return shared(balanceKey("txc", data.address), { ...CACHE_TIMES.balance, force: data.fresh, good: (s) => s.online }, async () => {
+      const { fetchArrivingFor } = await import("./utxo/io.server");
+      const [stats, arriving] = await Promise.all([fetchAddressStats(data.address), fetchArrivingFor("txc", data.address).catch(() => 0)]);
+      return { ...stats, arriving };
+    });
   });

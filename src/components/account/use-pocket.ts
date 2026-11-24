@@ -10,6 +10,7 @@ import { getEvmPortfolio } from "@/lib/evm.functions";
 import { getMyExtraPocketBalances } from "@/lib/pockets/pockets.functions";
 import { getReferencePrices } from "@/lib/cmc.functions";
 import { DEPOSIT_ASSETS, type DepositAsset, type DepositNetwork } from "@/lib/account/deposit-options";
+import { arrivingShown } from "@/lib/account/arriving";
 
 /** The member's active HME Wallet link (shared cache with the link card). */
 export function usePocketLink() {
@@ -18,12 +19,12 @@ export function usePocketLink() {
 }
 
 type Raw = {
-  txc: { online: boolean; confirmed: number } | null;
-  tsd: { online: boolean; balance: number } | null;
-  utxo: { symbol: string; online: boolean; balance: number }[];
-  btc: { online: boolean; confirmed: number } | null;
+  txc: { online: boolean; confirmed: number; arriving?: number } | null;
+  tsd: { online: boolean; balance: number; arriving?: number } | null;
+  utxo: { symbol: string; online: boolean; balance: number; arriving?: number }[];
+  btc: { online: boolean; confirmed: number; arriving?: number } | null;
   evm: { chain: string; symbol: string; online: boolean; balance: number }[];
-  extra: { coin: string; balance: number | null }[];
+  extra: { coin: string; balance: number | null; arriving?: number }[];
 };
 
 export type BalanceRow = {
@@ -32,6 +33,11 @@ export type BalanceRow = {
   address: string;
   balance: number | null;
   usd: number | null;
+  /**
+   * Coins seen on their way here but not in a block yet (0 = none). Shown as a grey
+   * note only: never part of balance, usd, the total, "Available" or any spend.
+   */
+  arriving: number;
 };
 
 const EXTRA = ["DOGE", "BCH", "ZEC", "XRP", "TRX", "SOL"];
@@ -101,6 +107,21 @@ export function usePocketBalances(addresses: Record<string, string> | undefined,
     }
     return d.extra.find((x) => x.coin === net.pocket)?.balance ?? null;
   };
+  const arrivingOf = (asset: DepositAsset, net: DepositNetwork): number => {
+    if (!d) return 0;
+    const sym = asset.symbol;
+    if (net.id === "txc-omni") return d.tsd?.online ? arrivingShown(sym, d.tsd.arriving) : 0;
+    if (net.id === "txc") return d.txc?.online ? arrivingShown(sym, d.txc.arriving) : 0;
+    if (net.id === "btc") return d.btc?.online ? arrivingShown(sym, d.btc.arriving) : 0;
+    if (net.id === "ltc" || net.id === "isk") {
+      const u = d.utxo.find((x) => x.symbol === sym);
+      return u?.online ? arrivingShown(sym, u.arriving) : 0;
+    }
+    // EVM networks settle in seconds; Seeds reads them as they land.
+    if (net.evmChain) return 0;
+    const x = d.extra.find((e) => e.coin === net.pocket);
+    return x && x.balance != null ? arrivingShown(sym, x.arriving) : 0;
+  };
 
   const rows: BalanceRow[] = [];
   for (const asset of DEPOSIT_ASSETS)
@@ -109,7 +130,7 @@ export function usePocketBalances(addresses: Record<string, string> | undefined,
       if (!address) continue;
       const balance = balanceOf(asset, net);
       const price = priceOf(asset.symbol);
-      rows.push({ asset, net, address, balance, usd: balance != null && price != null ? balance * price : null });
+      rows.push({ asset, net, address, balance, usd: balance != null && price != null ? balance * price : null, arriving: arrivingOf(asset, net) });
     }
   const total = rows.reduce((s, r) => s + (r.usd ?? 0), 0);
   const unpriced = rows.some((r) => (r.balance ?? 0) > 0 && r.usd == null);

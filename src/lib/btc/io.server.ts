@@ -53,12 +53,12 @@ async function book<T>(path: string): Promise<T | null> {
   }
 }
 
-export type BtcBalance = { online: boolean; confirmed: number; unconfirmed: number };
+export type BtcBalance = { online: boolean; confirmed: number; unconfirmed: number; waitingTxs?: number };
 
 /** Confirmed + mempool balance at an address, in whole BTC. */
 export async function fetchBtcBalance(address: string): Promise<BtcBalance> {
   if (!btcOnline()) return { online: false, confirmed: 0, unconfirmed: 0 };
-  const res = await book<{ balance?: string; unconfirmedBalance?: string }>(
+  const res = await book<{ balance?: string; unconfirmedBalance?: string; unconfirmedTxs?: number }>(
     `/address/${encodeURIComponent(address)}?details=basic`,
   );
   if (!res) return { online: false, confirmed: 0, unconfirmed: 0 };
@@ -66,7 +66,15 @@ export async function fetchBtcBalance(address: string): Promise<BtcBalance> {
     online: true,
     confirmed: Number(res.balance ?? 0) / 1e8,
     unconfirmed: Number(res.unconfirmedBalance ?? 0) / 1e8,
+    waitingTxs: Number(res.unconfirmedTxs ?? 0) || 0,
   };
+}
+
+/** BTC on its way to an address, not in a block yet (display only; account/arriving.ts). */
+export async function fetchBtcArriving(address: string): Promise<number> {
+  if (!btcOnline()) return 0;
+  const { blockbookArriving } = await import("@/lib/account/arriving.server");
+  return blockbookArriving(BOOK, headers(), address);
 }
 
 /** Spendable outputs at an address: confirmed coins plus its own change still waiting for a block (book-self-change.ts). */

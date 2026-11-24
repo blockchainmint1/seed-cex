@@ -14,6 +14,8 @@ import { getMyExtraPocketBalances } from "@/lib/pockets/pockets.functions";
 import { POCKET_SPECS, type PocketCoin } from "@/lib/pockets/coins";
 import { HME_WALLET_CANT_HOLD, listCoins, revokeCheck } from "@/lib/pockets/hme-support";
 import { Link } from "@tanstack/react-router";
+import { arrivingShown } from "@/lib/account/arriving";
+import { Arriving } from "@/components/account/Arriving";
 
 export function HmePocketBalances({ addresses, linkId }: { addresses: Record<string, string>; linkId: string }) {
   const txcRead = useServerFn(getAddressStats);
@@ -54,12 +56,12 @@ export function HmePocketBalances({ addresses, linkId }: { addresses: Record<str
   const [showAll, setShowAll] = useState(false);
   const d = query.data;
   const rows = [
-    { symbol: "TSD", network: "TEXITcoin · Omni #39", address: addresses.TXC, balance: d?.tsd?.online ? d.tsd.balance : null },
-    { symbol: "TXC", network: "TEXITcoin", address: addresses.TXC, balance: d?.txc?.online ? d.txc.confirmed : null },
-    { symbol: "BTC", network: "Bitcoin", address: addresses.BTC, balance: d?.btc?.online ? d.btc.confirmed : null },
+    { symbol: "TSD", network: "TEXITcoin · Omni #39", address: addresses.TXC, balance: d?.tsd?.online ? d.tsd.balance : null, arriving: d?.tsd?.online ? arrivingShown("TSD", d.tsd.arriving) : 0 },
+    { symbol: "TXC", network: "TEXITcoin", address: addresses.TXC, balance: d?.txc?.online ? d.txc.confirmed : null, arriving: d?.txc?.online ? arrivingShown("TXC", d.txc.arriving) : 0 },
+    { symbol: "BTC", network: "Bitcoin", address: addresses.BTC, balance: d?.btc?.online ? d.btc.confirmed : null, arriving: d?.btc?.online ? arrivingShown("BTC", d.btc.arriving) : 0 },
     ...["LTC", "ISK"].map((symbol) => {
       const b = d?.utxo.find((r) => r.symbol === symbol);
-      return { symbol, network: symbol === "LTC" ? "Litecoin" : "Iskandercoin", address: addresses[symbol], balance: b?.online ? b.balance : null };
+      return { symbol, network: symbol === "LTC" ? "Litecoin" : "Iskandercoin", address: addresses[symbol], balance: b?.online ? b.balance : null, arriving: b?.online ? arrivingShown(symbol, b.arriving) : 0 };
     }),
     // Coins Seeds can't send out yet get no receive code (a deposit would be a one-way trip);
     // they're listed only if something already sits there. Monero can't be read at all.
@@ -67,11 +69,12 @@ export function HmePocketBalances({ addresses, linkId }: { addresses: Record<str
       symbol: c, network: POCKET_SPECS[c].name, address: addresses[c], notInHme: true,
       canReceive: POCKET_SPECS[c].signing === "ready",
       balance: (d?.extra ?? []).find((r) => r.coin === c)?.balance ?? null,
-    })).filter((r) => r.canReceive || (r.balance ?? 0) > 0),
-    ...(d?.evm ?? []).map((r) => ({ symbol: r.symbol, network: `${r.chainName} · EVM`, address: addresses.EVM, balance: r.online ? r.balance : null })),
+      arriving: arrivingShown(c, (d?.extra ?? []).find((r) => r.coin === c)?.arriving),
+    })).filter((r) => r.canReceive || (r.balance ?? 0) > 0 || r.arriving > 0),
+    ...(d?.evm ?? []).map((r) => ({ symbol: r.symbol, network: `${r.chainName} · EVM`, address: addresses.EVM, balance: r.online ? r.balance : null, arriving: 0 })),
   ].filter((r) => Boolean(r.address));
   const stranded = revokeCheck(d?.extra ?? []).stranded;
-  const visibleRows = rows.filter((r, i) => showAll || i < 5 || r.balance === null || r.balance > 0);
+  const visibleRows = rows.filter((r, i) => showAll || i < 5 || r.balance === null || r.balance > 0 || r.arriving > 0);
 
   return <div className="mt-7">
     <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -85,7 +88,7 @@ export function HmePocketBalances({ addresses, linkId }: { addresses: Record<str
         <thead className="border-y border-border font-mono text-xs text-muted-foreground"><tr><th className="py-3 pr-3">Asset</th><th className="py-3 pr-3">Network</th><th className="py-3 text-right">In pocket</th><th className="py-3 text-right">Receive</th></tr></thead>
         <tbody>{visibleRows.map((r) => <tr key={`${r.symbol}-${r.network}`} className="border-b border-border/60">
           <td className="py-3 pr-3 font-semibold">{r.symbol}</td><td className="py-3 pr-3 text-muted-foreground">{r.network}{"notInHme" in r && r.notInHme ? <span className="ml-2 whitespace-nowrap rounded-sm border border-warn/60 px-1.5 py-0.5 font-mono text-[10px] text-foreground">Not in HME Wallet</span> : null}</td>
-          <td data-qa-mask className="py-3 text-right num text-xs">{r.balance === null ? (query.isFetching ? "Checking…" : "Not available") : r.balance.toLocaleString("en-US", { maximumFractionDigits: 8 })}</td>
+          <td data-qa-mask className="py-3 text-right num text-xs">{r.balance === null ? (query.isFetching ? "Checking…" : "Not available") : r.balance.toLocaleString("en-US", { maximumFractionDigits: 8 })}<Arriving amount={r.arriving} /></td>
           <td className="py-2 pl-3 text-right">{"canReceive" in r && r.canReceive === false ? null : <Button variant="ghost" size="icon" title={`Receive ${r.symbol} on ${r.network}`} aria-label={`Receive ${r.symbol} on ${r.network}`} onClick={() => { if (r.address) { setCopied(false); setReceive({ ...r, address: r.address }); } }}><QrCode /></Button>}</td>
         </tr>)}</tbody>
       </table>
@@ -97,7 +100,7 @@ export function HmePocketBalances({ addresses, linkId }: { addresses: Record<str
         <Link to="/swap" className="text-primary underline">swap {stranded.length > 1 ? "them" : "it"} back to TSD</Link> before you revoke Seeds’ access.
       </p>
     ) : null}
-    <p className="mt-3 text-xs text-muted-foreground">Confirmed funds at this pocket’s receive addresses. Native BTC, LTC and ETH are separate from their exchange-settlement tokens.{hasExtra ? " Coins marked “Not in HME Wallet” live only in this Seeds pocket." : ""}</p>
+    <p className="mt-3 text-xs text-muted-foreground">Confirmed funds at this pocket’s receive addresses; coins still waiting for a block show as “arriving” and can’t be spent yet. Native BTC, LTC and ETH are separate from their exchange-settlement tokens.{hasExtra ? " Coins marked “Not in HME Wallet” live only in this Seeds pocket." : ""}</p>
     {query.isError ? <p role="alert" className="mt-2 text-sm text-destructive">Balances could not be synced. Refresh to retry.</p> : null}
     <Dialog open={Boolean(receive)} onOpenChange={(open) => { if (!open) setReceive(null); }}>
       <DialogContent className="w-[calc(100%-2rem)] max-w-sm">

@@ -7,7 +7,7 @@ import { listApiKeys } from "@/lib/api-keys.functions";
 import { getMyAiPlans } from "@/lib/ai/ai.functions";
 import { Button } from "@/components/ui/button";
 import { Card, TabTitle } from "@/components/account/ui";
-import { fmtUsd, usePocketBalances, usePocketLink } from "@/components/account/use-pocket";
+import { fmtCoin, fmtUsd, usePocketBalances, usePocketLink } from "@/components/account/use-pocket";
 import { useJoinHonestMoney, useMyIdentity } from "@/components/account/use-identity";
 import { useMyTwoFactor } from "@/components/account/TwoFactorCard";
 import { useWithdrawals } from "@/components/account/SeedsWithdraw";
@@ -47,6 +47,7 @@ function Overview() {
   const showJoin = Boolean(keyKind && id.data && !id.data.hmeMember);
 
   const funded = rows.some((r) => (r.balance ?? 0) > 0);
+  const arriving = rows.filter((r) => r.arriving > 0);
   const livePlans = (plans.data?.plans ?? []).filter((x) => x.status === "locked").length;
   const liveKeys = (keys.data ?? []).filter((k) => k.enabled).length;
   // Coin / wallet members: Honest.Money is optional (Bobby, Nov 21), so it isn't a step; email + the re-sign-in are.
@@ -96,6 +97,11 @@ function Overview() {
             <p className="mt-1 text-xs text-muted-foreground">
               {!l ? "Link your trading pocket to see balances." : `Pocket #${l.account} · live market prices, TSD at $1${unpriced ? " · some coins have no price yet" : ""}`}
             </p>
+            {arriving.length ? (
+              <p data-qa-mask className="mt-1 text-xs text-muted-foreground">
+                Arriving: {arriving.map((r) => `${fmtCoin(r.arriving)} ${r.asset.symbol}`).join(", ")} — not counted until confirmed in a block.
+              </p>
+            ) : null}
           </div>
           <div className="flex flex-wrap gap-2">
             <Button asChild><Link to="/account/balances/deposit"><ArrowDownToLine /> Deposit</Link></Button>

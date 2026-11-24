@@ -49,6 +49,37 @@ function toUnits(raw: bigint, coin: ExtraCoin): number {
   return Number(raw) / 10 ** DECIMALS[coin];
 }
 
+type BookCoin = keyof typeof BOOK;
+const isBookCoin = (c: ExtraCoin): c is BookCoin => c in BOOK;
+
+/** Blockbook's confirmed balance, plus coins on their way when it reports waiting transactions. */
+async function bookReading(coin: BookCoin, address: string, withArriving: boolean): Promise<{ balance: number; arriving: number } | null> {
+  const key = process.env.NOWNODES_API_KEY;
+  if (!key) return null;
+  const headers = { ...UA, "api-key": key };
+  const r = await getJson<{ balance?: string; unconfirmedTxs?: number }>(`${BOOK[coin]}/address/${encodeURIComponent(address)}?details=basic`, { headers });
+  if (r?.balance === undefined) return null;
+  let arriving = 0;
+  if (withArriving && Number(r.unconfirmedTxs ?? 0) > 0) {
+    const { blockbookArriving } = await import("@/lib/account/arriving.server");
+    arriving = await blockbookArriving(BOOK[coin], headers, address);
+  }
+  return { balance: toUnits(BigInt(r.balance), coin), arriving };
+}
+
+/**
+ * Balance plus coins still waiting for a block (`arriving`, only for the grey note —
+ * account/arriving.ts). Coins whose networks settle in seconds (XRP, TRX, SOL, ATOM,
+ * RUNE, ADA) report 0 arriving.
+ */
+export async function fetchExtraReading(coin: ExtraCoin, address: string): Promise<{ balance: number | null; arriving: number }> {
+  if (isBookCoin(coin)) {
+    const r = await bookReading(coin, address, true);
+    return r ?? { balance: null, arriving: 0 };
+  }
+  return { balance: await fetchExtraBalance(coin, address), arriving: 0 };
+}
+
 /** Confirmed balance in whole coins, or null when the network can't be read. */
 export async function fetchExtraBalance(coin: ExtraCoin, address: string): Promise<number | null> {
   if (coin === "ATOM" || coin === "RUNE") {
@@ -72,12 +103,7 @@ export async function fetchExtraBalance(coin: ExtraCoin, address: string): Promi
     if (!r) return null;
     return toUnits(BigInt(r[0]?.balance ?? "0"), coin); // [] = address never used on-chain
   }
-  if (coin === "DOGE" || coin === "BCH" || coin === "ZEC" || coin === "DASH") {
-    const key = process.env.NOWNODES_API_KEY;
-    if (!key) return null;
-    const r = await getJson<{ balance?: string }>(`${BOOK[coin]}/address/${encodeURIComponent(address)}?details=basic`, { headers: { ...UA, "api-key": key } });
-    return r?.balance !== undefined ? toUnits(BigInt(r.balance), coin) : null;
-  }
+  if (isBookCoin(coin)) return (await bookReading(coin, address, false))?.balance ?? null;
   if (coin === "XRP") {
     const r = await firstOk(nodeEndpoints("xrp"), (u, h) => getJson<{ result?: { status?: string; error?: string; account_data?: { Balance: string } } }>(u,
       { method: "POST", headers: { ...UA, ...h, "content-type": "application/json" }, body: JSON.stringify({ method: "account_info", params: [{ account: address, ledger_index: "validated" }] }) }));

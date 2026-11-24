@@ -236,6 +236,15 @@ export async function loadDisplayUtxosFor(chain: UtxoChainId, address: string): 
   return loadUtxosFor(chain, address);
 }
 
+/** Coins on their way to an address, not in a block yet (display only; account/arriving.ts). */
+export async function fetchArrivingFor(chain: UtxoChainId, address: string): Promise<number> {
+  const { blockbookArriving, esploraArriving } = await import("@/lib/account/arriving.server");
+  if (chain === "ltc") return blockbookArriving(LTC_BOOK, bookHeaders(), address);
+  // A TSD payment's TXC marker output is not TXC arriving.
+  const omni = chain === "txc" ? await (await import("@/lib/omni.server")).fetchOmniPendingTxids(address) : new Set<string>();
+  return esploraArriving(chain, address, omni);
+}
+
 export async function broadcastFor(chain: UtxoChainId, hex: string): Promise<string> {
   if (chain === "ltc") {
     const res = await fetch(`${LTC_BOOK}/sendtx/`, {

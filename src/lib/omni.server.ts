@@ -113,6 +113,35 @@ export async function fetchOmniBalance(
   };
 }
 
+/**
+ * TSD (or another Omni token) on its way to an address: unconfirmed Simple Sends the
+ * node holds in its mempool (rules: account/arriving.ts). Display only — never a
+ * balance or a spend check. 0 when the node can't be asked.
+ */
+export async function fetchOmniArriving(address: string, propertyId = TSD_PROPERTY_ID): Promise<number> {
+  const list = await pendingOmniFor(address);
+  if (!list) return 0;
+  const { omniArriving } = await import("@/lib/account/arriving");
+  return omniArriving(list, address, propertyId);
+}
+
+/** Txids of waiting Omni transactions involving an address (empty when the node can't be asked). */
+export async function fetchOmniPendingTxids(address: string): Promise<Set<string>> {
+  const list = await pendingOmniFor(address);
+  const ids = new Set<string>();
+  if (Array.isArray(list)) for (const t of list as Array<{ txid?: unknown }>) if (typeof t?.txid === "string") ids.add(t.txid.toLowerCase());
+  return ids;
+}
+
+async function pendingOmniFor(address: string): Promise<unknown> {
+  if (!isValidTxcAddress(address) || !rpcConfigured("txc")) return null;
+  try {
+    return await rpc<unknown>("txc", "omni_listpendingtransactions", [address], 6_000, await omniPath());
+  } catch {
+    return null;
+  }
+}
+
 export type OmniHolder = { address: string; balance: number };
 
 /** Every address holding the property, largest first. Public data. */

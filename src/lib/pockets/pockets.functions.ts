@@ -15,18 +15,20 @@ export const getMyExtraPocketBalances = createServerFn({ method: "GET" })
       .eq("user_id", context.userId).eq("status", "active").maybeSingle();
     if (!data) return [];
     const { extraPocketAddresses } = await import("./extra-addresses.server");
-    const { fetchExtraBalance } = await import("./io.server");
+    const { fetchExtraReading } = await import("./io.server");
     const { POCKET_SPECS } = await import("./coins");
     // Monero balances need a private view-key scan, which Seeds doesn't run, so it isn't listed.
-    const rows: { coin: string; address: string; balance: number | null }[] = Object.entries(extraPocketAddresses(data))
+    const rows: { coin: string; address: string; balance: number | null; arriving: number }[] = Object.entries(extraPocketAddresses(data))
       .filter(([coin]) => POCKET_SPECS[coin as keyof typeof POCKET_SPECS]?.balanceReadable)
-      .map(([coin, address]) => ({ coin, address: address!, balance: null }));
+      .map(([coin, address]) => ({ coin, address: address!, balance: null, arriving: 0 }));
     const { shared } = await import("@/lib/cache/shared-cache.server");
     const { CACHE_TIMES, balanceKey } = await import("@/lib/cache/shared-cache-rules");
-    // Display only; sends read the chain live.
+    // Display only; sends read the chain live. `arriving` feeds only the "arriving" note.
     await Promise.all(rows.map(async (r) => {
-      r.balance = await shared(balanceKey(r.coin.toLowerCase(), r.address), { ...CACHE_TIMES.balance, force: input.fresh, good: (v) => v !== null },
-        () => fetchExtraBalance(r.coin as never, r.address));
+      const v = await shared(balanceKey(`${r.coin.toLowerCase()}-a`, r.address), { ...CACHE_TIMES.balance, force: input.fresh, good: (x) => x.balance !== null },
+        () => fetchExtraReading(r.coin as never, r.address));
+      r.balance = v.balance;
+      r.arriving = v.arriving;
     }));
     return rows;
   });

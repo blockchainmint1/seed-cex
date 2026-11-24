@@ -71,10 +71,15 @@ export const getBtcBalance = createServerFn({ method: "POST" })
     z.object({ address: z.string().trim().min(20).max(120), fresh: z.boolean().optional() }).parse(input),
   )
   .handler(async ({ data }) => {
-    const { fetchBtcBalance } = await import("./btc/io.server");
+    const { fetchBtcBalance, fetchBtcArriving } = await import("./btc/io.server");
     const { shared } = await import("./cache/shared-cache.server");
     const { CACHE_TIMES, balanceKey } = await import("./cache/shared-cache-rules");
-    return shared(balanceKey("btc", data.address), { ...CACHE_TIMES.balance, force: data.fresh, good: (b) => b.online }, () => fetchBtcBalance(data.address));
+    // `arriving` = BTC still waiting for a block, only for the grey note (never the balance).
+    return shared(balanceKey("btc", data.address), { ...CACHE_TIMES.balance, force: data.fresh, good: (b) => b.online }, async () => {
+      const b = await fetchBtcBalance(data.address);
+      const arriving = b.online && (b.waitingTxs ?? 0) > 0 ? await fetchBtcArriving(data.address) : 0;
+      return { ...b, arriving };
+    });
   });
 
 /** Re-poll a single order against the issuer. */

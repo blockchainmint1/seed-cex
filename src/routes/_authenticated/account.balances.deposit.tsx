@@ -44,7 +44,9 @@ function Deposit() {
   const seeds = useWithdrawals(seedsKey, Boolean(l) && seedsKey !== null);
   const seedsBlocker = seeds.data ? seeds.data.blocker : undefined;
   const state = net ? depositState(net, Boolean(l), l?.addresses ?? {}, seedsBlocker) : null;
-  const balance = net ? rows.find((r) => r.asset.symbol === asset?.symbol && r.net.id === net.id)?.balance ?? null : null;
+  const row = net ? rows.find((r) => r.asset.symbol === asset?.symbol && r.net.id === net.id) : undefined;
+  const balance = row?.balance ?? null;
+  const arriving = row?.arriving ?? 0;
   const [copied, setCopied] = useState(false);
 
   return (
@@ -80,6 +82,11 @@ function Deposit() {
                       {copied ? <Check /> : <Copy />} {copied ? "Copied" : "Copy address"}
                     </Button>
                     <p className="text-xs text-muted-foreground">In your pocket now: <span data-qa-mask className="num text-foreground">{fmtCoin(balance)} {asset!.symbol}</span></p>
+                    {arriving > 0 ? (
+                      <p className="text-xs text-muted-foreground">
+                        On its way: <span data-qa-mask className="num">+{fmtCoin(arriving)} {asset!.symbol}</span> — it shows in your balance once it's in a block.
+                      </p>
+                    ) : null}
                     <ul className="space-y-1.5">
                       {[`Only send ${asset!.symbol} on ${net.label} to this address.`, ...net.notes].map((n) => (
                         <li key={n} className="flex gap-2 text-sm"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warn" /> <span className="min-w-0 [overflow-wrap:anywhere]">{n}</span></li>

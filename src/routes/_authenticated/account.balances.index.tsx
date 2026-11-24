@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, Note, TabTitle } from "@/components/account/ui";
 import { HmeWalletLinkCard } from "@/components/wallet/HmeWalletLinkCard";
 import { fmtCoin, fmtUsd, usePocketBalances, usePocketLink } from "@/components/account/use-pocket";
+import { Arriving } from "@/components/account/Arriving";
 import { revokeCheck, listCoins } from "@/lib/pockets/hme-support";
 import { withdrawRoute } from "@/lib/account/deposit-options";
 import { rowKey, useSetAsides } from "@/components/account/use-set-asides";
@@ -46,7 +47,7 @@ function SpotBalances() {
 
   const term = q.trim().toLowerCase();
   const shown = rows.filter((r) => {
-    if (hideZero && !((r.balance ?? 0) > 0)) return false;
+    if (hideZero && !((r.balance ?? 0) > 0) && !(r.arriving > 0)) return false;
     if (!term) return true;
     return [r.asset.symbol, r.asset.name, r.net.label].some((s) => s.toLowerCase().includes(term));
   });
@@ -72,6 +73,14 @@ function SpotBalances() {
           </div>
         </div>
       </Card>
+
+      {rows.some((r) => r.arriving > 0) ? (
+        <Note>
+          Coins marked <strong>arriving</strong> are on their way to your pocket but aren't in a block yet. They show in your balance once they're
+          confirmed — usually within minutes, longer if the sender paid a very low network fee. Until then they can't be traded, swapped or withdrawn,
+          and they aren't counted in your estimated value.
+        </Note>
+      ) : null}
 
       {held.any ? (
         <Note>
@@ -104,6 +113,7 @@ function SpotBalances() {
               <div data-qa-mask className="text-right">
                 <span className="num block">{r.balance == null ? (balances.isFetching ? "Checking…" : "—") : fmtCoin(r.balance)}</span>
                 <span className="num block text-xs text-muted-foreground">{fmtUsd(r.usd)}</span>
+                <Arriving amount={r.arriving} />
                 {held.byRow[rowKey(r)] ? (
                   <span className="num block text-xs text-muted-foreground">
                     In trades {fmtCoin(held.byRow[rowKey(r)]!)} · Available {r.balance == null ? "—" : fmtCoin(Math.max(0, r.balance - held.byRow[rowKey(r)]!))}
@@ -146,7 +156,10 @@ function SpotBalances() {
                       {route !== "hme" ? <span className="ml-1.5 whitespace-nowrap rounded-sm border border-warn/60 px-1 py-0.5 font-mono text-[10px] text-foreground">Not in HME Wallet</span> : null}
                     </span>
                   </td>
-                  <td className="num px-3 py-2.5 text-right">{r.balance == null ? (balances.isFetching ? "Checking…" : "Not available") : fmtCoin(r.balance)}</td>
+                  <td className="num px-3 py-2.5 text-right">
+                    {r.balance == null ? (balances.isFetching ? "Checking…" : "Not available") : fmtCoin(r.balance)}
+                    <Arriving amount={r.arriving} />
+                  </td>
                   <td data-qa-mask className="num px-3 py-2.5 text-right text-muted-foreground">{held.byRow[rowKey(r)] ? fmtCoin(held.byRow[rowKey(r)]!) : "—"}</td>
                   <td data-qa-mask className="num px-3 py-2.5 text-right">{r.balance == null ? "—" : fmtCoin(Math.max(0, r.balance - (held.byRow[rowKey(r)] ?? 0)))}</td>
                   <td className="num px-3 py-2.5 text-right text-muted-foreground">{fmtUsd(r.usd)}</td>

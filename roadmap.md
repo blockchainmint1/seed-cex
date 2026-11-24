@@ -435,3 +435,6 @@
 - [x] Vault 27feb4ae already has full trading access (keys handed over)
 - [ ] Vault 27feb4ae can place orders once it connects Telegram (needs 2FA first) (blocked: Bobby sets up 2FA + Telegram on that account)
 - [ ] Beta tester (no limits) for Vault 27feb4ae (blocked: needs an Honest.Money membership, or Bobby asks to change that rule)
+
+- [x] Balances show coins on their way as a grey "arriving" note (BTC, TXC, TSD, LTC, ISK, DOGE/BCH/ZEC/DASH); never counted or spendable (Bobby: yes, Nov 24)
+- [ ] Auditor review of the arriving-coins reads (blocked: auditor)
