@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { QRCodeSVG } from "qrcode.react";
+import { ScanQr } from "@/components/site/ScanQr";
 import { ExternalLink, KeyRound, ShieldCheck, Vault, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { claimKeyLink, claimKeySignin, confirmKeyLink, confirmKeyReplace, dropKeyLink, dropKeyReplace, startKeyLink, startKeySignin } from "@/lib/key-signin/key-signin.functions";
@@ -325,7 +325,7 @@ function KeySignin() {
             ) : req.keyPageUrl ? (
               <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
                 <div className="shrink-0 rounded-md border border-border bg-background p-3 text-foreground">
-                  <QRCodeSVG value={req.keyPageUrl} size={168} bgColor="transparent" fgColor="currentColor" />
+                  <ScanQr value={req.keyPageUrl} size={168} />
                 </div>
                 <div className="min-w-0 space-y-3 text-sm">
                   {req.pairCode ? (

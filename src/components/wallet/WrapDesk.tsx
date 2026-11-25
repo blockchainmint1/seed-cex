@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { QRCodeSVG } from "qrcode.react";
+import { ScanQr } from "@/components/site/ScanQr";
 import {
   getWrapDesk,
   listMyWrapOrders,
@@ -269,13 +269,8 @@ export function WrapDesk() {
                     {o.deposit_address && !isTerminalWrapStatus(o.status) ? (
                       <div className="mt-3 flex flex-wrap items-center gap-4">
                         <div className="rounded-sm bg-primary/10 p-2 ring-1 ring-primary/30">
-                          <QRCodeSVG
-                            value={o.deposit_address}
-                            size={96}
-                            bgColor="transparent"
-                            fgColor="currentColor"
-                            className="text-foreground"
-                          />
+                          <ScanQr value={o.deposit_address}
+                            size={96} />
                         </div>
                         <div className="min-w-0">
                            <p className="font-mono text-[10px] tracking-[0.16em] text-muted-foreground uppercase">

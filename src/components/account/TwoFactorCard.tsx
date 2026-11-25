@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { QRCodeSVG } from "qrcode.react";
+import { ScanQr } from "@/components/site/ScanQr";
 import { Copy, ShieldCheck, ShieldOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -123,7 +123,7 @@ export function TwoFactorCard() {
           </ol>
           <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
             <div className="self-start rounded-sm border border-border bg-qr p-3 text-qr-foreground">
-              <QRCodeSVG value={setup.uri} size={168} bgColor="transparent" fgColor="currentColor" aria-label="Two-factor setup QR code" />
+              <ScanQr value={setup.uri} size={168} aria-label="Two-factor setup QR code" />
             </div>
             <div className="min-w-0 flex-1 space-y-3">
               <div>

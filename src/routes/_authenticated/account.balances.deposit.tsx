@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { QRCodeSVG } from "qrcode.react";
+import { ScanQr } from "@/components/site/ScanQr";
 import { AlertTriangle, Check, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, Note, TabTitle } from "@/components/account/ui";
@@ -71,7 +71,7 @@ function Deposit() {
               {state.ok ? (
                 <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
                   <div className="mx-auto shrink-0 rounded-md bg-accent p-4 text-foreground ring-1 ring-primary/30 sm:mx-0">
-                    <QRCodeSVG value={state.address} size={168} bgColor="transparent" fgColor="currentColor" />
+                    <ScanQr value={state.address} size={168} />
                   </div>
                   <div className="min-w-0 flex-1 space-y-3">
                     <div>

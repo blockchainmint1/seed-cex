@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { QRCodeSVG } from "qrcode.react";
+import { ScanQr } from "@/components/site/ScanQr";
 import { getMyHmeLink, revokeMyHmeLink, startHmeLink } from "@/lib/hme-link.functions";
 import { Button } from "@/components/ui/button";
 import { HmePocketBalances } from "./HmePocketBalances";
@@ -19,7 +19,7 @@ function LinkQr({ manifest, onCancel, updating }: { manifest: string; onCancel: 
   return (
     <div className="mt-4 flex flex-col items-center gap-3 sm:flex-row sm:items-start">
       <div className="rounded-md bg-accent p-3 ring-1 ring-primary/30">
-        <QRCodeSVG value={manifest} size={168} bgColor="transparent" fgColor="currentColor" className="text-foreground" />
+        <ScanQr value={manifest} size={168} />
       </div>
       <div className="min-w-0 text-sm text-muted-foreground">
         <p className="text-foreground">Scan with the HME Wallet (web or Android).</p>

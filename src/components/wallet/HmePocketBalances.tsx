@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Copy, Check, QrCode, RefreshCw } from "lucide-react";
-import { QRCodeSVG } from "qrcode.react";
+import { ScanQr } from "@/components/site/ScanQr";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { getAddressStats } from "@/lib/txc.functions";
@@ -107,7 +107,7 @@ export function HmePocketBalances({ addresses, linkId }: { addresses: Record<str
         <DialogTitle>Receive {receive?.symbol}</DialogTitle>
         <DialogDescription>{receive?.network} · HME trading pocket</DialogDescription>
         {receive ? <>
-          <div className="mx-auto bg-accent p-4 text-foreground"><QRCodeSVG value={receive.address} size={192} bgColor="transparent" fgColor="currentColor" /></div>
+          <div className="mx-auto bg-accent p-4 text-foreground"><ScanQr value={receive.address} size={192} /></div>
           <p data-qa-mask className="break-all text-center font-mono text-xs">{receive.address}</p>
           <Button variant="outline" onClick={async () => { try { await navigator.clipboard.writeText(receive.address); setCopied(true); } catch { setCopied(false); } }}>{copied ? <Check /> : <Copy />}{copied ? "Copied" : "Copy address"}</Button>
         </> : null}
