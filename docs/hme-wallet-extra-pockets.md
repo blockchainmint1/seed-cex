@@ -136,3 +136,34 @@ The keys are checked and stored encrypted, like every other pocket. Seeds shows 
 - Account → Security shows **Add new coins** to a linked member whenever Seeds accepts coins their active link doesn't hold (`coinsToAdd` in `src/lib/hme-link-rules.ts`). It starts a normal fresh link request while the current link stays active; the manifest asks for the active link's pocket number.
 - Submit refuses, with HTTP 409 and nothing changed, (1) a different pocket number while a link is active and (2) any link that leaves out a coin the active link holds (older wallet build, or approve-every-trade over an instant-access link with extra coins).
 - On a successful replace the old link is retired as `replaced`, its sealed key is cleared, and its pending trade approvals are closed.
+
+---
+## Nov 25 2026 update: Stellar, TON and Sui (accept-and-hold)
+
+Seeds now accepts **Stellar (XLM), TON and Sui** keys in links. That's 14 optional coins, and `paths` may now contain up to **19** entries. All three are plain SLIP-0010 ed25519 at pocket 1106 — the same derivation as SOL, with a different address encoding per chain:
+
+| chain | path (pocket 1106) | curve | format | public half (`xpubs[chain]`) | private half (sealed `xprvs[chain]`) |
+|---|---|---|---|---|---|
+| XLM | `m/44'/148'/1106'` | ed25519 | `slip10-ed25519-stellar-g-address` | the Stellar address itself (`G…`, SEP-0005 strkey) | hex 32-byte SLIP-0010 key |
+| TON | `m/44'/607'/1106'` | ed25519 | `slip10-ed25519-ton-w5-hex-pubkey` | hex 32-byte public key | hex 32-byte SLIP-0010 key |
+| SUI | `m/44'/784'/1106'/0'/0'` | ed25519 | `slip10-ed25519-sui-0x-address` | the Sui address itself (`0x…`, 64 hex chars) | hex 32-byte SLIP-0010 key |
+
+- **XLM:** the address *is* the public key (strkey-encoded), so the address doubles as the public half.
+- **TON:** the address is derived from the wallet contract, so the public half is the raw hex public key. Seeds uses wallet type **W5 (v5R1)**, workchain 0, shown non-bounceable (`UQ…`) — the same wallet Tonkeeper uses.
+- **SUI:** the address is `blake2b-256(0x00 ‖ pubkey)`, so the address doubles as the public half.
+
+### Check your derivation with these test values
+
+Recovery phrase `abandon … about`, no passphrase, pocket 1106:
+
+| Chain | Receive address |
+|---|---|
+| XLM | GARWV2LPPTIXJYVWMINIZHNKNUCR3FDVANOPTZXGYV3765UZKSHWV5AI |
+| TON | UQCsq4rzqzuJvOOkCj00SPdMru6-SHmeDuGf2_ecmdjlNwcm |
+| SUI | 0xc103715616f6451c7d969ef90d20d1016924dad27e9c36cd3c1bd5ee5c36b8a1 |
+
+Seeds' tests cross-check every address against the chain's own reference library (`@stellar/stellar-base`, `@ton/ton` WalletContractV5R1, `@mysten/sui`).
+
+### What Seeds does with them today
+
+**Accept-and-hold only.** The keys are checked and stored encrypted, like every other pocket, but Seeds shows **no deposit address and no balance** for these three until its own signer ships and is audited — a deposit is never a one-way trip. As with every optional coin, a wallet that doesn't know them simply skips them, and a wallet must wait for Seeds' written go-ahead before sending them.
