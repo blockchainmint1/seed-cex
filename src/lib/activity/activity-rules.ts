@@ -170,7 +170,9 @@ export function mySide(side: string, role: "maker" | "taker"): "buy" | "sell" {
  * and pool hops of two-step swaps.
  */
 export function hiddenLegs(i: {
-  tsdRoutes: Array<{ swap_send_id: string | null }>;
+  tsdRoutes: Array<{ id?: string; swap_send_id: string | null; parent_id?: string | null }>;
+  /** Plain sends; one tagged with a parent (a one-tap chain's step) is shown inside that chain. */
+  sends?: Array<{ id: string; parent_id?: string | null }>;
   twoSteps: Array<{ swap_send_id: string | null; leg2_swap_send_id: string | null }>;
   dexSwaps: Array<{ id: string; tsd_route_id: string | null; two_step_id: string | null }>;
 }): { sends: Set<string>; routes: Set<string>; dex: Set<string> } {
@@ -180,7 +182,9 @@ export function hiddenLegs(i: {
     if (t.swap_send_id) sends.add(t.swap_send_id);
     if (t.leg2_swap_send_id) sends.add(t.leg2_swap_send_id);
   }
+  for (const s of i.sends ?? []) if (s.parent_id) sends.add(s.id);
   const routes = new Set(i.dexSwaps.map((d) => d.tsd_route_id).filter((x): x is string => Boolean(x)));
+  for (const r of i.tsdRoutes) if (r.parent_id && r.id) routes.add(r.id);
   const dex = new Set(i.dexSwaps.filter((d) => d.two_step_id).map((d) => d.id));
   return { sends, routes, dex };
 }

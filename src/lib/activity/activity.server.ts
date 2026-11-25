@@ -11,6 +11,8 @@ import { NETWORK_LABEL } from "./deposit-rules";
 import { trackerUrl } from "@/lib/xchain/send-rules";
 import { DEX_NETWORKS, type DexNetwork } from "@/lib/dex/venues";
 import { withdrawCoin } from "@/lib/withdraw/catalog";
+import { chainEndSymbol, chainStatusLabel, chainSteps, relayIsSecond, type HypeChainDirection, type HypeChainStatus, type HypeChainVia } from "@/lib/hype-chain/rules";
+import { RELAY_STATUS_LABEL, type RelayStatus } from "@/lib/relay/rules";
 import {
   APPROVAL_WHAT, AI_LABEL, DEX_LABEL, P2P_LABEL, ROUTE_LABEL, SEND_LABEL, TRADE_LABEL, TWO_LABEL, WITHDRAW_LABEL, ORDER_LABEL,
   aiTone, approvalWaiting, dexTone, hiddenLegs, mySide, newestFirst, orderTone, p2pTone, routeTone, sendTone, tradeTone, twoTone, withdrawTone,
@@ -26,11 +28,11 @@ const pairOf = (id: string) => {
 
 export async function loadActivity(userId: string) {
   const me = userId;
-  const [orders, trades, sends, routes, dex, twos, p2p, withdrawals, ai, approvals, links, deposits] = await Promise.all([
+  const [orders, trades, sends, routes, dex, twos, p2p, withdrawals, ai, approvals, links, deposits, chains, relays, tons] = await Promise.all([
     supabaseAdmin.from("orders").select("id, pair, side, price, amount, filled, status, order_type, cancel_reason, created_at").eq("user_id", me).order("created_at", { ascending: false }).limit(300),
     supabaseAdmin.from("trades").select("id, pair, side, price, amount, status, maker_id, taker_id, created_at").or(`maker_id.eq.${me},taker_id.eq.${me}`).order("created_at", { ascending: false }).limit(300),
-    supabaseAdmin.from("swap_sends").select("id, from_asset, to_asset, amount_in, expected_out, status, protocol, txid, error, created_at").eq("user_id", me).order("created_at", { ascending: false }).limit(200),
-    supabaseAdmin.from("tsd_routes").select("id, direction, coin, amount_in, amount_out, shown_out, stage, protocol, swap_send_id, tsd_txid, error, created_at").eq("user_id", me).order("created_at", { ascending: false }).limit(200),
+    supabaseAdmin.from("swap_sends").select("id, from_asset, to_asset, amount_in, expected_out, status, protocol, txid, error, created_at, parent_id").eq("user_id", me).order("created_at", { ascending: false }).limit(200),
+    supabaseAdmin.from("tsd_routes").select("id, direction, coin, amount_in, amount_out, shown_out, stage, protocol, swap_send_id, tsd_txid, error, created_at, parent_id").eq("user_id", me).order("created_at", { ascending: false }).limit(200),
     supabaseAdmin.from("dex_swaps").select("id, network, symbol_in, symbol_out, amount_in, amount_out, shown_out, status, venue_name, swap_txid, tsd_route_id, two_step_id, error, created_at").eq("user_id", me).order("created_at", { ascending: false }).limit(200),
     supabaseAdmin.from("two_step_swaps").select("id, network, mid_id, symbol_in, symbol_out, amount_in, amount_out, shown_out, status, protocol, swap_send_id, leg2_swap_send_id, error, created_at").eq("user_id", me).order("created_at", { ascending: false }).limit(200),
     supabaseAdmin.from("p2p_trades").select("id, seller_id, buyer_id, asset, crypto_amount, fiat_amount, payment_method, status, release_txid, created_at").or(`seller_id.eq.${me},buyer_id.eq.${me}`).order("created_at", { ascending: false }).limit(200),
@@ -39,9 +41,12 @@ export async function loadActivity(userId: string) {
     supabaseAdmin.from("send_approvals").select("id, purpose, asset, amount, status, expires_at, created_at").eq("user_id", me).eq("status", "pending").order("created_at", { ascending: false }).limit(20),
     supabaseAdmin.from("hme_links").select("id, source, mode, status, created_at, revoked_at").eq("user_id", me).order("created_at", { ascending: false }).limit(50),
     supabaseAdmin.from("pocket_deposits").select("id, network, coin, amount, txid, tx_url, from_seeds, seen_at, block_time").eq("user_id", me).order("block_time", { ascending: false, nullsFirst: false }).limit(300),
+    supabaseAdmin.from("hype_chains").select("id, direction, via, coin_id, amount_in, shown_out, amount_out, status, ton_amount, created_at").eq("user_id", me).order("created_at", { ascending: false }).limit(200),
+    supabaseAdmin.from("relay_swaps").select("id, direction, amount_in, shown_out, amount_out, status, deposit_txid, created_at").eq("user_id", me).is("parent_id", null).order("created_at", { ascending: false }).limit(200),
+    supabaseAdmin.from("ton_swaps").select("id, offer_units, shown_units, received_units, status, txid, created_at").eq("user_id", me).is("parent_id", null).order("created_at", { ascending: false }).limit(200),
   ]);
 
-  const hide = hiddenLegs({ tsdRoutes: routes.data ?? [], twoSteps: twos.data ?? [], dexSwaps: dex.data ?? [] });
+  const hide = hiddenLegs({ tsdRoutes: routes.data ?? [], sends: sends.data ?? [], twoSteps: twos.data ?? [], dexSwaps: dex.data ?? [] });
   const aiRoutes = new Set((ai.data ?? []).map((m) => m.route_id).filter(Boolean));
   const rows: ActivityRow[] = [];
 
@@ -110,6 +115,38 @@ export async function loadActivity(userId: string) {
       detail: `Two steps via ${swapCoin(w.mid_id as never)?.symbol ?? w.mid_id} · ${PROTOCOL_LABEL[w.protocol === "maya" ? "maya" : "thorchain"]}`,
       sent: { amount: num(w.amount_in), coin: w.symbol_in }, got: { amount: w.amount_out != null ? num(w.amount_out) : num(w.shown_out), coin: w.symbol_out },
       status: TWO_LABEL[w.status] ?? w.status, tone: twoTone(w.status), href: "/swap", txUrl: null,
+    });
+  }
+  // One-tap chains (e.g. TSD -> ETH -> TON -> USD₮ on TON): one row as on the Swap page; their steps are hidden above.
+  for (const c of chains.data ?? []) {
+    const d = c.direction as HypeChainDirection;
+    const sym = c.coin_id === "TSD" ? "TSD" : swapCoin(c.coin_id as never)?.symbol ?? c.coin_id;
+    const from = relayIsSecond(d) ? sym : "HYPE", to = relayIsSecond(d) ? chainEndSymbol(d) : sym;
+    rows.push({
+      id: `h-${c.id}`, kind: "swap", at: c.created_at, title: `Swap ${from} → ${to}`,
+      detail: `One tap · ${chainSteps(d, c.via as HypeChainVia, sym).slice(1).join(" → ")}`,
+      sent: { amount: num(c.amount_in), coin: from }, got: { amount: c.amount_out != null ? num(c.amount_out) : num(c.shown_out), coin: to },
+      status: chainStatusLabel(c.status as HypeChainStatus, d, c.ton_amount != null), tone: twoTone(c.status), href: "/swap", txUrl: null,
+    });
+  }
+  const RELAY_SYM: Record<string, [string, string]> = { to_hype: ["ETH", "HYPE"], from_hype: ["HYPE", "ETH"], to_ton: ["ETH", "TON"] };
+  for (const r of relays.data ?? []) {
+    const [a, b] = RELAY_SYM[r.direction] ?? ["ETH", "?"];
+    const hyper = r.direction === "from_hype";
+    rows.push({
+      id: `y-${r.id}`, kind: "swap", at: r.created_at, title: `Swap ${a} → ${b}`, detail: "Relay",
+      sent: { amount: num(r.amount_in), coin: a }, got: { amount: r.amount_out != null ? num(r.amount_out) : num(r.shown_out), coin: b },
+      status: RELAY_STATUS_LABEL[r.status as RelayStatus] ?? r.status, tone: twoTone(r.status), href: "/swap",
+      txUrl: r.deposit_txid ? `${hyper ? "https://hyperevmscan.io/tx/" : "https://etherscan.io/tx/"}${r.deposit_txid}` : null,
+    });
+  }
+  for (const t of tons.data ?? []) {
+    const label: Record<string, string> = { done: "Delivered", failed: "Stopped", unknown: "Checking", sent: "Sent to STON.fi", signing: "Sending" };
+    rows.push({
+      id: `n-${t.id}`, kind: "swap", at: t.created_at, title: "Swap TON → USD₮ on TON", detail: "STON.fi",
+      sent: { amount: num(t.offer_units) / 1e9, coin: "TON" }, got: { amount: (t.received_units != null ? num(t.received_units) : num(t.shown_units)) / 1e6, coin: "USD₮ on TON" },
+      status: label[t.status] ?? t.status, tone: twoTone(t.status), href: "/swap",
+      txUrl: t.txid ? `https://tonviewer.com/transaction/${t.txid}` : null,
     });
   }
   for (const t of p2p.data ?? []) {

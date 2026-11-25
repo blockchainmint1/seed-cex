@@ -72,3 +72,15 @@ describe("activity rows", () => {
     expect(line).toContain(",-1,BTC,");
   });
 });
+
+test("a one-tap chain's steps are hidden; the chain row stands alone", () => {
+  const h = hiddenLegs({
+    tsdRoutes: [{ id: "r1", swap_send_id: "s1", parent_id: "chain" }, { id: "r2", swap_send_id: null, parent_id: null }],
+    sends: [{ id: "s2", parent_id: "chain" }, { id: "s3", parent_id: null }],
+    twoSteps: [], dexSwaps: [],
+  });
+  expect(h.routes.has("r1")).toBe(true);
+  expect(h.routes.has("r2")).toBe(false);
+  expect(h.sends.has("s2")).toBe(true);
+  expect(h.sends.has("s3")).toBe(false);
+});
