@@ -52,6 +52,32 @@ export async function hmeReferralCode(memberId: string | null | undefined): Prom
 }
 
 /**
+ * One member's Honest.Money identity (username + member number) via member-check, read-only.
+ * Display only — no referral credit is decided here — so any member status is accepted as long
+ * as the hub matched the UUID it was given. Best effort: null on any failure.
+ */
+export async function hmeMemberIdentity(
+  memberId: string | null | undefined,
+): Promise<{ username: string | null; memberNo: string | null } | null> {
+  if (!memberId) return null;
+  try {
+    const res = await fetch("https://honest.money/api/public/minetxc/member-check", {
+      method: "POST", headers: ecosystemHeaders(),
+      body: JSON.stringify({ members: [{ ref: "seeds-identity", hmeId: memberId }] }),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return null;
+    const j = (await res.json()) as { results?: { result?: string; hmeId?: string; username?: string; memberNo?: string }[] };
+    const r = j.results?.[0];
+    if (!r || r.result !== "found" || r.hmeId !== memberId) return null;
+    const { cleanRefCode } = await import("./ignite-registration");
+    return { username: cleanRefCode(r.username), memberNo: typeof r.memberNo === "string" ? r.memberNo.trim() : null };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Many members' Honest.Money affiliate codes in one member-check call (Admin → Affiliates owner matching).
  * Returns null when the hub couldn't be asked (so nobody is marked checked); otherwise hmeId → code.
  */
