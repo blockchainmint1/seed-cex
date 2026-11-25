@@ -58,6 +58,13 @@ Signed with the active AWS KMS key above (`seeds-vault-kms-2026-11`). It is deli
 
 Verify it with `readSignedVaultRequest(example, SEEDS_REQUEST_KEYS, Date.parse("2026-01-01T00:05:00.000Z"))`. With the real clock it must be refused as expired.
 
+**Which copy it passes (auditor N3):** the example lists the original 16 paths, so it passes against
+`vault-protocol.ts` as shipped up to and including Seeds commit `6d5195c` (November 25, 2026). Seeds
+commit `21c77f7` added Stellar, TON and Sui (19 paths), and from that version on the example is
+refused for missing paths — its signature still verifies, but the path list no longer covers every
+coin that copy knows. Re-signing a fresh example would need the live KMS key, so this note stands
+instead; Key and Vault should test their current copy against a live 10-minute request.
+
 ```json
 {
   "type": "hm-seeds-key-vault-request",

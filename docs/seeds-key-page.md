@@ -80,7 +80,7 @@ Manifest (`GET`, 404 when expired or used):
   "submit_url": "https://seeds.honest.money/api/public/key-signin/submit",
   "kinds": ["coin", "evm", "sol"], "pocket": 1106,
   "request": [{ "chain": "TXC", "path": "m/44'/696969'/1106'", "curve": "secp256k1", "format": "bip32" }, "…"],
-  "request_optional": ["…DOGE, BCH, ZEC, XRP, TRX, SOL, DASH, ATOM, RUNE, ADA, XMR…"]
+  "request_optional": ["…DOGE, BCH, ZEC, XRP, TRX, SOL, DASH, ATOM, RUNE, ADA, XMR, XLM, TON, SUI…"]
 }
 ```
 
@@ -193,6 +193,13 @@ Phrase: `abandon abandon abandon abandon abandon abandon abandon abandon abandon
 | Pocket 1106 LTC receive | `LdydRYQJ1fQ4vwpqYn1tUzfLzdfQxZS6cP` |
 | Pocket 1106 EVM receive | `0x7231a79714ffD1b9f51216f79762fA38A40b4544` |
 | Pocket 1106 SOL | `DXTivYcF78Vznitg6f8JGXouZwsm3xioik1LGWj2H1jV` |
+| Pocket 1106 XLM (Stellar, `m/44'/148'/1106'`) | `GARWV2LPPTIXJYVWMINIZHNKNUCR3FDVANOPTZXGYV3765UZKSHWV5AI` |
+| Pocket 1106 TON (W5, `m/44'/607'/1106'`) | `UQCsq4rzqzuJvOOkCj00SPdMru6-SHmeDuGf2_ecmdjlNwcm` |
+| Pocket 1106 SUI (`m/44'/784'/1106'/0'/0'`) | `0xc103715616f6451c7d969ef90d20d1016924dad27e9c36cd3c1bd5ee5c36b8a1` |
+
+The three Ed25519 coins (XLM, TON, SUI) are optional: a wallet that doesn't know them simply skips
+them, exactly like the other optional coins. Seeds' tests cross-check every one against the chain's
+own reference library (`@stellar/stellar-base`, `@ton/ton` WalletContractV5R1, `@mysten/sui`).
 
 Outside wallet. EVM private key `4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318`
 (address `0x2c7536E3605D9C16a7a3D7b1898e529396a65c23`),
