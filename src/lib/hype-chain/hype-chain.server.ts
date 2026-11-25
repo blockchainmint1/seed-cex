@@ -220,6 +220,19 @@ async function notify(r: Row, text: string) {
   } catch (e) { console.error("hype chain alert failed", e); }
 }
 
+/** Every stopped one-tap swap tells the member and every admin (Bobby, Nov 25). Best-effort, never throws. */
+async function alertStopped(r: Row, patch: Partial<Row>) {
+  const why = patch.error ?? "Seeds stopped this swap.";
+  const sym = symbolOf(r.coin_id);
+  const end = chainEndSymbol(r.direction as HypeChainDirection);
+  await notify(r, `Your ${fmt(Number(r.amount_in))} ${sym} → ${end} swap stopped. ${why}`);
+  try {
+    const { alertAdmins } = await import("@/lib/alerts.server");
+    const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    await alertAdmins(`⚠️ <b>Seeds</b> one-tap swap stopped\n${esc(`${fmt(Number(r.amount_in))} ${sym} → ${end}`)} (was at ${esc(r.status)})\nSwap ${r.id.slice(0, 8)} · member ${r.user_id.slice(0, 8)}\n${esc(why)}`);
+  } catch (e) { console.error("hype chain admin alert failed", e); }
+}
+
 async function linkStillSame(r: Row) {
   const { loadLink } = await import("@/lib/xchain/send.server");
   const link = await loadLink(r.user_id);
@@ -339,7 +352,12 @@ async function startSideHop(r: Row, leg: 1 | 2, amount: number, shownOut: number
 
 async function step(r: Row): Promise<boolean> {
   const status = r.status as HypeChainStatus;
-  const go = async (patch: Partial<Row>) => { await save(r.id, patch); return patch.status !== undefined && patch.status !== status; };
+  const go = async (patch: Partial<Row>) => {
+    await save(r.id, patch);
+    const changed = patch.status !== undefined && patch.status !== status;
+    if (changed && (patch.status === "kept_mid" || patch.status === "failed")) void alertStopped(r, patch);
+    return changed;
+  };
   const toHype = relayIsSecond(r.direction as HypeChainDirection);
   const endSym = chainEndSymbol(r.direction as HypeChainDirection);
   const sym = symbolOf(r.coin_id);
@@ -398,7 +416,6 @@ async function step(r: Row): Promise<boolean> {
       const f = await follow(r, hopKind(r, 1), r.leg1_id!, eth().asset);
       if (f.state === "wait") return go(minutesSince(r.step_at) > HOP_STUCK_MINUTES && !r.error ? { error: "Step 1 is taking longer than usual; the team will check. Nothing is re-sent." } : {});
       if (f.state === "stopped") {
-        void notify(r, `Your ${toHype ? sym : "HYPE"} → ${toHype ? endSym : sym} swap stopped at step 1: ${f.note}`);
         return go(move("failed", { error: `Step 1 stopped: ${f.note}`.slice(0, 300) }));
       }
       return go(move("mid", { mid_amount: f.paid ?? null }));
@@ -436,7 +453,6 @@ async function step(r: Row): Promise<boolean> {
         return go({ error: `${e instanceof Error ? e.message : String(e)}; retrying.`.slice(0, 300) });
       }
       if (!secondHopOk(fresh, Number(r.min_out))) {
-        void notify(r, `Seeds stopped your swap before step 2: the price fell below the minimum you agreed to (${fmt(Number(r.min_out))}). ${ethIn}`);
         return go(move("kept_mid", { mid_handed: null, error: `The price fell below your minimum before step 2. ${ethIn}` }));
       }
       if (toHype && hasTonStep(r.direction as HypeChainDirection) && r.ton_baseline_nano == null) {
@@ -470,7 +486,6 @@ async function step(r: Row): Promise<boolean> {
       const f = await follow(r, hopKind(r, 2), r.leg2_id!, coin?.asset ?? "");
       if (f.state === "wait") return go(minutesSince(r.step_at) > HOP_STUCK_MINUTES && !r.error ? { error: "Step 2 is taking longer than usual; the team will check. Nothing is re-sent." } : {});
       if (f.state === "stopped") {
-        void notify(r, `Step 2 of your swap didn't complete (${f.note}). ${ethIn}`);
         return go(move("kept_mid", { error: `Step 2 stopped: ${f.note} ${ethIn}`.slice(0, 300) }));
       }
       if (hasTonStep(r.direction as HypeChainDirection)) return go(move("mid2", { ton_amount: f.paid ?? null }));
@@ -503,7 +518,6 @@ async function step(r: Row): Promise<boolean> {
         return go({ error: `${e instanceof Error ? e.message : String(e)}; retrying.`.slice(0, 300) });
       }
       if (fresh < floor) {
-        void notify(r, `Seeds stopped your swap before step 3: the price fell below the minimum you agreed to (${fmt(Number(r.final_min))} USD₮). ${tonIn}`);
         return go(move("kept_mid", { error: `The price fell below your minimum before step 3. ${tonIn}` }));
       }
       try {
@@ -515,7 +529,10 @@ async function step(r: Row): Promise<boolean> {
       } catch (e) {
         const after = await tonStepSince(r);
         if (after) return go(move("leg3", { leg3_id: after }));
-        return go(move("kept_mid", { error: `${e instanceof Error ? e.message : String(e)} ${tonIn}`.slice(0, 300) }));
+        const m = e instanceof Error ? e.message : String(e);
+        // A price or balance read that didn't answer is temporary: nothing was sent, so try again next minute (up to 30 min).
+        if (/couldn't (price|read)|didn't answer/i.test(m) && minutesSince(r.step_at) < 30) return go({ error: `${m} Retrying.`.slice(0, 300) });
+        return go(move("kept_mid", { error: `${m} ${tonIn}`.slice(0, 300) }));
       }
     }
 
@@ -532,7 +549,6 @@ async function step(r: Row): Promise<boolean> {
         return go(move("done", { amount_out: got }));
       }
       if (st === "failed") {
-        void notify(r, `Step 3 of your swap didn't go out (${t.error ?? "stopped"}). ${tonIn}`);
         return go(move("kept_mid", { error: `Step 3 stopped: ${t.error ?? "nothing was sent"}. ${tonIn}`.slice(0, 300) }));
       }
       return go(minutesSince(r.step_at) > HOP_STUCK_MINUTES && !r.error ? { error: "Step 3 is taking longer than usual; the team will check. Nothing is re-sent." } : {});

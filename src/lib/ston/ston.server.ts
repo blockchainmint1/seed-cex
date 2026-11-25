@@ -77,7 +77,8 @@ export async function startTonToUsdt(userId: string, tester: boolean, input: { a
     // Audit TA3: same per-swap and 24-hour dollar caps as every other own-pocket swap.
     const { fetchQuotes, TRACKED } = await import("@/lib/cmc.server");
     const tonUsd = (await fetchQuotes(TRACKED).catch(() => null))?.quotes.find((q) => q.symbol === "TON")?.price ?? null;
-    const amountUsd = tonSwapUsd(offer, tonUsd);
+    // If the price feed is down, value the swap at Seeds' own fresh STON.fi quote (USD₮ ≈ $1) so the caps still apply.
+    const amountUsd = tonSwapUsd(offer, tonUsd) ?? (fresh > 0n ? Math.round(Number(fresh) / 1e4) / 100 : null);
     if (amountUsd === null) throw new Error("Seeds couldn't price TON right now. Nothing was sent — try again in a minute.");
     const { swapLimitsFor } = await import("@/lib/xchain/send-rules");
     const limits = swapLimitsFor(tester);
