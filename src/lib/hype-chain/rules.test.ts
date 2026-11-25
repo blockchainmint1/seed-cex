@@ -41,3 +41,9 @@ describe("TSD → USD₮ on TON in one tap", () => {
     expect(tonHand(300_000_000n, 5_300_000_000n, 5_000_000_000n)).toBeNull();
   });
 });
+
+import { chainStatusLabel as _csl } from "./rules";
+describe("chainStatusLabel (audit TC4)", () => {
+  test("three-step chain stopped after TON arrived says TON", () => { expect(_csl("kept_mid", "to_ton_usdt", true)).toBe("Stopped — TON in your pocket"); });
+  test("stopped before TON arrived still says ETH", () => { expect(_csl("kept_mid", "to_ton_usdt", false)).toBe("Stopped — ETH in your pocket"); });
+});

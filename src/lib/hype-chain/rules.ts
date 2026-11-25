@@ -34,6 +34,12 @@ export const HYPE_CHAIN_LABEL: Record<HypeChainStatus, string> = {
   done: "Delivered", failed: "Stopped", kept_mid: "Stopped — ETH in your pocket", declined: "Declined", expired: "Not approved in time", cancelled: "Cancelled",
 };
 
+/** Status label; a three-step chain that stopped after TON arrived says TON stayed, not ETH (audit TC4). */
+export function chainStatusLabel(status: HypeChainStatus, direction: HypeChainDirection, tonArrived: boolean): string {
+  if (status === "kept_mid" && hasTonStep(direction) && tonArrived) return "Stopped — TON in your pocket";
+  return HYPE_CHAIN_LABEL[status] ?? status;
+}
+
 /** How the non-HYPE side reaches ETH: TSD uses the TSD route; any other coin uses THORChain/Maya. ETH itself is a plain Relay swap. */
 export function hopFor(side: { kind: "tsd" } | { kind: "coin"; id: string }): HypeChainVia | null {
   if (side.kind === "tsd") return "tsd";

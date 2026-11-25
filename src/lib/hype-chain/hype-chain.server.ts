@@ -20,7 +20,7 @@ import { receivePocket, sendSource } from "@/lib/xchain/send-rules";
 import { floorAmount } from "@/lib/swap/plan";
 import { agreedMinWei, fromWei, toWei, fromUnits, toUnits, legs, type RelayDirection } from "@/lib/relay/rules";
 import {
-  HOP_STUCK_MINUTES, HYPE_CHAIN_LABEL, hasTonStep, tonToHandOn, TON_STEP_RESERVE_NANO, relayIsSecond, chainEndSymbol, relayLegDirection, chainMinimum, chainSteps, ethToHandOn, isHypeChainTerminal, secondHopOk,
+  HOP_STUCK_MINUTES, chainStatusLabel, hasTonStep, tonToHandOn, TON_STEP_RESERVE_NANO, relayIsSecond, chainEndSymbol, relayLegDirection, chainMinimum, chainSteps, ethToHandOn, isHypeChainTerminal, secondHopOk,
   type HypeChainDirection, type HypeChainStatus, type HypeChainVia,
 } from "./rules";
 
@@ -508,8 +508,9 @@ async function step(r: Row): Promise<boolean> {
       }
       try {
         const { startTonToUsdt } = await import("@/lib/ston/ston.server");
-        // Chains are testers-only (relayBlocker at request), so the tester flag matches who asked.
-        const res = await startTonToUsdt(r.user_id, true, { amount: nanoToTon(hand), shownOutUnits: fresh.toString() }, { parentId: r.id, floorUnits: floor });
+        // Pass the member's live tester status so step 3 meets the same swap caps as a direct TON swap (audit TC1).
+        const { isTesterUser } = await import("@/lib/ai/execute.server");
+        const res = await startTonToUsdt(r.user_id, await isTesterUser(r.user_id), { amount: nanoToTon(hand), shownOutUnits: fresh.toString() }, { parentId: r.id, floorUnits: floor });
         return go(move("leg3", { leg3_id: res.id }));
       } catch (e) {
         const after = await tonStepSince(r);
@@ -569,7 +570,7 @@ export async function listHypeChains(userId: string) {
   const { data: open } = await supabaseAdmin.from("hype_chains").select("id").eq("user_id", userId).not("status", "in", OPEN).limit(3);
   for (const r of open ?? []) await advanceHypeChain(r.id).catch(() => undefined);
   const { data, error } = await supabaseAdmin.from("hype_chains")
-    .select("id, direction, via, coin_id, amount_in, shown_out, amount_out, status, error, created_at")
+    .select("id, direction, via, coin_id, amount_in, shown_out, amount_out, status, error, created_at, ton_amount")
     .eq("user_id", userId).order("created_at", { ascending: false }).limit(20);
   if (error) throw new Error(error.message);
   const logs = await chainLogs(userId, (data ?? []).map((r) => r.id)).catch(() => new Map<string, ChainLogEntry[]>());
@@ -579,7 +580,7 @@ export async function listHypeChains(userId: string) {
     return {
       ...r, amount_in: Number(r.amount_in), shown_out: Number(r.shown_out), amount_out: r.amount_out == null ? null : Number(r.amount_out),
       symbolIn: relayIsSecond(d) ? sym : "HYPE", symbolOut: relayIsSecond(d) ? chainEndSymbol(d) : sym,
-      log: logs.get(r.id) ?? [], label: HYPE_CHAIN_LABEL[r.status as HypeChainStatus] ?? r.status, steps: chainSteps(d, r.via as HypeChainVia, sym), terminal: isHypeChainTerminal(r.status),
+      log: logs.get(r.id) ?? [], label: chainStatusLabel(r.status as HypeChainStatus, r.direction as HypeChainDirection, r.ton_amount != null), steps: chainSteps(d, r.via as HypeChainVia, sym), terminal: isHypeChainTerminal(r.status),
     };
   });
 }
