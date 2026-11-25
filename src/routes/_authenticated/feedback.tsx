@@ -25,7 +25,7 @@ export const Route = createFileRoute("/_authenticated/feedback")({
 
 const STATUS_TONE: Record<string, string> = {
   new: "border-border text-muted-foreground", investigating: "border-warning/50 text-warning", fixed: "border-primary/50 text-primary",
-  ready_for_retest: "border-warning bg-warning/10 text-foreground", verified: "border-primary bg-primary/10 text-primary",
+  ready_for_retest: "border-warning bg-warning/10 text-foreground", verified: "border-primary bg-primary/10 text-primary", ignored: "border-border bg-muted text-muted-foreground",
 };
 
 function MyReports() {

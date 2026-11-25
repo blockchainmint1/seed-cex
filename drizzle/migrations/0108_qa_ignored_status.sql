@@ -1,0 +1,2 @@
+ALTER TABLE public.qa_reports DROP CONSTRAINT IF EXISTS qa_reports_status_check;
+ALTER TABLE public.qa_reports ADD CONSTRAINT qa_reports_status_check CHECK (status IN ('new','investigating','fixed','ready_for_retest','verified','ignored'));

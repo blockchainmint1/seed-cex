@@ -757,6 +757,13 @@
       "when": 1795612778439,
       "tag": "0107_ton_usdt_and_ston_swaps",
       "breakpoints": true
+    },
+    {
+      "idx": 108,
+      "version": "7",
+      "when": 1795613735463,
+      "tag": "0108_qa_ignored_status",
+      "breakpoints": true
     }
   ]
 }

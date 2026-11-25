@@ -55,7 +55,7 @@ function AdminBugs() {
     const s = search.trim().toLowerCase();
     const list = all.filter((r) =>
       (showDups || !r.duplicate_of) &&
-      (status === "" || (status === "open" ? isOpenReport(r) || (showDups && r.status !== "verified") : r.status === status)) &&
+      (status === "" || (status === "open" ? isOpenReport(r) || (showDups && r.status !== "verified" && r.status !== "ignored") : r.status === status)) &&
       (!severity || (severity === "none" ? !r.severity : r.severity === severity)) &&
       (!category || r.category === category) &&
       (!assignee || (assignee === "none" ? !r.assignee_id : r.assignee_id === assignee)) &&
@@ -125,7 +125,7 @@ function AdminBugs() {
             </div>
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <select aria-label="Status" value={status} onChange={(e) => setStatus(e.target.value)} className={sel}>
-                <option value="open">Open (not verified)</option><option value="">Any status</option>
+                <option value="open">Open (not verified or ignored)</option><option value="">Any status</option>
                 {QA_STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
               </select>
               <select aria-label="Severity" value={severity} onChange={(e) => setSeverity(e.target.value)} className={sel}>

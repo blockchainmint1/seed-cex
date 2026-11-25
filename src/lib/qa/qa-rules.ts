@@ -18,6 +18,7 @@ export const QA_STATUSES = [
   { id: "fixed", label: "Fixed" },
   { id: "ready_for_retest", label: "Ready for retest" },
   { id: "verified", label: "Verified" },
+  { id: "ignored", label: "Ignored" },
 ] as const;
 export type QaStatus = (typeof QA_STATUSES)[number]["id"];
 
@@ -166,7 +167,7 @@ export function retestResult(status: string, worked: boolean): QaStatus | null {
 }
 
 /** Reports still needing the team (not Verified, not a duplicate). */
-export const isOpenReport = (r: { status: string; duplicate_of: string | null }) => r.status !== "verified" && !r.duplicate_of;
+export const isOpenReport = (r: { status: string; duplicate_of: string | null }) => r.status !== "verified" && r.status !== "ignored" && !r.duplicate_of;
 
 /** A report may be marked a duplicate only of a different, original (non-duplicate) report, and only if nothing points at it. */
 export function duplicateProblem(self: { id: string; hasDuplicates: boolean }, target: { id: string; duplicate_of: string | null } | null): string | null {

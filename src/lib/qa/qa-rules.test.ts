@@ -113,3 +113,9 @@ describe("attachment storage must be private", () => {
     expect(bucketSafeForUploads(null)).toBe(false);
   });
 });
+
+import { isOpenReport as _open } from "./qa-rules";
+test("ignored reports leave the Open list", () => {
+  expect(_open({ status: "ignored", duplicate_of: null })).toBe(false);
+  expect(_open({ status: "new", duplicate_of: null })).toBe(true);
+});
