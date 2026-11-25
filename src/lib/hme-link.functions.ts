@@ -68,9 +68,10 @@ export const getMyHmeLink = createServerFn({ method: "GET" })
     let withdrawals: "ready" | "needs_2fa" | "needs_relink" | "unknown" = "unknown";
     if (data) {
       try {
-        const { twoFactorSinceMs } = await import("./two-factor.server");
-        const { withdrawLinkState } = await import("./two-factor");
-        withdrawals = withdrawLinkState({ twoFactorSinceMs: await twoFactorSinceMs(context.userId), linkCreatedMs: Date.parse(data.created_at) });
+        // Same check the Withdraw page uses (two-factor and Telegram), so the two never disagree.
+        const { readinessFor } = await import("./withdraw/withdraw.server");
+        const r = await readinessFor(context.userId, data.id);
+        withdrawals = r === "needs_telegram" ? "unknown" : r;
       } catch { /* shown as unknown; withdrawals re-check on the server anyway */ }
     }
     let pending = 0;

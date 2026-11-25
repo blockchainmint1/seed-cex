@@ -198,6 +198,24 @@ export function HmeWalletLinkCard({ showBalances = true, className = "border-y b
               )}
             </div>
           ) : null}
+          {!keyKind && !toAdd.length && l.withdrawals !== "needs_relink" ? (
+            <div className="rounded-md border border-border bg-surface px-3 py-3">
+              <p className="font-semibold text-foreground">Re-link HME Wallet</p>
+              <p className="mt-1 text-xs">
+                Confirms the same wallet again: same pocket #{l.account}, same addresses, nothing moves. Use the HME Wallet you linked before —
+                if you scan with a different wallet, Seeds refuses it and keeps your current link untouched.
+              </p>
+              {manifest ? (
+                <LinkQr manifest={manifest} updating onCancel={() => { setManifest(null); setExpiresAt(null); }} />
+              ) : (
+                <Button onClick={() => begin.mutate()} disabled={begin.isPending} size="sm" variant="outline" className="mt-3">
+                  <Link2 />
+                  {begin.isPending ? "Preparing…" : "Re-link HME Wallet"}
+                </Button>
+              )}
+              {begin.error ? <p className="mt-2 text-xs text-destructive">Couldn't start the re-link. Try again.</p> : null}
+            </div>
+          ) : null}
           {l.mode === "approve" && l.pending > 0 ? (
             <p className="text-foreground">{l.pending} trade(s) waiting for your approval in the HME Wallet.</p>
           ) : null}

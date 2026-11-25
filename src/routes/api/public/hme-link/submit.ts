@@ -63,13 +63,13 @@ export const Route = createFileRoute("/api/public/hme-link/submit")({
 
         // Replacing a live link: same pocket only, and never fewer coins (Seeds would wipe keys to coins HME Wallet can't move).
         const { data: active } = await supabaseAdmin.from("hme_links")
-          .select("id, account, paths, mode, key_ciphertext, source").eq("user_id", req.user_id).eq("status", "active").maybeSingle();
+          .select("id, account, paths, mode, key_ciphertext, source, xpubs").eq("user_id", req.user_id).eq("status", "active").maybeSingle();
         // A pocket from a coin, Vault or outside wallet has different keys: switching is a deliberate revoke first, never a silent swap.
         if (active?.source === "seeds_key")
           return json({ error: "Your trading pocket comes from a coin or wallet you linked. Stop Seeds' access to it in Account → Security first, then link HME Wallet." }, 409);
         const problem = replaceProblem(
-          active ? { account: active.account, paths: active.paths as string[], mode: active.mode, hasKey: Boolean(active.key_ciphertext) } : null,
-          { account: b.account!, chains, mode: b.mode },
+          active ? { account: active.account, paths: active.paths as string[], mode: active.mode, hasKey: Boolean(active.key_ciphertext), xpubs: (active.xpubs ?? {}) as Record<string, string> } : null,
+          { account: b.account!, chains, mode: b.mode, xpubs },
         );
         if (problem) return json({ error: problem }, 409);
 

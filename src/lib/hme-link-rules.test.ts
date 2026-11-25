@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { ACCEPTED_CHAINS, ONLY_POCKET_1106, OPTIONAL_CHAINS, REFUSE_OTHER_POCKET, coinsToAdd, linkCoins, pocketNumberProblem, replaceProblem, requestPaths } from "./hme-link-rules";
+import { REFUSE_OTHER_WALLET, ACCEPTED_CHAINS, ONLY_POCKET_1106, OPTIONAL_CHAINS, REFUSE_OTHER_POCKET, coinsToAdd, linkCoins, pocketNumberProblem, replaceProblem, requestPaths } from "./hme-link-rules";
 import { accountPath, type PocketCoin } from "./pockets/coins";
 
 const core: PocketCoin[] = ["TXC", "ISK", "BTC", "LTC", "EVM"];
@@ -64,5 +64,17 @@ describe("pocket 1106 only", () => {
   });
   test("a wallet reporting pocket 2105 is refused", () => {
     expect(pocketNumberProblem(2105)).toBe(ONLY_POCKET_1106);
+  });
+});
+
+
+describe("re-link confirms the same wallet", () => {
+  const paths = [accountPath("TXC", 1106), accountPath("BTC", 1106)];
+  const active = { account: 1106, paths, xpubs: { TXC: "xpubA", BTC: "xpubB" } };
+  test("refuses a different wallet's keys for a coin already linked", () => {
+    expect(replaceProblem(active, { account: 1106, chains: ["TXC", "BTC"], xpubs: { TXC: "xpubOTHER", BTC: "xpubB" } })).toBe(REFUSE_OTHER_WALLET);
+  });
+  test("allows the same wallet, even with extra coins", () => {
+    expect(replaceProblem(active, { account: 1106, chains: ["TXC", "BTC", "TON"], xpubs: { TXC: "xpubA", BTC: "xpubB", TON: "t" } })).toBeNull();
   });
 });

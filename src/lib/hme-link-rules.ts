@@ -50,6 +50,8 @@ export function requestPaths(active: LinkLike | null): { core: Record<string, st
 
 export const REFUSE_OTHER_POCKET =
   "You already have a Seeds link on a different Trading pocket. Revoke your current link on Seeds (Account → Security) first, then link again.";
+export const REFUSE_OTHER_WALLET =
+  "This is a different wallet from the one linked to your Seeds account, so nothing was changed. Re-link with the same HME Wallet (same recovery phrase) you linked before. To switch wallets on purpose, move your coins out, revoke on Seeds first, then link the new wallet.";
 export function refuseDroppedCoins(coins: PocketCoin[]): string {
   return `This wallet version can't share all the coins your Seeds link already covers (missing ${coins.join(", ")}). ` +
     "Update HME Wallet and try again, or move those coins out on Seeds first. Nothing was changed.";
@@ -62,11 +64,18 @@ export function refuseDroppedCoins(coins: PocketCoin[]): string {
  * or approve-every-trade would otherwise wipe keys to coins HME Wallet can't move).
  */
 export function replaceProblem(
-  active: (LinkLike & { mode?: string; hasKey?: boolean }) | null,
-  incoming: { account: number; chains: PocketCoin[]; mode?: string },
+  active: (LinkLike & { mode?: string; hasKey?: boolean; xpubs?: Record<string, string> }) | null,
+  incoming: { account: number; chains: PocketCoin[]; mode?: string; xpubs?: Record<string, string> },
 ): string | null {
   if (!active) return null;
   if (incoming.account !== active.account) return REFUSE_OTHER_POCKET;
+  // A re-link only confirms the same wallet: any coin already linked must come back with the same key.
+  if (active.xpubs && incoming.xpubs) {
+    for (const c of linkCoins(active)) {
+      const a = active.xpubs[c], b = incoming.xpubs[c];
+      if (a && b && a !== b) return REFUSE_OTHER_WALLET;
+    }
+  }
   // Audit carry-over: instant access -> approve-each-trade hands Seeds no key, so Seeds would
   // drop its key to coins HME Wallet can't move. That must be a deliberate revoke, not a re-link.
   if (active.mode === "access" && active.hasKey && incoming.mode !== undefined && incoming.mode !== "access") {
