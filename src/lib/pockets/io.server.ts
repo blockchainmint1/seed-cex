@@ -7,7 +7,7 @@
  * null instead of throwing so a down network never breaks the Profile page.
  */
 import type { PocketCoin } from "./coins";
-import { cardanoRosetta, nodeEndpoints, thornodeEndpoints, type NodeEndpoint } from "@/lib/nodes.server";
+import { cardanoRosetta, nodeEndpoints, thornodeEndpoints, tonEndpoint, type NodeEndpoint } from "@/lib/nodes.server";
 
 export type ExtraCoin = Extract<PocketCoin, "DOGE" | "BCH" | "ZEC" | "XRP" | "TRX" | "SOL" | "DASH" | "ATOM" | "RUNE" | "ADA" | "XLM" | "TON" | "SUI">;
 export const EXTRA_COINS: ExtraCoin[] = ["DOGE", "BCH", "ZEC", "XRP", "TRX", "SOL", "DASH", "ATOM", "RUNE", "ADA", "XLM", "TON", "SUI"];
@@ -156,10 +156,10 @@ async function stellarBalance(address: string): Promise<number | null> {
 
 /** TON: balance in nanotons (an undeployed W5 wallet can still hold coins). toncenter's free key lifts its ~1 req/s public limit; sent as a header so it never lands in a URL or log. */
 async function tonBalance(address: string): Promise<number | null> {
-  const key = process.env.TONCENTER_API_KEY;
-  const headers = key ? { ...UA, "X-API-Key": key } : UA;
-  const a = await getJson<{ ok?: boolean; result?: string }>(`https://toncenter.com/api/v2/getAddressBalance?address=${encodeURIComponent(address)}`, { headers });
+  const endpoint = tonEndpoint();
+  const a = await getJson<{ ok?: boolean; result?: string }>(`${endpoint.url}/getAddressBalance?address=${encodeURIComponent(address)}`, { headers: endpoint.headers });
   if (a?.ok && a.result !== undefined) return toUnits(BigInt(a.result), "TON");
-  const b = await getJson<{ balance?: number | string }>(`https://tonapi.io/v2/accounts/${encodeURIComponent(address)}`, { headers: UA });
+  const fallback = tonEndpoint(true);
+  const b = await getJson<{ balance?: number | string }>(`${fallback.url}/accounts/${encodeURIComponent(address)}`, { headers: fallback.headers });
   return b?.balance !== undefined ? toUnits(BigInt(b.balance), "TON") : null;
 }

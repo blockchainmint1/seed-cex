@@ -31,8 +31,28 @@ export const ED_NODES = {
   stellar: "https://horizon.stellar.org",
   ton: "https://toncenter.com/api/v2",
   tonTrace: "https://tonapi.io/v2/traces",
+  tonApi: "https://tonapi.io/v2",
+  stellarBackup: "https://horizon.stellar.lobstr.co",
   sui: "https://fullnode.mainnet.sui.io:443",
 } as const;
+
+/** Shared header configuration for every TON read, estimate, submission and trace lookup. */
+export function tonEndpoint(api = false): NodeEndpoint {
+  const key = api ? process.env['TONAPI_API_KEY'] : process.env['TONCENTER_API_KEY'];
+  const headers: Record<string, string> = { ...JSON_HEADERS };
+  if (key) headers[api ? "Authorization" : "X-API-Key"] = api ? `Bearer ${key}` : key;
+  return { url: api ? ED_NODES.tonApi : ED_NODES.ton, headers, provider: "public" };
+}
+
+/** Optional operator-configured HTTPS service; no keys in URLs or public display data. */
+export function edEndpoint(chain: "stellar" | "sui"): NodeEndpoint {
+  const prefix = chain === "stellar" ? "STELLAR_HORIZON" : "SUI_GRPC";
+  const url = process.env[`${prefix}_URL`] || ED_NODES[chain];
+  const parsed = new URL(url);
+  if (parsed.protocol !== "https:" || parsed.username || parsed.password) throw new Error("Invalid coin network configuration");
+  const key = process.env[`${prefix}_API_KEY`];
+  return { url: url.replace(/\/$/, ""), headers: { ...JSON_HEADERS, ...(key ? { "x-api-key": key } : {}) }, provider: "public" };
+}
 
 const ALCHEMY_HOST: Partial<Record<NodeNetwork, string>> = {
   ethereum: "eth-mainnet",

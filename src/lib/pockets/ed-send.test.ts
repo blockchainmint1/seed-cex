@@ -13,12 +13,12 @@ import { buildStellarTransfer } from "./stellar-tx";
 import { buildTonTransfer, tonDestination } from "./ton-tx";
 import { buildSuiTransfer, signSuiTransfer, suiGasBudget } from "./sui-tx";
 import { edAddress, TON_W5_WALLET_ID } from "./ed25519-chains";
-import { ED_SENDS_ENABLED, edSendBlocker, edStageAllows, checkNativeSpend, stellarUnits, stellarReserve } from "./ed-send-rules";
+import { ED_SENDS_ENABLED, edSendBlocker, edSendStage, edStageAllows, checkNativeSpend, stellarUnits, stellarReserve, stellarFeeBid, stellarMemoProblem, spendableAfterFee, edSigningRecovery } from "./ed-send-rules";
 import { sendBlocker } from "@/lib/withdraw/rules";
 import { depositState, findAsset, findNetwork } from "@/lib/account/deposit-options";
 import { withdrawCoin } from "@/lib/withdraw/catalog";
 import { maybeBroadcast } from "@/lib/broadcast-rules";
-import { suiPaid, tonTraceStatus, type TonTrace } from "./ed-confirm-rules";
+import { suiPaid, tonTraceStatus, stellarExpired, tonExpired, suiExpired, type TonTrace } from "./ed-confirm-rules";
 
 const key = new Uint8Array(32).fill(7);
 const other = new Uint8Array(32).fill(8);
@@ -27,8 +27,9 @@ const otherPub = ed25519.getPublicKey(other);
 const from = (c: "XLM" | "TON" | "SUI") => edAddress(c, pub);
 const to = (c: "XLM" | "TON" | "SUI") => edAddress(c, otherPub);
 
-describe("one gate for deposits and withdrawals, before audit", () => {
+describe("one gate for audited tester deposits and withdrawals", () => {
   test("activation remains off", () => expect(ED_SENDS_ENABLED).toBe(false));
+  test("the approved activation is testers only", () => expect(edSendStage()).toBe("testers"));
   test("review stage allows nobody, including testers", () => {
     expect(edStageAllows("review", false)).toBe(false); expect(edStageAllows("review", true)).toBe(false);
   });
@@ -43,11 +44,18 @@ describe("one gate for deposits and withdrawals, before audit", () => {
       expect(withdrawCoin(chain, chain.toLowerCase())?.pocket).toBe(chain);
       expect(withdrawCoin(chain, chain.toLowerCase())?.decimals).toBe(chain === "XLM" ? 7 : 9);
     });
-    test(`${chain} cannot deposit or send before clearance, even for an otherwise ready tester`, () => {
+    test(`${chain} allows ready testers to deposit and send`, () => {
       const net = findNetwork(findAsset(chain), chain.toLowerCase());
       if (!net) throw new Error("Network missing");
-      expect(depositState(net, true, { [chain]: from(chain) }, null).ok).toBe(false);
-      expect(sendBlocker({ symbol: chain, networkLabel: chain, tester: true, frozen: false, link: { mode: "access", hasKey: true, address: from(chain) } })).toBe(edSendBlocker(chain));
+      expect(depositState(net, true, { [chain]: from(chain) }, null).ok).toBe(true);
+      expect(sendBlocker({ symbol: chain, networkLabel: chain, tester: true, frozen: false, link: { mode: "access", hasKey: true, address: from(chain) } })).toBeNull();
+    });
+    test(`${chain} stays closed for non-testers and unknown readiness`, () => {
+      const net = findNetwork(findAsset(chain), chain.toLowerCase());
+      if (!net) throw new Error("Network missing");
+      expect(depositState(net, true, { [chain]: from(chain) }, edSendBlocker(chain, false)).ok).toBe(false);
+      expect(depositState(net, true, { [chain]: from(chain) }).ok).toBe(false);
+      expect(sendBlocker({ symbol: chain, networkLabel: chain, tester: false, frozen: false, link: { mode: "access", hasKey: true, address: from(chain) } })).not.toBeNull();
       expect(edSendBlocker(chain)).not.toBeNull();
     });
   }
@@ -55,6 +63,45 @@ describe("one gate for deposits and withdrawals, before audit", () => {
 });
 
 describe("fees, reserves and uncertain sends", () => {
+  test("memo-required Stellar destinations are refused", () => {
+    expect(stellarMemoProblem({ 'config.memo_required': 'MQ==' })).not.toBeNull();
+    expect(stellarMemoProblem(undefined)).toBeNull();
+    expect(stellarMemoProblem({ 'config.memo_required': 'MA==' })).toBeNull();
+  });
+  test("Stellar fee follows the live median bid above the base-fee floor", () => {
+    expect(stellarFeeBid(100, "21009")).toBe(21009n);
+    expect(stellarFeeBid(100, "100")).toBe(200n);
+    expect(() => stellarFeeBid(100, "1000001")).toThrow();
+    expect(() => stellarFeeBid(100, "NaN")).toThrow();
+  });
+  test("spendable excludes the fee and reserve before approvals", () => {
+    expect(spendableAfterFee(20_000_000n, 21_009n, 10_000_000n)).toBe(9_978_991n);
+    expect(spendableAfterFee(1_000_000_000n, 50_000_000n, 10_000_000n)).toBe(940_000_000n);
+    expect(spendableAfterFee(1_000_000_000n, 50_000_000n)).toBe(950_000_000n);
+    expect(spendableAfterFee(1n, 2n)).toBe(0n);
+  });
+  test("Stellar waits for a ledger beyond signed expiry plus a ledger margin", () => {
+    expect(stellarExpired(1000, 1030)).toBe(false);
+    expect(stellarExpired(1000, 1031)).toBe(true);
+    expect(stellarExpired(1000, NaN)).toBe(false);
+  });
+  test("TON expiry requires unchanged sequence, and never expires first deployment", () => {
+    expect(tonExpired(1000, 12, 12, 1031)).toBe(true);
+    expect(tonExpired(1000, 12, 13, 1031)).toBe(false);
+    expect(tonExpired(1000, 0, 0, 1031)).toBe(false);
+    expect(tonExpired(1000, 12, 12, 1030)).toBe(false);
+  });
+  test("Sui only expires beyond the signed epoch, not during it", () => {
+    expect(suiExpired("42", "42")).toBe(false);
+    expect(suiExpired("42", "43")).toBe(true);
+    expect(suiExpired("42", "unknown")).toBe(false);
+  });
+  test("interrupted sends adopt recorded ids after ten minutes without re-signing", () => {
+    expect(edSigningRecovery("recorded-id", 1000, 601000)).toBeNull();
+    expect(edSigningRecovery("recorded-id", 1000, 601001)).toBe("unknown");
+    expect(edSigningRecovery(null, 1000, 601001)).toBe("failed");
+    expect(edSigningRecovery(null, NaN, 601001)).toBeNull();
+  });
   test("Stellar balance is exact to seven decimals", () => {
     expect(stellarUnits("900719925.1234567")).toBe(9007199251234567n);
     expect(() => stellarUnits("1.00000001")).toThrow();
@@ -149,11 +196,12 @@ describe("TON W5 mainnet transfer", () => {
 
 describe("Sui exact native payment", () => {
   const coins = [{ objectId: "0x" + "3".repeat(64), version: "12", digest: base58.encode(new Uint8Array(32).fill(3)), balance: "1000000000" }];
-  const args = { from: from("SUI"), to: to("SUI"), units: 123456789n, gasPrice: 1000n, gasBudget: 5_000_000n, coins };
+  const args = { from: from("SUI"), to: to("SUI"), units: 123456789n, gasPrice: 1000n, gasBudget: 5_000_000n, coins, expiresEpoch: "42" };
   test("offline BCS contains only a gas split and transfer, and signature verifies in the official SDK", async () => {
     const tx = await buildSuiTransfer(args);
     const data = Transaction.from(tx.bytes).getData();
     expect(data.sender).toBe(args.from); expect(data.gasData.owner).toBe(args.from);
+    expect(data.expiration).toEqual({ Epoch: 42, $kind: "Epoch" });
     expect(data.gasData.budget).toBe("5000000"); expect(data.gasData.payment?.length).toBe(1);
     expect(data.commands.map((c) => c.$kind)).toEqual(["SplitCoins", "TransferObjects"]);
     const pure = data.inputs.flatMap((i) => i.$kind === "Pure" ? [Buffer.from(i.Pure.bytes, "base64")] : []);
@@ -184,6 +232,12 @@ describe("native-chain delivery confirmations", () => {
   test("TON unrelated message ids never confirm", () => expect(tonTraceStatus(trace, "another-message", target, 123456789n)).toBeNull());
   test("TON waits until the destination transaction is seen", () => expect(tonTraceStatus({ ...trace, children: [] }, "message-id", target, 123456789n)).toBeNull());
   test("TON mismatched amount never confirms", () => expect(tonTraceStatus(trace, "message-id", target, 123456788n)?.success).toBe(false));
+  test("TON imprecise numeric evidence keeps waiting instead of declaring a paid send failed", () => {
+    const huge = { ...trace, transaction: { ...trace.transaction, out_msgs: [{ destination: { address: target }, value: 9007199254740992 }] } };
+    expect(tonTraceStatus(huge, "message-id", target, 9007199254740992n)).toBeNull();
+    const exact = { ...huge, transaction: { ...huge.transaction, out_msgs: [{ destination: { address: target }, value: "9007199254740992" }] } };
+    expect(tonTraceStatus(exact, "message-id", target, 9007199254740992n)?.success).toBe(true);
+  });
   test("Sui verifies exactly native SUI credited to the chosen recipient", () => {
     expect(suiPaid([{ address: "recipient", coinType: "0x2::sui::SUI", amount: "123" }], "recipient", 123n)).toBe(true);
     expect(suiPaid([{ address: "recipient", coinType: "0x2::fake::SUI", amount: "123" }], "recipient", 123n)).toBe(false);

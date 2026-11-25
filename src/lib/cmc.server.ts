@@ -29,13 +29,14 @@ export type QuoteSet = {
 };
 
 /** One shared symbol set — the quote cache is not keyed by symbols. */
-export const TRACKED = ["TXC", "USDC", "USDT", "ETH", "BNB", "BTC", "LTC", "DOGE", "BCH", "XRP", "TRX", "SOL", "ZEC"];
+export const TRACKED = ["TXC", "USDC", "USDT", "ETH", "BNB", "BTC", "LTC", "DOGE", "BCH", "XRP", "TRX", "SOL", "ZEC", "XLM", "TON", "SUI"];
 
-let cache: { at: number; value: QuoteSet } | null = null;
+let cache: { at: number; key: string; value: QuoteSet } | null = null;
 
 export async function fetchQuotes(symbols: string[]): Promise<QuoteSet> {
   const now = Date.now();
-  if (cache && now - cache.at < TTL_MS) return cache.value;
+  const symbolKey = [...new Set(symbols)].sort().join(",");
+  if (cache && cache.key === symbolKey && now - cache.at < TTL_MS) return cache.value;
 
   const key = process.env.CMC_API;
   const empty: QuoteSet = {
@@ -89,7 +90,7 @@ export async function fetchQuotes(symbols: string[]): Promise<QuoteSet> {
       online: quotes.length > 0,
       fetchedAt: new Date().toISOString(),
     };
-    cache = { at: now, value };
+    cache = { at: now, key: symbolKey, value };
     return value;
   } catch (err) {
     console.error("CMC quotes error", err);

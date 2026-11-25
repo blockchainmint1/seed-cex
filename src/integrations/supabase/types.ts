@@ -3654,6 +3654,7 @@ export type Database = {
           id: string
           link_id: string
           release_at: string
+          send_meta: Json | null
           sent_at: string | null
           status: string
           to_address: string
@@ -3679,6 +3680,7 @@ export type Database = {
           id?: string
           link_id: string
           release_at: string
+          send_meta?: Json | null
           sent_at?: string | null
           status?: string
           to_address: string
@@ -3704,6 +3706,7 @@ export type Database = {
           id?: string
           link_id?: string
           release_at?: string
+          send_meta?: Json | null
           sent_at?: string | null
           status?: string
           to_address?: string

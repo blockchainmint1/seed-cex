@@ -1,5 +1,8 @@
 # Roadmap
 
+- [x] XLM/TON/SUI audit fixes ES1–ES6 + HF1: safe destinations, signed expiry evidence, fees, prices, keyed TON reads and exact confirmation evidence; enabled testers only (Bobby approved Nov 25); public-provider and TON first-deployment exceptions documented
+- [ ] Funded XLM/TON/SUI live sends and public release (blocked: owner-approved funds/taps and auditor re-check)
+
 - [x] HC1: reserve_swap_send verifies a chained leg's parent (exists, member's own, approved) in SQL + sendSwapFromPocketUnlocked (commit f5fa587, Nov 25)
 - [x] HC2: own-pocket swaps stay tap-free (Bobby, Nov 25) — Swap page wording no longer promises a tap on every swap (commit f5fa587)
 - [ ] Q1: HME sign-in ticket shared-secret HMAC → asymmetric signing needs Honest.Money to build their half (blocked: HME team; offer Bobby a handoff draft)
@@ -474,5 +477,6 @@
 - [x] Native-coin senders with address ownership, exact amounts, fee/reserve checks and recorded transaction ids
 - [x] Connect all three to the existing email + 2FA + Telegram withdrawal flow and deposit catalog
 - [x] Tests and auditor handoff (1,514 tests; signed-in deposit/withdraw gates checked)
-- [ ] Activate audited tester sends, then wider deposits/withdrawals (blocked: independent audit clearance + funded real send tests)
+- [x] Activate audited tester sends in preview (Bobby approved Nov 25); regular members remain blocked
+- [ ] Publish reviewed fixes, owner-funded tester sends, then wider deposits/withdrawals (blocked: auditor re-check, Telegram readiness + wallet re-link, owner-funded live tests)
 - [ ] Every possible automatic swap path (earlier request): continue separately; provider routes and approved multi-leg flow required

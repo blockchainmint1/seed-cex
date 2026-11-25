@@ -151,7 +151,7 @@ export function depositState(
   net: DepositNetwork, linked: boolean, addresses: Record<string, string | undefined>, seedsSendBlocker?: string | null,
 ): DepositState {
   const newChain = edSendBlocker(net.pocket);
-  if (newChain && (edSendStage() === "review" || seedsSendBlocker !== null)) return { ok: false, reason: newChain };
+  if (newChain && edSendStage() === "review") return { ok: false, reason: newChain };
   if (!linked) return { ok: false, reason: "Link your HME Wallet trading pocket first — deposits go to that pocket." };
   if (withdrawRoute(net) === "seeds" && seedsSendBlocker !== null)
     return { ok: false, reason: `Deposits on ${net.label} stay off for you until Seeds can send them back out: ${seedsSendBlocker ?? "checking…"}` };

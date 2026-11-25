@@ -7,6 +7,7 @@ import { bech32 } from "@scure/base";
 import { bytesToHex } from "@noble/hashes/utils.js";
 import { getChain, omniLegAsset } from "@/lib/chains";
 import { EVM_MAX_FEE, EVM_NATIVE, type WithdrawCoin } from "./catalog";
+import type { EdSendMeta } from "@/lib/pockets/ed-send-rules";
 
 type Link = { id: string; ciphertext: string | null; xpubs?: Record<string, string> };
 
@@ -26,7 +27,12 @@ export async function destinationProblem(c: WithdrawCoin, to: string, own: strin
   if (c.kind === "xlm" || c.kind === "ton" || c.kind === "sui") {
     try {
       const { xlmDecodeAddress, validSuiAddress } = await import("@/lib/pockets/ed25519-chains");
-      if (c.kind === "xlm") xlmDecodeAddress(t);
+      if (c.kind === "xlm") {
+        xlmDecodeAddress(t);
+        const { stellarDestinationProblem } = await import("@/lib/pockets/ed-send.server");
+        try { return await stellarDestinationProblem(t); }
+        catch { return "Stellar couldn't check whether that address requires a memo. Try again later."; }
+      }
       if (c.kind === "sui" && (!validSuiAddress(t) || /^0x0+$/.test(t))) throw new Error("Use a full Sui mainnet address, not the zero address.");
       if (c.kind === "ton") {
         const { tonDestination } = await import("@/lib/pockets/ton-tx");
@@ -161,7 +167,7 @@ function ltcScript(address: string): Uint8Array | undefined {
 }
 
 /** Called with the transaction id before broadcast where the network allows it. */
-export type Recorder = (txid: string) => Promise<void>;
+export type Recorder = (txid: string, meta?: EdSendMeta) => Promise<void>;
 
 /**
  * Sign and broadcast one transfer of `units` from the pocket at `from` to `to`.
@@ -299,11 +305,11 @@ export async function sendWithdrawal(c: WithdrawCoin, link: Link, from: string, 
 }
 
 /** EVM only: confirmations and success of a sent withdrawal. Other networks return null (shown as "Sent"). */
-export async function txStatus(c: WithdrawCoin, txid: string, to?: string, units?: bigint) {
+export async function txStatus(c: WithdrawCoin, txid: string, to?: string, units?: bigint, from?: string, evidence?: unknown) {
   if (c.kind === "xlm" || c.kind === "ton" || c.kind === "sui") {
     if (!to || units === undefined) return null;
     const { edTxStatus } = await import("@/lib/pockets/ed-send.server");
-    return edTxStatus(c.pocket as "XLM" | "TON" | "SUI", txid, to, units);
+    return edTxStatus(c.pocket as "XLM" | "TON" | "SUI", txid, to, units, from, evidence);
   }
   if (c.kind !== "evm") return null;
   const { fetchEvmTxStatus } = await import("@/lib/evm.server");

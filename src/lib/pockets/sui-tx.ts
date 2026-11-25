@@ -10,12 +10,14 @@ import { checkNativeSpend } from "./ed-send-rules";
 export type SuiCoinRef = { objectId: string; version: string; digest: string; balance: string };
 
 export async function buildSuiTransfer(input: {
-  from: string; to: string; units: bigint; gasPrice: bigint; gasBudget: bigint; coins: SuiCoinRef[];
+  from: string; to: string; units: bigint; gasPrice: bigint; gasBudget: bigint; coins: SuiCoinRef[]; expiresEpoch: string;
 }) {
   if (!validSuiAddress(input.from) || !validSuiAddress(input.to) || /^0x0+$/.test(input.to) || input.to === input.from) throw new Error("Invalid Sui destination");
   if (input.coins.length === 0 || input.coins.length > 256 || new Set(input.coins.map((c) => c.objectId)).size !== input.coins.length || input.gasPrice <= 0n) throw new Error("Invalid Sui gas coins");
   checkNativeSpend("SUI", input.units, input.coins.reduce((n, c) => n + BigInt(c.balance), 0n), input.gasBudget);
   const tx = new Transaction();
+  if (!/^\d+$/.test(input.expiresEpoch) || BigInt(input.expiresEpoch) > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error("Invalid Sui expiry");
+  tx.setExpiration({ Epoch: input.expiresEpoch });
   tx.setSender(input.from); tx.setGasOwner(input.from); tx.setGasPrice(input.gasPrice); tx.setGasBudget(input.gasBudget);
   tx.setGasPayment(input.coins.map(({ objectId, version, digest }) => ({ objectId, version, digest })));
   const [payment] = tx.splitCoins(tx.gas, [tx.pure.u64(input.units)]);

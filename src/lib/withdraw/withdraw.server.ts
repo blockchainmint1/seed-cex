@@ -24,6 +24,7 @@ import {
   unitsToNumber, unitsToText, withdrawReadiness, WITHDRAW_PILOT_TESTERS_ONLY,
 } from "./rules";
 import { isKeyKind, pocketSource, type PocketSource, type SignInKind } from "@/lib/account/sign-in-kind";
+import { edSigningRecovery } from "@/lib/pockets/ed-send-rules";
 
 const SITE = "https://seeds.honest.money";
 const withdrawUrl = (c: WithdrawCoin) => `${SITE}/account/balances/withdraw?coin=${encodeURIComponent(c.symbol)}&network=${c.network}`;
@@ -85,7 +86,7 @@ export async function readinessFor(userId: string, linkId: string | null) {
 async function usdPrice(symbol: string): Promise<number | null> {
   if (symbol === "TSD") return 1;
   const { fetchQuotes, TRACKED } = await import("@/lib/cmc.server");
-  const q = await fetchQuotes(["XLM", "TON", "SUI"].includes(symbol) ? [...TRACKED, symbol] : TRACKED);
+  const q = await fetchQuotes(TRACKED);
   const p = q.quotes.find((x) => x.symbol === symbol)?.price;
   if (p && p > 0) return p;
   return symbol === "USDC" || symbol === "USDT" ? 1 : null;
@@ -159,26 +160,28 @@ async function prepare(userId: string, tester: boolean, input: WithdrawInput) {
   const block = sendBlocker({ link: link ? { mode: link.mode, hasKey: link.hasKey, address: from } : null, tester, frozen: lim.frozen, symbol: coin.symbol, networkLabel: coin.networkLabel, kind: who.kind });
   if (block) throw new Error(block);
   if (!who.hasEmail) throw new Error(NEEDS_EMAIL_TO_WITHDRAW);
-  const ready = readinessProblem(await readinessFor(userId, link!.id), who.pocket.kind, who.pocket.viaLink);
+  if (!link || !from) throw new Error("Your trading pocket is no longer linked. Nothing was sent.");
+  const ready = readinessProblem(await readinessFor(userId, link.id), who.pocket.kind, who.pocket.viaLink);
   if (ready) throw new Error(ready);
   const to = input.to.trim();
   const { destinationProblem, readBalance } = await import("./send.server");
-  const bad = await destinationProblem(coin, to, from!);
+  const bad = await destinationProblem(coin, to, from);
   if (bad) throw new Error(bad);
   const tag = coin.kind === "xrp" ? parseDestinationTag(input.tag) : { ok: true as const, tag: null };
   if (!tag.ok) throw new Error("A destination tag is a whole number (up to 10 digits).");
   const units = parseUnits(input.amount, coin.decimals);
-  const [bal, price] = await Promise.all([readBalance(coin, from!), usdPrice(coin.symbol)]);
+  const [bal, price] = await Promise.all([readBalance(coin, from), usdPrice(coin.symbol)]);
   const problem = amountProblem({ symbol: coin.symbol, decimals: coin.decimals, units, balance: bal.units, feeBalance: bal.feeUnits, feeCoin: coin.feeCoin });
   if (problem) throw new Error(problem);
-  const amount = unitsToNumber(units!, coin.decimals);
+  if (units === null) throw new Error("Enter a valid withdrawal amount.");
+  const amount = unitsToNumber(units, coin.decimals);
   // Coins set aside for open orders and trades can't be withdrawn (set-asides.ts).
   {
     const { legForCoin } = await import("@/lib/set-asides");
     const held = legForCoin(coin.symbol, coin.network);
     if (held) {
       const { pocketSpendProblem } = await import("@/lib/set-asides.server");
-      const why = await pocketSpendProblem(userId, held, amount, { address: from!, network: coin.evmChain ?? null });
+      const why = await pocketSpendProblem(userId, held, amount, { address: from, network: coin.evmChain ?? null });
       if (why) throw new Error(why);
     }
   }
@@ -186,7 +189,7 @@ async function prepare(userId: string, tester: boolean, input: WithdrawInput) {
   if (price == null && !lim.tester) throw new Error(`No live price for ${coin.symbol} right now, so your withdrawal limit can't be checked.`);
   const amountUsd = price == null ? 0 : Math.round(amount * price * 100) / 100;
   if (amountUsd > lim.perWithdrawalUsd) throw new Error(`Your withdrawal level allows up to $${lim.perWithdrawalUsd.toLocaleString("en-US")} per withdrawal.`);
-  return { coin, link: link!, lim, from: from!, to, tag: tag.tag, units: units!, amount, amountText: unitsToText(units!, coin.decimals), amountUsd };
+  return { coin, link, lim, from, to, tag: tag.tag, units, amount, amountText: unitsToText(units, coin.decimals), amountUsd };
 }
 
 /** Step 1: email a code for exactly this withdrawal. */
@@ -353,7 +356,10 @@ async function sendOne(r: Row): Promise<"sent" | "failed" | "unknown"> {
     if (from !== r.from_address) throw new Error("Your pocket address changed since you asked. Nothing was sent.");
     const { destinationProblem, sendWithdrawal } = await import("./send.server");
     if (await destinationProblem(coin, r.to_address, from)) throw new Error("The destination is no longer allowed. Nothing was sent.");
-    const sent = await sendWithdrawal(coin, link, from, r.to_address, BigInt(r.amount_units), async (id) => { txid = id; await update({ txid: id }); }, r.destination_tag, tester);
+    const sent = await sendWithdrawal(coin, link, from, r.to_address, BigInt(r.amount_units), async (id, meta) => {
+      await update({ txid: id, sent_at: new Date().toISOString(), ...(meta ? { send_meta: meta } : {}) });
+      txid = id;
+    }, r.destination_tag, tester);
     txid = sent;
     await update({ status: "sent", txid: sent, sent_at: new Date().toISOString(), confirmations: 0 });
     void tell(r.user_id, `✅ <b>Withdrawal sent</b>\n${r.amount} ${coin.symbol} on ${coin.networkLabel} to ${r.to_address}\nTx ${sent}`, "Withdrawal sent",
@@ -383,10 +389,23 @@ export async function advanceWithdrawals(onlyId?: string) {
   const results: Record<string, number> = { sent: 0, failed: 0, unknown: 0, skipped: 0, confirmed: 0 };
   for (const r of (due ?? []) as Row[]) {
     const { data: claimed } = await supabaseAdmin.rpc("claim_pocket_withdrawal", { _id: r.id });
-    if (!claimed) { results.skipped!++; continue; }
-    results[await sendOne(r)]!++;
+    if (!claimed) { results['skipped'] = (results['skipped'] ?? 0) + 1; continue; }
+    const outcome = await sendOne(r);
+    results[outcome] = (results[outcome] ?? 0) + 1;
   }
   if (onlyId) return results;
+
+  // A killed request cannot run its catch block. Adopt its recorded id independently of
+  // another withdrawal being requested; never re-sign or infer expiry from request age.
+  const { data: interrupted } = await supabaseAdmin.from("pocket_withdrawals").select("id, txid, updated_at")
+    .eq("status", "signing").in("coin", ["XLM", "TON", "SUI"]).lt("updated_at", new Date(Date.now() - 600_000).toISOString()).limit(25);
+  for (const row of interrupted ?? []) {
+    const outcome = edSigningRecovery(row.txid, Date.parse(row.updated_at), Date.now());
+    if (!outcome) continue;
+    await supabaseAdmin.from("pocket_withdrawals").update({ status: outcome,
+      error: outcome === "unknown" ? "Interrupted network send; checking the recorded transaction, do not retry." : "Send stopped before recording a transaction. Nothing was submitted.",
+      updated_at: new Date().toISOString() }).eq("id", row.id).eq("status", "signing").eq("updated_at", row.updated_at);
+  }
 
   // Time out taps that never came (the approvals sweeper also does this; this keeps rows tidy if it lags).
   const { data: stale } = await supabaseAdmin.from("pocket_withdrawals").select("id").eq("status", "approving").lt("created_at", new Date(Date.now() - 30 * 60_000).toISOString()).limit(25);
@@ -395,20 +414,25 @@ export async function advanceWithdrawals(onlyId?: string) {
       .eq("id", s.id).eq("status", "approving");
   }
 
-  const { data: sent } = await supabaseAdmin.from("pocket_withdrawals").select("id, user_id, chain, coin, amount, amount_units, to_address, txid").in("status", ["sent", "unknown"]).not("txid", "is", null).limit(25);
+  const { data: sent } = await supabaseAdmin.from("pocket_withdrawals").select("id, user_id, chain, coin, amount, amount_units, to_address, from_address, txid, send_meta").in("status", ["sent", "unknown"]).not("txid", "is", null).order("updated_at").limit(25);
   const { txStatus } = await import("./send.server");
   for (const s of sent ?? []) {
     const coin = withdrawCoin(s.coin, s.chain);
     if (!coin || !s.txid || !["evm", "xlm", "ton", "sui"].includes(coin.kind)) continue;
-    const st = await txStatus(coin, s.txid, s.to_address, BigInt(s.amount_units)).catch(() => null);
-    if (!st || st.confirmations == null) continue;
+    const st = await txStatus(coin, s.txid, s.to_address, BigInt(s.amount_units), s.from_address, s.send_meta).catch(() => null);
+    if (!st || st.confirmations == null) {
+      await supabaseAdmin.from("pocket_withdrawals").update({ updated_at: new Date().toISOString() }).eq("id", s.id).in("status", ["sent", "unknown"]);
+      continue;
+    }
     if (st.success === false) {
-      await supabaseAdmin.from("pocket_withdrawals").update({ status: "failed", error: `${coin.networkLabel} rejected the transaction`, confirmations: st.confirmations, updated_at: new Date().toISOString() }).eq("id", s.id);
-      void tell(s.user_id, `⚠ ${coin.networkLabel} rejected your ${s.amount} ${s.coin} withdrawal. Only the network fee was used.`, "Withdrawal rejected", [`${coin.networkLabel} rejected the transaction; only the network fee was spent`]);
+      const expired = 'expired' in st && st.expired === true;
+      const reason = expired ? `${coin.networkLabel} transaction expired before inclusion. Nothing left your pocket.` : `${coin.networkLabel} rejected the transaction`;
+      const { data: changed } = await supabaseAdmin.from("pocket_withdrawals").update({ status: "failed", error: reason, confirmations: st.confirmations, updated_at: new Date().toISOString() }).eq("id", s.id).in("status", ["sent", "unknown"]).select("id");
+      if (changed?.length) void tell(s.user_id, `⚠ ${s.amount} ${s.coin}: ${reason}`, expired ? "Withdrawal expired" : "Withdrawal rejected", [reason]);
     } else if (st.success === true) {
       const done = st.confirmations >= (coin.kind === "evm" ? EVM_CONFIRMATIONS : 1);
       await supabaseAdmin.from("pocket_withdrawals").update({ status: done ? "confirmed" : "sent", confirmations: st.confirmations, updated_at: new Date().toISOString() }).eq("id", s.id);
-      if (done) results.confirmed!++;
+      if (done) results['confirmed'] = (results['confirmed'] ?? 0) + 1;
     }
   }
   return results;
