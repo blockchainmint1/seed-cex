@@ -5728,6 +5728,7 @@ export type Database = {
       }
       purge_expired_delegations: { Args: never; Returns: number }
       purge_expired_wallet_challenges: { Args: never; Returns: number }
+      qa_admin_delete_report: { Args: { _id: string }; Returns: string[] }
       record_client_error: {
         Args: {
           _account: string

@@ -257,3 +257,17 @@ export const adminSetErrorLog = createServerFn({ method: "POST" })
     if (error) throw new Error("Couldn't save the setting.");
     return { ok: true };
   });
+
+/** Permanently deletes a report with its comments, history and files (admins only; Bobby's call, Nov 2026). */
+export const adminDeleteQaReport = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context as never);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: paths, error } = await supabaseAdmin.rpc("qa_admin_delete_report" as never, { _id: data.id } as never);
+    if (error) throw new Error("Couldn't delete the report.");
+    const files = (paths as unknown as string[] | null) ?? [];
+    if (files.length) await supabaseAdmin.storage.from("qa-attachments").remove(files);
+    return { deleted: true };
+  });

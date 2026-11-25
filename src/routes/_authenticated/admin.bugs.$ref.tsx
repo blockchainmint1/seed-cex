@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ArrowLeft, Paperclip } from "lucide-react";
-import { adminCommentQaReport, adminGetQaReport, adminListQaReports, adminUpdateQaReport } from "@/lib/qa/qa-admin.functions";
+import { adminCommentQaReport, adminDeleteQaReport, adminGetQaReport, adminListQaReports, adminUpdateQaReport } from "@/lib/qa/qa-admin.functions";
 import { QA_SEVERITIES, QA_STATUSES, categoryLabel, refLabel, severityLabel, statusLabel } from "@/lib/qa/qa-rules";
 import { Card, Note, inputCls } from "@/components/account/ui";
 import { Loading } from "@/components/admin/ui";
@@ -39,6 +39,9 @@ function BugDetail() {
   const refresh = () => { void qc.invalidateQueries({ queryKey: ["admin-qa"] }); };
   type Change = { id: string; status?: string; severity?: string | null; assigneeId?: string | null; duplicateOfRef?: string | null };
   const change = useMutation({ mutationFn: (v: Change) => update({ data: v }), onSuccess: refresh });
+  const del = useServerFn(adminDeleteQaReport);
+  const navigate = useNavigate();
+  const remove = useMutation({ mutationFn: (id: string) => del({ data: { id } }), onSuccess: () => { refresh(); void navigate({ to: "/admin/bugs" }); } });
   const [body, setBody] = useState("");
   const [internal, setInternal] = useState(true);
   const [dupRef, setDupRef] = useState("");
@@ -125,6 +128,11 @@ function BugDetail() {
         <div className="space-y-5">
           <Card title="Triage">
             <div className="space-y-3">
+              <Button variant="destructive" size="sm" className="w-full" disabled={remove.isPending}
+                onClick={() => { if (window.confirm(`Delete ${refLabel(r.ref_no)} for good? Its comments, history and screenshots are removed too. This can't be undone.`)) remove.mutate(r.id); }}>
+                {remove.isPending ? "Deleting…" : "Delete report"}
+              </Button>
+              {remove.error ? <Note tone="error">{(remove.error as Error).message}</Note> : null}
               <label className="block space-y-1 text-sm"><span className="text-muted-foreground">Status</span>
                 <select value={r.status} disabled={change.isPending} onChange={(e) => change.mutate({ id: r.id, status: e.target.value })} className={sel}>
                   {QA_STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
