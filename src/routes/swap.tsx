@@ -303,6 +303,18 @@ function SwapPage() {
 
             {plan.problem ? <p className="border-l-2 border-warn pl-3 text-xs text-foreground">{plan.problem}</p> : null}
 
+            {/* USD₮ on TON is only reachable from TON, so a link that opens on TSD → USD₮ on TON
+                hands the member the one tap that starts the route. */}
+            {to.kind === "ton_usdt" && !plan.options.length ? (
+              <button
+                type="button"
+                onClick={() => setPair({ kind: "tsd" }, { kind: "ton" })}
+                className="inline-flex items-center gap-1.5 rounded-sm border border-border px-2.5 py-1 font-mono text-[11px] text-foreground transition-colors hover:border-primary hover:text-primary"
+              >
+                Start with TSD → TON
+              </button>
+            ) : null}
+
             {hasXchain && toCoin ? (
               <div className="space-y-2">
                 {toPocket ? (

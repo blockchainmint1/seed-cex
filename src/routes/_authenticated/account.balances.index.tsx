@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getEvmTokenRows } from "@/lib/evm.functions";
@@ -14,6 +14,7 @@ import { fmtCoin, fmtUsd, usePocketBalances, usePocketLink } from "@/components/
 import { Arriving } from "@/components/account/Arriving";
 import { revokeCheck, listCoins } from "@/lib/pockets/hme-support";
 import { rowKey, useSetAsides } from "@/components/account/use-set-asides";
+import { swapPairForCoinSymbol, swapPairForToken, swapPairForRow, type SwapPair } from "@/lib/account/swap-link";
 
 /** Coins with no THORChain/Maya pool: trade them on their Seeds TSD market instead. */
 const NO_SWAP = new Set(["PLS", "HEX", "pHEX", "XLM", "SUI"]);
@@ -92,6 +93,12 @@ function SpotBalances() {
 
   const stranded = revokeCheck(rows.filter((r) => r.net.pocket === r.asset.symbol).map((r) => ({ coin: r.asset.symbol, balance: r.balance }))).stranded;
 
+  /** The pair this row's Swap link opens the form on (null = the plain Swap page). */
+  const swapPair = (r: (typeof rows)[number]) =>
+    swapPairForRow(r.asset.symbol, r.net.id, Math.max(0, (r.balance ?? 0) - (held.byRow[rowKey(r)] ?? 0)));
+  const tokenPair = (x: Extra) => (x.token ? swapPairForToken(x.token.chain, x.token.contract, x.balance ?? 0) : null);
+  const strandedPair = stranded.length ? swapPairForCoinSymbol(stranded[0]!.coin) : null;
+
   return (
     <div className="space-y-5">
       <Card>
@@ -164,7 +171,7 @@ function SpotBalances() {
               <Link to="/account/balances/deposit" search={{ coin: r.asset.symbol, network: r.net.id }}>Deposit</Link>
               <Link to="/account/balances/withdraw" search={{ coin: r.asset.symbol, network: r.net.id }}>Withdraw</Link>
               {r.asset.market ? <Link to={r.asset.market}>Trade</Link> : null}
-              {NO_SWAP.has(r.asset.symbol) ? null : <Link to="/swap">Swap</Link>}
+              {NO_SWAP.has(r.asset.symbol) ? null : <SwapLink pair={swapPair(r)} />}
             </div>
           </li>
         ))}
@@ -179,7 +186,7 @@ function SpotBalances() {
                 <span className="num block">{extraNote(x) ?? (x.balance == null ? (tokens.isFetching ? "Checking…" : "—") : fmtCoin(x.balance))}</span>
               </div>
             </div>
-            {x.token?.swappable ? <div className="mt-2 text-xs font-semibold text-primary"><Link to="/swap">Swap</Link></div> : null}
+            {x.token?.swappable ? <div className="mt-2 text-xs font-semibold text-primary"><SwapLink pair={tokenPair(x)} /></div> : null}
           </li>
         ))}
         {!all.length ? <li className="px-4 py-6 text-center text-sm text-muted-foreground">{hideZero ? "No coins with a balance yet." : "No coins match."}</li> : null}
@@ -218,7 +225,7 @@ function SpotBalances() {
                     <Link to="/account/balances/deposit" search={{ coin: r.asset.symbol, network: r.net.id }} className="px-1 text-xs font-semibold text-primary hover:underline">Deposit</Link>
                     <Link to="/account/balances/withdraw" search={{ coin: r.asset.symbol, network: r.net.id }} className="px-1 text-xs font-semibold text-primary hover:underline">Withdraw</Link>
                     {r.asset.market ? <Link to={r.asset.market} className="px-1 text-xs font-semibold text-primary hover:underline">Trade</Link> : null}
-                    {NO_SWAP.has(r.asset.symbol) ? null : <Link to="/swap" className="px-1 text-xs font-semibold text-primary hover:underline">Swap</Link>}
+                    {NO_SWAP.has(r.asset.symbol) ? null : <SwapLink pair={swapPair(r)} className="px-1 text-xs font-semibold text-primary hover:underline" />}
                   </td>
                 </tr>
               );
@@ -236,7 +243,7 @@ function SpotBalances() {
                 <td data-qa-mask className="num px-3 py-2.5 text-right">{extraNote(x) || x.balance == null ? "—" : fmtCoin(x.balance)}</td>
                 <td className="num px-3 py-2.5 text-right text-muted-foreground">—</td>
                 <td className="px-3 py-2 text-right whitespace-nowrap">
-                  {x.token?.swappable ? <Link to="/swap" className="px-1 text-xs font-semibold text-primary hover:underline">Swap</Link> : null}
+                  {x.token?.swappable ? <SwapLink pair={tokenPair(x)} className="px-1 text-xs font-semibold text-primary hover:underline" /> : null}
                 </td>
               </tr>
             ))}
@@ -261,7 +268,7 @@ function SpotBalances() {
       {stranded.length ? (
         <Note tone="warn">
           You hold {listCoins(stranded.map((s) => s.coin))} in this pocket. HME Wallet can't hold {stranded.length > 1 ? "these coins" : "this coin"} —{" "}
-          <Link to="/swap" className="text-primary underline">swap back to TSD</Link> before you revoke Seeds' access.
+          <SwapLink pair={strandedPair} className="text-primary underline">swap back to TSD</SwapLink> before you revoke Seeds' access.
         </Note>
       ) : null}
       {balances.isError ? <Note tone="error">Balances could not be synced. Refresh to retry.</Note> : null}
@@ -270,4 +277,13 @@ function SpotBalances() {
       </p>
     </div>
   );
+}
+
+/**
+ * A row's Swap link: opens the swap form already filled in on the pair this coin can
+ * actually do (sell what you hold to TSD, otherwise buy it with TSD), falling back to
+ * the plain Swap page when Seeds has no planned pair for it.
+ */
+function SwapLink({ pair, className, children = "Swap" }: { pair: SwapPair | null; className?: string; children?: ReactNode }) {
+  return pair ? <Link to="/swap" search={pair} className={className}>{children}</Link> : <Link to="/swap" className={className}>{children}</Link>;
 }
