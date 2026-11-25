@@ -161,7 +161,7 @@ async function requestUnlocked(userId: string, tester: boolean, input: HypeChain
   // Three-step chains: min_out guards the Relay step (TON), final_min the STON.fi step (USD₮ on TON).
   const finalMin = hasTonStep(input.direction) ? chainMinimum(input.shownOut, input.slippageBps) : null;
   const min = finalMin != null ? chainMinimum(q.ton!, input.slippageBps) : chainMinimum(input.shownOut, input.slippageBps);
-  { const { assertSwapLaneFree, coinLane } = await import("@/lib/swap/lanes.server"); const lanes = await import("@/lib/swap/lanes"); void lanes; await assertSwapLaneFree(userId, { kind: "hype_chain", lanes: lanes.hypeChainLanes(input.direction, "awaiting_approval", coinLane(input.coin)) }); }
+  { const { assertSwapLaneFree, coinLane } = await import("@/lib/swap/lanes.server"); const lanes = await import("@/lib/swap/lanes"); void lanes; await assertSwapLaneFree(userId, { kind: "hype_chain", lanes: lanes.hypeChainLanes(input.direction, "awaiting_approval", coinLane(input.coin)), passes: lanes.hypeChainPasses("awaiting_approval") }); }
   const { data: id, error } = await supabaseAdmin.rpc("reserve_hype_chain", {
     _row: {
       user_id: userId, link_id: link!.id, direction: input.direction, via: input.via, coin_id: input.coin, protocol: q.protocol ?? "", pocket: evm,

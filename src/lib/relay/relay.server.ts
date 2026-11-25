@@ -284,21 +284,34 @@ async function step(r: Row): Promise<boolean> {
       const test = await evmCallDetailed(evmFrom, { from: r.pocket, to: q.to, data: q.data, value: hex(q.value) });
       if (test == null) return go({ error: `${NETWORK_NAME[from]} didn't answer the test run; retrying.` });
       if (!test.ok) return go(move("failed", { error: `A test run of the Relay deposit was refused (${test.error}). ${stay}`.slice(0, 300) }));
-      const nonce = await fetchNonce(evmFrom, r.pocket);
-      if (nonce == null) return go({ error: "Couldn't read your pocket's transaction count; retrying." });
+      const { withEvmSignLock, EvmSignBusy } = await import("@/lib/evm/sign-lock.server");
       const { withPocketKey } = await import("@/lib/xchain/send.server");
       const { signEip1559 } = await import("@/lib/evm/tx.server");
-      const signed = await withPocketKey(link, "EVM", link.addresses.EVM!, async (priv) =>
-        signEip1559({ privateKeyHex: bytesToHex(priv), chainId: CHAIN_IDS[evmFrom], nonce, ...f, gasLimit: RELAY_DEPOSIT_GAS, to: q.to, value: q.value, data: q.data }));
-      if (!sameAddr(signed.from, r.pocket)) throw new Error("The stored key doesn't match your pocket address. Nothing was sent.");
-      // Recorded before broadcast: never signed again.
-      await save(r.id, { deposit_txid: signed.hash, request_id: q.requestId, quoted_out_wei: q.outWei.toString() });
+      let refusedMsg: string | null = null;
+      let signed: Awaited<ReturnType<typeof signEip1559>>;
       try {
-        await sendRawTransaction(evmFrom, signed.raw);
+        // Audit LN2: nonce read → broadcast under the pocket's one-send-at-a-time hold.
+        signed = await withEvmSignLock(evmFrom, r.pocket, async () => {
+          const nonce = await fetchNonce(evmFrom, r.pocket);
+          if (nonce == null) throw new EvmSignBusy();
+          const sg = await withPocketKey(link, "EVM", link.addresses.EVM!, async (priv) =>
+            signEip1559({ privateKeyHex: bytesToHex(priv), chainId: CHAIN_IDS[evmFrom], nonce, ...f, gasLimit: RELAY_DEPOSIT_GAS, to: q.to, value: q.value, data: q.data }));
+          if (!sameAddr(sg.from, r.pocket)) throw new Error("The stored key doesn't match your pocket address. Nothing was sent.");
+          // Recorded before broadcast: never signed again.
+          await save(r.id, { deposit_txid: sg.hash, request_id: q.requestId, quoted_out_wei: q.outWei.toString() });
+          try {
+            await sendRawTransaction(evmFrom, sg.raw);
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
+            if (/rejected/i.test(msg)) refusedMsg = msg;
+          }
+          return sg;
+        });
       } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        if (/rejected/i.test(msg)) return go(move("failed", { error: `${msg}. ${stay}`.slice(0, 300) }));
+        if (e instanceof EvmSignBusy) return go({ error: "Couldn't read your pocket's transaction count or another send is going out; retrying." });
+        throw e;
       }
+      if (refusedMsg) return go(move("failed", { error: `${refusedMsg}. ${stay}`.slice(0, 300) }));
       const { tellMember } = await import("@/lib/xchain/send.server");
       void tellMember(r.user_id, `Relay swap sent: ${fmt(Number(r.amount_in))} ${SYMBOL[from]} → about ${fmt(fromUnits(to, q.outWei))} ${SYMBOL[to]}. Tx ${signed.hash}`, [
         `Sent from your own trading pocket ${r.pocket} on ${NETWORK_NAME[from]} to Relay's deposit contract`,

@@ -7,7 +7,8 @@
  * lanes with each other. Pure; tested in lanes.test.ts.
  */
 export type SwapKind = "tsd" | "send" | "dex" | "two_step" | "relay" | "ston" | "hype_chain";
-export type OpenSwap = { kind: SwapKind; lanes: string[] };
+/** lanes = coins the swap holds or watches; passes = coins it only hands through by exact amount (block watching swaps only). */
+export type OpenSwap = { kind: SwapKind; lanes: string[]; passes?: string[] };
 
 /** Most top-level swaps one member may have open at the same time. */
 export const MAX_OPEN_SWAPS = 5;
@@ -39,6 +40,13 @@ export const ETH_LANE = "ETH:ETH";
 export const TON_LANE = "TON:TON";
 export const USDT_TON_LANE = "TON:USDT";
 export const HYPE_LANE = "HYPER:HYPE";
+/** Audit LN1: USDC on Ethereum passes through the member's EVM pocket on every TSD step (bridge pays it in / THORChain pays it out). */
+export const TSD_USDC_LANE = "ETH:0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
+/** USDC a TSD step hands through the EVM pocket: a "pass", so it blocks only swaps that watch USDC. */
+export const TSD_PASSES = [TSD_USDC_LANE];
+/** A chained swap's step 1 may be a TSD swap, so it passes USDC until step 1 is over. */
+export const hypeChainPasses = (status: string) => (CHAIN_AFTER_STEP1.has(status) ? [] : TSD_PASSES);
+const CHAIN_AFTER_STEP1 = new Set(["mid", "leg2", "mid2", "leg3"]);
 
 const uniq = (xs: Array<string | null | undefined>) => [...new Set(xs.filter((x): x is string => !!x))];
 
@@ -64,6 +72,9 @@ export function laneBlocker(next: OpenSwap, open: OpenSwap[]): string | null {
   for (const o of open) {
     if (!WATCHING.has(next.kind) && !WATCHING.has(o.kind)) continue;
     const shared = next.lanes.filter((l) => o.lanes.includes(l));
+    // Audit LN1: a coin one swap only passes through still blocks a swap that watches that coin.
+    if (WATCHING.has(o.kind)) shared.push(...(next.passes ?? []).filter((l) => o.lanes.includes(l)));
+    if (WATCHING.has(next.kind)) shared.push(...(o.passes ?? []).filter((l) => next.lanes.includes(l)));
     if (shared.length) return `Another swap is still waiting on ${laneLabel(shared[0]!)} in your pocket. This one can start when that one finishes.`;
   }
   return null;

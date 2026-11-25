@@ -532,12 +532,21 @@ async function step(r: Row): Promise<boolean> {
           const units = steps.reduce((s, x) => s + (x.reset ? GAS.reset : GAS.approve), 0n) + swapGasUnits(v.kind, (r.path?.length ?? 2) - 1, false);
           const why = feeProblem(n, { needWei: feeNeedWei(n, units, fees.maxFeePerGas), haveWei: nat, valueWei: 0n });
           if (why) return go(move(r.tsd_side === "buy" ? "kept_usdc" : "failed", { error: why }));
-          let nonce = await fetchNonce(chain(n), r.from_address);
-          if (nonce == null) return go({ error: "Couldn't read your pocket's transaction count; retrying." });
-          for (const st of steps) {
-            const est = await estimateGas(chain(n), { from: r.from_address, to: st.to, data: st.data });
-            const gas = est ? (est * 13n) / 10n : st.reset ? GAS.reset : GAS.approve;
-            await signAndSend(r, st.reset ? "reset_txid" : "approve_txid", { to: st.to, data: st.data, value: 0n, gas }, nonce++, fees);
+          const { withEvmSignLock, EvmSignBusy } = await import("@/lib/evm/sign-lock.server");
+          // Audit LN2: nonce read → broadcast under the pocket's one-send-at-a-time hold.
+          try {
+            await withEvmSignLock(chain(n), r.from_address, async () => {
+              let nonce = await fetchNonce(chain(n), r.from_address);
+              if (nonce == null) throw new EvmSignBusy();
+              for (const st of steps) {
+                const est = await estimateGas(chain(n), { from: r.from_address, to: st.to, data: st.data });
+                const gas = est ? (est * 13n) / 10n : st.reset ? GAS.reset : GAS.approve;
+                await signAndSend(r, st.reset ? "reset_txid" : "approve_txid", { to: st.to, data: st.data, value: 0n, gas }, nonce++, fees);
+              }
+            });
+          } catch (e) {
+            if (e instanceof EvmSignBusy) return go({ error: "Couldn't read your pocket's transaction count or another send is going out; retrying." });
+            throw e;
           }
           return go(move("approving"));
         }
@@ -567,10 +576,14 @@ async function step(r: Row): Promise<boolean> {
       const gas = est ? (est * 13n) / 10n : swapGasUnits(v.kind, r.path!.length - 1, false);
       const why = feeProblem(n, { needWei: feeNeedWei(n, gas, fees.maxFeePerGas), haveWei: nat, valueWei: call.value });
       if (why) return go(move(r.tsd_side === "buy" ? "kept_usdc" : "failed", { error: why }));
-      const nonce = await fetchNonce(chain(n), r.from_address);
-      if (nonce == null) return go({ error: "Couldn't read your pocket's transaction count; retrying." });
+      const { withEvmSignLock, EvmSignBusy } = await import("@/lib/evm/sign-lock.server");
       try {
-        const hash = await signAndSend(r, "swap_txid", { ...call, gas }, nonce, fees);
+        // Audit LN2: nonce read → broadcast under the pocket's one-send-at-a-time hold.
+        const hash = await withEvmSignLock(chain(n), r.from_address, async () => {
+          const nonce = await fetchNonce(chain(n), r.from_address);
+          if (nonce == null) throw new EvmSignBusy();
+          return signAndSend(r, "swap_txid", { ...call, gas }, nonce, fees);
+        });
         const { tellMember } = await import("@/lib/xchain/send.server");
         void tellMember(r.user_id, `Token swap sent on ${v.name}: ${fmtNum(fromUnits(amountIn, r.tsd_side === "buy" ? USDC_DECIMALS : r.decimals_in))} ${r.tsd_side === "buy" ? "USDC" : r.symbol_in} → ${r.tsd_side === "sell" ? "USDC" : r.symbol_out}. Tx ${hash}`, [
           `Swapped from your own trading pocket ${r.from_address} on ${v.name} (${DEX_NETWORKS[n].name})`,
@@ -579,6 +592,7 @@ async function step(r: Row): Promise<boolean> {
         ]);
         return go(move("swapping"));
       } catch (e) {
+        if (e instanceof EvmSignBusy) return go({ error: "Couldn't read your pocket's transaction count or another send is going out; retrying." });
         if ((e as { refused?: boolean }).refused) return go(move("failed", { error: `${(e as Error).message}. ${stayNote}`.slice(0, 300) }));
         throw e;
       }

@@ -46,3 +46,24 @@ describe("several swaps at once — lanes", () => {
     expect(laneBlocker({ kind: "tsd", lanes: ["DOGE:DOGE"] }, open.slice(1))).toBeNull();
   });
 });
+
+import { hypeChainPasses, TSD_PASSES, TSD_USDC_LANE } from "./lanes";
+describe("audit LN1: USDC on Ethereum handed through by TSD steps", () => {
+  const twoStepViaUsdc = { kind: "two_step" as const, lanes: twoStepLanes("ethereum", "0x1111111111111111111111111111111111111111", null, TSD_USDC_LANE) };
+  test("a two-step swap watching USDC can't start next to a TSD swap", () => {
+    expect(laneBlocker(twoStepViaUsdc, [{ kind: "tsd", lanes: ["BTC:BTC"], passes: TSD_PASSES }])).not.toBeNull();
+  });
+  test("a TSD swap can't start next to a two-step swap watching USDC", () => {
+    expect(laneBlocker({ kind: "tsd", lanes: ["BTC:BTC"], passes: TSD_PASSES }, [twoStepViaUsdc])).not.toBeNull();
+  });
+  test("a chain still on step 1 passes USDC; after step 1 it doesn't", () => {
+    expect(laneBlocker(twoStepViaUsdc, [{ kind: "hype_chain", lanes: hypeChainLanes("to_ton_usdt", "leg1", null), passes: hypeChainPasses("leg1") }])).not.toBeNull();
+    expect(hypeChainPasses("mid")).toEqual([]);
+  });
+  test("TSD→BTC still runs next to a chain to USD₮ on TON (passes never block passes)", () => {
+    expect(laneBlocker({ kind: "tsd", lanes: ["BTC:BTC"], passes: TSD_PASSES }, [{ kind: "hype_chain", lanes: hypeChainLanes("to_ton_usdt", "leg1", null), passes: hypeChainPasses("leg1") }])).toBeNull();
+  });
+  test("two TSD swaps still share USDC", () => {
+    expect(laneBlocker({ kind: "tsd", lanes: ["BTC:BTC"], passes: TSD_PASSES }, [{ kind: "tsd", lanes: ["DOGE:DOGE"], passes: TSD_PASSES }])).toBeNull();
+  });
+});

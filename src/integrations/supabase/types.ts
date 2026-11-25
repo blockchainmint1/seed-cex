@@ -1032,6 +1032,24 @@ export type Database = {
           },
         ]
       }
+      evm_sign_locks: {
+        Row: {
+          expires_at: string
+          lock_key: string
+          token: string
+        }
+        Insert: {
+          expires_at: string
+          lock_key: string
+          token: string
+        }
+        Update: {
+          expires_at?: string
+          lock_key?: string
+          token?: string
+        }
+        Relationships: []
+      }
       gas_topups: {
         Row: {
           created_at: string
@@ -5719,6 +5737,10 @@ export type Database = {
         Args: { _id: string; _user_id: string }
         Returns: boolean
       }
+      claim_evm_sign_lock: {
+        Args: { _key: string; _token: string; _ttl_seconds: number }
+        Returns: boolean
+      }
       claim_listing_promo: {
         Args: { _code: string; _package: string }
         Returns: {
@@ -5839,6 +5861,10 @@ export type Database = {
       redeem_legacy_claim: { Args: { _token_hash: string }; Returns: string }
       release_delegation_spend: {
         Args: { _amount: number; _id: string }
+        Returns: undefined
+      }
+      release_evm_sign_lock: {
+        Args: { _key: string; _token: string }
         Returns: undefined
       }
       release_listing_promo: { Args: { _id: string }; Returns: undefined }

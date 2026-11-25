@@ -192,6 +192,10 @@ async function signAndBroadcast(
       const { estimateGas, fetchNonce, sendRawTransaction, suggestFees, evmRpc } = await import("@/lib/evm.server");
       const { signEip1559 } = await import("@/lib/evm/tx.server");
       const keyHex = bytesToHex(priv);
+      const { withEvmSignLock } = await import("@/lib/evm/sign-lock.server");
+      // Audit LN2: nonce read → broadcast under the pocket's one-send-at-a-time hold.
+      const router = plan.router;
+      return withEvmSignLock(ETH, fromAddress, async () => {
       const [nonce0, fees, ethBalHex] = await Promise.all([
         fetchNonce(ETH, fromAddress), suggestFees(ETH), evmRpc<string>(ETH, "eth_getBalance", [fromAddress, "latest"]),
       ]);
@@ -204,10 +208,10 @@ async function signAndBroadcast(
       if (kind === "evm") {
         const value = amount * 10n ** 10n;
         const data = depositWithExpiryData(plan.vault, NATIVE_ASSET, value, plan.memo, expiry);
-        const est = await estimateGas(ETH, { from: fromAddress, to: plan.router, data, value: hexQty(value) });
+        const est = await estimateGas(ETH, { from: fromAddress, to: router, data, value: hexQty(value) });
         const gas = est ? (est * 12n) / 10n : 120_000n;
         if (ethBal < value + gas * fees.maxFeePerGas) throw new Error("Not enough ETH for the amount plus the Ethereum network fee.");
-        const tx = sign(nonce0, plan.router, value, data, gas);
+        const tx = sign(nonce0, router, value, data, gas);
         await record("txid", tx.hash);
         await sendRawTransaction(ETH, tx.raw);
         return { txid: tx.hash };
@@ -218,17 +222,17 @@ async function signAndBroadcast(
       const units = toTokenUnits(amount, decimals);
       const tokenBal = await ethCall(token, `0x70a08231${fromAddress.slice(2).toLowerCase().padStart(64, "0")}`);
       if (tokenBal < units) throw new Error(`Not enough ${from.symbol} in your pocket.`);
-      const allowance = await ethCall(token, allowanceData(fromAddress, plan.router));
+      const allowance = await ethCall(token, allowanceData(fromAddress, router));
       const steps: Array<{ data: string; to: string; gas: bigint; approve: boolean }> = [];
       if (allowance < units) {
         // USDT-style tokens refuse to change a non-zero allowance; reset it first.
-        if (allowance > 0n) steps.push({ to: token, data: approveData(plan.router, 0n), gas: 80_000n, approve: true });
-        steps.push({ to: token, data: approveData(plan.router, units), gas: 80_000n, approve: true });
+        if (allowance > 0n) steps.push({ to: token, data: approveData(router, 0n), gas: 80_000n, approve: true });
+        steps.push({ to: token, data: approveData(router, units), gas: 80_000n, approve: true });
       }
       const deposit = depositWithExpiryData(plan.vault, token, units, plan.memo, expiry);
       // Gas can't be estimated before the approval is mined, so use a fixed, generous limit then.
-      const depGas = steps.length ? 200_000n : ((await estimateGas(ETH, { from: fromAddress, to: plan.router, data: deposit })) ?? 166_667n) * 12n / 10n;
-      steps.push({ to: plan.router, data: deposit, gas: depGas, approve: false });
+      const depGas = steps.length ? 200_000n : ((await estimateGas(ETH, { from: fromAddress, to: router, data: deposit })) ?? 166_667n) * 12n / 10n;
+      steps.push({ to: router, data: deposit, gas: depGas, approve: false });
       const totalGas = steps.reduce((s, x) => s + x.gas, 0n);
       if (ethBal < totalGas * fees.maxFeePerGas) throw new Error("Not enough ETH in your pocket to pay the Ethereum network fee.");
       let approveTxid: string | undefined;
@@ -241,6 +245,7 @@ async function signAndBroadcast(
         else return { txid: tx.hash, approveTxid };
       }
       throw new Error("unreachable");
+      });
     }
   }
 }

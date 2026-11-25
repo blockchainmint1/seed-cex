@@ -218,7 +218,7 @@ async function startTsdRouteUnlocked(userId: string, isAdmin: boolean, input: St
     }
   }
 
-  if (!opts.parentId) { const { assertSwapLaneFree, coinLane } = await import("@/lib/swap/lanes.server"); const lanes = await import("@/lib/swap/lanes"); void coinLane; await assertSwapLaneFree(userId, { kind: "tsd", lanes: [lanes.assetLane(coin.asset)].filter((x): x is string => !!x) }); }
+  if (!opts.parentId) { const { assertSwapLaneFree, coinLane } = await import("@/lib/swap/lanes.server"); const lanes = await import("@/lib/swap/lanes"); void coinLane; await assertSwapLaneFree(userId, { kind: "tsd", lanes: [lanes.assetLane(coin.asset)].filter((x): x is string => !!x), passes: lanes.TSD_PASSES }); }
   const { data: id, error } = await supabaseAdmin.rpc("reserve_tsd_route", {
     _user_id: userId, _link_id: link!.id, _direction: input.direction, _coin: coin.id, _coin_asset: coin.asset,
     _amount_in: q.amountIn, _amount_usd: Math.round((q.amountUsd ?? 0) * 100) / 100, _shown_usdc: q.usdc, _shown_out: q.out,
@@ -276,7 +276,9 @@ async function freeTsd(userId: string, txcAddress: string): Promise<[number | nu
 /** QA-0009: TSD another open swap already sent whose transfer isn't in a block yet still shows in the balance. */
 async function tsdInFlight(userId: string): Promise<number | null> {
   const { data, error } = await supabaseAdmin.from("tsd_routes").select("amount_in, tsd_txid")
-    .eq("user_id", userId).eq("direction", "buy").eq("stage", "bridging").not("tsd_txid", "is", null);
+    .eq("user_id", userId).eq("direction", "buy").not("tsd_txid", "is", null)
+    // Audit LN5: any open stage once the TSD txid is recorded (closes the gap before "bridging" is written).
+    .not("stage", "in", "(done,refunded,kept_usdc,failed)");
   if (error) return null;
   const { fetchOmniTx } = await import("@/lib/omni.server");
   let sum = 0;
@@ -636,23 +638,36 @@ async function step(r: Row): Promise<boolean> {
       const { fetchNonce, sendRawTransaction, suggestFees } = await import("@/lib/evm.server");
       const { bytesToHex } = await import("@noble/hashes/utils.js");
       const cipher = await ciphertextFor(r);
-      const [nonce, fees] = await Promise.all([fetchNonce(ETH, r.evm_address), suggestFees(ETH)]);
-      if (nonce == null || !fees) return go({ error: "Ethereum node unreachable; retrying." });
-      const units = BigInt(Math.round(amount * 1e6));
-      const tx = await withPocketKey(cipher, "EVM", r.evm_address, async (priv) =>
-        signEip1559({ privateKeyHex: bytesToHex(priv), chainId: 1, nonce, ...fees, gasLimit: GAS_USDC_TRANSFER, to: BRIDGE_USDC_CONTRACT, value: 0n, data: erc20TransferData(deposit!, units) }));
-      await save(r.id, { usdc_txid: tx.hash, usdc_amount: amount });
+      const { withEvmSignLock, EvmSignBusy } = await import("@/lib/evm/sign-lock.server");
+      // Audit LN2: nonce read → broadcast under the pocket's one-send-at-a-time hold.
+      let early: unknown = undefined;
+      let tx: { hash: string; raw: string };
       try {
-        await sendRawTransaction(ETH, tx.raw);
+        tx = await withEvmSignLock(ETH, r.evm_address, async () => {
+          const [nonce, fees] = await Promise.all([fetchNonce(ETH, r.evm_address), suggestFees(ETH)]);
+          if (nonce == null || !fees) throw new EvmSignBusy();
+          const units = BigInt(Math.round(amount * 1e6));
+          const t = await withPocketKey(cipher, "EVM", r.evm_address, async (priv) =>
+            signEip1559({ privateKeyHex: bytesToHex(priv), chainId: 1, nonce, ...fees, gasLimit: GAS_USDC_TRANSFER, to: BRIDGE_USDC_CONTRACT, value: 0n, data: erc20TransferData(deposit!, units) }));
+          await save(r.id, { usdc_txid: t.hash, usdc_amount: amount });
+          try {
+            await sendRawTransaction(ETH, t.raw);
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
+            if (!maybeBroadcast(msg)) {
+              // Definitely refused by the node: safe to clear and try again next tick.
+              await save(r.id, { usdc_txid: null, error: msg.slice(0, 300) });
+              early = false;
+            } else early = { sentMsg: msg };
+          }
+          return t;
+        });
       } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        if (!maybeBroadcast(msg)) {
-          // Definitely refused by the node: safe to clear and try again next tick.
-          await save(r.id, { usdc_txid: null, error: msg.slice(0, 300) });
-          return false;
-        }
-        return go({ error: `Sent, waiting for Ethereum to confirm (${msg}).` });
+        if (e instanceof EvmSignBusy) return go({ error: "Ethereum node unreachable or another send is going out; retrying." });
+        throw e;
       }
+      if (early === false) return false;
+      if (early && typeof early === "object") return go({ error: `Sent, waiting for Ethereum to confirm (${(early as { sentMsg: string }).sentMsg}).` });
       void tellMember(r.user_id, `Sent ${fmt(amount, 2)} USDC to TSD Bridge; your TSD is on its way. Tx ${tx.hash}`, [
         `Sent ${fmt(amount, 2)} USDC from your EVM pocket to TSD Bridge (order ${orderId})`,
         `TSD Bridge issues TSD to your own TXC pocket ${r.txc_address}`,

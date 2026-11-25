@@ -834,6 +834,13 @@
       "when": 1795635354034,
       "tag": "0118_swaps_several_at_once_all_types",
       "breakpoints": true
+    },
+    {
+      "idx": 119,
+      "version": "7",
+      "when": 1795641182506,
+      "tag": "0119_evm_sign_locks",
+      "breakpoints": true
     }
   ]
 }
