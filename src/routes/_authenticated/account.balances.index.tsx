@@ -16,7 +16,7 @@ import { revokeCheck, listCoins } from "@/lib/pockets/hme-support";
 import { rowKey, useSetAsides } from "@/components/account/use-set-asides";
 
 /** Coins with no THORChain/Maya pool: trade them on their Seeds TSD market instead. */
-const NO_SWAP = new Set(["PLS", "HEX", "pHEX", "XLM", "TON", "SUI"]);
+const NO_SWAP = new Set(["PLS", "HEX", "pHEX", "XLM", "SUI"]);
 const PAGE = 25;
 const CHAIN_LABEL = { ethereum: "Ethereum", base: "Base" } as const;
 
