@@ -1,0 +1,2 @@
+ALTER TABLE public.pocket_withdrawals DROP CONSTRAINT pocket_withdrawals_from_address_check;
+ALTER TABLE public.pocket_withdrawals ADD CONSTRAINT pocket_withdrawals_from_address_check CHECK (from_address ~ '^[A-Za-z0-9:_-]{20,128}$');

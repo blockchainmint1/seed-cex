@@ -813,6 +813,20 @@
       "when": 1795634582556,
       "tag": "0115_tsd_routes_several_at_once",
       "breakpoints": true
+    },
+    {
+      "idx": 116,
+      "version": "7",
+      "when": 1795634697212,
+      "tag": "0116_withdrawal_address_allow_ton_chars",
+      "breakpoints": true
+    },
+    {
+      "idx": 117,
+      "version": "7",
+      "when": 1795634731216,
+      "tag": "0117_withdrawal_from_address_allow_ton_chars",
+      "breakpoints": true
     }
   ]
 }
