@@ -396,11 +396,14 @@ async function dexSince(r: Row, tokenIn: string): Promise<string | null> {
   return (data ?? []).find((d) => sameAddr(d.token_in, tokenIn))?.id ?? null;
 }
 
+const STOP = new Set(["failed", "kept_mid", "kept_usdc"]);
 async function step(r: Row): Promise<boolean> {
   const status = r.status as TwoStepStatus;
   const go = async (patch: Partial<Row>) => {
     await save(r.id, patch);
-    return patch.status !== undefined && patch.status !== status;
+    const changed = patch.status !== undefined && patch.status !== status;
+    if (changed && true && STOP.has(String(patch.status))) void import("@/lib/swap/stop-alert.server").then((m) => m.alertSwapStopped({ userId: r.user_id, id: r.id, what: `${r.amount_in} ${r.symbol_in} → ${r.symbol_out}`, was: String(status), now: String(patch.status), why: patch.error }));
+    return changed;
   };
   const net = r.network as DexNetwork;
   const dir = r.direction as TwoStepDirection;

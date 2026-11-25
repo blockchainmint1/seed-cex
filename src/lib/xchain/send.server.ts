@@ -482,7 +482,7 @@ export async function refreshSwapSends(userId: string) {
   const stale = new Date(Date.now() - 30_000).toISOString();
   const { data } = await supabaseAdmin
     .from("swap_sends")
-    .select("id, txid, status, protocol, to_asset")
+    .select("id, txid, status, protocol, to_asset, from_asset, parent_id")
     .eq("user_id", userId)
     .in("status", ["sent", "unknown"])
     .not("txid", "is", null)
@@ -504,6 +504,10 @@ export async function refreshSwapSends(userId: string) {
       void notifyUser(userId, "notify_settlement", status === "done"
         ? `Swap delivered by ${PROTOCOL_LABEL[p]}. Tx ${prog.outTxid ?? r.txid}`
         : `${PROTOCOL_LABEL[p]} refunded your swap (price protection or a network issue). Refund tx ${prog.outTxid ?? "pending"}`);
+      if (status === "refunded" && !r.parent_id) {
+        const { alertSwapStopped } = await import("@/lib/swap/stop-alert.server");
+        void alertSwapStopped({ userId, id: r.id, what: `${r.from_asset} → ${r.to_asset}`, was: r.status, now: "refunded", why: `${PROTOCOL_LABEL[p]} refunded it. Refund tx ${prog.outTxid ?? "pending"}`, tellMember: false });
+      }
     }
   }));
 }

@@ -126,7 +126,14 @@ export async function checkTonSwap(r: Row): Promise<string> {
   // STON.fi refunds the TON to the same pocket when the price misses the minimum; after 30 minutes
   // with no USD₮, leave it for the team rather than guess (never re-sent either way).
   if (Date.now() - Date.parse(r.created_at) > 30 * 60_000 && r.status !== "unknown")
-    await supabaseAdmin.from("ton_swaps").update({ status: "unknown", error: "No USD₮ arrived yet. If the price missed your minimum, STON.fi returns the TON to your pocket." }).eq("id", r.id).eq("status", "sent");
+  {
+    const { data: hit } = await supabaseAdmin.from("ton_swaps").update({ status: "unknown", error: "No USD₮ arrived yet. If the price missed your minimum, STON.fi returns the TON to your pocket." }).eq("id", r.id).eq("status", "sent").select("user_id, parent_id, offer_units").maybeSingle();
+    // Only a standalone swap alerts here; a one-tap chain's step 3 alerts through its chain.
+    if (hit && !hit.parent_id) {
+      const { alertSwapStopped } = await import("@/lib/swap/stop-alert.server");
+      void alertSwapStopped({ userId: hit.user_id, id: r.id, what: `${Number(hit.offer_units) / 1e9} TON → USD₮ on TON`, was: "sent", now: "unknown", why: "No USD₮ arrived in 30 minutes. If the price missed the minimum, STON.fi returns the TON to the pocket." });
+    }
+  }
   return r.status;
 }
 

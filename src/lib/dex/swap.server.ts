@@ -425,12 +425,15 @@ async function signAndSend(r: Row, field: "reset_txid" | "approve_txid" | "swap_
 }
 
 /** One step. Returns true when the status changed (the caller may step again). */
+const STOP = new Set(["failed", "kept_mid", "kept_usdc"]);
 async function step(r: Row): Promise<boolean> {
   const status = r.status as DexStatus;
   const n = net(r);
   const go = async (patch: Partial<Row>) => {
     await save(r.id, patch);
-    return patch.status !== undefined && patch.status !== status;
+    const changed = patch.status !== undefined && patch.status !== status;
+    if (changed && !r.two_step_id && STOP.has(String(patch.status))) void import("@/lib/swap/stop-alert.server").then((m) => m.alertSwapStopped({ userId: r.user_id, id: r.id, what: `${r.amount_in} ${r.symbol_in} → ${r.symbol_out}`, was: String(status), now: String(patch.status), why: patch.error }));
+    return changed;
   };
 
   switch (status) {

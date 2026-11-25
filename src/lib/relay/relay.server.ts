@@ -223,9 +223,15 @@ async function notify(r: Row, text: string) {
 }
 const stay = "Your coins stayed in your pocket.";
 
+const STOP = new Set(["failed", "kept_mid", "kept_usdc"]);
 async function step(r: Row): Promise<boolean> {
   const status = r.status as RelayStatus;
-  const go = async (patch: Partial<Row>) => { await save(r.id, patch); return patch.status !== undefined && patch.status !== status; };
+  const go = async (patch: Partial<Row>) => {
+    await save(r.id, patch);
+    const changed = patch.status !== undefined && patch.status !== status;
+    if (changed && !r.parent_id && STOP.has(String(patch.status))) void import("@/lib/swap/stop-alert.server").then((m) => m.alertSwapStopped({ userId: r.user_id, id: r.id, what: `${r.amount_in} ${legs(r.direction as RelayDirection).from} → ${legs(r.direction as RelayDirection).to}`, was: String(status), now: String(patch.status), why: patch.error }));
+    return changed;
+  };
   const { from, to } = legs(r.direction as RelayDirection);
 
   switch (status) {

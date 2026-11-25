@@ -383,13 +383,16 @@ async function sendLeg(r: Row, coin: SwapCoin): Promise<Partial<Row>> {
 }
 
 /** Run one step of a route. Returns true if the stage changed (the caller may step again). */
+const STOP = new Set(["failed", "kept_mid", "kept_usdc"]);
 async function step(r: Row): Promise<boolean> {
   const coin = swapCoin(r.coin)!;
   const direct = coin.id === BRIDGE_USDC_ID;
   const stage = r.stage as RouteStage;
   const go = async (patch: Partial<Row>) => {
     await save(r.id, patch);
-    return patch.stage !== undefined && patch.stage !== stage;
+    const changed = patch.stage !== undefined && patch.stage !== stage;
+    if (changed && !r.parent_id && STOP.has(String(patch.stage))) void import("@/lib/swap/stop-alert.server").then((m) => m.alertSwapStopped({ userId: r.user_id, id: r.id, what: `${r.amount_in} TSD ${r.direction === "buy" ? "→" : "←"} ${coin.symbol}`, was: String(stage), now: String(patch.stage), why: patch.error }));
+    return changed;
   };
 
   // ---------- shared: waiting for a Seeds gas top-up ----------

@@ -220,17 +220,10 @@ async function notify(r: Row, text: string) {
   } catch (e) { console.error("hype chain alert failed", e); }
 }
 
-/** Every stopped one-tap swap tells the member and every admin (Bobby, Nov 25). Best-effort, never throws. */
+/** Every stopped one-tap swap tells the member and every admin (Bobby, Nov 25). */
 async function alertStopped(r: Row, patch: Partial<Row>) {
-  const why = patch.error ?? "Seeds stopped this swap.";
-  const sym = symbolOf(r.coin_id);
-  const end = chainEndSymbol(r.direction as HypeChainDirection);
-  await notify(r, `Your ${fmt(Number(r.amount_in))} ${sym} → ${end} swap stopped. ${why}`);
-  try {
-    const { alertAdmins } = await import("@/lib/alerts.server");
-    const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    await alertAdmins(`⚠️ <b>Seeds</b> one-tap swap stopped\n${esc(`${fmt(Number(r.amount_in))} ${sym} → ${end}`)} (was at ${esc(r.status)})\nSwap ${r.id.slice(0, 8)} · member ${r.user_id.slice(0, 8)}\n${esc(why)}`);
-  } catch (e) { console.error("hype chain admin alert failed", e); }
+  const { alertSwapStopped } = await import("@/lib/swap/stop-alert.server");
+  await alertSwapStopped({ userId: r.user_id, id: r.id, what: `${fmt(Number(r.amount_in))} ${symbolOf(r.coin_id)} → ${chainEndSymbol(r.direction as HypeChainDirection)}`, was: r.status, now: String(patch.status), why: patch.error });
 }
 
 async function linkStillSame(r: Row) {
