@@ -80,9 +80,9 @@ describe("USD₮ on TON transfer", () => {
 });
 
 describe("routes and gates", () => {
-  test("TON -> USD₮ on TON is STON.fi only; nothing else reaches or leaves USD₮ on TON", () => {
+  test("TON -> USD₮ on TON is STON.fi; TSD reaches it only as the one-tap chain; nothing leaves USD₮ on TON", () => {
     expect(planSwap({ kind: "ton" }, { kind: "ton_usdt" }).options).toEqual([{ kind: "ston" }]);
-    expect(planSwap({ kind: "tsd" }, { kind: "ton_usdt" }).options).toEqual([]);
+    expect(planSwap({ kind: "tsd" }, { kind: "ton_usdt" }).options).toEqual([{ kind: "hype_chain", direction: "to_ton_usdt", via: "tsd", coin: "TSD" }]);
     expect(planSwap({ kind: "ton_usdt" }, { kind: "ton" }).options).toEqual([]);
   });
   test("testers only while TON is in its tester stage; needs instant access and a TON pocket", () => {

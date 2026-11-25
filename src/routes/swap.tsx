@@ -113,7 +113,7 @@ function optionLabel(o: RouteOption): string {
   if (o.kind === "dex") return `Pools on ${DEX_NETWORKS[o.network].name}`;
   if (o.kind === "relay") return "Relay";
   if (o.kind === "ston") return "STON.fi on TON";
-  if (o.kind === "hype_chain") return o.via === "tsd" ? "TSD Bridge + Relay via ETH" : "THORChain / Maya + Relay via ETH";
+  if (o.kind === "hype_chain") return `${o.via === "tsd" ? "TSD Bridge" : "THORChain / Maya"} + Relay via ETH${o.direction === "to_ton_usdt" ? " + STON.fi" : ""}`;
   return `Two steps on ${DEX_NETWORKS[o.network].name}`;
 }
 

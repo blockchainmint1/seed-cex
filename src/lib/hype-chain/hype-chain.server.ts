@@ -20,7 +20,7 @@ import { receivePocket, sendSource } from "@/lib/xchain/send-rules";
 import { floorAmount } from "@/lib/swap/plan";
 import { agreedMinWei, fromWei, toWei, fromUnits, toUnits, legs, type RelayDirection } from "@/lib/relay/rules";
 import {
-  HOP_STUCK_MINUTES, HYPE_CHAIN_LABEL, relayIsSecond, chainEndSymbol, relayLegDirection, chainMinimum, chainSteps, ethToHandOn, isHypeChainTerminal, secondHopOk,
+  HOP_STUCK_MINUTES, HYPE_CHAIN_LABEL, hasTonStep, tonToHandOn, TON_STEP_RESERVE_NANO, relayIsSecond, chainEndSymbol, relayLegDirection, chainMinimum, chainSteps, ethToHandOn, isHypeChainTerminal, secondHopOk,
   type HypeChainDirection, type HypeChainStatus, type HypeChainVia,
 } from "./rules";
 
@@ -85,7 +85,16 @@ export async function quoteHypeChain(i: HypeChainQuoteInput) {
     if (!midWei || midWei <= fee) throw new Error("Too small: the ETH from step 1 wouldn't cover Ethereum's network fee.");
     const rd = relayLegDirection(i.direction);
     const r = await relayQuote(rd, who, midWei - fee, 100, rd === "to_ton" ? SAMPLE_TON : undefined);
-    return { direction: i.direction, via: i.via, coin: i.coin, amountIn: amount, mid: h1.out, out: fromUnits(legs(rd).to, r.outWei), amountUsd: h1.inputUsd ?? r.inUsd, outUsd: r.outUsd, protocol: h1.protocol, seconds: (h1.seconds ?? 0) + (r.seconds ?? 0) + 60 };
+    const relayOut = fromUnits(legs(rd).to, r.outWei);
+    if (hasTonStep(i.direction)) {
+      // Step 3: STON.fi on the TON that arrives, less the TON kept back for that step's fees.
+      const hand = r.outWei - TON_STEP_RESERVE_NANO;
+      if (hand < 100_000_000n) throw new Error("Too small: the TON from step 2 wouldn't cover the TON step's fees (swap a little more).");
+      const { stonQuote } = await import("@/lib/pockets/ton-usdt.server");
+      const usdt = Number(await stonQuote(hand)) / 1e6;
+      return { direction: i.direction, via: i.via, coin: i.coin, amountIn: amount, mid: h1.out, ton: relayOut, out: usdt, amountUsd: h1.inputUsd ?? r.inUsd, outUsd: usdt, protocol: h1.protocol, seconds: (h1.seconds ?? 0) + (r.seconds ?? 0) + 120 };
+    }
+    return { direction: i.direction, via: i.via, coin: i.coin, amountIn: amount, mid: h1.out, ton: null as number | null, out: relayOut, amountUsd: h1.inputUsd ?? r.inUsd, outUsd: r.outUsd, protocol: h1.protocol, seconds: (h1.seconds ?? 0) + (r.seconds ?? 0) + 60 };
   }
   const inWei = toWei(floorAmount(amount, 8));
   if (!inWei) throw new Error("Enter an amount above zero.");
@@ -94,7 +103,7 @@ export async function quoteHypeChain(i: HypeChainQuoteInput) {
   const handWei = r.outWei - fee;
   if (handWei <= 0n) throw new Error("Too small: the ETH from step 1 wouldn't cover Ethereum's network fee.");
   const h2 = await quoteSideHop("from_hype", i.via, i.coin, fromWei(handWei));
-  return { direction: i.direction, via: i.via, coin: i.coin, amountIn: amount, mid: fromWei(r.outWei), out: h2.out, amountUsd: r.inUsd, outUsd: null as number | null, protocol: h2.protocol, seconds: (r.seconds ?? 0) + (h2.seconds ?? 0) + 60 };
+  return { direction: i.direction, via: i.via, coin: i.coin, amountIn: amount, mid: fromWei(r.outWei), ton: null as number | null, out: h2.out, amountUsd: r.inUsd, outUsd: null as number | null, protocol: h2.protocol, seconds: (r.seconds ?? 0) + (h2.seconds ?? 0) + 60 };
 }
 
 /* ---------------------------------- request ---------------------------------- */
@@ -112,8 +121,13 @@ async function requestUnlocked(userId: string, tester: boolean, input: HypeChain
   const { relayBlocker, nativeBalance } = await import("@/lib/relay/relay.server");
   const link = await loadLink(userId);
   const { data: prof } = await supabaseAdmin.from("profiles").select("telegram_verified").eq("id", userId).maybeSingle();
-  const blocker = relayBlocker({ tester, telegramVerified: prof?.telegram_verified === true, needsTon: input.direction === "to_ton", link: link ? { mode: link.mode, hasKey: link.hasKey, pockets: link.pockets as string[] } : null });
+  const blocker = relayBlocker({ tester, telegramVerified: prof?.telegram_verified === true, needsTon: relayLegDirection(input.direction) === "to_ton", link: link ? { mode: link.mode, hasKey: link.hasKey, pockets: link.pockets as string[] } : null });
   if (blocker) throw new Error(blocker);
+  if (hasTonStep(input.direction)) {
+    const { stonBlocker } = await import("@/lib/ston/ston.server");
+    const sb = stonBlocker(tester, link);
+    if (sb) throw new Error(sb);
+  }
   const evm = link!.addresses.EVM!.toLowerCase();
   const coin = input.via === "xchain" ? swapCoin(input.coin) : null;
   if (input.via === "xchain" && (!coin || coin.id === "ETH")) throw new Error("Pick a coin.");
@@ -144,11 +158,13 @@ async function requestUnlocked(userId: string, tester: boolean, input: HypeChain
     if (held) { const why = await pocketSpendProblem(userId, held, q.amountIn, { address: at, network: null }); if (why) throw new Error(why); }
   }
 
-  const min = chainMinimum(input.shownOut, input.slippageBps);
+  // Three-step chains: min_out guards the Relay step (TON), final_min the STON.fi step (USD₮ on TON).
+  const finalMin = hasTonStep(input.direction) ? chainMinimum(input.shownOut, input.slippageBps) : null;
+  const min = finalMin != null ? chainMinimum(q.ton!, input.slippageBps) : chainMinimum(input.shownOut, input.slippageBps);
   const { data: id, error } = await supabaseAdmin.rpc("reserve_hype_chain", {
     _row: {
       user_id: userId, link_id: link!.id, direction: input.direction, via: input.via, coin_id: input.coin, protocol: q.protocol ?? "", pocket: evm,
-      amount_in: q.amountIn, amount_usd: Math.round((q.amountUsd ?? 0) * 100) / 100, shown_mid: q.mid, shown_out: input.shownOut, min_out: min, slippage_bps: input.slippageBps,
+      amount_in: q.amountIn, amount_usd: Math.round((q.amountUsd ?? 0) * 100) / 100, shown_mid: q.mid, shown_out: input.shownOut, min_out: min, slippage_bps: input.slippageBps, final_min: finalMin ?? "",
     } as never,
   });
   if (error || !id) throw new Error(clean(error?.message ?? "Could not start this swap."));
@@ -160,8 +176,10 @@ async function requestUnlocked(userId: string, tester: boolean, input: HypeChain
     const { requestSendApproval } = await import("@/lib/pocket-send/approvals.server");
     const ap = await requestSendApproval({
       userId, linkId: link!.id, purpose: "hype_chain", refId: chainId, leg: `hype_chain:${input.direction}`, asset: fromSym, amount: q.amountIn,
-      from: fromAddr, to: input.direction === "to_ton" ? link!.addresses.TON! : evm,
-      what: `Swap ${fmt(q.amountIn)} ${fromSym} to about ${fmt(input.shownOut)} ${toSym} (at least ${fmt(min)}) in two steps through ETH and Relay. Every step pays your own pocket.`,
+      from: fromAddr, to: relayLegDirection(input.direction) === "to_ton" ? link!.addresses.TON! : evm,
+      what: finalMin != null
+        ? `Swap ${fmt(q.amountIn)} ${fromSym} to about ${fmt(input.shownOut)} ${toSym} (at least ${fmt(finalMin)}) in three steps: ${fromSym} → ETH → TON (Relay) → USD₮ on TON (STON.fi). Every step pays your own pocket.`
+        : `Swap ${fmt(q.amountIn)} ${fromSym} to about ${fmt(input.shownOut)} ${toSym} (at least ${fmt(min)}) in two steps through ETH and Relay. Every step pays your own pocket.`,
       meta: { direction: input.direction, via: input.via, coin: input.coin },
     });
     await supabaseAdmin.from("hype_chains").update({ approval_id: ap.id, updated_at: new Date().toISOString() }).eq("id", chainId);
@@ -219,6 +237,20 @@ async function stepSince(r: Row, hop: Hop): Promise<string | null> {
   const { data } = await supabaseAdmin.from(table).select("id").eq("user_id", r.user_id).eq("parent_id", r.id).gte("created_at", r.step_at)
     .order("created_at", { ascending: false }).limit(1);
   return (data?.[0] as { id: string } | undefined)?.id ?? null;
+}
+
+/** Step 3 this chain already started since the step began (never start a second one). */
+async function tonStepSince(r: Row): Promise<string | null> {
+  const { data } = await supabaseAdmin.from("ton_swaps").select("id").eq("user_id", r.user_id).eq("parent_id", r.id).gte("created_at", r.step_at)
+    .order("created_at", { ascending: false }).limit(1);
+  return (data?.[0] as { id: string } | undefined)?.id ?? null;
+}
+const tonUnitsOf = (ton: number): bigint | null => (Number.isFinite(ton) && ton > 0 ? BigInt(Math.floor(ton * 1e9)) : null);
+const nanoToTon = (n: bigint) => `${n / 1_000_000_000n}.${(n % 1_000_000_000n).toString().padStart(9, "0")}`;
+async function tonNano(address: string): Promise<bigint | null> {
+  const { fetchExtraBalance } = await import("@/lib/pockets/io.server");
+  const b = await fetchExtraBalance("TON", address).catch(() => null);
+  return b == null ? null : tonUnitsOf(b) ?? 0n;
 }
 
 type Follow = { state: "wait" | "done" | "stopped"; paid: number | null; note?: string };
@@ -324,7 +356,7 @@ async function step(r: Row): Promise<boolean> {
       if (ap.status !== "approved") return go({});
       const still = await linkStillSame(r);
       if (!still) return go(move("cancelled", { error: "Your wallet link changed since this request. Nothing was sent." }));
-      const payTo = r.direction === "to_ton" ? still.addresses.TON : r.pocket;
+      const payTo = relayLegDirection(r.direction as HypeChainDirection) === "to_ton" ? still.addresses.TON : r.pocket;
       if (!payTo) return go(move("cancelled", { error: "Your TON pocket is no longer on your link. Nothing was sent." }));
       const { spendApproval } = await import("@/lib/pocket-send/approvals.server");
       await spendApproval({ purpose: "hype_chain", id: r.approval_id, leg: `hype_chain:${r.direction}`, userId: r.user_id, linkId: r.link_id, amount: Number(r.amount_in), from: ap.from_address, to: payTo });
@@ -407,6 +439,14 @@ async function step(r: Row): Promise<boolean> {
         void notify(r, `Seeds stopped your swap before step 2: the price fell below the minimum you agreed to (${fmt(Number(r.min_out))}). ${ethIn}`);
         return go(move("kept_mid", { mid_handed: null, error: `The price fell below your minimum before step 2. ${ethIn}` }));
       }
+      if (toHype && hasTonStep(r.direction as HypeChainDirection) && r.ton_baseline_nano == null) {
+        // Note the TON already in the pocket once, so step 3 only swaps the TON that arrived.
+        const tonAt = (await linkStillSame(r))?.addresses.TON;
+        const before = tonAt ? await tonNano(tonAt) : null;
+        if (before == null) return go({ error: "Couldn't read your TON balance before step 2; retrying." });
+        await save(r.id, { ton_baseline_nano: before.toString() });
+        r = { ...r, ton_baseline_nano: before.toString() };
+      }
       if (toHype) {
         const { startRelayLeg } = await import("@/lib/relay/relay.server");
         try {
@@ -433,8 +473,68 @@ async function step(r: Row): Promise<boolean> {
         void notify(r, `Step 2 of your swap didn't complete (${f.note}). ${ethIn}`);
         return go(move("kept_mid", { error: `Step 2 stopped: ${f.note} ${ethIn}`.slice(0, 300) }));
       }
+      if (hasTonStep(r.direction as HypeChainDirection)) return go(move("mid2", { ton_amount: f.paid ?? null }));
       void notify(r, `Swap done: ${fmt(Number(r.amount_in))} ${toHype ? sym : "HYPE"} → ${f.paid != null ? fmt(f.paid) : "about " + fmt(Number(r.shown_out))} ${toHype ? endSym : sym}, in your own pocket.`);
       return go(move("done", { amount_out: f.paid }));
+    }
+    case "mid2": {
+      const tonIn = "Your TON is in your TON pocket; swap it on Seeds → Swap when you like.";
+      if (r.leg3_id) return go(move("leg3"));
+      const earlier = await tonStepSince(r);
+      if (earlier) return go(move("leg3", { leg3_id: earlier }));
+      const link = await linkStillSame(r);
+      const tonAt = link?.addresses.TON;
+      if (!link || !tonAt) return go(move("kept_mid", { error: `Your trading pocket was unlinked, so Seeds stopped before step 3. ${tonIn}` }));
+      const bal = await tonNano(tonAt);
+      if (bal == null) return go({ error: "TON didn't answer; retrying." });
+      const reported = r.ton_amount == null ? null : tonUnitsOf(Number(r.ton_amount));
+      const hand = tonToHandOn(reported, bal, r.ton_baseline_nano == null ? null : BigInt(r.ton_baseline_nano));
+      if (hand == null) {
+        if (minutesSince(r.step_at) < 30) return go({ error: "Waiting for the TON from step 2 to show in your pocket." });
+        return go(move("kept_mid", { error: `The TON from step 2 didn't show up in your pocket in time, or was too little for the last step. ${tonIn}` }));
+      }
+      const floor = BigInt(Math.floor(Number(r.final_min) * 1e6));
+      let fresh: bigint;
+      try {
+        const { stonQuote } = await import("@/lib/pockets/ton-usdt.server");
+        fresh = await stonQuote(hand);
+      } catch (e) {
+        if (minutesSince(r.step_at) > 30) return go(move("kept_mid", { error: `No usable price for step 3 for 30 minutes. ${tonIn}` }));
+        return go({ error: `${e instanceof Error ? e.message : String(e)}; retrying.`.slice(0, 300) });
+      }
+      if (fresh < floor) {
+        void notify(r, `Seeds stopped your swap before step 3: the price fell below the minimum you agreed to (${fmt(Number(r.final_min))} USD₮). ${tonIn}`);
+        return go(move("kept_mid", { error: `The price fell below your minimum before step 3. ${tonIn}` }));
+      }
+      try {
+        const { startTonToUsdt } = await import("@/lib/ston/ston.server");
+        // Chains are testers-only (relayBlocker at request), so the tester flag matches who asked.
+        const res = await startTonToUsdt(r.user_id, true, { amount: nanoToTon(hand), shownOutUnits: fresh.toString() }, { parentId: r.id, floorUnits: floor });
+        return go(move("leg3", { leg3_id: res.id }));
+      } catch (e) {
+        const after = await tonStepSince(r);
+        if (after) return go(move("leg3", { leg3_id: after }));
+        return go(move("kept_mid", { error: `${e instanceof Error ? e.message : String(e)} ${tonIn}`.slice(0, 300) }));
+      }
+    }
+
+    case "leg3": {
+      const tonIn = "Your TON is in your TON pocket; swap it on Seeds → Swap when you like.";
+      const { data: t } = await supabaseAdmin.from("ton_swaps").select("id, pocket, status, txid, min_out_units, usdt_baseline, send_meta, created_at, updated_at, received_units, error").eq("id", r.leg3_id!).maybeSingle();
+      if (!t) return go({});
+      const { checkTonSwap } = await import("@/lib/ston/ston.server");
+      const st = await checkTonSwap({ ...t, min_out_units: String(t.min_out_units), usdt_baseline: String(t.usdt_baseline) } as never).catch(() => t.status);
+      if (st === "done") {
+        const { data: d } = await supabaseAdmin.from("ton_swaps").select("received_units").eq("id", t.id).maybeSingle();
+        const got = d?.received_units == null ? null : Number(d.received_units) / 1e6;
+        void notify(r, `Swap done: ${fmt(Number(r.amount_in))} ${sym} → ${got != null ? fmt(got) : "about " + fmt(Number(r.shown_out))} USD₮ on TON, in your own pocket.`);
+        return go(move("done", { amount_out: got }));
+      }
+      if (st === "failed") {
+        void notify(r, `Step 3 of your swap didn't go out (${t.error ?? "stopped"}). ${tonIn}`);
+        return go(move("kept_mid", { error: `Step 3 stopped: ${t.error ?? "nothing was sent"}. ${tonIn}`.slice(0, 300) }));
+      }
+      return go(minutesSince(r.step_at) > HOP_STUCK_MINUTES && !r.error ? { error: "Step 3 is taking longer than usual; the team will check. Nothing is re-sent." } : {});
     }
     default:
       return go({});

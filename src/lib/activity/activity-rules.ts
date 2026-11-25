@@ -95,7 +95,7 @@ export function dexTone(s: string): Tone {
 }
 
 export const TWO_LABEL: Record<string, string> = {
-  awaiting_approval: "Waiting for your Telegram tap", approved: "Starting", leg1: "Step 1 of 2", mid: "Starting step 2", leg2: "Step 2 of 2",
+  awaiting_approval: "Waiting for your Telegram tap", approved: "Starting", leg1: "Step 1", mid: "Starting step 2", leg2: "Step 2", mid2: "Starting step 3", leg3: "Step 3",
   done: "Delivered", failed: "Stopped", refunded: "Refunded", kept_mid: "Stopped — coins in your pocket", declined: "Declined",
   expired: "Not approved in time", cancelled: "Cancelled",
 };

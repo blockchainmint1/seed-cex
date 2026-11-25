@@ -64,7 +64,7 @@ describe("balances Swap link", () => {
       ["BTC", "btc", 1], ["BTC", "btc", 0], ["ETH", "ethereum", 0], ["ETH", "ethereum", 4],
       ["LTC", "ltc", 0], ["XRP", "xrp", 0], ["SOL", "sol", 2], ["DOGE", "doge", 2],
       ["HYPE", "hyperevm", 0], ["HYPE", "hyperevm", 1], ["TON", "ton", 0], ["TON", "ton", 2],
-      ["USDT", "ethereum", 0], ["USDC", "ethereum", 1], ["TRX", "trx", 0], ["BCH", "bch", 0],
+      ["USDT", "ethereum", 0], ["USDC", "ethereum", 1], ["TRX", "trx", 0], ["BCH", "bch", 0], ["USDT", "ton", 0],
     ];
     for (const [symbol, net, held] of rows) {
       const pair = swapPairForRow(symbol, net, held);
@@ -74,10 +74,8 @@ describe("balances Swap link", () => {
     }
   });
 
-  test("USD₮ on TON is the one offered pair the form can't do in one go, and it says so", () => {
-    expect(swapPairForRow("USDT", "ton", 0)).toEqual({ from: "TSD", to: "USDT_TON" });
+  test("TSD → USD₮ on TON is one tap: a three-step chain through ETH and TON", () => {
     const plan = planSwap({ kind: "tsd" }, { kind: "ton_usdt" });
-    expect(plan.options.length).toBe(0);
-    expect(plan.problem).toContain("Get TON first");
+    expect(plan.options).toEqual([{ kind: "hype_chain", direction: "to_ton_usdt", via: "tsd", coin: "TSD" }]);
   });
 });

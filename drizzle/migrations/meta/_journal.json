@@ -778,6 +778,20 @@
       "when": 1795615316520,
       "tag": "0110_qa_telegram_topic",
       "breakpoints": true
+    },
+    {
+      "idx": 111,
+      "version": "7",
+      "when": 1795616553092,
+      "tag": "0111_ton_usdt_one_tap_chain",
+      "breakpoints": true
+    },
+    {
+      "idx": 112,
+      "version": "7",
+      "when": 1795616597142,
+      "tag": "0112_relay_leg_ton_usdt_chain",
+      "breakpoints": true
     }
   ]
 }

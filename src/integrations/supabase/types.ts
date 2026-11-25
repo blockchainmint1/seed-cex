@@ -1225,9 +1225,11 @@ export type Database = {
           direction: string
           error: string | null
           eth_baseline_wei: string | null
+          final_min: number | null
           id: string
           leg1_id: string | null
           leg2_id: string | null
+          leg3_id: string | null
           link_id: string
           mid_amount: number | null
           mid_handed: number | null
@@ -1239,6 +1241,8 @@ export type Database = {
           slippage_bps: number
           status: string
           step_at: string
+          ton_amount: number | null
+          ton_baseline_nano: string | null
           updated_at: string
           user_id: string
           via: string
@@ -1254,9 +1258,11 @@ export type Database = {
           direction: string
           error?: string | null
           eth_baseline_wei?: string | null
+          final_min?: number | null
           id?: string
           leg1_id?: string | null
           leg2_id?: string | null
+          leg3_id?: string | null
           link_id: string
           mid_amount?: number | null
           mid_handed?: number | null
@@ -1268,6 +1274,8 @@ export type Database = {
           slippage_bps: number
           status?: string
           step_at?: string
+          ton_amount?: number | null
+          ton_baseline_nano?: string | null
           updated_at?: string
           user_id: string
           via: string
@@ -1283,9 +1291,11 @@ export type Database = {
           direction?: string
           error?: string | null
           eth_baseline_wei?: string | null
+          final_min?: number | null
           id?: string
           leg1_id?: string | null
           leg2_id?: string | null
+          leg3_id?: string | null
           link_id?: string
           mid_amount?: number | null
           mid_handed?: number | null
@@ -1297,6 +1307,8 @@ export type Database = {
           slippage_bps?: number
           status?: string
           step_at?: string
+          ton_amount?: number | null
+          ton_baseline_nano?: string | null
           updated_at?: string
           user_id?: string
           via?: string
@@ -4790,6 +4802,7 @@ export type Database = {
           link_id: string
           min_out_units: number
           offer_units: number
+          parent_id: string | null
           pocket: string
           quote_units: number | null
           received_units: number | null
@@ -4809,6 +4822,7 @@ export type Database = {
           link_id: string
           min_out_units: number
           offer_units: number
+          parent_id?: string | null
           pocket: string
           quote_units?: number | null
           received_units?: number | null
@@ -4828,6 +4842,7 @@ export type Database = {
           link_id?: string
           min_out_units?: number
           offer_units?: number
+          parent_id?: string | null
           pocket?: string
           quote_units?: number | null
           received_units?: number | null
@@ -5729,6 +5744,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      hype_chain_relay_dir_ok: {
+        Args: { _chain: string; _relay: string }
         Returns: boolean
       }
       is_trade_participant: {

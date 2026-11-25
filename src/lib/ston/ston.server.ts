@@ -51,7 +51,11 @@ export async function tonSwapContext(userId: string, tester: boolean) {
   return { blocker, pocket, balanceTon, balanceUsdt };
 }
 
-export async function startTonToUsdt(userId: string, tester: boolean, input: { amount: string; shownOutUnits: string }) {
+/**
+ * `chain`: step 3 of a one-tap chained swap (hype_chains to_ton_usdt). The signed minimum is never
+ * below the chain's agreed USD₮ minimum, and the row is tagged with the chain (reserve_ton_swap checks it).
+ */
+export async function startTonToUsdt(userId: string, tester: boolean, input: { amount: string; shownOutUnits: string }, chain?: { parentId: string; floorUnits: bigint }) {
   const { withPocketSpendLock } = await import("@/lib/set-asides.server");
   return withPocketSpendLock(userId, async () => {
     const { loadLink } = await import("@/lib/xchain/send.server");
@@ -65,7 +69,11 @@ export async function startTonToUsdt(userId: string, tester: boolean, input: { a
     const { stonQuote, usdtTonBalance, sendStonSwap } = await import("@/lib/pockets/ton-usdt.server");
     const fresh = await stonQuote(offer);
     // Audit TA2: the signed minimum follows Seeds' own fresh quote, never the browser's number alone.
-    const minOut = stonMinimum(shown, fresh);
+    let minOut = stonMinimum(shown, fresh);
+    if (chain) {
+      if (fresh < chain.floorUnits) throw new Error("The price fell below your agreed minimum. Nothing was sent.");
+      if (minOut < chain.floorUnits) minOut = chain.floorUnits;
+    }
     // Audit TA3: same per-swap and 24-hour dollar caps as every other own-pocket swap.
     const { fetchQuotes, TRACKED } = await import("@/lib/cmc.server");
     const tonUsd = (await fetchQuotes(TRACKED).catch(() => null))?.quotes.find((q) => q.symbol === "TON")?.price ?? null;
@@ -77,7 +85,7 @@ export async function startTonToUsdt(userId: string, tester: boolean, input: { a
     if (baseline === null) throw new Error("Seeds couldn't read your USD₮ balance on TON right now. Nothing was sent.");
     const { data: id, error } = await supabaseAdmin.rpc("reserve_ton_swap", {
       _row: { user_id: userId, link_id: link.id, pocket, offer_units: offer.toString(), shown_units: shown.toString(), quote_units: fresh.toString(),
-        min_out_units: minOut.toString(), usdt_baseline: baseline.toString(), amount_usd: amountUsd } as never,
+        min_out_units: minOut.toString(), usdt_baseline: baseline.toString(), amount_usd: amountUsd, parent_id: chain?.parentId ?? "" } as never,
       _per_swap_max_usd: limits.perSwapUsd, _daily_max_usd: limits.dailyUsd,
     });
     if (error || !id) throw new Error(error?.code === "23505" ? "You already have a TON swap on its way. Wait for it to finish." : (error?.message?.replace(/^.*?ERROR:\s*/, "") || "Couldn't start the swap. Nothing was sent."));
@@ -98,6 +106,7 @@ export async function startTonToUsdt(userId: string, tester: boolean, input: { a
   });
 }
 
+export type TonSwapRow = Row;
 type Row = { id: string; pocket: string; status: string; txid: string | null; min_out_units: string; usdt_baseline: string; send_meta: unknown; created_at: string; updated_at: string };
 
 /** Never re-sends: only looks at the pocket's USD₮ and the recorded message. */
@@ -121,7 +130,7 @@ export async function checkTonSwap(r: Row): Promise<string> {
 }
 
 export async function listTonSwaps(userId: string) {
-  const { data } = await supabaseAdmin.from("ton_swaps").select("id, pocket, status, txid, offer_units, min_out_units, usdt_baseline, received_units, send_meta, error, created_at, updated_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(20);
+  const { data } = await supabaseAdmin.from("ton_swaps").select("id, pocket, status, txid, offer_units, min_out_units, usdt_baseline, received_units, send_meta, error, created_at, updated_at").eq("user_id", userId).is("parent_id", null).order("created_at", { ascending: false }).limit(20);
   const rows = (data ?? []).map((x) => ({ ...x, min_out_units: String(x.min_out_units), usdt_baseline: String(x.usdt_baseline), offer_units: String(x.offer_units), received_units: x.received_units == null ? null : String(x.received_units) })) as (Row & { offer_units: string; received_units: string | null; error: string | null })[];
   for (const r of rows) if (["sent", "unknown", "signing"].includes(r.status)) r.status = await checkTonSwap(r).catch(() => r.status);
   return rows.map((r) => ({ id: r.id, status: r.status, txid: r.txid, ton: Number(r.offer_units) / 1e9, minUsdt: Number(r.min_out_units) / 1e6,

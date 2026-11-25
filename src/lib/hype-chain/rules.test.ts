@@ -22,3 +22,22 @@ describe("hype chain rules", () => {
     expect(secondHopOk(98.9, 99)).toBe(false);
   });
 });
+
+import { tonToHandOn as tonHand, chainSteps as steps3, relayLegDirection as rld, chainEndSymbol as endSym } from "./rules";
+describe("TSD → USD₮ on TON in one tap", () => {
+  test("three steps, Relay step pays TON", () => {
+    expect(steps3("to_ton_usdt", "tsd", "TSD")).toEqual(["Telegram tap", "TSD Bridge: TSD → ETH", "Relay: ETH → TON", "STON.fi: TON → USD₮ on TON"]);
+    expect(rld("to_ton_usdt")).toBe("to_ton");
+    expect(endSym("to_ton_usdt")).toBe("USD₮ on TON");
+  });
+  test("step 3 swaps only TON that arrived, less 0.265 TON for its fees", () => {
+    // held 5 TON before, Relay reported 10, pocket now 15 → 10 − 0.265 = 9.735 TON
+    expect(tonHand(10_000_000_000n, 15_000_000_000n, 5_000_000_000n)).toBe(9_735_000_000n);
+    // only 3 arrived though Relay reported 10 → 3 − 0.265
+    expect(tonHand(10_000_000_000n, 8_000_000_000n, 5_000_000_000n)).toBe(2_735_000_000n);
+    // the member's own 5 TON is never spent
+    expect(tonHand(10_000_000_000n, 5_000_000_000n, 5_000_000_000n)).toBeNull();
+    // under 0.1 TON left after fees → nothing
+    expect(tonHand(300_000_000n, 5_300_000_000n, 5_000_000_000n)).toBeNull();
+  });
+});

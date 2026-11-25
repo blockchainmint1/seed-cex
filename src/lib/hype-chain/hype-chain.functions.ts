@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const base = z.object({
-  direction: z.enum(["to_hype", "from_hype", "to_ton"]),
+  direction: z.enum(["to_hype", "from_hype", "to_ton", "to_ton_usdt"]),
   via: z.enum(["tsd", "xchain"]),
   coin: z.string().min(1).max(40),
   amount: z.string().regex(/^\d{1,12}(\.\d+)?$/).max(40),
@@ -20,7 +20,7 @@ export const quoteHypeChainSwap = createServerFn({ method: "POST" })
     try {
       return { ok: true as const, error: null, ...(await quoteHypeChain(data)), quotedAt: Date.now() };
     } catch (e) {
-      return { ok: false as const, error: e instanceof Error ? e.message : String(e), direction: data.direction, via: data.via, coin: data.coin, amountIn: Number(data.amount), mid: 0, out: 0, amountUsd: null, outUsd: null, protocol: null, seconds: null, quotedAt: Date.now() };
+      return { ok: false as const, error: e instanceof Error ? e.message : String(e), direction: data.direction, via: data.via, coin: data.coin, amountIn: Number(data.amount), mid: 0, ton: null, out: 0, amountUsd: null, outUsd: null, protocol: null, seconds: null, quotedAt: Date.now() };
     }
   });
 

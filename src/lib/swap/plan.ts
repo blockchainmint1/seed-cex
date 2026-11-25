@@ -33,7 +33,7 @@ export type RouteOption =
   | { kind: "two"; direction: TwoStepDirection; network: DexNetwork; token: string; coin: SwapCoinId; mids: SwapCoinId[] }
   | { kind: "relay"; direction: "to_hype" | "from_hype" | "to_ton" }
   /** Any coin or TSD <-> HYPE in one tap: THORChain/Maya or the TSD route to ETH, then Relay (src/lib/hype-chain). */
-  | { kind: "hype_chain"; direction: "to_hype" | "from_hype" | "to_ton"; via: "tsd" | "xchain"; coin: string }
+  | { kind: "hype_chain"; direction: "to_hype" | "from_hype" | "to_ton" | "to_ton_usdt"; via: "tsd" | "xchain"; coin: string }
   /** TON -> USD₮ on TON through STON.fi, own TON pocket only (src/lib/ston). */
   | { kind: "ston" };
 
@@ -121,7 +121,15 @@ export function planSwap(fromIn: SwapSide, toIn: SwapSide): SwapPlan {
   // USD₮ on TON: only from TON, on STON.fi, in the member's own TON pocket.
   if (from.kind === "ton" && to.kind === "ton_usdt") return { options: [{ kind: "ston" }], problem: null };
   if (from.kind === "ton_usdt") return none("Swapping USD₮ on TON into other coins isn't available yet. You can withdraw it from Balances.");
-  if (to.kind === "ton_usdt") return none("Get TON first (TSD, ETH and many coins swap to TON), then swap TON to USD₮ on TON.");
+  // Anything that reaches TON through ETH reaches USD₮ on TON in one tap: … → ETH → TON (Relay) → USD₮ (STON.fi).
+  if (to.kind === "ton_usdt") {
+    if (from.kind === "tsd") return { options: [{ kind: "hype_chain", direction: "to_ton_usdt", via: "tsd", coin: "TSD" }], problem: null };
+    if (from.kind === "coin" && from.id !== "ETH") {
+      const c = swapCoin(from.id), e = swapCoin("ETH");
+      if (c && e && c.protocols.some((p) => e.protocols.includes(p) && sendSource(c, p) !== null)) return { options: [{ kind: "hype_chain", direction: "to_ton_usdt", via: "xchain", coin: c.id }], problem: null };
+    }
+    return none("Get TON first (TSD, ETH and many coins swap to TON), then swap TON to USD₮ on TON.");
+  }
 
   // TON: bought with Ether through Relay into the member's own TON pocket; TSD and other coins reach ETH first.
   if (from.kind === "ton") return none("TON swaps into USD₮ on TON for now. You can also withdraw TON from Balances.");
