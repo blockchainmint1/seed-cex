@@ -1,6 +1,8 @@
+import { useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Check, CheckCircle2, ChevronDown, Circle, Coins, ExternalLink, Loader2, XCircle } from "lucide-react";
+import { parseSwapRef } from "@/lib/activity/activity-rules";
 import { PROTOCOL_LABEL, SWAP_COINS, swapCoin } from "@/lib/xchain/assets";
 import type { getSwapSendContext } from "@/lib/xchain/swap.functions";
 import { answerTsdSwap, getTsdRoutes } from "@/lib/xchain/tsd-route.functions";
@@ -51,8 +53,11 @@ function Track({ txid, protocol }: { txid: string; protocol: string }) {
  * One history for every swap the member started on this page. A TSD swap is a
  * single row with its steps; its swap step is part of it, never a second row.
  */
-export function MySwaps({ signedIn, sends }: { signedIn: boolean; sends: SendRow[] }) {
+export function MySwaps({ signedIn, sends, focus }: { signedIn: boolean; sends: SendRow[]; focus?: string }) {
   const qc = useQueryClient();
+  // A history row can open this page on one record: scroll to it and open its Details.
+  const parsed = parseSwapRef(focus);
+  const focusKey = parsed ? `${parsed.kind}-${parsed.id}` : null;
   const fetchRoutes = useServerFn(getTsdRoutes);
   const { data } = useQuery({
     queryKey: ["tsd-routes"],
@@ -117,6 +122,15 @@ export function MySwaps({ signedIn, sends }: { signedIn: boolean; sends: SendRow
     ...(relayData?.swaps ?? []).map((x) => ({ kind: "relay" as const, at: x.created_at, x })),
     ...(chainData?.swaps ?? []).map((x) => ({ kind: "chain" as const, at: x.created_at, x })),
   ].sort((a, b) => b.at.localeCompare(a.at));
+  const scrolled = useRef<string | null>(null);
+  useEffect(() => {
+    if (!focusKey || scrolled.current === focusKey) return;
+    const el = document.querySelector(`[data-swap="${focusKey}"]`);
+    if (!el) return;
+    scrolled.current = focusKey;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.querySelector("details")?.setAttribute("open", "");
+  }, [focusKey, rows.length]);
   if (!rows.length) return null;
 
   return (
@@ -124,15 +138,15 @@ export function MySwaps({ signedIn, sends }: { signedIn: boolean; sends: SendRow
       <h2 className="border-b border-border px-4 py-3 font-mono text-[11px] tracking-[0.2em] uppercase">My swaps</h2>
       <ul className="divide-y divide-border">
         {rows.map((row) => {
-          if (row.kind === "chain") return <ChainItem key={`h-${row.x.id}`} x={row.x} onCancel={() => stopChain.mutate(row.x.id)} cancelling={stopChain.isPending} />;
-          if (row.kind === "relay") return <RelayItem key={`r-${row.x.id}`} x={row.x} onCancel={() => stopRelay.mutate(row.x.id)} cancelling={stopRelay.isPending} />;
-          if (row.kind === "two") return <TwoStepItem key={`w-${row.t.id}`} t={row.t} onCancel={() => stopTwo.mutate(row.t.id)} cancelling={stopTwo.isPending} />;
-          if (row.kind === "dex") return <DexItem key={`d-${row.d.id}`} d={row.d} onCancel={() => stopDex.mutate(row.d.id)} cancelling={stopDex.isPending} />;
+          if (row.kind === "chain") return <ChainItem key={`h-${row.x.id}`} x={row.x} onCancel={() => stopChain.mutate(row.x.id)} cancelling={stopChain.isPending} focus={focusKey === `chain-${row.x.id}`} />;
+          if (row.kind === "relay") return <RelayItem key={`r-${row.x.id}`} x={row.x} onCancel={() => stopRelay.mutate(row.x.id)} cancelling={stopRelay.isPending} focus={focusKey === `relay-${row.x.id}`} />;
+          if (row.kind === "two") return <TwoStepItem key={`w-${row.t.id}`} t={row.t} onCancel={() => stopTwo.mutate(row.t.id)} cancelling={stopTwo.isPending} focus={focusKey === `two-${row.t.id}`} />;
+          if (row.kind === "dex") return <DexItem key={`d-${row.d.id}`} d={row.d} onCancel={() => stopDex.mutate(row.d.id)} cancelling={stopDex.isPending} focus={focusKey === `dex-${row.d.id}`} />;
           if (row.kind === "send") {
             const s = row.s;
             const from = coinLabel(s.from_asset), to = coinLabel(s.to_asset);
             return (
-              <li key={`s-${s.id}`} className="space-y-2 px-4 py-3 text-xs">
+              <li key={`s-${s.id}`} data-swap={`send-${s.id}`} className={`space-y-2 px-4 py-3 text-xs ${focusKey === `send-${s.id}` ? "bg-primary/5 ring-1 ring-primary/30" : ""}`}>
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <span className="font-semibold">
                     {num(Number(s.amount_in))} {from.symbol} → {to.symbol}
@@ -156,7 +170,7 @@ export function MySwaps({ signedIn, sends }: { signedIn: boolean; sends: SendRow
           const at = stepIndex(r.direction as RouteDirection, r.stage === "gas_pending" ? (r.resume_stage ?? "swapping") : r.stage, direct);
           const stopped = ["failed", "refunded", "kept_usdc"].includes(r.stage);
           return (
-            <li key={`t-${r.id}`} className="space-y-2 px-4 py-3 text-xs">
+            <li key={`t-${r.id}`} data-swap={`tsd-${r.id}`} className={`space-y-2 px-4 py-3 text-xs ${focusKey === `tsd-${r.id}` ? "bg-primary/5 ring-1 ring-primary/30" : ""}`}>
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <span className="font-semibold">{buy ? `${num(Number(r.amount_in), 2)} TSD → ${sym}` : `${num(Number(r.amount_in))} ${sym} → TSD`}</span>
                 <span className={`font-mono text-[11px] ${r.stage === "done" ? "text-primary" : stopped ? "text-destructive" : ""}`}>{ROUTE_LABEL[r.stage] ?? r.stage}</span>
@@ -202,10 +216,10 @@ export function MySwaps({ signedIn, sends }: { signedIn: boolean; sends: SendRow
 }
 
 /** A one-tap coin <-> HYPE swap through ETH: one row with its steps. */
-function ChainItem({ x, onCancel, cancelling }: { x: ChainRow; onCancel: () => void; cancelling: boolean }) {
+function ChainItem({ x, onCancel, cancelling, focus }: { x: ChainRow; onCancel: () => void; cancelling: boolean; focus?: boolean }) {
   const stopped = ["failed", "kept_mid", "declined", "expired", "cancelled"].includes(x.status);
   return (
-    <li className="space-y-2 px-4 py-3 text-xs">
+    <li data-swap={`chain-${x.id}`} className={`space-y-2 px-4 py-3 text-xs ${focus ? "bg-primary/5 ring-1 ring-primary/30" : ""}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <span className="font-semibold">
           {num(x.amount_in)} {x.symbolIn} → {x.symbolOut}
@@ -245,11 +259,11 @@ function ChainItem({ x, onCancel, cancelling }: { x: ChainRow; onCancel: () => v
 }
 
 /** A Relay swap (ETH <-> HYPE): one row. */
-function RelayItem({ x, onCancel, cancelling }: { x: RelayRow; onCancel: () => void; cancelling: boolean }) {
+function RelayItem({ x, onCancel, cancelling, focus }: { x: RelayRow; onCancel: () => void; cancelling: boolean; focus?: boolean }) {
   const stopped = ["failed", "declined", "expired", "cancelled", "refunded"].includes(x.status);
   const explorer = (c: string) => getChain(c as never).explorer.replace(/\/address\/$/, "/tx/");
   return (
-    <li className="space-y-2 px-4 py-3 text-xs">
+    <li data-swap={`relay-${x.id}`} className={`space-y-2 px-4 py-3 text-xs ${focus ? "bg-primary/5 ring-1 ring-primary/30" : ""}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <span className="font-semibold">
           {num(x.amount_in)} {x.symbolIn} → {x.symbolOut}
@@ -277,7 +291,7 @@ function RelayItem({ x, onCancel, cancelling }: { x: RelayRow; onCancel: () => v
 }
 
 /** A Uniswap / PancakeSwap / PulseX swap: one row with its steps (a TSD Bridge step is part of it). */
-function DexItem({ d, onCancel, cancelling }: { d: DexRow; onCancel: () => void; cancelling: boolean }) {
+function DexItem({ d, onCancel, cancelling, focus }: { d: DexRow; onCancel: () => void; cancelling: boolean; focus?: boolean }) {
   const side = (d.tsd_side as "buy" | "sell" | null) ?? null;
   const venue = d.venue_name ?? "Pool";
   const steps = dexSteps(side, venue, d.symbol_out);
@@ -285,7 +299,7 @@ function DexItem({ d, onCancel, cancelling }: { d: DexRow; onCancel: () => void;
   const stopped = ["failed", "kept_usdc", "declined", "expired", "cancelled"].includes(d.status);
   const netName = DEX_NETWORKS[d.network as DexNetwork]?.name ?? d.network;
   return (
-    <li className="space-y-2 px-4 py-3 text-xs">
+    <li data-swap={`dex-${d.id}`} className={`space-y-2 px-4 py-3 text-xs ${focus ? "bg-primary/5 ring-1 ring-primary/30" : ""}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <span className="font-semibold">
           {num(d.amount_in)} {d.symbol_in} → {d.symbol_out}
@@ -327,13 +341,13 @@ function DexItem({ d, onCancel, cancelling }: { d: DexRow; onCancel: () => void;
 }
 
 /** A two-step swap: one row, one Telegram tap, both hops shown as its steps. */
-function TwoStepItem({ t, onCancel, cancelling }: { t: TwoRow; onCancel: () => void; cancelling: boolean }) {
+function TwoStepItem({ t, onCancel, cancelling, focus }: { t: TwoRow; onCancel: () => void; cancelling: boolean; focus?: boolean }) {
   const swapper = PROTOCOL_LABEL[t.xProtocol];
   const steps = twoStepSteps({ direction: t.direction as "dex_then_x" | "x_then_dex", symbolIn: t.symbol_in, mid: t.mid_symbol, symbolOut: t.symbol_out, pool: t.pool, swapper });
   const at = twoStepIndex(t.status);
   const stopped = ["failed", "refunded", "kept_mid", "declined", "expired", "cancelled"].includes(t.status);
   return (
-    <li className="space-y-2 px-4 py-3 text-xs">
+    <li data-swap={`two-${t.id}`} className={`space-y-2 px-4 py-3 text-xs ${focus ? "bg-primary/5 ring-1 ring-primary/30" : ""}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <span className="font-semibold">
           {num(t.amount_in)} {t.symbol_in} → {t.symbol_out}

@@ -15,7 +15,7 @@ import { chainEndSymbol, chainStatusLabel, chainSteps, relayIsSecond, type HypeC
 import { RELAY_STATUS_LABEL, type RelayStatus } from "@/lib/relay/rules";
 import {
   APPROVAL_WHAT, AI_LABEL, DEX_LABEL, P2P_LABEL, ROUTE_LABEL, SEND_LABEL, TRADE_LABEL, TWO_LABEL, WITHDRAW_LABEL, ORDER_LABEL,
-  aiTone, approvalWaiting, dexTone, hiddenLegs, mySide, newestFirst, orderTone, p2pTone, routeTone, sendTone, tradeTone, twoTone, withdrawTone,
+  aiTone, approvalWaiting, dexTone, hiddenLegs, mySide, newestFirst, orderTone, p2pTone, routeTone, sendTone, swapHref, tradeTone, twoTone, withdrawTone,
   type ActivityRow,
 } from "./activity-rules";
 
@@ -81,7 +81,7 @@ export async function loadActivity(userId: string) {
       id: `s-${s.id}`, kind: "swap", at: s.created_at, title: `Swap ${coinOf(s.from_asset)} → ${coinOf(s.to_asset)}`,
       detail: `Chain to chain · ${PROTOCOL_LABEL[p]}`,
       sent: { amount: num(s.amount_in), coin: coinOf(s.from_asset) }, got: { amount: num(s.expected_out), coin: coinOf(s.to_asset) },
-      status: SEND_LABEL[s.status] ?? s.status, tone: sendTone(s.status), href: "/swap",
+      status: SEND_LABEL[s.status] ?? s.status, tone: sendTone(s.status), href: swapHref("send", s.id),
       txUrl: s.txid && s.status !== "failed" ? trackerUrl(p, s.txid) : null,
     });
   }
@@ -94,7 +94,7 @@ export async function loadActivity(userId: string) {
       id: `r-${r.id}`, kind: "swap", at: r.created_at, title: buy ? `Swap TSD → ${sym}` : `Swap ${sym} → TSD`,
       detail: `TSD Bridge + ${PROTOCOL_LABEL[r.protocol === "maya" ? "maya" : "thorchain"]}${aiRoutes.has(r.id) ? " · by Seeds AI" : ""}`,
       sent: { amount: num(r.amount_in), coin: buy ? "TSD" : sym }, got: { amount: out, coin: buy ? sym : "TSD" },
-      status: ROUTE_LABEL[r.stage] ?? r.stage, tone: routeTone(r.stage), href: "/swap",
+      status: ROUTE_LABEL[r.stage] ?? r.stage, tone: routeTone(r.stage), href: swapHref("tsd", r.id),
       txUrl: r.tsd_txid ? `${TXC_TX}${r.tsd_txid}` : null,
     });
   }
@@ -105,7 +105,7 @@ export async function loadActivity(userId: string) {
       id: `d-${d.id}`, kind: "swap", at: d.created_at, title: `Swap ${d.symbol_in} → ${d.symbol_out}`,
       detail: `${d.venue_name ?? "Pool"} · ${net?.name ?? d.network}`,
       sent: { amount: num(d.amount_in), coin: d.symbol_in }, got: { amount: d.amount_out != null ? num(d.amount_out) : num(d.shown_out), coin: d.symbol_out },
-      status: DEX_LABEL[d.status] ?? d.status, tone: dexTone(d.status), href: "/swap",
+      status: DEX_LABEL[d.status] ?? d.status, tone: dexTone(d.status), href: swapHref("dex", d.id),
       txUrl: d.swap_txid && net ? `${net.explorerTx}${d.swap_txid}` : null,
     });
   }
@@ -114,7 +114,7 @@ export async function loadActivity(userId: string) {
       id: `w-${w.id}`, kind: "swap", at: w.created_at, title: `Swap ${w.symbol_in} → ${w.symbol_out}`,
       detail: `Two steps via ${swapCoin(w.mid_id as never)?.symbol ?? w.mid_id} · ${PROTOCOL_LABEL[w.protocol === "maya" ? "maya" : "thorchain"]}`,
       sent: { amount: num(w.amount_in), coin: w.symbol_in }, got: { amount: w.amount_out != null ? num(w.amount_out) : num(w.shown_out), coin: w.symbol_out },
-      status: TWO_LABEL[w.status] ?? w.status, tone: twoTone(w.status), href: "/swap", txUrl: null,
+      status: TWO_LABEL[w.status] ?? w.status, tone: twoTone(w.status), href: swapHref("two", w.id), txUrl: null,
     });
   }
   // One-tap chains (e.g. TSD -> ETH -> TON -> USD₮ on TON): one row as on the Swap page; their steps are hidden above.
@@ -126,7 +126,7 @@ export async function loadActivity(userId: string) {
       id: `h-${c.id}`, kind: "swap", at: c.created_at, title: `Swap ${from} → ${to}`,
       detail: `One tap · ${chainSteps(d, c.via as HypeChainVia, sym).slice(1).join(" → ")}`,
       sent: { amount: num(c.amount_in), coin: from }, got: { amount: c.amount_out != null ? num(c.amount_out) : num(c.shown_out), coin: to },
-      status: chainStatusLabel(c.status as HypeChainStatus, d, c.ton_amount != null), tone: twoTone(c.status), href: "/swap", txUrl: null,
+      status: chainStatusLabel(c.status as HypeChainStatus, d, c.ton_amount != null), tone: twoTone(c.status), href: swapHref("chain", c.id), txUrl: null,
     });
   }
   const RELAY_SYM: Record<string, [string, string]> = { to_hype: ["ETH", "HYPE"], from_hype: ["HYPE", "ETH"], to_ton: ["ETH", "TON"] };
@@ -136,7 +136,7 @@ export async function loadActivity(userId: string) {
     rows.push({
       id: `y-${r.id}`, kind: "swap", at: r.created_at, title: `Swap ${a} → ${b}`, detail: "Relay",
       sent: { amount: num(r.amount_in), coin: a }, got: { amount: r.amount_out != null ? num(r.amount_out) : num(r.shown_out), coin: b },
-      status: RELAY_STATUS_LABEL[r.status as RelayStatus] ?? r.status, tone: twoTone(r.status), href: "/swap",
+      status: RELAY_STATUS_LABEL[r.status as RelayStatus] ?? r.status, tone: twoTone(r.status), href: swapHref("relay", r.id),
       txUrl: r.deposit_txid ? `${hyper ? "https://hyperevmscan.io/tx/" : "https://etherscan.io/tx/"}${r.deposit_txid}` : null,
     });
   }
@@ -145,7 +145,7 @@ export async function loadActivity(userId: string) {
     rows.push({
       id: `n-${t.id}`, kind: "swap", at: t.created_at, title: "Swap TON → USD₮ on TON", detail: "STON.fi",
       sent: { amount: num(t.offer_units) / 1e9, coin: "TON" }, got: { amount: (t.received_units != null ? num(t.received_units) : num(t.shown_units)) / 1e6, coin: "USD₮ on TON" },
-      status: label[t.status] ?? t.status, tone: twoTone(t.status), href: "/swap",
+      status: label[t.status] ?? t.status, tone: twoTone(t.status), href: "/swap?from=TON&to=USDT_TON",
       txUrl: t.txid ? `https://tonviewer.com/transaction/${t.txid}` : null,
     });
   }

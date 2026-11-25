@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
-  activityCsv, coinsIn, dexTone, filterRows, hiddenLegs, mySide, p2pTone, routeTone, tradeTone, twoTone, withdrawTone, approvalWaiting,
+  activityCsv, coinsIn, dexTone, filterRows, hiddenLegs, mySide, p2pTone, parseSwapRef, routeTone, swapHref, tradeTone, twoTone, withdrawTone, approvalWaiting,
   type ActivityRow,
 } from "./activity-rules";
 
@@ -83,4 +83,15 @@ test("a one-tap chain's steps are hidden; the chain row stands alone", () => {
   expect(h.routes.has("r2")).toBe(false);
   expect(h.sends.has("s2")).toBe(true);
   expect(h.sends.has("s3")).toBe(false);
+});
+
+test("a history row links to its own record on the Swap page", () => {
+  expect(swapHref("chain", "9f1c2b3a-0000-4000-8000-000000000000")).toBe("/swap?sw=chain:9f1c2b3a-0000-4000-8000-000000000000");
+  const back = parseSwapRef("relay:9f1c2b3a-0000-4000-8000-000000000000");
+  expect(back).toEqual({ kind: "relay", id: "9f1c2b3a-0000-4000-8000-000000000000" });
+  // Anything the Swap page has no record for is refused, never trusted.
+  expect(parseSwapRef("chain:../../etc/passwd")).toBeNull();
+  expect(parseSwapRef("nonsense:9f1c2b3a-0000-4000-8000-000000000000")).toBeNull();
+  expect(parseSwapRef("chain")).toBeNull();
+  expect(parseSwapRef(undefined)).toBeNull();
 });

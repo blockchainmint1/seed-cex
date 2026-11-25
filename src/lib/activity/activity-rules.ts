@@ -106,6 +106,26 @@ export function twoTone(s: string): Tone {
   return "pending";
 }
 
+/* ------------------------------ swap records ------------------------------- */
+
+/** Which swap record a history row points at on the Swap page. */
+export type SwapRefKind = "send" | "tsd" | "dex" | "two" | "chain" | "relay";
+const SWAP_REF_KINDS: readonly string[] = ["send", "tsd", "dex", "two", "chain", "relay"];
+
+/** The Swap page with that one record opened in My swaps. */
+export const swapHref = (kind: SwapRefKind, id: string) => `/swap?sw=${kind}:${encodeURIComponent(id)}`;
+
+/** That link read back; null for anything that isn't a known record. */
+export function parseSwapRef(v: unknown): { kind: SwapRefKind; id: string } | null {
+  if (typeof v !== "string") return null;
+  const i = v.indexOf(":");
+  if (i < 0) return null;
+  const kind = v.slice(0, i);
+  const id = decodeURIComponent(v.slice(i + 1));
+  if (!SWAP_REF_KINDS.includes(kind) || !/^[0-9a-fA-F-]{1,64}$/.test(id)) return null;
+  return { kind: kind as SwapRefKind, id };
+}
+
 /* ----------------------------------- p2p ------------------------------------ */
 
 export const P2P_LABEL: Record<string, string> = { open: "Waiting for payment", paid: "Buyer says paid", released: "Completed", cancelled: "Cancelled", disputed: "In dispute" };

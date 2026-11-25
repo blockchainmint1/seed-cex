@@ -17,6 +17,7 @@ import { fmtCompact } from "@/lib/format";
 import { useSession } from "@/hooks/use-session";
 import { TsdRouteResult } from "@/components/swap/TsdRoute";
 import { MySwaps } from "@/components/swap/MySwaps";
+import { parseSwapRef } from "@/lib/activity/activity-rules";
 import { AnyCoinPicker } from "@/components/swap/AnyCoinPicker";
 import { CrossChainRoutes, type XRoute } from "@/components/swap/CrossChainResult";
 import { PocketSwap, QuoteDetails, type DexCoin, type DexQuoteResult } from "@/components/swap/DexResult";
@@ -28,7 +29,7 @@ import { quoteHypeChainSwap } from "@/lib/hype-chain/hype-chain.functions";
 import { quoteTonUsdt } from "@/lib/ston/ston.functions";
 import { TonUsdtResult, type TonUsdtQuote } from "@/components/swap/TonUsdtResult";
 
-type SwapSearch = { from?: string; to?: string; amount?: string };
+type SwapSearch = { from?: string; to?: string; amount?: string; sw?: string };
 const sideOk = (v: unknown): v is string => v === "TSD" || v === "HYPE" || v === "TON" || v === "USDT_TON" || (typeof v === "string" && Boolean(swapCoin(v as SwapCoinId)));
 const toSide = (v: string): SwapSide => (v === "TSD" ? { kind: "tsd" } : v === "HYPE" ? { kind: "hype" } : v === "TON" ? { kind: "ton" } : v === "USDT_TON" ? { kind: "ton_usdt" } : { kind: "coin", id: v as SwapCoinId });
 
@@ -39,6 +40,8 @@ export const Route = createFileRoute("/swap")({
     to: sideOk(s.to) ? s.to : undefined,
     // The URL may carry the amount as a number (?amount=10) or a string.
     amount: (typeof s.amount === "string" || typeof s.amount === "number") && /^\d{1,9}(\.\d{1,8})?$/.test(String(s.amount)) ? String(s.amount) : undefined,
+    // A history row can open the page on one record in My swaps (?sw=chain:<id>).
+    sw: typeof s.sw === "string" && parseSwapRef(s.sw) ? s.sw : undefined,
   }),
   head: () => ({
     meta: [
@@ -423,7 +426,7 @@ function SwapPage() {
           {sel ? <Selected r={sel} from={from} to={to} amount={amount} destination={destination} signedIn={Boolean(user)} sendCtx={sendCtx ?? null} linkCtx={linkCtx} onSent={reset} /> : null}
 
           <div id="my-swaps" className="scroll-mt-24" />
-          <MySwaps signedIn={Boolean(user)} sends={sendCtx?.sends ?? []} />
+          <MySwaps signedIn={Boolean(user)} sends={sendCtx?.sends ?? []} focus={search.sw} />
         </section>
 
         <aside className="space-y-4">

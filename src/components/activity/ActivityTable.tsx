@@ -16,6 +16,22 @@ export const TONE_CLASS: Record<Tone, string> = {
 
 type SortKey = "at" | "kind" | "status";
 
+/**
+ * A row's own page. The link may carry a search ("…/swap?sw=chain:<id>"), so it
+ * is split here: the path goes to `to`, the rest to `search`, which the target
+ * route validates.
+ */
+function RowLink({ href, title }: { href: string; title: string }) {
+  const q = href.indexOf("?");
+  const to = q < 0 ? href : href.slice(0, q);
+  const search = q < 0 ? undefined : Object.fromEntries(new URLSearchParams(href.slice(q + 1)));
+  return (
+    <Link to={to as string} search={search} className="text-foreground hover:text-primary">
+      {title}
+    </Link>
+  );
+}
+
 /** One exchange-style history table; every column header sorts. */
 export function ActivityTable({ rows, empty, showKind = true, pageSize = 25 }: { rows: ActivityRow[]; empty: string; showKind?: boolean; pageSize?: number }) {
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: "at", dir: -1 });
@@ -61,7 +77,7 @@ export function ActivityTable({ rows, empty, showKind = true, pageSize = 25 }: {
                 <td className="whitespace-nowrap px-4 py-2 text-muted-foreground">{when(r.at)}</td>
                 {showKind ? <td className="px-4 py-2">{KIND_LABEL[r.kind]}</td> : null}
                 <td className="px-4 py-2">
-                  {r.href ? <Link to={r.href as string} className="text-foreground hover:text-primary">{r.title}</Link> : r.title}
+                  {r.href ? <RowLink href={r.href} title={r.title} /> : r.title}
                   {r.detail ? <span className="block text-[10px] text-muted-foreground">{r.detail}</span> : null}
                 </td>
                 <td className="whitespace-nowrap px-4 py-2 text-right tabular-nums">{r.sent ? `${fmt(r.sent.amount)} ${r.sent.coin}` : "—"}</td>
