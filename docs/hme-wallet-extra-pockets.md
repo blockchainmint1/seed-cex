@@ -145,11 +145,13 @@ Seeds now accepts **Stellar (XLM), TON and Sui** keys in links. That's 14 option
 | chain | path (pocket 1106) | curve | format | public half (`xpubs[chain]`) | private half (sealed `xprvs[chain]`) |
 |---|---|---|---|---|---|
 | XLM | `m/44'/148'/1106'` | ed25519 | `slip10-ed25519-stellar-g-address` | the Stellar address itself (`G…`, SEP-0005 strkey) | hex 32-byte SLIP-0010 key |
-| TON | `m/44'/607'/1106'` | ed25519 | `slip10-ed25519-ton-w5-hex-pubkey` | hex 32-byte public key | hex 32-byte SLIP-0010 key |
-| SUI | `m/44'/784'/1106'/0'/0'` | ed25519 | `slip10-ed25519-sui-0x-address` | the Sui address itself (`0x…`, 64 hex chars) | hex 32-byte SLIP-0010 key |
+| TON | `m/44'/607'/1106'` | ed25519 | `slip10-ed25519-ton-w5-hex-pubkey` | lowercase hex 32-byte public key | lowercase hex 32-byte SLIP-0010 key |
+| SUI | `m/44'/784'/1106'/0'/0'` | ed25519 | `slip10-ed25519-sui-0x-address` | the Sui address itself (`0x…`, 64 lowercase hex chars) | lowercase hex 32-byte SLIP-0010 key |
+
+All hex values (public halves, private halves, and the Sui address) must be **lowercase** — Seeds refuses uppercase at parse.
 
 - **XLM:** the address *is* the public key (strkey-encoded), so the address doubles as the public half.
-- **TON:** the address is derived from the wallet contract, so the public half is the raw hex public key. Seeds uses wallet type **W5 (v5R1)**, workchain 0, shown non-bounceable (`UQ…`) — the same wallet Tonkeeper uses.
+- **TON:** the address is derived from the wallet contract, so the public half is the raw hex public key. Seeds uses wallet type **W5 (v5R1)**, workchain 0, shown non-bounceable (`UQ…`) — the same contract version Tonkeeper uses. That does **not** mean the phrase can be restored in Tonkeeper to see these coins: the path is pocket 1106, not Tonkeeper's default, so only a wallet deriving this exact path will ever see this address.
 - **SUI:** the address is `blake2b-256(0x00 ‖ pubkey)`, so the address doubles as the public half.
 
 ### Check your derivation with these test values
