@@ -572,13 +572,60 @@ export async function listHypeChains(userId: string) {
     .select("id, direction, via, coin_id, amount_in, shown_out, amount_out, status, error, created_at")
     .eq("user_id", userId).order("created_at", { ascending: false }).limit(20);
   if (error) throw new Error(error.message);
+  const logs = await chainLogs(userId, (data ?? []).map((r) => r.id)).catch(() => new Map<string, ChainLogEntry[]>());
   return (data ?? []).map((r) => {
     const sym = symbolOf(r.coin_id);
     const d = r.direction as HypeChainDirection;
     return {
       ...r, amount_in: Number(r.amount_in), shown_out: Number(r.shown_out), amount_out: r.amount_out == null ? null : Number(r.amount_out),
       symbolIn: relayIsSecond(d) ? sym : "HYPE", symbolOut: relayIsSecond(d) ? chainEndSymbol(d) : sym,
-      label: HYPE_CHAIN_LABEL[r.status as HypeChainStatus] ?? r.status, steps: chainSteps(d, r.via as HypeChainVia, sym), terminal: isHypeChainTerminal(r.status),
+      log: logs.get(r.id) ?? [], label: HYPE_CHAIN_LABEL[r.status as HypeChainStatus] ?? r.status, steps: chainSteps(d, r.via as HypeChainVia, sym), terminal: isHypeChainTerminal(r.status),
     };
   });
+}
+
+/* ---------------------------------- step log ---------------------------------- */
+
+export type ChainLogEntry = { at: string; text: string; txid: string | null; url: string | null };
+const TXC_TX = "https://mempool.texitcoin.org/tx/", ETH_TX = "https://etherscan.io/tx/", THOR_TX = "https://viewblock.io/thorchain/tx/";
+/** TSD Bridge's public order page: TX- plus the first 8 characters of the order id. */
+export const tsdBridgeOrderUrl = (orderId: string) => `https://tsd.honest.money/swap/TX-${orderId.replace(/-/g, "").slice(0, 8).toUpperCase()}`;
+
+/** The member's own step records for these chains, oldest first: what happened, its transaction and where to see it. */
+async function chainLogs(userId: string, ids: string[]): Promise<Map<string, ChainLogEntry[]>> {
+  const out = new Map<string, ChainLogEntry[]>();
+  if (!ids.length) return out;
+  const add = (id: string | null, e: ChainLogEntry) => { if (!id) return; const l = out.get(id) ?? []; l.push(e); out.set(id, l); };
+  const [t, x, rl, tn] = await Promise.all([
+    supabaseAdmin.from("tsd_routes").select("parent_id, created_at, updated_at, direction, stage, bridge_order_id, tsd_txid, usdc_txid, bridge_out_txid, swap_send_id").eq("user_id", userId).in("parent_id", ids),
+    supabaseAdmin.from("swap_sends").select("parent_id, created_at, from_asset, to_asset, txid, out_txid, status").eq("user_id", userId).in("parent_id", ids),
+    supabaseAdmin.from("relay_swaps").select("parent_id, created_at, updated_at, direction, deposit_txid, out_txid, status").eq("user_id", userId).in("parent_id", ids),
+    supabaseAdmin.from("ton_swaps").select("parent_id, created_at, updated_at, txid, status").eq("user_id", userId).in("parent_id", ids),
+  ]);
+  const legIds = (t.data ?? []).map((r) => r.swap_send_id).filter(Boolean) as string[];
+  const legs = legIds.length ? (await supabaseAdmin.from("swap_sends").select("id, txid, status").eq("user_id", userId).in("id", legIds)).data ?? [] : [];
+  for (const r of t.data ?? []) {
+    if (r.bridge_order_id) add(r.parent_id, { at: r.created_at, text: "TSD Bridge order", txid: null, url: tsdBridgeOrderUrl(r.bridge_order_id) });
+    if (r.tsd_txid) add(r.parent_id, { at: r.created_at, text: "Sent TSD to TSD Bridge", txid: r.tsd_txid, url: TXC_TX + r.tsd_txid });
+    if (r.usdc_txid) add(r.parent_id, { at: r.updated_at, text: "USDC sent", txid: r.usdc_txid, url: ETH_TX + r.usdc_txid });
+    if (r.bridge_out_txid) add(r.parent_id, { at: r.updated_at, text: "TSD Bridge paid out", txid: r.bridge_out_txid, url: /^0x/.test(r.bridge_out_txid) ? ETH_TX + r.bridge_out_txid : null });
+    const leg = legs.find((l) => l.id === r.swap_send_id);
+    if (leg?.txid) add(r.parent_id, { at: r.updated_at, text: "USDC → ETH on THORChain/Maya", txid: leg.txid, url: THOR_TX + leg.txid.replace(/^0x/, "") });
+    if (r.stage === "done") add(r.parent_id, { at: r.updated_at, text: "ETH arrived in your pocket", txid: null, url: null });
+  }
+  for (const r of x.data ?? []) {
+    if (r.txid) add(r.parent_id, { at: r.created_at, text: `Sent ${r.from_asset} → ${r.to_asset} on THORChain/Maya`, txid: r.txid, url: THOR_TX + r.txid.replace(/^0x/, "") });
+    if (r.out_txid) add(r.parent_id, { at: r.created_at, text: "Payout received", txid: r.out_txid, url: null });
+  }
+  for (const r of rl.data ?? []) {
+    if (r.deposit_txid) add(r.parent_id, { at: r.created_at, text: "Sent ETH to Relay", txid: r.deposit_txid, url: ETH_TX + r.deposit_txid });
+    if (r.out_txid) add(r.parent_id, { at: r.updated_at, text: "Relay paid out", txid: r.out_txid, url: null });
+    if (r.status === "done") add(r.parent_id, { at: r.updated_at, text: "Relay step done", txid: null, url: null });
+  }
+  for (const r of tn.data ?? []) {
+    if (r.txid) add(r.parent_id, { at: r.created_at, text: "Sent TON to STON.fi", txid: r.txid, url: `https://tonviewer.com/transaction/${r.txid}` });
+    if (r.status === "done") add(r.parent_id, { at: r.updated_at, text: "USD₮ arrived in your TON pocket", txid: null, url: null });
+  }
+  for (const l of out.values()) l.sort((a, b) => a.at.localeCompare(b.at));
+  return out;
 }

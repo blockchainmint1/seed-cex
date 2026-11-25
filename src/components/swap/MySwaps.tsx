@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Check, Circle, Coins, ExternalLink, Loader2 } from "lucide-react";
+import { Check, CheckCircle2, ChevronDown, Circle, Coins, ExternalLink, Loader2, XCircle } from "lucide-react";
 import { PROTOCOL_LABEL, SWAP_COINS, swapCoin } from "@/lib/xchain/assets";
 import type { getSwapSendContext } from "@/lib/xchain/swap.functions";
 import { answerTsdSwap, getTsdRoutes } from "@/lib/xchain/tsd-route.functions";
@@ -209,15 +209,31 @@ function ChainItem({ x, onCancel, cancelling }: { x: ChainRow; onCancel: () => v
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <span className="font-semibold">
           {num(x.amount_in)} {x.symbolIn} → {x.symbolOut}
-          <span className="ml-2 font-mono text-[10px] font-normal text-muted-foreground">via ETH + Relay</span>
+          <span className="ml-2 font-mono text-[10px] font-normal text-muted-foreground">via ETH + Relay{x.steps.length > 3 ? " + STON.fi" : ""}</span>
         </span>
         <span className={`font-mono text-[11px] ${x.status === "done" ? "text-primary" : stopped ? "text-destructive" : ""}`}>{x.label}</span>
       </div>
-      <p className="font-mono text-[11px] text-muted-foreground">{x.steps.join(" → ")}</p>
+      <StepTrack steps={x.steps} status={x.status} stopped={stopped} />
       <p className="font-mono text-[11px] text-muted-foreground">
         {x.status === "done" && x.amount_out != null ? `Got ≈ ${num(x.amount_out)} ${x.symbolOut}` : `Expecting ≈ ${num(x.shown_out)} ${x.symbolOut}`} · {when(x.created_at)}
       </p>
       {x.error ? <p className="text-[11px] text-muted-foreground">{x.error}</p> : null}
+      {x.log.length ? (
+        <details className="group border-t border-border pt-2">
+          <summary className="flex cursor-pointer list-none items-center gap-1 font-mono text-[11px] text-primary">
+            <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" /> Details ({x.log.length})
+          </summary>
+          <ol className="mt-2 space-y-1.5">
+            {x.log.map((e, i) => (
+              <li key={i} className="font-mono text-[11px] text-muted-foreground">
+                <span className="text-foreground">{when(e.at)}</span> · {e.text}
+                {e.txid ? <> · <span className="break-all">{e.txid.slice(0, 10)}…{e.txid.slice(-6)}</span></> : null}
+                {e.url ? <> · <a href={e.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 text-primary underline">view <ExternalLink className="h-3 w-3" /></a></> : null}
+              </li>
+            ))}
+          </ol>
+        </details>
+      ) : null}
       {x.status === "awaiting_approval" ? (
         <div className="flex flex-wrap items-center gap-2 border-t border-border pt-2">
           <span className="flex-1 text-[11px]">Tap Approve in Telegram to start. Nothing moves until you do.</span>
@@ -359,5 +375,33 @@ function TwoStepItem({ t, onCancel, cancelling }: { t: TwoRow; onCancel: () => v
         </div>
       ) : null}
     </li>
+  );
+}
+
+/** Which step a chained swap is on (0 = the Telegram tap); steps.length = all done. */
+const CHAIN_AT: Record<string, number> = { awaiting_approval: 0, approved: 1, leg1: 1, mid: 2, leg2: 2, mid2: 3, leg3: 3 };
+
+/** Live step tracker: done steps get a check, the running one spins, later ones wait. */
+function StepTrack({ steps, status, stopped }: { steps: string[]; status: string; stopped: boolean }) {
+  const at = status === "done" ? steps.length : CHAIN_AT[status] ?? 0;
+  const pct = Math.round((Math.min(at, steps.length) / steps.length) * 100);
+  return (
+    <div className="space-y-2">
+      <div className="h-1 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+        <div className={`h-full rounded-full transition-all duration-700 ${stopped ? "bg-destructive" : "bg-primary"}`} style={{ width: `${stopped ? 100 : Math.max(pct, 4)}%` }} />
+      </div>
+      <ol className="flex flex-wrap gap-x-4 gap-y-1.5">
+        {steps.map((s, i) => {
+          const done = !stopped && i < at;
+          const live = !stopped && i === at && status !== "done";
+          return (
+            <li key={s} className={`flex items-center gap-1.5 font-mono text-[11px] ${live ? "text-foreground" : done ? "text-primary" : "text-muted-foreground"}`}>
+              {done ? <CheckCircle2 className="h-3.5 w-3.5" /> : live ? <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" /> : stopped ? <XCircle className="h-3.5 w-3.5 opacity-60" /> : <Circle className="h-3.5 w-3.5 opacity-50" />}
+              {s}
+            </li>
+          );
+        })}
+      </ol>
+    </div>
   );
 }
