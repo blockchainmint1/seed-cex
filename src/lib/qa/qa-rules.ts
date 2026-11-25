@@ -249,3 +249,23 @@ export const reportLink = (origin: string, ref: number) => `${origin.replace(/\/
 export function bucketSafeForUploads(b: { public?: unknown } | null | undefined): boolean {
   return !!b && b.public === false;
 }
+
+/**
+ * Admin input for the QA Telegram destination: a group id ("-1001234567890"), a group id plus
+ * topic ("-1001234567890/42"), or a copied message/topic link ("https://t.me/c/1234567890/42[/99]").
+ * Returns null when the input is none of these. Empty input = { chatId: "" } (clear).
+ */
+export function parseQaGroupInput(raw: string): { chatId: string; topicId: number | null } | null {
+  const v = raw.trim();
+  if (!v) return { chatId: "", topicId: null };
+  const link = /^(?:https?:\/\/)?t\.me\/c\/([0-9]{5,18})\/([0-9]{1,10})(?:\/[0-9]{1,10})?\/?$/.exec(v);
+  if (link) {
+    const topic = Number(link[2]);
+    return topic > 0 ? { chatId: `-100${link[1]}`, topicId: topic === 1 ? null : topic } : null;
+  }
+  const pair = /^(-?[0-9]{5,20})(?:\/([0-9]{1,10}))?$/.exec(v);
+  if (!pair || !pair[1]) return null;
+  const topic = pair[2] ? Number(pair[2]) : null;
+  if (topic !== null && topic <= 0) return null;
+  return { chatId: pair[1], topicId: topic === 1 ? null : topic };
+}

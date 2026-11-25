@@ -4052,6 +4052,7 @@ export type Database = {
           id: number
           recordings_enabled: boolean
           telegram_chat_id: string | null
+          telegram_topic_id: number | null
           updated_at: string
           updated_by: string | null
         }
@@ -4061,6 +4062,7 @@ export type Database = {
           id?: number
           recordings_enabled?: boolean
           telegram_chat_id?: string | null
+          telegram_topic_id?: number | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -4070,6 +4072,7 @@ export type Database = {
           id?: number
           recordings_enabled?: boolean
           telegram_chat_id?: string | null
+          telegram_topic_id?: number | null
           updated_at?: string
           updated_by?: string | null
         }

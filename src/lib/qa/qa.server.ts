@@ -49,17 +49,19 @@ export async function qaSettings(): Promise<{ enabled: boolean; recordingsEnable
 
 /** The Telegram group that gets QA posts, or null (then new reports DM verified admins). Admin-only value. */
 export async function qaTelegramGroup(): Promise<string | null> {
-  const { data } = await supabaseAdmin.from("qa_settings").select("telegram_chat_id").eq("id", 1).maybeSingle();
-  return data?.telegram_chat_id ?? null;
+  const { data } = await supabaseAdmin.from("qa_settings").select("telegram_chat_id, telegram_topic_id").eq("id", 1).maybeSingle();
+  if (!data?.telegram_chat_id) return null;
+  return data.telegram_topic_id ? `${data.telegram_chat_id}/${data.telegram_topic_id}` : data.telegram_chat_id;
 }
 
 /** Best-effort post to the QA group; never throws (a report or triage must not fail because Telegram did). */
 export async function postToQaGroup(text: string): Promise<boolean> {
   try {
-    const { telegramConfigured, sendTelegram } = await import("@/lib/telegram.server");
-    const chat = await qaTelegramGroup();
-    if (!chat || !telegramConfigured()) return false;
-    await sendTelegram(chat, text);
+    const { telegramConfigured, telegramCall } = await import("@/lib/telegram.server");
+    const dest = await qaTelegramGroup();
+    if (!dest || !telegramConfigured()) return false;
+    const [chat, topic] = dest.split("/");
+    await telegramCall("sendMessage", { chat_id: chat, text, parse_mode: "HTML", ...(topic ? { message_thread_id: Number(topic) } : {}) });
     return true;
   } catch (e) {
     console.error("QA group post failed:", (e as Error).message);

@@ -771,6 +771,13 @@
       "when": 1795614306313,
       "tag": "0109_ton_swap_limits_and_server_minimum",
       "breakpoints": true
+    },
+    {
+      "idx": 110,
+      "version": "7",
+      "when": 1795615316520,
+      "tag": "0110_qa_telegram_topic",
+      "breakpoints": true
     }
   ]
 }

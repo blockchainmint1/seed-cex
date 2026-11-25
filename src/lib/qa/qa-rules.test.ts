@@ -119,3 +119,13 @@ test("ignored reports leave the Open list", () => {
   expect(_open({ status: "ignored", duplicate_of: null })).toBe(false);
   expect(_open({ status: "new", duplicate_of: null })).toBe(true);
 });
+
+import { parseQaGroupInput } from "./qa-rules";
+describe("parseQaGroupInput", () => {
+  test("plain group id posts to General", () => expect(parseQaGroupInput("-1004268049198")).toEqual({ chatId: "-1004268049198", topicId: null }));
+  test("group id with topic", () => expect(parseQaGroupInput("-1004268049198/57")).toEqual({ chatId: "-1004268049198", topicId: 57 }));
+  test("copied message link inside a topic", () => expect(parseQaGroupInput("https://t.me/c/4268049198/57/1234")).toEqual({ chatId: "-1004268049198", topicId: 57 }));
+  test("topic link", () => expect(parseQaGroupInput("t.me/c/4268049198/57")).toEqual({ chatId: "-1004268049198", topicId: 57 }));
+  test("rejects junk", () => expect(parseQaGroupInput("https://t.me/seeds")).toBeNull());
+  test("empty clears", () => expect(parseQaGroupInput("  ")).toEqual({ chatId: "", topicId: null }));
+});

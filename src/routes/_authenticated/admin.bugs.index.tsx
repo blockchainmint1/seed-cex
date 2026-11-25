@@ -195,13 +195,13 @@ function TelegramGroupCard({ current, onSaved }: { current: string | null; onSav
   const [value, setValue] = useState(current ?? "");
   const m = useMutation({ mutationFn: (chatId: string) => save({ data: { chatId } }), onSuccess: onSaved });
   return (
-    <Card title="Telegram group" desc="New reports and status changes are posted to this group by the Seeds bot. Posts carry the report's text and a link here; screenshots, files and recordings stay private in Seeds. Leave empty to message each admin instead.">
+    <Card title="Telegram group" desc="New reports and status changes are posted to this group by the Seeds bot. Posts carry the report's text and a link here; screenshots, files and recordings stay private in Seeds. To post into a topic (like BUGS), right-click any message in that topic, choose Copy Message Link and paste it here. Leave empty to message each admin instead.">
       <form className="flex flex-wrap items-center gap-2" onSubmit={(e) => { e.preventDefault(); m.mutate(value); }}>
-        <input className={`${inputCls} max-w-xs font-mono`} value={value} onChange={(e) => setValue(e.target.value)} placeholder="-1001234567890" aria-label="Telegram group id" inputMode="numeric" />
+        <input className={`${inputCls} max-w-xs font-mono`} value={value} onChange={(e) => setValue(e.target.value)} placeholder="-1001234567890 or a message link from the topic" aria-label="Telegram group id or topic link" />
         <button type="submit" disabled={m.isPending || value.trim() === (current ?? "")} className="rounded-lg bg-action px-4 py-2 text-sm font-semibold text-action-foreground disabled:opacity-50">
           {m.isPending ? "Checking…" : "Save"}
         </button>
-        <span className="text-xs text-muted-foreground">{current ? `Posting to ${current}` : "Not set: admins get a direct message"}</span>
+        <span className="text-xs text-muted-foreground">{current ? `Posting to ${current.includes("/") ? `group ${current.split("/")[0]}, topic ${current.split("/")[1]}` : `${current} (General)`}` : "Not set: admins get a direct message"}</span>
       </form>
       {m.error ? <div className="mt-2"><Note tone="error">{(m.error as Error).message}</Note></div> : null}
       {m.isSuccess ? <div className="mt-2"><Note tone="ok">Saved. {value.trim() ? "A short “connected” note was posted to the group." : ""}</Note></div> : null}

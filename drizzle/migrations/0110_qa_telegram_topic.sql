@@ -1,0 +1,2 @@
+ALTER TABLE public.qa_settings ADD COLUMN IF NOT EXISTS telegram_topic_id integer CHECK (telegram_topic_id IS NULL OR telegram_topic_id > 0);
+COMMENT ON COLUMN public.qa_settings.telegram_topic_id IS 'Forum topic inside the QA Telegram group (null = General).';

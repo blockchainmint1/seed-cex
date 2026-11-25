@@ -172,21 +172,26 @@ export const adminSetQaSettings = createServerFn({ method: "POST" })
  */
 export const adminSetQaTelegramGroup = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ chatId: z.string().max(30) }).parse(input))
+  .inputValidator((input) => z.object({ chatId: z.string().max(80) }).parse(input))
   .handler(async ({ data, context }) => {
     await requireAdmin(context as never);
-    const chatId = data.chatId.trim();
-    const { validTelegramChatId } = await import("./qa-rules");
-    if (chatId && !validTelegramChatId(chatId)) throw new Error("A Telegram group id looks like -1001234567890.");
+    const { parseQaGroupInput } = await import("./qa-rules");
+    const parsed = parseQaGroupInput(data.chatId);
+    if (!parsed) throw new Error("Paste a group id like -1001234567890, or a link copied from a message in the topic.");
+    const { chatId, topicId } = parsed;
     if (chatId) {
-      const { telegramConfigured, telegramCall, sendTelegram } = await import("@/lib/telegram.server");
+      const { telegramConfigured, telegramCall } = await import("@/lib/telegram.server");
       if (!telegramConfigured()) throw new Error("Seeds' Telegram bot isn't set up on this site.");
       try { await telegramCall("getChat", { chat_id: chatId }); }
       catch { throw new Error("The Seeds bot can't see that group. Add the bot to the group first, then try again."); }
-      await sendTelegram(chatId, "✅ Seeds bug reports will be posted here (Admin → Bugs).").catch(() => undefined);
+      try {
+        await telegramCall("sendMessage", { chat_id: chatId, text: "✅ Seeds bug reports will be posted here (Admin → Bugs).", ...(topicId ? { message_thread_id: topicId } : {}) });
+      } catch {
+        if (topicId) throw new Error("The Seeds bot can see the group but couldn't post in that topic. Check the link, or let the bot post in topics.");
+      }
     }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin.from("qa_settings").update({ telegram_chat_id: chatId || null, updated_by: context.userId, updated_at: new Date().toISOString() }).eq("id", 1);
+    const { error } = await supabaseAdmin.from("qa_settings").update({ telegram_chat_id: chatId || null, telegram_topic_id: chatId ? topicId : null, updated_by: context.userId, updated_at: new Date().toISOString() }).eq("id", 1);
     if (error) throw new Error("Couldn't save the setting.");
     return { ok: true };
   });
