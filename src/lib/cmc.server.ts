@@ -7,6 +7,8 @@
 
 const CMC_URL = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest";
 const TTL_MS = 60_000;
+// TON's CMC ticker has changed; ticker lookup can resolve an unrelated "Ton" stock.
+const TON_CMC_ID = 11419;
 
 export type Quote = {
   symbol: string;
@@ -38,7 +40,7 @@ export async function fetchQuotes(symbols: string[]): Promise<QuoteSet> {
   const symbolKey = [...new Set(symbols)].sort().join(",");
   if (cache && cache.key === symbolKey && now - cache.at < TTL_MS) return cache.value;
 
-  const key = process.env.CMC_API;
+  const key = process.env['CMC_API'];
   const empty: QuoteSet = {
     quotes: [],
     txcUsd: null,
@@ -48,28 +50,42 @@ export async function fetchQuotes(symbols: string[]): Promise<QuoteSet> {
   if (!key) return empty;
 
   try {
-    const res = await fetch(
-      `${CMC_URL}?symbol=${encodeURIComponent(symbols.join(","))}&convert=USD`,
-      { headers: { "X-CMC_PRO_API_KEY": key, Accept: "application/json" } },
-    );
-    if (!res.ok) {
-      console.error(`CMC quotes failed [${res.status}]: ${await res.text()}`);
-      return empty;
-    }
-    const json = (await res.json()) as {
-      data?: Record<string, any | any[]>;
+    const read = async (query: string): Promise<Record<string, any | any[]>> => {
+      try {
+        const res = await fetch(`${CMC_URL}?${query}&convert=USD`, {
+          headers: { "X-CMC_PRO_API_KEY": key, Accept: "application/json" },
+          signal: AbortSignal.timeout(6000),
+        });
+        if (!res.ok) {
+          console.error(`CMC quotes failed [${res.status}]`);
+          return {};
+        }
+        const json = (await res.json()) as { data?: Record<string, any | any[]> };
+        return json.data ?? {};
+      } catch {
+        console.error("CMC quote request failed");
+        return {};
+      }
     };
+    const ordinary = symbols.filter((sym) => sym !== "TON");
+    const [data, tonData] = await Promise.all([
+      ordinary.length ? read(`symbol=${encodeURIComponent(ordinary.join(","))}`) : Promise.resolve<Record<string, any | any[]>>({}),
+      symbols.includes("TON") ? read(`id=${TON_CMC_ID}`) : Promise.resolve<Record<string, any | any[]>>({}),
+    ]);
 
     const quotes: Quote[] = [];
     for (const sym of symbols) {
-      const raw = json.data?.[sym];
+      const raw = sym === "TON" ? tonData[String(TON_CMC_ID)] : data[sym];
       const entry = Array.isArray(raw) ? raw[0] : raw;
+      if (sym === "TON" && entry?.id !== TON_CMC_ID) continue;
       const usd = entry?.quote?.USD;
       if (!entry || !usd) continue;
+      const price = Number(usd.price);
+      if (!Number.isFinite(price) || price <= 0) continue;
       quotes.push({
-        symbol: entry.symbol ?? sym,
+        symbol: sym === "TON" ? "TON" : (entry.symbol ?? sym),
         name: entry.name ?? sym,
-        price: Number(usd.price),
+        price,
         change1h: usd.percent_change_1h ?? null,
         change24h: usd.percent_change_24h ?? null,
         change7d: usd.percent_change_7d ?? null,

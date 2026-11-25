@@ -1,5 +1,7 @@
 # src/lib
 
+- TON reference prices use CoinMarketCap ID 11419, verify that returned ID and normalize the display symbol to TON; never resolve TON by ticker. Why: CMC ticker changes and case-insensitive stock collisions must not hide or misprice the pocket's TON.
+
 - Market orders: rules in src/lib/market-order.ts (tested); the server re-derives price protection from the live book (capped), and a market order is never open/partial (DB check orders_market_never_rests; restoreFills cancels its size). Why: a market order must never wait on the book at a stale worst-case price.
 - P2P sell-ad ranges come only from offerRange (src/lib/p2p-range.ts, tested): the max buyers see is the seller's max cut to what their free pocket balance covers, ads that can't cover the min are hidden, and openTrade re-checks against the live balance. Marketplace, seller page, seller desk and save toast all use it. Why: an ad must never offer more than the pocket can actually send.
 - Never pass fetch `redirect: "error"` (Workers throws on it); use `redirect: "manual"` and treat any non-2xx as a refusal (workers-fetch.test.ts). Why: it works in the dev server but broke SNS signature checks on the live site.

@@ -250,7 +250,12 @@ function SwapPage() {
   const pickIdx = chosen ?? best;
   const sel = pickIdx != null ? results[pickIdx] : null;
   const fromL = sideLabel(from), toL = sideLabel(to);
-  const fromPrice = from.kind === "tsd" ? 1 : from.kind === "coin" ? status.coins.find((c) => c.id === from.id)?.priceUsd ?? null : null;
+  const pocketLink = usePocketLink();
+  const pl = user ? pocketLink.data ?? null : null;
+  const { rows: pocketRows, prices: pocketPrices } = usePocketBalances(pl?.addresses, pl?.id);
+  const fromPrice = from.kind === "tsd" ? 1
+    : from.kind === "ton" ? pocketPrices.data?.quotes.find((c) => c.symbol === "TON")?.price ?? null
+    : from.kind === "coin" ? status.coins.find((c) => c.id === from.id)?.priceUsd ?? null : null;
   const amountNum = Number(amount);
   const linkCtx = sendCtx?.link ? { mode: sendCtx.link.mode, hasKey: sendCtx.link.hasKey, pockets: sendCtx.link.pockets as string[] } : null;
   const validAmount = /^\d+(\.\d+)?$/.test(amount) && amountNum > 0;
@@ -266,9 +271,6 @@ function SwapPage() {
     ? tonShortcutAmount({ usd: amountNum * (fromPrice ?? 0), usdtPerTon: tonRate.data?.out ?? null, balanceTon: tonCtx.data.balanceTon ?? null, feeTon: tonRate.data?.networkTon ?? 0.265 })
     : null;
 
-  const pocketLink = usePocketLink();
-  const pl = user ? pocketLink.data ?? null : null;
-  const { rows: pocketRows } = usePocketBalances(pl?.addresses, pl?.id);
   const fromRow = pl ? balanceRowFor(from, pocketRows) : null;
 
   return (

@@ -5,7 +5,7 @@ export const getReferencePrices = createServerFn({ method: "GET" }).handler(asyn
   const { fetchQuotes, TRACKED } = await import("./cmc.server");
   const { shared } = await import("./cache/shared-cache.server");
   const { CACHE_TIMES } = await import("./cache/shared-cache-rules");
-  return shared("cmc:quotes", { ...CACHE_TIMES.referencePrices, good: (q) => q.online }, () => fetchQuotes(TRACKED));
+  return shared("cmc:quotes:v2", { ...CACHE_TIMES.referencePrices, good: (q) => q.online }, () => fetchQuotes(TRACKED));
 });
 
 /** Live CMC-compatible market summary for all configured pairs (one shared copy every few seconds). */

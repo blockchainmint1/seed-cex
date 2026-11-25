@@ -1,5 +1,14 @@
 # Roadmap
 
+## TON reference value (Bobby, Nov 25)
+- [x] Correct TON identity in the shared reference price feed and verify the signed-in balance value (254.71915799 TON, $243.69 during verification)
+- [x] Check all price consumers for the same mismatch without changing settled history, permissions or settings (coverage and source/deployed limitations in auditor note)
+- [x] Correct the Swap form's missing native-TON dollar estimate and verify it on screen (50 TON ≈ $47.98 during verification)
+- [x] Tests and auditor handoff (1,698 tests pass)
+- [ ] Publish TON value correction (blocked: independent auditor review)
+
+## Existing launch work
+
 - [x] XLM/TON/SUI audit fixes ES1–ES6 + HF1: safe destinations, signed expiry evidence, fees, prices, keyed TON reads and exact confirmation evidence; enabled testers only (Bobby approved Nov 25); public-provider and TON first-deployment exceptions documented
 - [ ] Funded XLM/TON/SUI live sends and public release (blocked: owner-approved funds/taps and auditor re-check)
 
