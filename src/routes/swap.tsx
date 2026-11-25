@@ -28,6 +28,7 @@ import { HypeChainResult, type HypeChainQuoteResult } from "@/components/swap/Hy
 import { quoteHypeChainSwap } from "@/lib/hype-chain/hype-chain.functions";
 import { getTonSwapContext, quoteTonUsdt } from "@/lib/ston/ston.functions";
 import { tonShortcutAmount } from "@/lib/swap/shortcut";
+import { usePocketBalances, usePocketLink, fmtCoin, type BalanceRow } from "@/components/account/use-pocket";
 import { TonUsdtResult, type TonUsdtQuote } from "@/components/swap/TonUsdtResult";
 
 type SwapSearch = { from?: string; to?: string; amount?: string; sw?: string };
@@ -78,6 +79,20 @@ const fmtNum = (n: number | null | undefined) =>
   n == null || !Number.isFinite(n) ? "—" : n === 0 ? "0" : n >= 1 ? n.toLocaleString("en-US", { maximumFractionDigits: n >= 1000 ? 2 : 6 }) : n.toPrecision(6).replace(/0+$/, "");
 
 /** Symbol + network for any side of a swap. */
+/** The pocket Balances row holding the coin on this side, if Seeds reads one. */
+function balanceRowFor(s: SwapSide, rows: BalanceRow[]): BalanceRow | null {
+  const pick = (sym: string, ok: (r: BalanceRow) => boolean) => rows.find((r) => r.asset.symbol === sym && ok(r)) ?? null;
+  if (s.kind === "tsd") return pick("TSD", (r) => r.net.id === "txc-omni");
+  if (s.kind === "ton") return pick("TON", (r) => r.net.id === "ton");
+  if (s.kind === "ton_usdt") return pick("USDT", (r) => r.net.id === "ton");
+  if (s.kind === "hype") return pick("HYPE", (r) => r.net.id === "hyperevm");
+  if (s.kind === "token") return pick(s.symbol, (r) => r.net.evmChain === s.network);
+  const c = swapCoin(s.id);
+  if (!c) return null;
+  const same = rows.filter((r) => r.asset.symbol === c.symbol);
+  return same.find((r) => r.net.label.toLowerCase() === c.network.toLowerCase()) ?? (same.length === 1 ? same[0]! : null);
+}
+
 function sideLabel(s: SwapSide): { symbol: string; network: string } {
   if (s.kind === "tsd") return { symbol: "TSD", network: "TEXITcoin" };
   if (s.kind === "hype") return { symbol: "HYPE", network: "Hyperliquid" };
@@ -251,6 +266,11 @@ function SwapPage() {
     ? tonShortcutAmount({ usd: amountNum * (fromPrice ?? 0), usdtPerTon: tonRate.data?.out ?? null, balanceTon: tonCtx.data.balanceTon ?? null, feeTon: tonRate.data?.networkTon ?? 0.265 })
     : null;
 
+  const pocketLink = usePocketLink();
+  const pl = user ? pocketLink.data ?? null : null;
+  const { rows: pocketRows } = usePocketBalances(pl?.addresses, pl?.id);
+  const fromRow = pl ? balanceRowFor(from, pocketRows) : null;
+
   return (
     <div className="mx-auto max-w-7xl space-y-12 px-5 py-14">
       <header className="space-y-3">
@@ -289,6 +309,14 @@ function SwapPage() {
               </div>
               <p className="font-mono text-[11px] text-muted-foreground">
                 ≈ {usd(Number.isFinite(amountNum) && fromPrice ? amountNum * fromPrice : null)} · {fromL.network}
+                {fromRow && (
+                  <>
+                    {" · "}You have <span className="text-foreground">{fromRow.balance == null ? "…" : fmtCoin(fromRow.balance)} {fromL.symbol}</span>
+                    {fromRow.balance != null && fromRow.balance > 0 && (
+                      <button type="button" className="ml-2 text-primary underline-offset-2 hover:underline" onClick={() => { setAmount(String(fromRow.balance)); reset(); }}>Max</button>
+                    )}
+                  </>
+                )}
               </p>
             </div>
 
