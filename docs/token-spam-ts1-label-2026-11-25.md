@@ -2,7 +2,7 @@
 
 Date: 2026-11-25
 Base commit reviewed by the auditor: `64e977a` (spam controls) on top of `df6db92` (TRON testers stage, TR1, LN2b).
-This change: display-only. No migration, no server change, no coin movement, no new trading permission.
+This change: `eacd62c` — display-only. No migration, no server change, no coin movement, no new trading permission.
 
 ## What the auditor asked for (TS1, Info)
 
