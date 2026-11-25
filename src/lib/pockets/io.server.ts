@@ -154,9 +154,11 @@ async function stellarBalance(address: string): Promise<number | null> {
   return null;
 }
 
-/** TON: balance in nanotons (an undeployed W5 wallet can still hold coins). */
+/** TON: balance in nanotons (an undeployed W5 wallet can still hold coins). toncenter's free key lifts its ~1 req/s public limit; sent as a header so it never lands in a URL or log. */
 async function tonBalance(address: string): Promise<number | null> {
-  const a = await getJson<{ ok?: boolean; result?: string }>(`https://toncenter.com/api/v2/getAddressBalance?address=${encodeURIComponent(address)}`, { headers: UA });
+  const key = process.env.TONCENTER_API_KEY;
+  const headers = key ? { ...UA, "X-API-Key": key } : UA;
+  const a = await getJson<{ ok?: boolean; result?: string }>(`https://toncenter.com/api/v2/getAddressBalance?address=${encodeURIComponent(address)}`, { headers });
   if (a?.ok && a.result !== undefined) return toUnits(BigInt(a.result), "TON");
   const b = await getJson<{ balance?: number | string }>(`https://tonapi.io/v2/accounts/${encodeURIComponent(address)}`, { headers: UA });
   return b?.balance !== undefined ? toUnits(BigInt(b.balance), "TON") : null;
