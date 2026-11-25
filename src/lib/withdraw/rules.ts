@@ -11,6 +11,7 @@
  */
 
 import { isKeyKind, keyThing, relinkStep, type KeyKind, type SignInKind } from "@/lib/account/sign-in-kind";
+import { edSendBlocker } from "@/lib/pockets/ed-send-rules";
 
 /** An emailed code lasts 10 minutes, allows 5 wrong tries, and at most 5 are sent per hour. */
 export const EMAIL_CODE_TTL_MS = 10 * 60_000;
@@ -73,6 +74,8 @@ export type LinkLike = { mode: string; hasKey: boolean; address: string | null }
 
 /** First reason Seeds can't send this coin for this member at all (before readiness), or null. */
 export function sendBlocker(p: { link: LinkLike; tester: boolean; frozen: boolean; symbol: string; networkLabel: string; kind?: SignInKind }): string | null {
+  const newChain = edSendBlocker(p.symbol, p.tester);
+  if (newChain) return newChain;
   if (WITHDRAW_PILOT_TESTERS_ONLY && !p.tester) return "Withdrawals from Seeds are open to beta testers first. They open to members after that.";
   if (p.frozen) return "Withdrawals are paused on your account while the Seeds team takes a look. Contact support@honest.money if you didn't expect this.";
   if (!p.link) {

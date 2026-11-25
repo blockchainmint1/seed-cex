@@ -14,6 +14,7 @@
 import { maybeBroadcast } from "@/lib/broadcast-rules";
 import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { ed25519 } from "@noble/curves/ed25519.js";
+import { edAddress } from "@/lib/pockets/ed25519-chains";
 import { bytesToHex } from "@noble/hashes/utils.js";
 import { bech32, hex } from "@scure/base";
 import { cardanoBaseAddress, xprvToXpub } from "@/lib/pockets/cardano";
@@ -92,6 +93,7 @@ function ltcScript(address: string): Uint8Array | undefined {
 const NATIVE_DECIMALS: Partial<Record<SendKind, number>> = { xrp: 6, trx: 6, ada: 6 };
 
 function addressOfKey(pocket: PocketCoin, priv: Uint8Array): string {
+  if (pocket === "XLM" || pocket === "TON" || pocket === "SUI") return edAddress(pocket, ed25519.getPublicKey(priv));
   if (pocket === "SOL") return solAddress(ed25519.getPublicKey(priv));
   return addressFor(pocket, secp256k1.getPublicKey(priv, true));
 }

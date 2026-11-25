@@ -8,7 +8,7 @@
 import type { ChainId } from "@/lib/chains";
 import type { PocketCoin } from "@/lib/pockets/coins";
 
-export type WithdrawKind = "evm" | "utxo" | "omni" | "btc" | "doge" | "bch" | "xrp" | "trx" | "sol" | "xmr" | "ada";
+export type WithdrawKind = "evm" | "utxo" | "omni" | "btc" | "doge" | "bch" | "xrp" | "trx" | "sol" | "xmr" | "ada" | "xlm" | "ton" | "sui";
 
 export type WithdrawCoin = {
   /** "<symbol>:<network id>", e.g. "USDC:base". */
@@ -88,6 +88,12 @@ export const WITHDRAW_COINS: WithdrawCoin[] = [
     keepNote: "Cardano charges about 0.17 ADA per send, and any ADA left behind must be at least about 1 ADA (or send everything). Coins holding other Cardano tokens are never touched.", explorerTx: "https://cardanoscan.io/transaction/", addressHint: "addr1…" },
   { key: "XMR:xmr", symbol: "XMR", network: "xmr", networkLabel: "Monero", pocket: "XMR", kind: "xmr", decimals: 12,
     keepNote: "A small Monero network fee (usually under 0.0001 XMR) comes out of your pocket on top. Coins you just received can be sent after about 20 minutes.", explorerTx: "https://xmrchain.net/tx/", addressHint: "4… or 8…" },
+  { key: "XLM:xlm", symbol: "XLM", network: "xlm", networkLabel: "Stellar", pocket: "XLM", kind: "xlm", decimals: 7,
+    keepNote: "Stellar's account reserve and selling liabilities stay behind, plus the network fee. Send only to a personal G-address that needs no memo; exchange deposits requiring a memo aren't supported.", explorerTx: "https://stellar.expert/explorer/public/tx/", addressHint: "G… (no memo required)" },
+  { key: "TON:ton", symbol: "TON", network: "ton", networkLabel: "TON", pocket: "TON", kind: "ton", decimals: 9,
+    keepNote: "Keep TON for network fees and wallet storage. Native TON only; no jettons. Send only to an address that needs no comment or memo.", explorerTx: "https://tonviewer.com/", addressHint: "UQ… or EQ… (mainnet, no memo)" },
+  { key: "SUI:sui", symbol: "SUI", network: "sui", networkLabel: "Sui", pocket: "SUI", kind: "sui", decimals: 9,
+    keepNote: "A little SUI stays behind for gas. Only native SUI coins are spent; other Sui tokens and objects are never touched.", explorerTx: "https://suiscan.xyz/mainnet/tx/", addressHint: "0x… (64 hexadecimal characters)" },
 ];
 
 export function withdrawCoin(symbol: string | undefined, network: string | undefined): WithdrawCoin | null {

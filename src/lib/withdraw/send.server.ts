@@ -8,7 +8,7 @@ import { bytesToHex } from "@noble/hashes/utils.js";
 import { getChain, omniLegAsset } from "@/lib/chains";
 import { EVM_MAX_FEE, EVM_NATIVE, type WithdrawCoin } from "./catalog";
 
-type Link = { id: string; ciphertext: string | null };
+type Link = { id: string; ciphertext: string | null; xpubs?: Record<string, string> };
 
 function evmAsset(c: WithdrawCoin) {
   const chain = getChain(c.evmChain!);
@@ -23,6 +23,18 @@ export async function destinationProblem(c: WithdrawCoin, to: string, own: strin
   const t = to.trim();
   if (!t) return "Enter the address to send to.";
   if (t === own || t.toLowerCase() === own.toLowerCase()) return "That's your trading pocket's own address.";
+  if (c.kind === "xlm" || c.kind === "ton" || c.kind === "sui") {
+    try {
+      const { xlmDecodeAddress, validSuiAddress } = await import("@/lib/pockets/ed25519-chains");
+      if (c.kind === "xlm") xlmDecodeAddress(t);
+      if (c.kind === "sui" && (!validSuiAddress(t) || /^0x0+$/.test(t))) throw new Error("Use a full Sui mainnet address, not the zero address.");
+      if (c.kind === "ton") {
+        const { tonDestination } = await import("@/lib/pockets/ton-tx");
+        if (tonDestination(t).equals(tonDestination(own))) return "That's your trading pocket's own address.";
+      }
+      return null;
+    } catch { return `That isn't a supported ${c.networkLabel} address (${c.addressHint}).`; }
+  }
   if (c.kind === "evm") {
     if (!/^0x[0-9a-fA-F]{40}$/.test(t)) return `That isn't a ${c.networkLabel} address. It should start with 0x and have 40 more letters/numbers.`;
     if (/^0x0{40}$/i.test(t)) return "That's the empty (burn) address — coins sent there are gone.";
@@ -67,6 +79,13 @@ const coinsToSats = (n: number) => BigInt(Math.round(n * 1e8));
 export async function readBalance(c: WithdrawCoin, address: string): Promise<Balance> {
   try {
     switch (c.kind) {
+      case "xlm":
+      case "ton":
+      case "sui": {
+        const { readEdSpendable } = await import("@/lib/pockets/ed-send.server");
+        const u = await readEdSpendable(c.pocket as "XLM" | "TON" | "SUI", address);
+        return { units: u, feeUnits: u };
+      }
       case "evm": {
         const { asset } = evmAsset(c);
         const [bal, gas] = await Promise.all([evmRaw(c.evmChain!, asset.contract, address), asset.contract ? evmRaw(c.evmChain!, null, address) : Promise.resolve(null)]);
@@ -148,10 +167,16 @@ export type Recorder = (txid: string) => Promise<void>;
  * Sign and broadcast one transfer of `units` from the pocket at `from` to `to`.
  * Re-reads balances and fees first and refuses (nothing sent) if the pocket can't cover them.
  */
-export async function sendWithdrawal(c: WithdrawCoin, link: Link, from: string, to: string, units: bigint, record: Recorder, destinationTag?: number | null): Promise<string> {
+export async function sendWithdrawal(c: WithdrawCoin, link: Link, from: string, to: string, units: bigint, record: Recorder, destinationTag?: number | null, tester = false): Promise<string> {
   const { withPocketKey } = await import("@/lib/xchain/send.server");
   const coins = Number(units) / 10 ** c.decimals;
   switch (c.kind) {
+    case "xlm":
+    case "ton":
+    case "sui": {
+      const { sendEdNative } = await import("@/lib/pockets/ed-send.server");
+      return sendEdNative(c.pocket as "XLM" | "TON" | "SUI", link, from, to, units, record, tester);
+    }
     case "evm": {
       const { chain, asset } = evmAsset(c);
       const id = c.evmChain!;
@@ -274,7 +299,12 @@ export async function sendWithdrawal(c: WithdrawCoin, link: Link, from: string, 
 }
 
 /** EVM only: confirmations and success of a sent withdrawal. Other networks return null (shown as "Sent"). */
-export async function txStatus(c: WithdrawCoin, txid: string) {
+export async function txStatus(c: WithdrawCoin, txid: string, to?: string, units?: bigint) {
+  if (c.kind === "xlm" || c.kind === "ton" || c.kind === "sui") {
+    if (!to || units === undefined) return null;
+    const { edTxStatus } = await import("@/lib/pockets/ed-send.server");
+    return edTxStatus(c.pocket as "XLM" | "TON" | "SUI", txid, to, units);
+  }
   if (c.kind !== "evm") return null;
   const { fetchEvmTxStatus } = await import("@/lib/evm.server");
   return fetchEvmTxStatus(c.evmChain!, txid);

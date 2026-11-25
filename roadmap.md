@@ -452,7 +452,7 @@
 
 - [x] Cardano (ADA): Seeds signs ADA sends (Koios), withdrawals + deposits open behind the same rules; tokens never spent (Bobby, Nov 24)
 - [ ] First real ADA deposit + withdrawal, small amount (blocked: a tester with ADA)
-- [ ] Stellar, TON, Sui: HME Wallet + Seeds Key share new 1106 keys (blocked: HME Wallet and Seeds Key teams, handoff sent)
+- [x] Stellar, TON, Sui: new 1106 keys accepted; Bobby's refreshed link contains all 19 families
 - [ ] Auditor review of Cardano signing (blocked: auditor)
 
 - [x] Audit Z1/Z2: Monero cold-signing (key never on Monero server)
@@ -465,3 +465,10 @@
 - [x] ADA swaps through Maya (built; needs audit + one small real test swap)
 - [x] HYPE ⇄ ETH through Relay (built; needs audit + small real test swaps)
 - [ ] Keep watching for routes: XMR, XLM, TON, SUI (none on THORChain/Maya today); Relay/deBridge may reach some
+
+## Finish Stellar / TON / Sui sends (Bobby, Nov 25)
+- [x] Native-coin senders with address ownership, exact amounts, fee/reserve checks and recorded transaction ids
+- [x] Connect all three to the existing email + 2FA + Telegram withdrawal flow and deposit catalog
+- [x] Tests and auditor handoff (1,514 tests; signed-in deposit/withdraw gates checked)
+- [ ] Activate audited tester sends, then wider deposits/withdrawals (blocked: independent audit clearance + funded real send tests)
+- [ ] Every possible automatic swap path (earlier request): continue separately; provider routes and approved multi-leg flow required

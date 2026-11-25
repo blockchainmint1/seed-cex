@@ -85,7 +85,7 @@ export async function readinessFor(userId: string, linkId: string | null) {
 async function usdPrice(symbol: string): Promise<number | null> {
   if (symbol === "TSD") return 1;
   const { fetchQuotes, TRACKED } = await import("@/lib/cmc.server");
-  const q = await fetchQuotes(TRACKED);
+  const q = await fetchQuotes(["XLM", "TON", "SUI"].includes(symbol) ? [...TRACKED, symbol] : TRACKED);
   const p = q.quotes.find((x) => x.symbol === symbol)?.price;
   if (p && p > 0) return p;
   return symbol === "USDC" || symbol === "USDT" ? 1 : null;
@@ -335,22 +335,25 @@ async function sendOne(r: Row): Promise<"sent" | "failed" | "unknown"> {
     const { data: ap } = await supabaseAdmin.from("send_approvals").select("status, ref_id, purpose").eq("id", r.approval_id).maybeSingle();
     if (!ap || ap.status !== "used" || ap.ref_id !== r.id || ap.purpose !== "withdrawal") throw new Error("No matching Telegram approval. Nothing was sent.");
     const link = await loadLinkSafe(r.user_id);
+    const tester = await isTester(r.user_id);
     const block = sendBlocker({
       link: link ? { mode: link.mode, hasKey: link.hasKey, address: link.addresses[coin.pocket] ?? null } : null,
-      tester: await isTester(r.user_id), frozen: false, symbol: coin.symbol, networkLabel: coin.networkLabel,
+      tester, frozen: false, symbol: coin.symbol, networkLabel: coin.networkLabel,
     });
     if (block) throw new Error(block);
+    if (!link) throw new Error("Your trading pocket is no longer linked. Nothing was sent.");
     const { data: ov } = await supabaseAdmin.from("withdrawal_limit_overrides").select("frozen").eq("user_id", r.user_id).maybeSingle();
     if (ov?.frozen) throw new Error("Withdrawals were paused on your account during the wait, so nothing was sent.");
-    if (link!.id !== r.link_id) throw new Error("Your trading pocket link changed since you asked, so nothing was sent. Ask again from the new link.");
+    if (link.id !== r.link_id) throw new Error("Your trading pocket link changed since you asked, so nothing was sent. Ask again from the new link.");
     if (readinessProblem(await readinessFor(r.user_id, r.link_id))) {
       throw new Error("Two-factor or Telegram changed during the wait, so nothing was sent. Re-link your HME Wallet and ask again.");
     }
-    const from = link!.addresses[coin.pocket]!;
+    const from = link.addresses[coin.pocket];
+    if (!from) throw new Error("Your linked pocket no longer includes this coin. Nothing was sent.");
     if (from !== r.from_address) throw new Error("Your pocket address changed since you asked. Nothing was sent.");
     const { destinationProblem, sendWithdrawal } = await import("./send.server");
     if (await destinationProblem(coin, r.to_address, from)) throw new Error("The destination is no longer allowed. Nothing was sent.");
-    const sent = await sendWithdrawal(coin, link!, from, r.to_address, BigInt(r.amount_units), async (id) => { txid = id; await update({ txid: id }); }, r.destination_tag);
+    const sent = await sendWithdrawal(coin, link, from, r.to_address, BigInt(r.amount_units), async (id) => { txid = id; await update({ txid: id }); }, r.destination_tag, tester);
     txid = sent;
     await update({ status: "sent", txid: sent, sent_at: new Date().toISOString(), confirmations: 0 });
     void tell(r.user_id, `✅ <b>Withdrawal sent</b>\n${r.amount} ${coin.symbol} on ${coin.networkLabel} to ${r.to_address}\nTx ${sent}`, "Withdrawal sent",
@@ -358,7 +361,9 @@ async function sendOne(r: Row): Promise<"sent" | "failed" | "unknown"> {
     return "sent";
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    const unsure = txid !== null && maybeBroadcast(msg);
+    const nativeEd = coin && ["xlm", "ton", "sui"].includes(coin.kind);
+    const definiteRejection = msg === "Stellar rejected this transaction." || msg === "Sui rejected this transaction.";
+    const unsure = txid !== null && (maybeBroadcast(msg) || (nativeEd && !definiteRejection));
     await supabaseAdmin.from("pocket_withdrawals").update({ status: unsure ? "unknown" : "failed", error: msg.slice(0, 500), updated_at: new Date().toISOString() }).eq("id", r.id);
     void tell(r.user_id, unsure
       ? `⚠ The network didn't confirm it received your ${r.amount} ${r.coin} withdrawal. We're checking — don't ask again yet.`
@@ -390,18 +395,18 @@ export async function advanceWithdrawals(onlyId?: string) {
       .eq("id", s.id).eq("status", "approving");
   }
 
-  const { data: sent } = await supabaseAdmin.from("pocket_withdrawals").select("id, user_id, chain, coin, amount, txid").in("status", ["sent", "unknown"]).not("txid", "is", null).limit(25);
+  const { data: sent } = await supabaseAdmin.from("pocket_withdrawals").select("id, user_id, chain, coin, amount, amount_units, to_address, txid").in("status", ["sent", "unknown"]).not("txid", "is", null).limit(25);
   const { txStatus } = await import("./send.server");
   for (const s of sent ?? []) {
     const coin = withdrawCoin(s.coin, s.chain);
-    if (!coin || coin.kind !== "evm") continue;
-    const st = await txStatus(coin, s.txid!).catch(() => null);
+    if (!coin || !s.txid || !["evm", "xlm", "ton", "sui"].includes(coin.kind)) continue;
+    const st = await txStatus(coin, s.txid, s.to_address, BigInt(s.amount_units)).catch(() => null);
     if (!st || st.confirmations == null) continue;
     if (st.success === false) {
       await supabaseAdmin.from("pocket_withdrawals").update({ status: "failed", error: `${coin.networkLabel} rejected the transaction`, confirmations: st.confirmations, updated_at: new Date().toISOString() }).eq("id", s.id);
       void tell(s.user_id, `⚠ ${coin.networkLabel} rejected your ${s.amount} ${s.coin} withdrawal. Only the network fee was used.`, "Withdrawal rejected", [`${coin.networkLabel} rejected the transaction; only the network fee was spent`]);
     } else if (st.success === true) {
-      const done = st.confirmations >= EVM_CONFIRMATIONS;
+      const done = st.confirmations >= (coin.kind === "evm" ? EVM_CONFIRMATIONS : 1);
       await supabaseAdmin.from("pocket_withdrawals").update({ status: done ? "confirmed" : "sent", confirmations: st.confirmations, updated_at: new Date().toISOString() }).eq("id", s.id);
       if (done) results.confirmed!++;
     }

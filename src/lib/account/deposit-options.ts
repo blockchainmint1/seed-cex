@@ -10,6 +10,7 @@
  * stays closed.
  */
 import { POCKET_SPECS, type PocketCoin } from "@/lib/pockets/coins";
+import { edSendBlocker, edSendStage } from "@/lib/pockets/ed-send-rules";
 
 export type EvmChain = "ethereum" | "base" | "bsc" | "zcu" | "pulsechain" | "hyperevm" | "avalanche";
 
@@ -104,6 +105,9 @@ export const DEPOSIT_ASSETS: DepositAsset[] = [
   { symbol: "XMR", name: "Monero", networks: [monero] },
   { symbol: "ADA", name: "Cardano", networks: [cardano] },
   { symbol: "AVAX", name: "Avalanche", market: "/trade/avax-tsd", networks: [avalanche] },
+  { symbol: "XLM", name: "Stellar", networks: [{ id: "xlm", label: "Stellar", pocket: "XLM", seedsSends: true, notes: ["Native XLM on Stellar only. No memo is needed for your own pocket.", "Stellar keeps an account reserve; only the balance above its reserve and network fee can leave."] }] },
+  { symbol: "TON", name: "Toncoin", networks: [{ id: "ton", label: "TON", pocket: "TON", seedsSends: true, notes: ["Native TON on mainnet only, not jettons or wrapped TON.", "Your pocket is a W5 (v5R1) wallet. Keep a little TON for fees and storage; no comment is needed for your own pocket."] }] },
+  { symbol: "SUI", name: "Sui", networks: [{ id: "sui", label: "Sui", pocket: "SUI", seedsSends: true, notes: ["Native SUI on Sui mainnet only, not wrapped SUI or other Sui tokens.", "Keep a little SUI for gas when coins move."] }] },
   ...(["DOGE", "BCH", "XRP", "TRX", "SOL", "ZEC"] as const).map((c): DepositAsset => ({
     symbol: c, name: POCKET_SPECS[c].name.replace(" (transparent)", ""),
     networks: [{ id: c.toLowerCase(), label: POCKET_SPECS[c].name, pocket: c, notes: EXTRA_NOTES[c] }],
@@ -146,6 +150,8 @@ export type DepositState = { ok: true; address: string } | { ok: false; reason: 
 export function depositState(
   net: DepositNetwork, linked: boolean, addresses: Record<string, string | undefined>, seedsSendBlocker?: string | null,
 ): DepositState {
+  const newChain = edSendBlocker(net.pocket);
+  if (newChain && (edSendStage() === "review" || seedsSendBlocker !== null)) return { ok: false, reason: newChain };
   if (!linked) return { ok: false, reason: "Link your HME Wallet trading pocket first — deposits go to that pocket." };
   if (withdrawRoute(net) === "seeds" && seedsSendBlocker !== null)
     return { ok: false, reason: `Deposits on ${net.label} stay off for you until Seeds can send them back out: ${seedsSendBlocker ?? "checking…"}` };

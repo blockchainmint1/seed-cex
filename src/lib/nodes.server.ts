@@ -26,6 +26,14 @@ export type NodeEndpoint = { url: string; headers: Record<string, string>; provi
 
 const JSON_HEADERS = { "content-type": "application/json", accept: "application/json", "User-Agent": "seeds-exchange/1.0" };
 
+/** Native Ed25519-chain services; SDK clients are made per call, never stored globally. */
+export const ED_NODES = {
+  stellar: "https://horizon.stellar.org",
+  ton: "https://toncenter.com/api/v2",
+  tonTrace: "https://tonapi.io/v2/traces",
+  sui: "https://fullnode.mainnet.sui.io:443",
+} as const;
+
 const ALCHEMY_HOST: Partial<Record<NodeNetwork, string>> = {
   ethereum: "eth-mainnet",
   base: "base-mainnet",
