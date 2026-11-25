@@ -104,7 +104,7 @@ const ENDPOINTS: Array<[string, string, string, string]> = [
   ["GET", `${V1}/openOrders`, "6", "SIGNED, read. Working orders, optional `symbol`."],
   ["GET", `${V1}/allOrders`, "10", "SIGNED, read. Order history, optional `symbol`, `limit` (max 1000)."],
   ["GET", `${V1}/order`, "4", "SIGNED, read. One order by `orderId`."],
-  ["GET", `${V1}/myTrades`, "10", "SIGNED, read. Fills with settlement legs and txids, `limit` (max 1000)."],
+  ["GET", `${V1}/myTrades`, "10", "SIGNED, read. Fills with `orderId` (your order the fill came from), settlement legs and txids, `limit` (max 1000)."],
   ["POST", `${V1}/order`, "20", "SIGNED, trade. New LIMIT / GTC or MARKET order."],
   ["DELETE", `${V1}/order`, "4", "SIGNED, trade. Cancel by `orderId`."],
 ];

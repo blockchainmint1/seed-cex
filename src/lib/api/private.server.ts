@@ -197,7 +197,7 @@ export async function apiMyTrades(userId: string, pair: PairDef | null, limit: n
   let q = supabaseAdmin
     .from("trades")
     .select(
-      "id, pair, side, price, amount, status, maker_id, taker_id, created_at, escrows(leg, status, release_txid, confirmations)",
+      "id, pair, side, price, amount, status, maker_id, taker_id, maker_order_id, taker_order_id, created_at, escrows(leg, status, release_txid, confirmations)",
     )
     .or(`maker_id.eq.${userId},taker_id.eq.${userId}`)
     .order("created_at", { ascending: false })
@@ -212,6 +212,8 @@ export async function apiMyTrades(userId: string, pair: PairDef | null, limit: n
     return {
       symbol: symbolOf(p),
       id: t.id,
+      // The member's own order this fill came from (QA-0007), like Binance's orderId.
+      orderId: (isMaker ? t.maker_order_id : t.taker_order_id) ?? null,
       price: n8(Number(t.price)),
       qty: n8(Number(t.amount)),
       quoteQty: n8(Number(t.amount) * Number(t.price)),
