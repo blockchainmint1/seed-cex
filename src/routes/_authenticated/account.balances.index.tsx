@@ -12,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useSession } from "@/hooks/use-session";
 import { useTokenVisibility } from "@/components/account/use-token-visibility";
-import { hiddenReason, type TokenChoice } from "@/lib/account/token-visibility";
+import { hiddenReason, showsTokenSymbol, SPAM_ROW_LABEL, tokenAriaName, type TokenChoice } from "@/lib/account/token-visibility";
 import { Card, Note, TabTitle } from "@/components/account/ui";
 import { HmeWalletLinkCard } from "@/components/wallet/HmeWalletLinkCard";
 import { fmtCoin, fmtUsd, usePocketBalances, usePocketLink } from "@/components/account/use-pocket";
@@ -205,7 +205,7 @@ function SpotBalances() {
           <li key={x.key} className="px-4 py-3">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <span className="break-all font-semibold">{x.symbol}</span>
+                <TokenName token={x.token} symbol={x.symbol} />
                 <span className="block break-words text-xs text-muted-foreground">{x.network}</span>
                 {showHidden && x.token ? <span className="block text-xs text-muted-foreground">{hiddenReason(x.token, prefs)}</span> : null}
               </div>
@@ -263,7 +263,7 @@ function SpotBalances() {
             {pageExtra.map((x) => (
               <tr key={x.key} className="border-b border-border/60 last:border-0">
                 <td className="px-3 py-2.5">
-                  <span className="break-all font-semibold">{x.symbol}</span>
+                  <TokenName token={x.token} symbol={x.symbol} />
                   <span className="block break-words text-xs text-muted-foreground">{x.network}</span>
                   {showHidden && x.token ? <span className="block text-xs text-muted-foreground">{hiddenReason(x.token, prefs)}</span> : null}
                 </td>
@@ -314,6 +314,24 @@ function SpotBalances() {
   );
 }
 
+/**
+ * A token row's name. A suspected-spam token's own symbol is often the lure itself
+ * ("VISIT-CLAIM-X.COM"), so the row shows a neutral label and the real symbol only
+ * after the member clicks for it (audit TS1).
+ */
+function TokenName({ token, symbol }: { token?: TokenRow; symbol: string }) {
+  const [revealed, setRevealed] = useState(false);
+  if (!token || showsTokenSymbol(token, revealed)) return <span className="break-all font-semibold">{symbol}</span>;
+  return (
+    <span className="font-semibold">
+      {SPAM_ROW_LABEL}{" "}
+      <button type="button" className="text-xs font-normal text-primary underline underline-offset-2" onClick={() => setRevealed(true)}>
+        show name
+      </button>
+    </span>
+  );
+}
+
 function TokenActions({ token, hidden, choose }: { token: TokenRow; hidden: boolean; choose: (token: TokenRow, choice: TokenChoice) => void }) {
   const actions = [
     { choice: hidden ? "show" : "hide", label: hidden ? "Restore token" : "Hide token", Icon: hidden ? Eye : EyeOff },
@@ -322,7 +340,7 @@ function TokenActions({ token, hidden, choose }: { token: TokenRow; hidden: bool
   ] as const;
   return <TooltipProvider>{actions.map(({ choice, label, Icon }) => (
     <Tooltip key={choice}>
-      <TooltipTrigger asChild><Button variant="ghost" size="icon" aria-label={`${label}: ${token.symbol}`} onClick={() => choose(token, choice)}><Icon /></Button></TooltipTrigger>
+      <TooltipTrigger asChild><Button variant="ghost" size="icon" aria-label={`${label}: ${tokenAriaName(token)}`} onClick={() => choose(token, choice)}><Icon /></Button></TooltipTrigger>
       <TooltipContent>{label}</TooltipContent>
     </Tooltip>
   ))}</TooltipProvider>;

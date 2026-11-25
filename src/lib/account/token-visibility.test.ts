@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import type { TokenRow } from "./erc-tokens";
-import { defaultTokenPreferences, hiddenReason, readTokenPreferences, tokenId } from "./token-visibility";
+import { defaultTokenPreferences, hiddenReason, readTokenPreferences, showsTokenSymbol, SPAM_ROW_LABEL, tokenAriaName, tokenId } from "./token-visibility";
 
 const token: TokenRow = { chain: "ethereum", contract: `0x${"1".repeat(40)}`, symbol: "NIZA", name: "Niza", swappable: false, balance: 5 };
 test("unverified tokens are hidden by default; listed tokens remain visible", () => {
@@ -27,4 +27,13 @@ test("saved choices survive reload and are network-specific", () => {
 test("invalid browser settings fall back safely", () => {
   expect(readTokenPreferences("garbage")).toEqual(defaultTokenPreferences());
   expect(readTokenPreferences('{"choices":{"__proto__":"show","ethereum:fake":"show"}}').choices).toEqual({});
+});
+const lure: TokenRow = { ...token, symbol: "VISIT-CLAIM-X.COM", name: "Visit claim-x.com", suspectedSpam: true };
+test("a suspected-spam row hides the token's own lure text until it is revealed (TS1)", () => {
+  expect(SPAM_ROW_LABEL).toBe("Suspected spam token");
+  expect(showsTokenSymbol(lure, false)).toBe(false);
+  expect(showsTokenSymbol(lure, true)).toBe(true);
+  expect(showsTokenSymbol(token, false)).toBe(true);
+  expect(tokenAriaName(lure)).not.toMatch(/claim/i);
+  expect(tokenAriaName(token)).toBe("NIZA");
 });

@@ -1,4 +1,4 @@
-import type { TokenRow } from "./erc-tokens";
+import { shortContract, type TokenRow } from "./erc-tokens";
 
 export type TokenChoice = "show" | "hide" | "spam" | "remove";
 export type TokenPreferences = { hideSpam: boolean; choices: Record<string, TokenChoice> };
@@ -13,6 +13,19 @@ export function hiddenReason(t: TokenRow, prefs: TokenPreferences): string | nul
   if (choice === "show") return null;
   if (prefs.hideSpam && !t.swappable) return t.suspectedSpam ? "Suspected spam" : "Not checked by Seeds";
   return null;
+}
+
+/** Suspected-spam tokens often put a phishing lure in their own name or symbol (audit TS1). */
+export const SPAM_ROW_LABEL = "Suspected spam token";
+
+/** The raw symbol of a suspected-spam token is shown only after the member asks for it. */
+export function showsTokenSymbol(t: TokenRow, revealed: boolean): boolean {
+  return revealed || !t.suspectedSpam;
+}
+
+/** Tooltip / screen-reader text: never repeat a suspected-spam token's own lure. */
+export function tokenAriaName(t: TokenRow): string {
+  return t.suspectedSpam ? shortContract(t.contract) : t.symbol;
 }
 
 /** Browser data is untrusted and never grants a token a trading action. */

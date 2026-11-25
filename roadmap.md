@@ -511,7 +511,7 @@
 
 ## USDT on TRON (Bobby, Nov 25)
 - [x] Balances spam protection: hide unverified tokens by default, per-account browser hide/spam/remove/restore choices and a searchable hidden-token list; no coin movement or new token trading permissions
-- [ ] Independent review of spam-token display controls before publishing (blocked: auditor)
+- [x] Independent review of spam-token display controls: cleared to publish (Nov 25); TS1 fixed — suspected-spam rows show a neutral label, the token's own text appears only after "show name"
 - [x] Wire pinned TRC-20 USDT balances, safe sends, withdrawals and existing one-tap THORChain/TSD swaps; reuse TRX pocket keys and preserve all approvals (review-locked)
 - [x] Regression tests, independent TronWeb byte/signature check, signed-in screen checks and shareable auditor handoff (1,695 tests)
 - [ ] Enable deposits/sends after independent audit and a small owner-approved funded send/swap (blocked: auditor review and owner funds/taps)
