@@ -385,7 +385,7 @@ export async function listRelaySwaps(userId: string) {
   const { data: open } = await supabaseAdmin.from("relay_swaps").select("id").eq("user_id", userId).not("status", "in", OPEN).limit(3);
   for (const r of open ?? []) await advanceRelaySwap(r.id).catch(() => undefined);
   const { data, error } = await supabaseAdmin.from("relay_swaps")
-    .select("id, direction, amount_in, shown_out, amount_out, status, error, deposit_txid, out_txid, created_at")
+    .select("id, direction, amount_in, shown_out, amount_out, status, error, deposit_txid, out_txid, created_at, updated_at")
     .eq("user_id", userId).is("parent_id", null).order("created_at", { ascending: false }).limit(20);
   if (error) throw new Error(error.message);
   return (data ?? []).map((r) => {

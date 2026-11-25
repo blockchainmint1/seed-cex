@@ -726,7 +726,7 @@ export async function answerRoute(userId: string, id: string, choice: "continue"
 export async function listTsdRoutes(userId: string) {
   const { data, error } = await supabaseAdmin
     .from("tsd_routes")
-    .select("id, protocol, direction, coin, amount_in, amount_usd, shown_usdc, shown_out, fresh_out, usdc_amount, amount_out, stage, resume_stage, error, tsd_txid, usdc_txid, bridge_out_txid, swap_send_id, created_at, updated_at")
+    .select("id, protocol, direction, coin, amount_in, amount_usd, shown_usdc, shown_out, fresh_out, usdc_amount, amount_out, stage, resume_stage, error, tsd_txid, usdc_txid, bridge_out_txid, bridge_order_id, swap_send_id, created_at, updated_at")
     .eq("user_id", userId)
     .is("parent_id", null)
     .order("created_at", { ascending: false })

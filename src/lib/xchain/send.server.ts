@@ -515,7 +515,7 @@ export async function refreshSwapSends(userId: string) {
 export async function listSwapSends(userId: string) {
   const { data, error } = await supabaseAdmin
     .from("swap_sends")
-    .select("id, protocol, from_asset, to_asset, amount_in, amount_usd, expected_out, min_out, destination, txid, approve_txid, out_txid, status, error, created_at")
+    .select("id, protocol, from_asset, to_asset, amount_in, amount_usd, expected_out, min_out, destination, txid, approve_txid, out_txid, status, error, created_at, checked_at")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(40);

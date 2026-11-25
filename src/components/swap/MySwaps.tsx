@@ -160,11 +160,17 @@ export function MySwaps({ signedIn, sends, focus }: { signedIn: boolean; sends: 
                   </span>
                   <span className={`font-mono text-[11px] ${s.status === "done" ? "text-primary" : s.status === "failed" ? "text-destructive" : ""}`}>{SEND_LABEL[s.status] ?? s.status}</span>
                 </div>
+                <StepTrack steps={[`Send ${from.symbol}`, `${PROTOCOL_LABEL[s.protocol as keyof typeof PROTOCOL_LABEL] ?? "THORChain"} swapping`, `${to.symbol} arrives`]} status={s.status} stopped={s.status === "failed" || s.status === "refunded"} at={s.status === "signing" ? 0 : 1} />
                 <p className="font-mono text-[11px] text-muted-foreground">
                   {s.status === "done" ? "Got" : "Expecting"} ≈ {num(Number(s.expected_out))} {to.symbol} · {when(s.created_at)}
                 </p>
                 {s.error ? <p className="text-[11px] text-muted-foreground">{s.error}</p> : null}
-                {s.txid && s.status !== "failed" ? <Track txid={s.txid} protocol={s.protocol} /> : null}
+                <SwapDetails entries={log(
+                  { at: s.created_at, text: `Swap started: ${num(Number(s.amount_in))} ${from.symbol}` },
+                  s.approve_txid ? { at: s.created_at, text: "Token approval", txid: s.approve_txid } : null,
+                  s.txid && s.status !== "failed" ? { at: s.created_at, text: `Sent ${from.symbol} to ${PROTOCOL_LABEL[s.protocol as keyof typeof PROTOCOL_LABEL] ?? "THORChain"}`, txid: s.txid, url: trackerUrl(s.protocol === "maya" ? "maya" : "thorchain", s.txid) } : null,
+                  s.out_txid ? { at: s.checked_at ?? s.created_at, text: s.status === "refunded" ? "Refund paid back" : `${to.symbol} paid out`, txid: s.out_txid } : null,
+                )} />
               </li>
             );
           }
@@ -181,21 +187,22 @@ export function MySwaps({ signedIn, sends, focus }: { signedIn: boolean; sends: 
                 <span className="font-semibold">{buy ? `${num(Number(r.amount_in), 2)} TSD → ${sym}` : `${num(Number(r.amount_in))} ${sym} → TSD`}</span>
                 <span className={`font-mono text-[11px] ${r.stage === "done" ? "text-primary" : stopped ? "text-destructive" : ""}`}>{ROUTE_LABEL[r.stage] ?? r.stage}</span>
               </div>
-              <ol className="flex flex-wrap gap-x-4 gap-y-1">
-                {steps.map((s, i) => (
-                  <li key={s} className={`flex items-center gap-1.5 ${i < at ? "text-foreground" : "text-muted-foreground"}`}>
-                    {i < at ? <Check className="h-3.5 w-3.5 text-primary" /> : i === at && !stopped ? <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" /> : <Circle className="h-3 w-3" />}
-                    {s}
-                  </li>
-                ))}
-              </ol>
+              <StepTrack steps={steps} status={r.stage} stopped={stopped} at={at} />
               <p className="font-mono text-[11px] text-muted-foreground">
                 {r.stage === "done" ? `Got ${num(Number(r.amount_out ?? r.shown_out), buy ? 8 : 2)} ${buy ? sym : "TSD"}` : `Expecting ≈ ${num(Number(r.shown_out), buy ? 8 : 2)} ${buy ? sym : "TSD"}`}
                 {" · "}
                 {when(r.created_at)}
               </p>
               {r.error ? <p className="text-[11px] text-muted-foreground">{r.error}</p> : null}
-              {r.swap_txid ? <Track txid={r.swap_txid} protocol={r.protocol} /> : null}
+              <SwapDetails entries={log(
+                { at: r.created_at, text: buy ? `Swap started: ${num(Number(r.amount_in), 2)} TSD` : `Swap started: ${num(Number(r.amount_in))} ${sym}` },
+                r.bridge_order_id ? { at: r.created_at, text: "TSD Bridge order", url: bridgeOrderUrl(r.bridge_order_id) } : null,
+                r.tsd_txid ? { at: r.created_at, text: "Sent TSD to TSD Bridge", txid: r.tsd_txid, url: TXC_TX + r.tsd_txid } : null,
+                r.usdc_txid ? { at: r.updated_at, text: "USDC sent", txid: r.usdc_txid, url: ETH_TX + r.usdc_txid } : null,
+                r.bridge_out_txid ? { at: r.updated_at, text: "TSD Bridge paid out", txid: r.bridge_out_txid, url: /^0x/.test(r.bridge_out_txid) ? ETH_TX + r.bridge_out_txid : null } : null,
+                r.swap_txid ? { at: r.updated_at, text: `${SWAPPER_SHORT[r.protocol] ?? "THORChain"} swap`, txid: r.swap_txid, url: trackerUrl(r.protocol === "maya" ? "maya" : "thorchain", r.swap_txid) } : null,
+                r.stage === "done" ? { at: r.updated_at, text: "Delivered" } : null,
+              )} />
               {r.stage === "needs_ok" ? (
                 <div className="flex flex-wrap items-center gap-2 border-t border-border pt-2">
                   <span className="flex-1 text-[11px]">
@@ -238,22 +245,7 @@ function ChainItem({ x, onCancel, cancelling, focus }: { x: ChainRow; onCancel: 
         {x.status === "done" && x.amount_out != null ? `Got ≈ ${num(x.amount_out)} ${x.symbolOut}` : `Expecting ≈ ${num(x.shown_out)} ${x.symbolOut}`} · {when(x.created_at)}
       </p>
       {x.error ? <p className="text-[11px] text-muted-foreground">{x.error}</p> : null}
-      {x.log.length ? (
-        <details className="group border-t border-border pt-2">
-          <summary className="flex cursor-pointer list-none items-center gap-1 font-mono text-[11px] text-primary">
-            <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" /> Details ({x.log.length})
-          </summary>
-          <ol className="mt-2 space-y-1.5">
-            {x.log.map((e, i) => (
-              <li key={i} className="font-mono text-[11px] text-muted-foreground">
-                <span className="text-foreground">{when(e.at)}</span> · {e.text}
-                {e.txid ? <> · <span className="break-all">{e.txid.slice(0, 10)}…{e.txid.slice(-6)}</span></> : null}
-                {e.url ? <> · <a href={e.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 text-primary underline">view <ExternalLink className="h-3 w-3" /></a></> : null}
-              </li>
-            ))}
-          </ol>
-        </details>
-      ) : null}
+      <SwapDetails entries={x.log} />
       {x.status === "awaiting_approval" ? (
         <div className="flex flex-wrap items-center gap-2 border-t border-border pt-2">
           <span className="flex-1 text-[11px]">Tap Approve in Telegram to start. Nothing moves until you do.</span>
@@ -272,7 +264,6 @@ function TonItem({ n, focus }: { n: TonRow; focus?: boolean }) {
   const stopped = n.status === "failed" || n.status === "refunded";
   const steps = ["Send TON to STON.fi", "USD₮ arrives"];
   const at = TON_AT[n.status] ?? 0;
-  const pct = n.status === "done" ? 100 : Math.max(Math.round((at / steps.length) * 100), 4);
   return (
     <li data-swap={`ton-${n.id}`} className={`space-y-2 px-4 py-3 text-xs ${focus ? "bg-primary/5 ring-1 ring-primary/30" : ""}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -282,30 +273,16 @@ function TonItem({ n, focus }: { n: TonRow; focus?: boolean }) {
         </span>
         <span className={`font-mono text-[11px] ${n.status === "done" ? "text-primary" : stopped ? "text-destructive" : ""}`}>{TON_LABEL[n.status] ?? n.status}</span>
       </div>
-      <div className="h-1 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
-        <div className={`h-full rounded-full transition-all duration-700 ${stopped ? "bg-destructive" : "bg-primary"}`} style={{ width: `${stopped ? 100 : pct}%` }} />
-      </div>
-      <ol className="flex flex-wrap gap-x-4 gap-y-1.5">
-        {steps.map((s, i) => {
-          const done = !stopped && (n.status === "done" || i < at);
-          const live = !stopped && !done && i === at;
-          return (
-            <li key={s} className={`flex items-center gap-1.5 font-mono text-[11px] ${live ? "text-foreground" : done ? "text-primary" : "text-muted-foreground"}`}>
-              {done ? <CheckCircle2 className="h-3.5 w-3.5" /> : live ? <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" /> : stopped ? <XCircle className="h-3.5 w-3.5 opacity-60" /> : <Circle className="h-3.5 w-3.5 opacity-50" />}
-              {s}
-            </li>
-          );
-        })}
-      </ol>
+      <StepTrack steps={steps} status={n.status} stopped={stopped} at={at} />
       <p className="font-mono text-[11px] text-muted-foreground">
         {n.gotUsdt != null ? `Got ${num(n.gotUsdt, 6)} USD₮ on TON` : `At least ${num(n.minUsdt, 6)} USD₮ on TON`} · {when(n.createdAt)}
       </p>
       {n.error && n.status !== "done" ? <p className="text-[11px] text-muted-foreground">{n.error}</p> : null}
-      {n.txid ? (
-        <a href={`https://tonviewer.com/transaction/${n.txid}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-mono text-[11px] text-primary underline">
-          See it on Tonviewer <ExternalLink className="h-3 w-3" />
-        </a>
-      ) : null}
+      <SwapDetails entries={log(
+        { at: n.createdAt, text: `Swap started: ${num(n.ton)} TON` },
+        n.txid ? { at: n.createdAt, text: "Sent TON to STON.fi", txid: n.txid, url: `https://tonviewer.com/transaction/${n.txid}` } : null,
+        n.gotUsdt != null ? { at: n.createdAt, text: `USD₮ arrived: ${num(n.gotUsdt, 6)}` } : null,
+      )} />
     </li>
   );
 }
@@ -323,15 +300,17 @@ function RelayItem({ x, onCancel, cancelling, focus }: { x: RelayRow; onCancel: 
         </span>
         <span className={`font-mono text-[11px] ${x.status === "done" ? "text-primary" : stopped ? "text-destructive" : ""}`}>{RELAY_STATUS_LABEL[x.status as RelayStatus] ?? x.status}</span>
       </div>
+      <StepTrack steps={["Telegram tap", `Send ${x.symbolIn} to Relay`, `${x.symbolOut} arrives`]} status={x.status} stopped={stopped} at={({ awaiting_approval: 0, approved: 1, sending: 1, bridging: 2 } as Record<string, number>)[x.status] ?? 0} />
       <p className="font-mono text-[11px] text-muted-foreground">
         {x.status === "done" && x.amount_out != null ? `Got ≈ ${num(x.amount_out)} ${x.symbolOut}` : `Expecting ≈ ${num(x.shown_out)} ${x.symbolOut}`} · {when(x.created_at)}
       </p>
       {x.error ? <p className="text-[11px] text-muted-foreground">{x.error}</p> : null}
-      {x.deposit_txid ? (
-        <a href={`${explorer(x.fromChain)}${x.deposit_txid}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-mono text-[11px] text-primary underline">
-          See the deposit on the explorer <ExternalLink className="h-3 w-3" />
-        </a>
-      ) : null}
+      <SwapDetails entries={log(
+        { at: x.created_at, text: `Swap started: ${num(x.amount_in)} ${x.symbolIn}` },
+        x.deposit_txid ? { at: x.created_at, text: `Sent ${x.symbolIn} to Relay`, txid: x.deposit_txid, url: `${explorer(x.fromChain)}${x.deposit_txid}` } : null,
+        x.out_txid ? { at: x.updated_at ?? x.created_at, text: x.status === "refunded" ? "Relay refunded" : `Relay paid out ${x.symbolOut}`, txid: x.out_txid, url: `${explorer(x.status === "refunded" ? x.fromChain : x.toChain)}${x.out_txid}` } : null,
+        x.status === "done" ? { at: x.updated_at ?? x.created_at, text: "Delivered" } : null,
+      )} />
       {x.status === "awaiting_approval" ? (
         <div className="flex flex-wrap items-center gap-2 border-t border-border pt-2">
           <span className="flex-1 text-[11px]">Tap Approve in Telegram to start. Nothing moves until you do.</span>
@@ -359,27 +338,19 @@ function DexItem({ d, onCancel, cancelling, focus }: { d: DexRow; onCancel: () =
         </span>
         <span className={`font-mono text-[11px] ${d.status === "done" ? "text-primary" : stopped ? "text-destructive" : ""}`}>{DEX_STATUS_LABEL[d.status as DexStatus] ?? d.status}</span>
       </div>
-      {!stopped ? (
-        <ol className="flex flex-wrap gap-x-4 gap-y-1">
-          {steps.map((s, i) => (
-            <li key={s} className={`flex items-center gap-1.5 ${i < at ? "text-foreground" : "text-muted-foreground"}`}>
-              {i < at ? <Check className="h-3.5 w-3.5 text-primary" /> : i === at ? <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" /> : <Circle className="h-3 w-3" />}
-              {s}
-            </li>
-          ))}
-        </ol>
-      ) : null}
+      <StepTrack steps={steps} status={d.status} stopped={stopped} at={at} />
       <p className="font-mono text-[11px] text-muted-foreground">
         {d.status === "done" && d.amount_out != null ? `Got ${num(d.amount_out)} ${d.symbol_out}` : `Expecting ≈ ${num(d.shown_out)} ${d.symbol_out}${d.min_out != null ? ` (at least ${num(d.min_out)})` : ""}`}
         {" · "}
         {when(d.created_at)}
       </p>
       {d.error ? <p className="text-[11px] text-muted-foreground">{d.error}</p> : null}
-      {d.swap_txid ? (
-        <a href={`${d.explorerTx}${d.swap_txid}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-mono text-[11px] text-primary underline">
-          See the swap on the explorer <ExternalLink className="h-3 w-3" />
-        </a>
-      ) : null}
+      <SwapDetails entries={log(
+        { at: d.created_at, text: `Swap started: ${num(d.amount_in)} ${d.symbol_in}` },
+        d.approve_txid ? { at: d.created_at, text: `Approved ${d.symbol_in} for ${venue}`, txid: d.approve_txid, url: `${d.explorerTx}${d.approve_txid}` } : null,
+        d.swap_txid ? { at: d.updated_at, text: `${venue} swap`, txid: d.swap_txid, url: `${d.explorerTx}${d.swap_txid}` } : null,
+        d.status === "done" ? { at: d.updated_at, text: `Delivered ${d.amount_out != null ? num(d.amount_out) : ""} ${d.symbol_out}` } : null,
+      )} />
       {d.status === "awaiting_approval" ? (
         <div className="flex flex-wrap items-center gap-2 border-t border-border pt-2">
           <span className="flex-1 text-[11px]">Tap Approve in Telegram to start. Nothing moves until you do.</span>
@@ -407,16 +378,7 @@ function TwoStepItem({ t, onCancel, cancelling, focus }: { t: TwoRow; onCancel: 
         </span>
         <span className={`font-mono text-[11px] ${t.status === "done" ? "text-primary" : stopped ? "text-destructive" : ""}`}>{TWO_STEP_LABEL[t.status as TwoStepStatus] ?? t.status}</span>
       </div>
-      {!stopped ? (
-        <ol className="flex flex-wrap gap-x-4 gap-y-1">
-          {steps.map((s, i) => (
-            <li key={s} className={`flex items-center gap-1.5 ${i < at ? "text-foreground" : "text-muted-foreground"}`}>
-              {i < at ? <Check className="h-3.5 w-3.5 text-primary" /> : i === at ? <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" /> : <Circle className="h-3 w-3" />}
-              {s}
-            </li>
-          ))}
-        </ol>
-      ) : null}
+      <StepTrack steps={steps} status={t.status} stopped={stopped} at={at} />
       <p className="font-mono text-[11px] text-muted-foreground">
         {t.status === "done" && t.amount_out != null ? `Got ${num(t.amount_out)} ${t.symbol_out}` : `Expecting ≈ ${num(t.shown_out)} ${t.symbol_out} (at least ${num(t.min_out)})`}
         {t.mid_amount != null && t.status !== "done" ? ` · ${num(t.mid_amount)} ${t.mid_symbol} after step 1` : ""}
@@ -424,14 +386,13 @@ function TwoStepItem({ t, onCancel, cancelling, focus }: { t: TwoRow; onCancel: 
         {when(t.created_at)}
       </p>
       {t.error ? <p className="text-[11px] text-muted-foreground">{t.error}</p> : null}
-      <div className="flex flex-wrap gap-x-4 gap-y-1">
-        {t.poolTx ? (
-          <a href={t.poolTx} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-mono text-[11px] text-primary underline">
-            Pool swap on the explorer <ExternalLink className="h-3 w-3" />
-          </a>
-        ) : null}
-        {t.xTxid ? <Track txid={t.xTxid} protocol={t.xProtocol} /> : null}
-      </div>
+      <SwapDetails entries={log(
+        { at: t.created_at, text: `Swap started: ${num(t.amount_in)} ${t.symbol_in}` },
+        t.poolTx ? { at: t.created_at, text: "Pool swap", url: t.poolTx } : null,
+        t.mid_amount != null ? { at: t.created_at, text: `${num(t.mid_amount)} ${t.mid_symbol} after step 1` } : null,
+        t.xTxid ? { at: t.created_at, text: `${swapper} swap`, txid: t.xTxid, url: trackerUrl(t.xProtocol === "maya" ? "maya" : "thorchain", t.xTxid) } : null,
+        t.status === "done" ? { at: t.created_at, text: `Delivered ${t.amount_out != null ? num(t.amount_out) : ""} ${t.symbol_out}` } : null,
+      )} />
       {t.status === "awaiting_approval" ? (
         <div className="flex flex-wrap items-center gap-2 border-t border-border pt-2">
           <span className="flex-1 text-[11px]">Tap Approve in Telegram to start. Nothing moves until you do.</span>
@@ -444,12 +405,38 @@ function TwoStepItem({ t, onCancel, cancelling, focus }: { t: TwoRow; onCancel: 
   );
 }
 
+type LogEntry = { at: string; text: string; txid?: string | null; url?: string | null };
+const TXC_TX = "https://mempool.texitcoin.org/tx/", ETH_TX = "https://etherscan.io/tx/";
+const bridgeOrderUrl = (id: string) => `https://tsd.honest.money/swap/TX-${id.replace(/-/g, "").slice(0, 8).toUpperCase()}`;
+const log = (...e: Array<LogEntry | null | false | undefined>) => e.filter((x): x is LogEntry => Boolean(x)).sort((a, b) => a.at.localeCompare(b.at));
+
+/** Expandable step-by-step record with each transaction and where to see it (same on every swap). */
+function SwapDetails({ entries }: { entries: LogEntry[] }) {
+  if (!entries.length) return null;
+  return (
+    <details className="group border-t border-border pt-2">
+      <summary className="flex cursor-pointer list-none items-center gap-1 font-mono text-[11px] text-primary">
+        <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" /> Details ({entries.length})
+      </summary>
+      <ol className="mt-2 space-y-1.5">
+        {entries.map((e, i) => (
+          <li key={i} className="font-mono text-[11px] text-muted-foreground">
+            <span className="text-foreground">{when(e.at)}</span> · {e.text}
+            {e.txid ? <> · <span className="break-all">{e.txid.slice(0, 10)}…{e.txid.slice(-6)}</span></> : null}
+            {e.url ? <> · <a href={e.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 text-primary underline">view <ExternalLink className="h-3 w-3" /></a></> : null}
+          </li>
+        ))}
+      </ol>
+    </details>
+  );
+}
+
 /** Which step a chained swap is on (0 = the Telegram tap); steps.length = all done. */
 const CHAIN_AT: Record<string, number> = { awaiting_approval: 0, approved: 1, leg1: 1, mid: 2, leg2: 2, mid2: 3, leg3: 3 };
 
 /** Live step tracker: done steps get a check, the running one spins, later ones wait. */
-function StepTrack({ steps, status, stopped }: { steps: string[]; status: string; stopped: boolean }) {
-  const at = status === "done" ? steps.length : CHAIN_AT[status] ?? 0;
+function StepTrack({ steps, status, stopped, at: atIn }: { steps: string[]; status: string; stopped: boolean; at?: number }) {
+  const at = status === "done" ? steps.length : atIn ?? CHAIN_AT[status] ?? 0;
   const pct = Math.round((Math.min(at, steps.length) / steps.length) * 100);
   return (
     <div className="space-y-2">
