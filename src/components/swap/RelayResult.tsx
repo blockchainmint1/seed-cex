@@ -16,7 +16,7 @@ const fmtNum = (n: number) => (n === 0 ? "0" : n >= 1 ? n.toLocaleString("en-US"
 const usd = (n: number | null) => (n == null ? "—" : `$${n.toLocaleString("en-US", { maximumFractionDigits: 2 })}`);
 
 /** ETH on Ethereum <-> HYPE on Hyperliquid through Relay, from and back to the member's own pocket. */
-export function RelayResult({ q, amount }: { q: RelayQuoteResult; amount: string }) {
+export function RelayResult({ q, amount, onSent }: { q: RelayQuoteResult; amount: string; onSent?: () => void }) {
   const { user } = useSession();
   const qc = useQueryClient();
   const direction = q.direction as RelayDirection;
@@ -28,7 +28,7 @@ export function RelayResult({ q, amount }: { q: RelayQuoteResult; amount: string
   const start = useServerFn(startRelaySwap);
   const go = useMutation({
     mutationFn: () => start({ data: { direction, amount, shownOut: q.out, slippageBps: slippage } }),
-    onSuccess: () => { setConfirming(false); void qc.invalidateQueries({ queryKey: ["relay-swaps"] }); },
+    onSuccess: () => { setConfirming(false); onSent?.(); if (typeof window !== "undefined") document.getElementById("my-swaps")?.scrollIntoView({ behavior: "smooth", block: "start" }); void qc.invalidateQueries({ queryKey: ["relay-swaps"] }); },
   });
   const minOut = q.out * (1 - slippage / 10_000);
   const c = ctx.data;

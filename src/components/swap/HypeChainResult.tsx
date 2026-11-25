@@ -15,7 +15,7 @@ export type HypeChainQuoteResult = Awaited<ReturnType<typeof quoteHypeChainSwap>
 const fmtNum = (n: number) => (n === 0 ? "0" : n >= 1 ? n.toLocaleString("en-US", { maximumFractionDigits: 6 }) : n.toPrecision(6).replace(/0+$/, ""));
 
 /** Any coin or TSD <-> HYPE in one Telegram tap: through ETH, then Relay (or the reverse). */
-export function HypeChainResult({ q, amount, symbol }: { q: HypeChainQuoteResult; amount: string; symbol: string }) {
+export function HypeChainResult({ q, amount, symbol, onSent }: { q: HypeChainQuoteResult; amount: string; symbol: string; onSent?: () => void }) {
   const { user } = useSession();
   const qc = useQueryClient();
   const toHype = relayIsSecond(q.direction);
@@ -27,7 +27,7 @@ export function HypeChainResult({ q, amount, symbol }: { q: HypeChainQuoteResult
   const start = useServerFn(startHypeChainSwap);
   const go = useMutation({
     mutationFn: () => start({ data: { direction: q.direction, via: q.via, coin: q.coin, amount, shownOut: q.out, slippageBps: slippage } }),
-    onSuccess: () => { setConfirming(false); void qc.invalidateQueries({ queryKey: ["hype-chains"] }); },
+    onSuccess: () => { setConfirming(false); onSent?.(); if (typeof window !== "undefined") document.getElementById("my-swaps")?.scrollIntoView({ behavior: "smooth", block: "start" }); void qc.invalidateQueries({ queryKey: ["hype-chains"] }); },
   });
   if (!q.ok) return <p className="rounded-sm border border-border bg-surface p-5 text-sm text-destructive">{q.error}</p>;
   const minOut = chainMinimum(q.out, slippage);

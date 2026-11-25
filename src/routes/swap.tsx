@@ -422,6 +422,7 @@ function SwapPage() {
 
           {sel ? <Selected r={sel} from={from} to={to} amount={amount} destination={destination} signedIn={Boolean(user)} sendCtx={sendCtx ?? null} linkCtx={linkCtx} onSent={reset} /> : null}
 
+          <div id="my-swaps" className="scroll-mt-24" />
           <MySwaps signedIn={Boolean(user)} sends={sendCtx?.sends ?? []} />
         </section>
 
@@ -603,9 +604,9 @@ function Selected({ r, from, to, amount, destination, signedIn, sendCtx, linkCtx
       </>
     );
   }
-  if (r.kind === "relay") return <RelayResult q={r.data} amount={amount} />;
-  if (r.kind === "ston") return <TonUsdtResult q={r.data} amount={amount} />;
-  if (r.kind === "hype_chain") return <HypeChainResult q={r.data} amount={amount} symbol={sideLabel(r.opt.direction === "from_hype" ? to : from).symbol} />;
+  if (r.kind === "relay") return <RelayResult q={r.data} amount={amount} onSent={onSent} />;
+  if (r.kind === "ston") return <TonUsdtResult q={r.data} amount={amount} onSent={onSent} />;
+  if (r.kind === "hype_chain") return <HypeChainResult q={r.data} amount={amount} symbol={sideLabel(r.opt.direction === "from_hype" ? to : from).symbol} onSent={onSent} />;
   if (r.kind === "two") {
     return <TwoStepResult q={r.data} amount={amount} symbolIn={sideLabel(from).symbol} symbolOut={sideLabel(to).symbol} />;
   }

@@ -13,7 +13,7 @@ const fmt = (n: number | null | undefined, d = 6) => (n == null ? "—" : n.toLo
 const STATUS: Record<string, string> = { signing: "Sending", sent: "Waiting for STON.fi", unknown: "Checking", done: "Done", refunded: "TON returned", failed: "Not sent" };
 
 /** TON -> USD₮ on TON through STON.fi, from and back to the member's own TON pocket. */
-export function TonUsdtResult({ q, amount }: { q: TonUsdtQuote; amount: string }) {
+export function TonUsdtResult({ q, amount, onSent }: { q: TonUsdtQuote; amount: string; onSent?: () => void }) {
   const { user } = useSession();
   const qc = useQueryClient();
   const [confirming, setConfirming] = useState(false);
@@ -24,7 +24,7 @@ export function TonUsdtResult({ q, amount }: { q: TonUsdtQuote; amount: string }
   const start = useServerFn(startTonUsdtSwap);
   const go = useMutation({
     mutationFn: () => start({ data: { amount, shownOutUnits: q.outUnits } }),
-    onSuccess: () => { setConfirming(false); void qc.invalidateQueries({ queryKey: ["ton-swaps"] }); void qc.invalidateQueries({ queryKey: ["ton-swap-ctx"] }); },
+    onSuccess: () => { setConfirming(false); onSent?.(); if (typeof window !== "undefined") document.getElementById("my-swaps")?.scrollIntoView({ behavior: "smooth", block: "start" }); void qc.invalidateQueries({ queryKey: ["ton-swaps"] }); void qc.invalidateQueries({ queryKey: ["ton-swap-ctx"] }); },
   });
   const c = ctx.data;
   const short = c?.balanceTon != null && Number(amount) + q.networkTon > c.balanceTon;
