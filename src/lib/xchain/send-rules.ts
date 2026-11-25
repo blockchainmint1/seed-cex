@@ -10,6 +10,7 @@
 import type { PocketCoin } from "@/lib/pockets/coins";
 import { hmeWalletCanHold } from "@/lib/pockets/hme-support";
 import type { Protocol, SwapCoin } from "./assets";
+import { USDT_TRON_ASSET, tronUsdtBlocker } from "@/lib/pockets/tron-usdt";
 
 /** Default protocol (and the one TSD-route coins must be on). */
 export const SEND_PROTOCOL: Protocol = "thorchain";
@@ -38,7 +39,7 @@ export const MIN_SEND_QUOTE_SECONDS = 120;
 /** The fresh quote we sign may be at most this much worse than the one the member saw. */
 export const REQUOTE_TOLERANCE = 0.01;
 
-export type SendKind = "btc" | "ltc" | "evm" | "erc20" | "doge" | "bch" | "xrp" | "trx" | "sol" | "ada";
+export type SendKind = "btc" | "ltc" | "evm" | "erc20" | "doge" | "bch" | "xrp" | "trx" | "sol" | "ada" | "trc20";
 
 const NATIVE: Record<string, { pocket: PocketCoin; kind: SendKind }> = {
   "BTC.BTC": { pocket: "BTC", kind: "btc" },
@@ -55,6 +56,7 @@ const NATIVE: Record<string, { pocket: PocketCoin; kind: SendKind }> = {
 /** Which pocket key pays for this coin into `protocol`, and how — or null when Seeds can't send it there yet. */
 export function sendSource(c: SwapCoin, protocol: Protocol = SEND_PROTOCOL): { pocket: PocketCoin; kind: SendKind } | null {
   if (!c.protocols.includes(protocol)) return null;
+  if (c.asset === USDT_TRON_ASSET && protocol === "thorchain") return { pocket: "TRX", kind: "trc20" };
   const n = NATIVE[c.asset] ?? (c.chain === "ETH" && c.token && /-0X[0-9A-F]{40}$/i.test(c.asset) ? { pocket: "EVM" as PocketCoin, kind: "erc20" as SendKind } : null);
   if (!n) return null;
   if (protocol === "maya" && !MAYA_SEND_ASSETS.has(c.asset)) return null;
@@ -85,11 +87,16 @@ export type LinkLike = { mode: string; hasKey: boolean; pockets: string[] } | nu
 /** First reason a member can't send this swap right now, or null. */
 export function sendBlocker(p: {
   from: SwapCoin;
+  to?: SwapCoin;
   link: LinkLike;
   isAdmin: boolean;
   amountUsd: number | null;
   protocol?: Protocol;
 }): string | null {
+  if (p.from.asset === USDT_TRON_ASSET || p.to?.asset === USDT_TRON_ASSET) {
+    const gate = tronUsdtBlocker(p.isAdmin);
+    if (gate) return gate;
+  }
   const protocol = p.protocol ?? SEND_PROTOCOL;
   const src = sendSource(p.from, protocol);
   if (!src) return protocol === "maya" && sendSource(p.from) ? `Seeds sends ${p.from.symbol} through THORChain only for now.` : `Seeds can't send ${p.from.symbol} on ${p.from.network} yet.`;

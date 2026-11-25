@@ -12,6 +12,7 @@
 
 import { isKeyKind, keyThing, relinkStep, type KeyKind, type SignInKind } from "@/lib/account/sign-in-kind";
 import { edSendBlocker } from "@/lib/pockets/ed-send-rules";
+import { tronUsdtBlocker } from "@/lib/pockets/tron-usdt";
 
 /** An emailed code lasts 10 minutes, allows 5 wrong tries, and at most 5 are sent per hour. */
 export const EMAIL_CODE_TTL_MS = 10 * 60_000;
@@ -74,6 +75,10 @@ export type LinkLike = { mode: string; hasKey: boolean; address: string | null }
 
 /** First reason Seeds can't send this coin for this member at all (before readiness), or null. */
 export function sendBlocker(p: { link: LinkLike; tester: boolean; frozen: boolean; symbol: string; networkLabel: string; kind?: SignInKind; pocket?: string }): string | null {
+  if (p.symbol === "USDT" && (p.pocket === "TRX" || p.networkLabel === "TRON")) {
+    const gate = tronUsdtBlocker(p.tester);
+    if (gate) return gate;
+  }
   // Gate by the pocket too, so a token on a new chain (USD₮ on TON) follows that chain's stage.
   const newChain = edSendBlocker(p.pocket ?? p.symbol, p.tester) ?? edSendBlocker(p.symbol, p.tester);
   if (newChain) return newChain;

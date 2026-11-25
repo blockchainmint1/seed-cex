@@ -499,3 +499,8 @@
 - [x] RL1: recognise equivalent HME Wallet public keys, preserve every coin/address, test refusals and prepare auditor handoff (Bobby approved Nov 25); not published, live re-link awaits owner test and independent review
 - [x] TONAPI refill link: decode/pre-fill withdrawals, preserve USD₮ comment through approvals and send; 1,655 tests pass and signed-in paste verified, audit handoff prepared; funded payment done and credited (Nov 25) — not yet published
 - [x] TONAPI plan: Lite ($9.9/mo, 10 RPS) purchased and Current (Nov 25). No code change needed — TON reads already retry on 429/5xx and move to the next server; nothing in the app assumed the free tier's 1 RPS
+
+## USDT on TRON (Bobby, Nov 25)
+- [x] Wire pinned TRC-20 USDT balances, safe sends, withdrawals and existing one-tap THORChain/TSD swaps; reuse TRX pocket keys and preserve all approvals (review-locked)
+- [x] Regression tests, independent TronWeb byte/signature check, signed-in screen checks and shareable auditor handoff (1,695 tests)
+- [ ] Enable deposits/sends after independent audit and a small owner-approved funded send/swap (blocked: auditor review and owner funds/taps)

@@ -29,6 +29,7 @@ import { destinationValid, toBaseUnits } from "./safety";
 import { allowanceData, approveData, DECIMALS_CALL, depositWithExpiryData, NATIVE_ASSET, roundTo1e8Units, tokenContract, toTokenUnits } from "./evm-router";
 import { isOwnPocketDestination, outsideSwapProblem, MIN_SEND_QUOTE_SECONDS, requoteOk, SEND_PROTOCOL, SEND_PROTOCOLS, sendBlocker, sendSource, swapLimitsFor, swapProgress, thorTxId, type SendKind, type ThorTxStatus } from "./send-rules";
 import type { SendPlan } from "./router.server";
+import { USDT_TRON_ASSET, tronUsdtBlocker } from "@/lib/pockets/tron-usdt";
 
 export type SwapLink = { id: string; mode: string; account: number; hasKey: boolean; pockets: PocketCoin[]; addresses: Partial<Record<PocketCoin, string>> };
 
@@ -109,6 +110,8 @@ async function signAndBroadcast(
   kind: SendKind, priv: Uint8Array, from: SwapCoin, fromAddress: string, amount: bigint, plan: SendPlan, record: Recorder,
 ): Promise<Signed> {
   switch (kind) {
+    case "trc20":
+      throw new Error("TRON USDT must use its preflight-before-key send path.");
     case "btc": {
       const { fetchBtcFeeRate, fetchBtcUtxos, broadcastBtcTx } = await import("@/lib/btc/io.server");
       const { buildAndSignBtcTransfer } = await import("@/lib/btc/tx.server");
@@ -348,6 +351,13 @@ async function sendSwapFromPocketUnlocked(userId: string, isAdmin: boolean, inpu
   if (amount == null || amount <= 0n) throw new Error("Enter an amount with at most 8 decimal places.");
 
   const link = await loadLink(userId);
+  let tronTester = isAdmin;
+  if (from.asset === USDT_TRON_ASSET || to.asset === USDT_TRON_ASSET) {
+    const { hasTesterRole } = await import("@/lib/admin-guard");
+    tronTester = await hasTesterRole({ supabase: supabaseAdmin, userId });
+    const gate = tronUsdtBlocker(tronTester);
+    if (gate) throw new Error(gate);
+  }
   // Audit HC1: a chained leg must name a real, approved, in-progress parent owned by this
   // member — checked here before any quote work, and again inside reserve_swap_send.
   if (leg) {
@@ -355,17 +365,18 @@ async function sendSwapFromPocketUnlocked(userId: string, isAdmin: boolean, inpu
     if (parentLive !== true) throw new Error("This swap step has no approved parent swap. Nothing was sent.");
   }
   // Early, cheap gate (no price yet) so non-pilot members never trigger quotes.
-  const early = sendBlocker({ from, link, isAdmin: isAdmin || Boolean(leg), amountUsd: 0, protocol });
+  const early = sendBlocker({ from, to, link, isAdmin: isAdmin || Boolean(leg), amountUsd: 0, protocol });
   if (early) throw new Error(early);
 
   if (src.kind === "erc20") amount = roundTo1e8Units(amount, await tokenDecimals(tokenContract(from.asset)!));
+  if (src.kind === "trc20" && amount % 100n !== 0n) throw new Error("USDT on TRON uses at most six decimal places. Nothing was sent.");
   const nd = NATIVE_DECIMALS[src.kind];
   if (nd != null) amount = roundTo1e8Units(amount, nd);
   if (amount <= 0n) throw new Error("Amount too small.");
 
   const { quoteForSend } = await import("./router.server");
   const { route, plan, inputUsd } = await quoteForSend(protocol, from, to, amount, input.destination);
-  const blocker = sendBlocker({ from, link, isAdmin: isAdmin || Boolean(leg), amountUsd: inputUsd, protocol });
+  const blocker = sendBlocker({ from, to, link, isAdmin: isAdmin || Boolean(leg), amountUsd: inputUsd, protocol });
   if (blocker) throw new Error(blocker);
   if (!route.ok) throw new RouteUnavailableError(route.error ?? `${label} has no route right now.`);
   if (!plan) throw new RouteUnavailableError(`Not safe to send through ${label} right now: ${route.blockedReason ?? "a safety check failed"}.`);
@@ -449,8 +460,14 @@ async function sendSwapFromPocketUnlocked(userId: string, isAdmin: boolean, inpu
 
   let priv: Uint8Array | null = null;
   try {
-    if (!link!.ciphertext) throw new Error("Seeds doesn't hold this pocket's key.");
-    const keys = JSON.parse(await decryptDelegatedKey(link!.ciphertext, linkRef(link!.id))) as Record<string, string>;
+    if (!link?.ciphertext) throw new Error("Seeds doesn't hold this pocket's key.");
+    let sent: Signed;
+    if (src.kind === "trc20") {
+      const { sendUsdtTron } = await import("@/lib/pockets/tron-usdt.server");
+      const txid = await sendUsdtTron(link, fromAddress, plan.vault, amount / 100n, async (id) => record("txid", id), tronTester, plan.memo);
+      sent = { txid };
+    } else {
+    const keys = JSON.parse(await decryptDelegatedKey(link.ciphertext, linkRef(link.id))) as Record<string, string>;
     const xprv = keys[src.pocket];
     for (const k of Object.keys(keys)) keys[k] = "";
     if (!xprv) throw new Error(`Seeds doesn't hold the ${from.network} key for this pocket.`);
@@ -464,7 +481,8 @@ async function sendSwapFromPocketUnlocked(userId: string, isAdmin: boolean, inpu
     } else owns = addressOfKey(src.pocket, priv) === fromAddress;
     if (!owns) throw new Error("The stored key doesn't match your pocket address. Nothing was sent.");
 
-    const sent = await signAndBroadcast(src.kind, priv, from, fromAddress, amount, plan, record);
+    sent = await signAndBroadcast(src.kind, priv, from, fromAddress, amount, plan, record);
+    }
     await update({ status: "sent", txid: sent.txid, approve_txid: sent.approveTxid ?? null });
     void tellMember(userId, `Swap sent: ${Number(amount) / 1e8} ${from.symbol} → about ${route.expectedOut} ${to.symbol} via ${label}. Tx ${sent.txid}`, [
       `Sent ${Number(amount) / 1e8} ${from.symbol} (${from.network}) from your trading pocket`,
@@ -475,7 +493,7 @@ async function sendSwapFromPocketUnlocked(userId: string, isAdmin: boolean, inpu
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     // A txid we stored may still have reached the network if the broadcast timed out.
-    const maybeSent = recordedTxid && maybeBroadcast(msg);
+    const maybeSent = recordedTxid && (src.kind === "trc20" || maybeBroadcast(msg));
     await supabaseAdmin.from("swap_sends").update({ status: maybeSent ? "unknown" : "failed", error: msg.slice(0, 500), updated_at: new Date().toISOString() }).eq("id", rowId);
     throw new Error(maybeSent ? `The network didn't confirm it received the swap (${msg}). We'll keep checking — don't retry yet.` : msg);
   } finally {

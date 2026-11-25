@@ -8,7 +8,7 @@
 import type { ChainId } from "@/lib/chains";
 import type { PocketCoin } from "@/lib/pockets/coins";
 
-export type WithdrawKind = "evm" | "utxo" | "omni" | "btc" | "doge" | "bch" | "xrp" | "trx" | "sol" | "xmr" | "ada" | "xlm" | "ton" | "sui" | "ton_usdt";
+export type WithdrawKind = "evm" | "utxo" | "omni" | "btc" | "doge" | "bch" | "xrp" | "trx" | "sol" | "xmr" | "ada" | "xlm" | "ton" | "sui" | "ton_usdt" | "tron_usdt";
 
 export type WithdrawCoin = {
   /** "<symbol>:<network id>", e.g. "USDC:base". */
@@ -82,6 +82,8 @@ export const WITHDRAW_COINS: WithdrawCoin[] = [
     keepNote: "The XRP Ledger keeps a reserve (about 1 XRP) locked at every address; it can't be withdrawn.", explorerTx: "https://livenet.xrpl.org/transactions/", addressHint: "r…" },
   { key: "TRX:trx", symbol: "TRX", network: "trx", networkLabel: "TRON", pocket: "TRX", kind: "trx", decimals: 6, addressAsset: "TRON.TRX",
     keepNote: "Keep about 1 TRX behind for TRON's network fee.", explorerTx: "https://tronscan.org/#/transaction/", addressHint: "T…" },
+  { key: "USDT:trx", symbol: "USDT", network: "trx", networkLabel: "TRON", pocket: "TRX", kind: "tron_usdt", decimals: 6, feeCoin: "TRX", addressAsset: "TRON.TRX",
+    keepNote: "Tether USDT on TRON (TRC-20) only. Keep TRX in the same pocket for energy and bandwidth; Seeds estimates the exact transfer and refuses excessive fees before sending.", explorerTx: "https://tronscan.org/#/transaction/", addressHint: "T… (TRON mainnet)" },
   { key: "SOL:sol", symbol: "SOL", network: "sol", networkLabel: "Solana", pocket: "SOL", kind: "sol", decimals: 9, addressAsset: "SOL.SOL",
     keepNote: "About 0.002 SOL stays behind for fees and Solana's account minimum.", explorerTx: "https://solscan.io/tx/", addressHint: "Solana address" },
   { key: "ADA:ada", symbol: "ADA", network: "ada", networkLabel: "Cardano", pocket: "ADA", kind: "ada", decimals: 6, addressAsset: "ADA.ADA",

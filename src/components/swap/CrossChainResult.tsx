@@ -196,7 +196,7 @@ function SendPanel(props: {
   }
   if (!props.ctx) return null;
   const link = props.ctx.link ? { mode: props.ctx.link.mode, hasKey: props.ctx.link.hasKey, pockets: props.ctx.link.pockets as string[] } : null;
-  const blocker = sendBlocker({ from: props.from, link, isAdmin: props.ctx.isAdmin, amountUsd: props.inputUsd, protocol: props.protocol });
+  const blocker = sendBlocker({ from: props.from, to: props.to, link, isAdmin: props.ctx.isAdmin, amountUsd: props.inputUsd, protocol: props.protocol });
   if (blocker) return <p className="border-t border-border pt-3 text-xs text-muted-foreground">{blocker}</p>;
   const src = sendSource(props.from, props.protocol)!;
   const fromAddr = (props.ctx.link?.addresses as Record<string, string> | undefined)?.[src.pocket];

@@ -841,6 +841,20 @@
       "when": 1795641182506,
       "tag": "0119_evm_sign_locks",
       "breakpoints": true
+    },
+    {
+      "idx": 120,
+      "version": "7",
+      "when": 1795644476574,
+      "tag": "0120_tron_usdt_withdrawal_evidence",
+      "breakpoints": true
+    },
+    {
+      "idx": 121,
+      "version": "7",
+      "when": 1795644881886,
+      "tag": "0121_tron_usdt_unique_sends",
+      "breakpoints": true
     }
   ]
 }

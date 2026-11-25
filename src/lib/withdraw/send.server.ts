@@ -23,6 +23,10 @@ function evmAsset(c: WithdrawCoin) {
 export async function destinationProblem(c: WithdrawCoin, to: string, own: string): Promise<string | null> {
   const t = to.trim();
   if (!t) return "Enter the address to send to.";
+  if (c.kind === "tron_usdt") {
+    const { tronUsdtDestinationProblem } = await import("@/lib/pockets/tron-usdt");
+    return tronUsdtDestinationProblem(t, own);
+  }
   if (t === own || t.toLowerCase() === own.toLowerCase()) return "That's your trading pocket's own address.";
   if (c.kind === "xlm" || c.kind === "ton" || c.kind === "sui" || c.kind === "ton_usdt") {
     try {
@@ -95,6 +99,10 @@ export async function readBalance(c: WithdrawCoin, address: string): Promise<Bal
       case "ton_usdt": {
         const { readUsdtTonSpendable } = await import("@/lib/pockets/ton-usdt.server");
         return await readUsdtTonSpendable(address);
+      }
+      case "tron_usdt": {
+        const { readUsdtTronSpendable } = await import("@/lib/pockets/tron-usdt.server");
+        return await readUsdtTronSpendable(address);
       }
       case "evm": {
         const { asset } = evmAsset(c);
@@ -190,6 +198,10 @@ export async function sendWithdrawal(c: WithdrawCoin, link: Link, from: string, 
     case "ton_usdt": {
       const { sendUsdtTon } = await import("@/lib/pockets/ton-usdt.server");
       return sendUsdtTon(link, from, to, units, record, comment);
+    }
+    case "tron_usdt": {
+      const { sendUsdtTron } = await import("@/lib/pockets/tron-usdt.server");
+      return sendUsdtTron(link, from, to, units, record, tester);
     }
     case "evm": {
       const { chain, asset } = evmAsset(c);
@@ -323,6 +335,11 @@ export async function txStatus(c: WithdrawCoin, txid: string, to?: string, units
     if (!to || units === undefined || !from) return null;
     const { usdtTonTxStatus } = await import("@/lib/pockets/ton-usdt.server");
     return usdtTonTxStatus(txid, from, to, units, evidence);
+  }
+  if (c.kind === "tron_usdt") {
+    if (!to || units === undefined || !from) return null;
+    const { usdtTronTxStatus } = await import("@/lib/pockets/tron-usdt.server");
+    return usdtTronTxStatus(txid, from, to, units, evidence);
   }
   if (c.kind !== "evm") return null;
   const { fetchEvmTxStatus } = await import("@/lib/evm.server");

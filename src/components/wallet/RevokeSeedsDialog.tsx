@@ -66,7 +66,7 @@ export function RevokeSeedsDialog({ extraCoins, pending, onConfirm, keyAccount =
             <div className="space-y-2 border-l-2 border-destructive pl-3 text-sm text-foreground">
               <p className="font-semibold">Swap these back to TSD first — HME Wallet can’t hold them:</p>
               <ul className="num text-xs">
-                {check.stranded.map((r) => <li key={r.coin}>{amt(r.balance)} {r.coin === "USDT_TON" ? "USD₮ on TON" : r.coin}</li>)}
+                {check.stranded.map((r) => <li key={r.coin}>{amt(r.balance)} {r.coin === "USDT_TON" ? "USD₮ on TON" : r.coin === "USDT_TRON" ? "USDT on TRON" : r.coin}</li>)}
               </ul>
               <p className="text-xs text-muted-foreground">
                 After you revoke, Seeds can’t swap them for you. They’d stay put, and you’d need your recovery phrase in another

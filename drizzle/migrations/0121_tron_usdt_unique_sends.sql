@@ -1,0 +1,2 @@
+CREATE UNIQUE INDEX swap_sends_tron_usdt_txid_unique ON public.swap_sends (lower(txid)) WHERE from_asset = 'TRON.USDT-TR7NHQJEKQXGTCI8Q8ZY4PL8OTSZGJLJ6T' AND txid IS NOT NULL;
+CREATE UNIQUE INDEX pocket_withdrawals_tron_usdt_txid_unique ON public.pocket_withdrawals (lower(txid)) WHERE coin = 'USDT' AND chain = 'trx' AND txid IS NOT NULL;

@@ -10,8 +10,8 @@ describe("which coins Seeds can send", () => {
   test("first batch: coins Seeds already signs", () => {
     for (const id of ["BTC", "LTC", "ETH", "DOGE", "BCH", "XRP", "TRX", "SOL", "USDC", "USDT"]) expect(sendSource(c(id))).not.toBeNull();
   });
-  test("Zcash, other networks and TRON tokens are not sendable yet", () => {
-    for (const id of ["ZEC", "BNB", "AVAX", "ETH.BASE", "USDT.TRON", "USDC.BSC", "DASH"]) expect(sendSource(c(id))).toBeNull();
+  test("Zcash and unimplemented send networks stay unavailable", () => {
+    for (const id of ["ZEC", "BNB", "AVAX", "ETH.BASE", "USDC.BSC", "DASH"]) expect(sendSource(c(id))).toBeNull();
   });
   test("Cardano sends only into Maya, from the ADA pocket, and comes back to it", () => {
     expect(sendSource(c("ADA"), "maya")).toEqual({ pocket: "ADA", kind: "ada" });

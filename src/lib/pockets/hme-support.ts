@@ -28,7 +28,8 @@ export function revokeCheck(rows: PocketBalance[]): { stranded: { coin: string; 
   const stranded: { coin: string; balance: number }[] = [];
   const unknown: string[] = [];
   for (const r of rows) {
-    if (!(HME_WALLET_CANT_HOLD as string[]).includes(r.coin)) continue;
+    const pocket = r.coin === "USDT_TRON" ? "TRX" : r.coin === "USDT_TON" ? "TON" : r.coin;
+    if (!(HME_WALLET_CANT_HOLD as string[]).includes(pocket)) continue;
     if (r.balance === null || !Number.isFinite(r.balance)) unknown.push(r.coin);
     else if (r.balance > 0) stranded.push({ coin: r.coin, balance: r.balance });
   }

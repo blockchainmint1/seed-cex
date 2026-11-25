@@ -38,6 +38,14 @@ export const getMyExtraPocketBalances = createServerFn({ method: "GET" })
         async () => { const u = await usdtTonBalance(ton.address); return { balance: u === null ? null : Number(u) / 1e6, arriving: 0 }; });
       rows.push({ coin: "USDT_TON", address: ton.address, balance: v.balance, arriving: 0 });
     }
+    // TRC-20 USDT shares the TRX address, never its native balance.
+    const trx = rows.find((r) => r.coin === "TRX");
+    if (trx) {
+      const { usdtTronBalance } = await import("./tron-usdt.server");
+      const v = await shared(balanceKey("usdt-tron", trx.address), { ...CACHE_TIMES.balance, force: input.fresh, good: (x) => x.balance !== null },
+        async () => { const u = await usdtTronBalance(trx.address); return { balance: u === null ? null : Number(u) / 1e6, arriving: 0 }; });
+      rows.push({ coin: "USDT_TRON", address: trx.address, balance: v.balance, arriving: 0 });
+    }
     // Monero: read from the last scan by Seeds' Monero server (display only; sends read live).
     const xmr = extraPocketAddresses(data).XMR;
     if (xmr) {

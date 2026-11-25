@@ -10,6 +10,7 @@
 import type { PocketCoin } from "@/lib/pockets/coins";
 import type { Protocol, SwapCoin } from "./assets";
 import { receivePocket, sendSource, SEND_PILOT_ADMIN_ONLY, SWAP_LIMITS, swapLimitsFor, type LinkLike } from "./send-rules";
+import { USDT_TRON_ASSET, tronUsdtBlocker } from "@/lib/pockets/tron-usdt";
 
 export type RouteDirection = "buy" | "sell";
 
@@ -138,6 +139,7 @@ export function routeBlocker(p: {
   amountUsd: number | null;
   tsdAmount: number | null;
 }): string | null {
+  if (p.coin.asset === USDT_TRON_ASSET) { const gate = tronUsdtBlocker(p.isAdmin); if (gate) return gate; }
   const coinProblem = routeCoinProblem(p.direction, p.coin);
   if (coinProblem) return coinProblem;
   if (SEND_PILOT_ADMIN_ONLY && !p.isAdmin) return "TSD swaps are open to beta testers first. They open to members after that.";

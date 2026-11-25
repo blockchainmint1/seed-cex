@@ -11,6 +11,7 @@
  */
 import { POCKET_SPECS, type PocketCoin } from "@/lib/pockets/coins";
 import { edSendBlocker, edSendStage } from "@/lib/pockets/ed-send-rules";
+import { tronUsdtBlocker, tronUsdtStage } from "@/lib/pockets/tron-usdt";
 
 export type EvmChain = "ethereum" | "base" | "bsc" | "zcu" | "pulsechain" | "hyperevm" | "avalanche";
 
@@ -27,6 +28,8 @@ export type DepositNetwork = {
    * Seeds signs withdrawals for the member — to an address they pick, after a hold.
    */
   seedsSends?: boolean;
+  /** A token shares a native pocket but has its own activation and balance reading. */
+  token?: "USDT_TRON";
 };
 
 export type MarketPath = "/trade/tsd-txc" | "/trade/btc-tsd" | "/trade/eth-tsd" | "/trade/tsd-usdc" | "/trade/ltc-tsd" | "/trade/isk-tsd" | "/trade/zcu-tsd" | "/trade/pls-tsd" | "/trade/hex-tsd" | "/trade/phex-tsd" | "/trade/hype-tsd" | "/trade/avax-tsd";
@@ -91,6 +94,7 @@ export const DEPOSIT_ASSETS: DepositAsset[] = [
   { symbol: "ETH", name: "Ether", market: "/trade/eth-tsd", networks: [evm("ethereum", "Ethereum", "ETH"), evm("base", "Base", "ETH")] },
   { symbol: "USDC", name: "USD Coin", market: "/trade/tsd-usdc", networks: [evm("ethereum", "Ethereum", "ETH"), evm("base", "Base", "ETH"), evm("bsc", "BNB Chain", "BNB")] },
   { symbol: "USDT", name: "Tether", networks: [evm("ethereum", "Ethereum", "ETH"), evm("base", "Base", "ETH"), evm("bsc", "BNB Chain", "BNB"),
+    { id: "trx", label: "TRON", pocket: "TRX", seedsSends: true, token: "USDT_TRON", notes: ["Tether's USDT on TRON (TRC-20) only. Other TRON tokens aren't shown or moved.", "USDT uses the same TRON pocket address as TRX. Keep TRX there for energy, bandwidth and network fees; Seeds checks this send's cost before anything leaves."] },
     { id: "ton", label: "TON", pocket: "TON", seedsSends: true, notes: ["Tether's USD₮ on TON only (other TON tokens sent here aren't shown or moved).", "Sending it out costs a little TON, so keep about 0.1 TON in your TON pocket too."] }] },
   { symbol: "LTC", name: "Litecoin", market: "/trade/ltc-tsd", networks: [{ id: "ltc", label: "Litecoin", pocket: "LTC", notes: ["Send LTC on the Litecoin network only."] }] },
   { symbol: "ISK", name: "Iskandercoin", market: "/trade/isk-tsd", networks: [{ id: "isk", label: "Iskandercoin", pocket: "ISK", notes: ["Send ISK on the Iskandercoin network only."] }] },
@@ -132,6 +136,13 @@ export function addressFor(net: DepositNetwork, addresses: Record<string, string
   return addresses[net.pocket] ?? null;
 }
 
+/** Tokens never inherit the native coin's balance merely because they share its address. */
+export function pocketBalanceKey(asset: DepositAsset, net: DepositNetwork): string {
+  if (asset.symbol === "USDT" && net.id === "ton") return "USDT_TON";
+  if (asset.symbol === "USDT" && net.id === "trx") return "USDT_TRON";
+  return net.pocket;
+}
+
 /** How a coin on this network leaves the pocket. */
 export type WithdrawRoute = "hme" | "swap" | "seeds" | "none";
 export function withdrawRoute(net: DepositNetwork): WithdrawRoute {
@@ -151,6 +162,7 @@ export type DepositState = { ok: true; address: string } | { ok: false; reason: 
 export function depositState(
   net: DepositNetwork, linked: boolean, addresses: Record<string, string | undefined>, seedsSendBlocker?: string | null,
 ): DepositState {
+  if (net.token === "USDT_TRON" && tronUsdtStage() === "review") return { ok: false, reason: tronUsdtBlocker() ?? "USDT on TRON isn't ready for deposits." };
   const newChain = edSendBlocker(net.pocket);
   if (newChain && edSendStage() === "review") return { ok: false, reason: newChain };
   if (!linked) return { ok: false, reason: "Link your HME Wallet trading pocket first — deposits go to that pocket." };

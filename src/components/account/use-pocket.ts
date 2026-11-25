@@ -9,7 +9,7 @@ import { getBtcBalance } from "@/lib/wrap.functions";
 import { getEvmPortfolio } from "@/lib/evm.functions";
 import { getMyExtraPocketBalances } from "@/lib/pockets/pockets.functions";
 import { getReferencePrices } from "@/lib/cmc.functions";
-import { DEPOSIT_ASSETS, type DepositAsset, type DepositNetwork } from "@/lib/account/deposit-options";
+import { DEPOSIT_ASSETS, pocketBalanceKey, type DepositAsset, type DepositNetwork } from "@/lib/account/deposit-options";
 import { arrivingShown } from "@/lib/account/arriving";
 
 /** The member's active HME Wallet link (shared cache with the link card). */
@@ -40,8 +40,6 @@ export type BalanceRow = {
   arriving: number;
 };
 
-/** USD₮ on TON shares the TON pocket address but is its own reading. */
-const extraKey = (asset: DepositAsset, net: DepositNetwork): string => (asset.symbol === "USDT" && net.id === "ton" ? "USDT_TON" : net.pocket);
 const EXTRA = ["DOGE", "BCH", "ZEC", "XRP", "TRX", "SOL", "XMR", "XLM", "TON", "SUI"];
 
 /** Live balances of every coin at the pocket's receive addresses, plus USD estimates. */
@@ -107,7 +105,7 @@ export function usePocketBalances(addresses: Record<string, string> | undefined,
       const e = d.evm.find((x) => x.chain === net.evmChain && x.symbol === asset.symbol);
       return e?.online ? e.balance : null;
     }
-    return d.extra.find((x) => x.coin === extraKey(asset, net))?.balance ?? null;
+    return d.extra.find((x) => x.coin === pocketBalanceKey(asset, net))?.balance ?? null;
   };
   const arrivingOf = (asset: DepositAsset, net: DepositNetwork): number => {
     if (!d) return 0;
@@ -121,7 +119,7 @@ export function usePocketBalances(addresses: Record<string, string> | undefined,
     }
     // EVM networks settle in seconds; Seeds reads them as they land.
     if (net.evmChain) return 0;
-    const x = d.extra.find((e) => e.coin === extraKey(asset, net));
+    const x = d.extra.find((e) => e.coin === pocketBalanceKey(asset, net));
     return x && x.balance != null ? arrivingShown(sym, x.arriving) : 0;
   };
 

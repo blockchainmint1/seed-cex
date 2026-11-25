@@ -176,6 +176,10 @@ async function prepare(userId: string, tester: boolean, input: WithdrawInput) {
   const problem = amountProblem({ symbol: coin.symbol, decimals: coin.decimals, units, balance: bal.units, feeBalance: bal.feeUnits, feeCoin: coin.feeCoin });
   if (problem) throw new Error(problem);
   if (units === null) throw new Error("Enter a valid withdrawal amount.");
+  if (coin.kind === "tron_usdt") {
+    const { prepareUsdtTronSend } = await import("@/lib/pockets/tron-usdt.server");
+    await prepareUsdtTronSend(from, to, units, tester);
+  }
   const amount = unitsToNumber(units, coin.decimals);
   // Coins set aside for open orders and trades can't be withdrawn (set-asides.ts).
   {
@@ -384,7 +388,7 @@ async function sendOne(r: Row): Promise<"sent" | "failed" | "unknown"> {
     return "sent";
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    const nativeEd = coin && ["xlm", "ton", "sui", "ton_usdt"].includes(coin.kind);
+    const nativeEd = coin && ["xlm", "ton", "sui", "ton_usdt", "tron_usdt"].includes(coin.kind);
     const definiteRejection = msg === "Stellar rejected this transaction." || msg === "Sui rejected this transaction.";
     const unsure = txid !== null && (maybeBroadcast(msg) || (nativeEd && !definiteRejection));
     await supabaseAdmin.from("pocket_withdrawals").update({ status: unsure ? "unknown" : "failed", error: msg.slice(0, 500), updated_at: new Date().toISOString() }).eq("id", r.id);
@@ -415,7 +419,7 @@ export async function advanceWithdrawals(onlyId?: string) {
   // A killed request cannot run its catch block. Adopt its recorded id independently of
   // another withdrawal being requested; never re-sign or infer expiry from request age.
   const { data: interrupted } = await supabaseAdmin.from("pocket_withdrawals").select("id, txid, updated_at")
-    .eq("status", "signing").in("chain", ["xlm", "ton", "sui"]).lt("updated_at", new Date(Date.now() - 600_000).toISOString()).limit(25);
+    .eq("status", "signing").in("chain", ["xlm", "ton", "sui", "trx"]).lt("updated_at", new Date(Date.now() - 600_000).toISOString()).limit(25);
   for (const row of interrupted ?? []) {
     const outcome = edSigningRecovery(row.txid, Date.parse(row.updated_at), Date.now());
     if (!outcome) continue;
@@ -435,7 +439,7 @@ export async function advanceWithdrawals(onlyId?: string) {
   const { txStatus } = await import("./send.server");
   for (const s of sent ?? []) {
     const coin = withdrawCoin(s.coin, s.chain);
-    if (!coin || !s.txid || !["evm", "xlm", "ton", "sui", "ton_usdt"].includes(coin.kind)) continue;
+    if (!coin || !s.txid || !["evm", "xlm", "ton", "sui", "ton_usdt", "tron_usdt"].includes(coin.kind)) continue;
     const st = await txStatus(coin, s.txid, s.to_address, BigInt(s.amount_units), s.from_address, s.send_meta).catch(() => null);
     if (!st || st.confirmations == null) {
       await supabaseAdmin.from("pocket_withdrawals").update({ updated_at: new Date().toISOString() }).eq("id", s.id).in("status", ["sent", "unknown"]);

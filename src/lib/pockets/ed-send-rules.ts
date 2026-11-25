@@ -24,7 +24,8 @@ export const TON_KEEP = 10_000_000n;
 /** Public, immutable evidence of the expiry actually included in the signed bytes. */
 export type EdSendMeta = { chain: "XLM"; expiresAt: number } |
   { chain: "TON"; expiresAt: number; seqno: number; publicKeyHex: string } |
-  { chain: "SUI"; expiresEpoch: string };
+  { chain: "SUI"; expiresEpoch: string } |
+  { chain: "TRON"; expiresAt: number; rawDataHex: string };
 
 export function stellarMemoProblem(data: Record<string, string> | undefined): string | null {
   return data?.['config.memo_required'] === 'MQ=='
