@@ -289,6 +289,9 @@
 - [x] Tests, auditor note
 - [ ] First small real withdrawal per coin (blocked: Bobby re-links after this publishes, then tries one)
 - [x] Open withdrawals to all members (Bobby: everyone now, Nov 20)
+- [x] Paste a ton://transfer invoice into Withdraw: fills coin, address, amount and payment note; note bound into email code, row, Telegram approval and sender; migration 0114 makes it immutable once set (Nov 25, a134e04)
+- [x] Auditor sign-off on the payment-link batch (Nov 25, 9eca240..a134e04): cleared to publish, two Info notes only — native-TON comments stay deliberately unsupported, and the invoice destination/credit is the owner's to confirm
+- [ ] First small real payment to the TONAPI invoice: pay the smallest amount TONAPI accepts and confirm it credits the invoice before relying on it (blocked: Bobby's funds + tap; TP2)
 
 ## Audit #3 (Nov 20) — built in preview, waiting on the auditor before publishing
 - [x] A1 exchange trades: taker pays first, maker's side sent only after that payment is confirmed on its network; vanished/rejected payment → trade on hold + payer's trading frozen (admin lifts in Admin → Accounts); slow payments go to admin without blame
