@@ -140,6 +140,10 @@ describe("look-alike site check (auditor HK2)", () => {
   test("a request from another site is refused", () => {
     expect(manifestProblem("https://seeds-honest.money/api/public/key-signin/manifest/abc", m)).toBe("origin_not_allowed");
   });
+  test("a Seeds preview address is refused: only the live site is trusted", () => {
+    expect(manifestProblem("https://id-preview--0ce4bcf5-5883-4de0-96d3-b161585d1bf4.lovable.app/api/public/key-signin/manifest/abc", m)).toBe("origin_not_allowed");
+    expect(manifestProblem("https://seeds-cex.lovable.app/api/public/key-signin/manifest/abc", m)).toBe("origin_not_allowed");
+  });
   test("keys can't be sent to a different site", () => {
     expect(manifestProblem(MURL, { ...m, submit_url: "https://evil.example/submit" })).toBe("submit_origin");
   });

@@ -30,8 +30,9 @@ export type KeyManifest = {
   origin?: string; pairing_code?: string;
 };
 
-/** The only places a Seeds Key page may take a sign-in request from. */
-export const SEEDS_ORIGINS = ["https://seeds.honest.money", "https://id-preview--0ce4bcf5-5883-4de0-96d3-b161585d1bf4.lovable.app"] as const;
+/** The only place a Seeds Key page may take a sign-in request from. Testing against a Seeds
+ *  preview address needs the tester's own local setting — it is never on this list. */
+export const SEEDS_ORIGINS = ["https://seeds.honest.money"] as const;
 
 /**
  * Auditor HK2: the look-alike-site check, in code. Returns a reason to refuse, or null. The page

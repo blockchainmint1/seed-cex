@@ -25,8 +25,8 @@ covers the other side.
   strict Content-Security-Policy:
   `default-src 'self'; connect-src 'self' https://seeds.honest.money wss://relay.walletconnect.org https://*.walletconnect.org; img-src 'self' data:; frame-ancestors 'none'`
   (drop the WalletConnect hosts if you skip phone wallets).
-- **Only talk to Seeds.** Accept a manifest URL (`r=`) only when its origin is on this list:
-  `https://seeds.honest.money` and the Seeds preview (`https://id-preview--0ce4bcf5-5883-4de0-96d3-b161585d1bf4.lovable.app`).
+- **Only talk to Seeds.** Accept a manifest URL (`r=`) only when its origin is
+  `https://seeds.honest.money` — nothing else, not a Seeds preview or staging address.
   The manifest's `submit_url` must have the same origin as the manifest URL. Without this, a
   look-alike site could hand the page its own manifest and collect pocket keys. This check is
   code, not just text: call `manifestProblem(r, manifest)` from the reference before showing
