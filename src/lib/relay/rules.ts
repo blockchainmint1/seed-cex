@@ -9,8 +9,8 @@
  * on the right network, for exactly the agreed amount, paying the pocket back.
  */
 
-export type RelayDirection = "to_hype" | "from_hype";
-export type RelayChain = "ethereum" | "hyperevm";
+export type RelayDirection = "to_hype" | "from_hype" | "to_ton";
+export type RelayChain = "ethereum" | "hyperevm" | "ton";
 
 export const RELAY_API = "https://api.relay.link";
 /**
@@ -22,11 +22,21 @@ export const RELAY_DEPOSITORY = "0x4cd00e387622c35bddb9b4c962c136462338bc31";
 export const DEPOSIT_NATIVE_SELECTOR = "0x49290c1c";
 export const NATIVE_ZERO = "0x0000000000000000000000000000000000000000";
 
-export const CHAIN_IDS: Record<RelayChain, number> = { ethereum: 1, hyperevm: 999 };
-export const SYMBOL: Record<RelayChain, string> = { ethereum: "ETH", hyperevm: "HYPE" };
-export const NETWORK_NAME: Record<RelayChain, string> = { ethereum: "Ethereum", hyperevm: "Hyperliquid (HyperEVM)" };
+export const CHAIN_IDS: Record<RelayChain, number> = { ethereum: 1, hyperevm: 999, ton: 224235520 };
+export const SYMBOL: Record<RelayChain, string> = { ethereum: "ETH", hyperevm: "HYPE", ton: "TON" };
+export const NETWORK_NAME: Record<RelayChain, string> = { ethereum: "Ethereum", hyperevm: "Hyperliquid (HyperEVM)", ton: "TON" };
+/** Native coin decimals on each network (TON counts in nanotons). */
+export const DECIMALS: Record<RelayChain, number> = { ethereum: 18, hyperevm: 18, ton: 9 };
+/** Relay's id for native TON (checked against a live quote Nov 25 2026: symbol GRAM/TON, 9 decimals). */
+export const TON_NATIVE = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c";
+const NATIVE_OUT: Record<RelayChain, string> = { ethereum: "0x0000000000000000000000000000000000000000", hyperevm: "0x0000000000000000000000000000000000000000", ton: TON_NATIVE.toLowerCase() };
+/** A TON user-friendly address (bounceable EQ… or non-bounceable UQ…, 48 chars). */
+export const isTonAddress = (s: unknown): s is string => typeof s === "string" && /^[UE]Q[A-Za-z0-9_-]{46}$/.test(s);
+/** Only ETH on Ethereum can be sent into Relay by Seeds for TON payouts (Relay's TON deposits need a TON-built transaction). */
+export const paysOtherPocket = (d: RelayDirection) => d === "to_ton";
 
 export function legs(d: RelayDirection): { from: RelayChain; to: RelayChain } {
+  if (d === "to_ton") return { from: "ethereum", to: "ton" };
   return d === "to_hype" ? { from: "ethereum", to: "hyperevm" } : { from: "hyperevm", to: "ethereum" };
 }
 
@@ -55,11 +65,11 @@ const isAddr = (s: string) => /^0x[0-9a-f]{40}$/.test(s);
 const uint = (s: unknown): bigint | null => (typeof s === "string" && /^\d{1,78}$/.test(s) ? BigInt(s) : typeof s === "number" && Number.isSafeInteger(s) && s >= 0 ? BigInt(s) : null);
 
 /** The quote request Seeds sends to Relay (always own pocket -> own pocket, native -> native). */
-export function quoteBody(d: RelayDirection, pocket: string, amountWei: bigint, slippageBps: number) {
+export function quoteBody(d: RelayDirection, pocket: string, amountWei: bigint, slippageBps: number, recipient?: string) {
   const { from, to } = legs(d);
   return {
-    user: pocket, recipient: pocket, originChainId: CHAIN_IDS[from], destinationChainId: CHAIN_IDS[to],
-    originCurrency: NATIVE_ZERO, destinationCurrency: NATIVE_ZERO, amount: amountWei.toString(), tradeType: "EXACT_INPUT",
+    user: pocket, recipient: paysOtherPocket(d) ? recipient : pocket, originChainId: CHAIN_IDS[from], destinationChainId: CHAIN_IDS[to],
+    originCurrency: NATIVE_ZERO, destinationCurrency: to === "ton" ? TON_NATIVE : NATIVE_ZERO, amount: amountWei.toString(), tradeType: "EXACT_INPUT",
     slippageTolerance: String(slippageBps),
   };
 }
@@ -71,9 +81,11 @@ export type CheckedDeposit = { requestId: string; to: string; value: bigint; dat
  * Only a single native deposit step is accepted; anything else (approvals, signatures,
  * extra calls, another contract, another recipient) is refused.
  */
-export function checkRelayQuote(q: unknown, expect: { direction: RelayDirection; pocket: string; amountWei: bigint }): CheckedDeposit {
+export function checkRelayQuote(q: unknown, expect: { direction: RelayDirection; pocket: string; amountWei: bigint; recipient?: string }): CheckedDeposit {
   const pocket = lc(expect.pocket);
   if (!isAddr(pocket)) throw new Error("Pocket address is not valid.");
+  // TON payouts go to the member's own TON pocket; TON addresses are case-sensitive, so compared exactly.
+  if (paysOtherPocket(expect.direction) && !isTonAddress(expect.recipient)) throw new Error("Your TON pocket address is not valid. Nothing was sent.");
   const { from, to } = legs(expect.direction);
   const quote = q as { steps?: unknown[]; details?: Record<string, unknown> } | null;
   const steps = Array.isArray(quote?.steps) ? quote!.steps : [];
@@ -96,9 +108,10 @@ export function checkRelayQuote(q: unknown, expect: { direction: RelayDirection;
   if (!want.startsWith(prefix) || !/^[0-9a-f]{64}$/.test(want.slice(prefix.length))) throw new Error("Relay's deposit instruction isn't the expected one. Nothing was sent.");
 
   const det = quote?.details ?? {};
-  if (lc(det.recipient) !== pocket) throw new Error("Relay would pay someone else. Nothing was sent.");
+  const paidTo = paysOtherPocket(expect.direction) ? det.recipient === expect.recipient : lc(det.recipient) === pocket;
+  if (!paidTo) throw new Error("Relay would pay someone else. Nothing was sent.");
   const out = det.currencyOut as { amount?: unknown; minimumAmount?: unknown; currency?: { chainId?: unknown; address?: unknown; decimals?: unknown } } | undefined;
-  if (Number(out?.currency?.chainId) !== CHAIN_IDS[to] || lc(out?.currency?.address) !== NATIVE_ZERO || Number(out?.currency?.decimals) !== 18) {
+  if (Number(out?.currency?.chainId) !== CHAIN_IDS[to] || lc(out?.currency?.address) !== NATIVE_OUT[to] || Number(out?.currency?.decimals) !== DECIMALS[to]) {
     throw new Error(`Relay would pay a different coin than ${SYMBOL[to]}. Nothing was sent.`);
   }
   const outWei = uint(out?.amount), minWei = uint(out?.minimumAmount) ?? outWei;
@@ -133,3 +146,20 @@ export function toWei(amount: string): bigint | null {
   return v > 0n ? v : null;
 }
 export const fromWei = (w: bigint) => Number(w) / 1e18;
+
+/** Decimal string -> smallest units on a network (at most 8 decimals count); null when not positive. */
+export function toUnits(chain: RelayChain, amount: string): bigint | null {
+  if (DECIMALS[chain] === 18) return toWei(amount);
+  if (!/^\d{1,12}(\.\d+)?$/.test(amount)) return null;
+  const d = DECIMALS[chain];
+  const [w, f = ""] = amount.split(".");
+  const v = BigInt(w!) * 10n ** BigInt(d) + BigInt((f.slice(0, Math.min(8, d)) + "0".repeat(d)).slice(0, d));
+  return v > 0n ? v : null;
+}
+export const fromUnits = (chain: RelayChain, n: bigint) => Number(n) / 10 ** DECIMALS[chain];
+
+/** A TON payout counts as arrived when the pocket grew by at least the agreed minimum since just before sending. */
+export function tonArrived(baseline: number | null, now: number | null, minOut: number): boolean {
+  if (baseline == null || now == null || !Number.isFinite(baseline) || !Number.isFinite(now) || !(minOut > 0)) return false;
+  return now - baseline >= minOut * 0.999; // tiny allowance for rounding in the 9-decimal reading
+}

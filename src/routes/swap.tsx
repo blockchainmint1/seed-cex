@@ -27,8 +27,8 @@ import { HypeChainResult, type HypeChainQuoteResult } from "@/components/swap/Hy
 import { quoteHypeChainSwap } from "@/lib/hype-chain/hype-chain.functions";
 
 type SwapSearch = { from?: string; to?: string; amount?: string };
-const sideOk = (v: unknown): v is string => v === "TSD" || v === "HYPE" || (typeof v === "string" && Boolean(swapCoin(v as SwapCoinId)));
-const toSide = (v: string): SwapSide => (v === "TSD" ? { kind: "tsd" } : v === "HYPE" ? { kind: "hype" } : { kind: "coin", id: v as SwapCoinId });
+const sideOk = (v: unknown): v is string => v === "TSD" || v === "HYPE" || v === "TON" || (typeof v === "string" && Boolean(swapCoin(v as SwapCoinId)));
+const toSide = (v: string): SwapSide => (v === "TSD" ? { kind: "tsd" } : v === "HYPE" ? { kind: "hype" } : v === "TON" ? { kind: "ton" } : { kind: "coin", id: v as SwapCoinId });
 
 export const Route = createFileRoute("/swap")({
   staticData: { sitemap: true },
@@ -75,6 +75,7 @@ const fmtNum = (n: number | null | undefined) =>
 function sideLabel(s: SwapSide): { symbol: string; network: string } {
   if (s.kind === "tsd") return { symbol: "TSD", network: "TEXITcoin" };
   if (s.kind === "hype") return { symbol: "HYPE", network: "Hyperliquid" };
+  if (s.kind === "ton") return { symbol: "TON", network: "TON" };
   if (s.kind === "coin") {
     const c = swapCoin(s.id)!;
     return { symbol: c.symbol, network: c.network };
@@ -87,6 +88,7 @@ function asDexCoin(s: SwapSide, address: string): DexCoin {
   if (s.kind === "tsd") return { address: TSD_DEX, symbol: "TSD", name: "Texas Stable Dollar" };
   if (s.kind === "token") return { address: s.address, symbol: s.symbol, name: s.name ?? s.symbol };
   if (s.kind === "hype") return { address, symbol: "HYPE", name: "Hyperliquid" };
+  if (s.kind === "ton") return { address, symbol: "TON", name: "Toncoin" };
   const c = swapCoin(s.id)!;
   return { address, symbol: c.symbol, name: c.name };
 }
@@ -410,6 +412,7 @@ function SwapPage() {
               <li>When no single network reaches (like PEPE → BTC): two swaps through a plain coin such as ETH or USDC, with one Telegram tap.</li>
               <li>When more than one can do it, every route is asked and the best price is picked for you. You can choose another.</li>
               <li>HYPE on Hyperliquid swaps through Relay, an outside bridge, paid back to the same pocket address. Other coins and TSD reach HYPE in one tap through ETH.</li>
+              <li>TON is bought the same way: ETH through Relay, paid into your own TON pocket. TSD and other coins reach TON in one tap through ETH.</li>
               <li>Every swap pays back into your own pocket. Multi-step routes run on one Approve tap in Telegram, and paying an outside address needs two-factor and a tap.</li>
             </ul>
           </div>
@@ -578,7 +581,7 @@ function Selected({ r, from, to, amount, destination, signedIn, sendCtx, linkCtx
     );
   }
   if (r.kind === "relay") return <RelayResult q={r.data} amount={amount} />;
-  if (r.kind === "hype_chain") return <HypeChainResult q={r.data} amount={amount} symbol={sideLabel(r.opt.direction === "to_hype" ? from : to).symbol} />;
+  if (r.kind === "hype_chain") return <HypeChainResult q={r.data} amount={amount} symbol={sideLabel(r.opt.direction === "from_hype" ? to : from).symbol} />;
   if (r.kind === "two") {
     return <TwoStepResult q={r.data} amount={amount} symbolIn={sideLabel(from).symbol} symbolOut={sideLabel(to).symbol} />;
   }

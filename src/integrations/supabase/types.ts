@@ -4382,6 +4382,7 @@ export type Database = {
           approval_id: string | null
           created_at: string
           deposit_txid: string | null
+          dest_baseline: number | null
           direction: string
           error: string | null
           id: string
@@ -4391,6 +4392,7 @@ export type Database = {
           parent_id: string | null
           pocket: string
           quoted_out_wei: string | null
+          recipient: string | null
           request_id: string | null
           shown_out: number
           slippage_bps: number
@@ -4408,6 +4410,7 @@ export type Database = {
           approval_id?: string | null
           created_at?: string
           deposit_txid?: string | null
+          dest_baseline?: number | null
           direction: string
           error?: string | null
           id?: string
@@ -4417,6 +4420,7 @@ export type Database = {
           parent_id?: string | null
           pocket: string
           quoted_out_wei?: string | null
+          recipient?: string | null
           request_id?: string | null
           shown_out: number
           slippage_bps: number
@@ -4434,6 +4438,7 @@ export type Database = {
           approval_id?: string | null
           created_at?: string
           deposit_txid?: string | null
+          dest_baseline?: number | null
           direction?: string
           error?: string | null
           id?: string
@@ -4443,6 +4448,7 @@ export type Database = {
           parent_id?: string | null
           pocket?: string
           quoted_out_wei?: string | null
+          recipient?: string | null
           request_id?: string | null
           shown_out?: number
           slippage_bps?: number

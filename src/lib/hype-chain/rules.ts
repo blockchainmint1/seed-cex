@@ -7,7 +7,13 @@
  * (never coins the member already held) less its own network fee, and only when a fresh price
  * still clears the agreed minimum; otherwise Seeds stops and the ETH stays in the pocket (kept_mid).
  */
-export type HypeChainDirection = "to_hype" | "from_hype";
+export type HypeChainDirection = "to_hype" | "from_hype" | "to_ton";
+/** Directions whose Relay step comes second (coin -> ETH -> HYPE/TON). */
+export const relayIsSecond = (d: HypeChainDirection) => d !== "from_hype";
+/** The coin a Relay-ending chain delivers. */
+export const chainEndSymbol = (d: HypeChainDirection) => (d === "to_ton" ? "TON" : "HYPE");
+/** The Relay direction used for this chain's Relay step. */
+export const relayLegDirection = (d: HypeChainDirection): "to_hype" | "from_hype" | "to_ton" => d;
 export type HypeChainVia = "tsd" | "xchain";
 export type HypeChainStatus =
   | "awaiting_approval" | "approved" | "leg1" | "mid" | "leg2"
@@ -58,7 +64,7 @@ export function chainMinimum(shownOut: number, slippageBps: number): number {
 /** Steps shown in My swaps. */
 export function chainSteps(d: HypeChainDirection, via: HypeChainVia, symbol: string): string[] {
   const hop = via === "tsd" ? "TSD Bridge" : "THORChain/Maya";
-  return d === "to_hype"
-    ? ["Telegram tap", `${hop}: ${symbol} → ETH`, "Relay: ETH → HYPE"]
+  return relayIsSecond(d)
+    ? ["Telegram tap", `${hop}: ${symbol} → ETH`, `Relay: ETH → ${chainEndSymbol(d)}`]
     : ["Telegram tap", "Relay: HYPE → ETH", `${hop}: ETH → ${symbol}`];
 }

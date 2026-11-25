@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { RELAY_SLIPPAGE_CHOICES_BPS } from "./rules";
 
-const direction = z.enum(["to_hype", "from_hype"]);
+const direction = z.enum(["to_hype", "from_hype", "to_ton"]);
 const amount = z.string().regex(/^\d{1,12}(\.\d+)?$/).max(40);
 
 /** Public: Relay's price for ETH <-> HYPE (read-only, rate-limited per connection). */

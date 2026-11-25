@@ -46,7 +46,7 @@ export function RelayResult({ q, amount }: { q: RelayQuoteResult; amount: string
         {c && !c.blocker ? <Cell k={`${c.symbolIn} in your pocket`} v={c.balanceIn == null ? "—" : fmtNum(c.balanceIn)} bad={short} /> : null}
       </dl>
       <p className="text-xs text-muted-foreground">
-        Relay is an outside bridge. Your pocket pays {SYMBOL[from]} into Relay's deposit contract on {NETWORK_NAME[from]}, and Relay pays {SYMBOL[to]} to the same pocket on {NETWORK_NAME[to]} — or refunds you.
+        Relay is an outside bridge. Your pocket pays {SYMBOL[from]} into Relay's deposit contract on {NETWORK_NAME[from]}, and Relay pays {SYMBOL[to]} to {to === "ton" ? "your own TON pocket" : "the same pocket"} on {NETWORK_NAME[to]} — or refunds you.
       </p>
 
       {!user ? (

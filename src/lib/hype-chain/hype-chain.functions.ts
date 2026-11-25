@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const base = z.object({
-  direction: z.enum(["to_hype", "from_hype"]),
+  direction: z.enum(["to_hype", "from_hype", "to_ton"]),
   via: z.enum(["tsd", "xchain"]),
   coin: z.string().min(1).max(40),
   amount: z.string().regex(/^\d{1,12}(\.\d+)?$/).max(40),

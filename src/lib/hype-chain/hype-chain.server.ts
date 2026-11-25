@@ -18,9 +18,9 @@ import { swapCoin, type Protocol, type SwapCoin } from "@/lib/xchain/assets";
 import { toBaseUnits } from "@/lib/xchain/safety";
 import { receivePocket, sendSource } from "@/lib/xchain/send-rules";
 import { floorAmount } from "@/lib/swap/plan";
-import { agreedMinWei, fromWei, toWei, type RelayDirection } from "@/lib/relay/rules";
+import { agreedMinWei, fromWei, toWei, fromUnits, toUnits, legs, type RelayDirection } from "@/lib/relay/rules";
 import {
-  HOP_STUCK_MINUTES, HYPE_CHAIN_LABEL, chainMinimum, chainSteps, ethToHandOn, isHypeChainTerminal, secondHopOk,
+  HOP_STUCK_MINUTES, HYPE_CHAIN_LABEL, relayIsSecond, chainEndSymbol, relayLegDirection, chainMinimum, chainSteps, ethToHandOn, isHypeChainTerminal, secondHopOk,
   type HypeChainDirection, type HypeChainStatus, type HypeChainVia,
 } from "./rules";
 
@@ -53,14 +53,14 @@ async function bestX(from: SwapCoin, to: SwapCoin, amount: number) {
 async function quoteSideHop(direction: HypeChainDirection, via: HypeChainVia, coinId: string, amount: number) {
   if (via === "tsd") {
     const { quoteTsdRoute } = await import("@/lib/xchain/tsd-route.server");
-    const q = await quoteTsdRoute(direction === "to_hype" ? "buy" : "sell", eth(), floorAmount(amount, 8));
+    const q = await quoteTsdRoute(relayIsSecond(direction) ? "buy" : "sell", eth(), floorAmount(amount, 8));
     if (!q.ok) throw new Error(q.error ?? "TSD Bridge has no route right now.");
     return { out: q.out, protocol: (q.protocol ?? "thorchain") as Protocol, inputUsd: q.amountUsd, seconds: q.seconds };
   }
   const coin = swapCoin(coinId);
   if (!coin) throw new Error("Pick a coin.");
-  const q = direction === "to_hype" ? await bestX(coin, eth(), amount) : await bestX(eth(), coin, amount);
-  if (!q) throw new Error(`THORChain and Maya have no ${direction === "to_hype" ? `${coin.symbol} → ETH` : `ETH → ${coin.symbol}`} route right now.`);
+  const q = relayIsSecond(direction) ? await bestX(coin, eth(), amount) : await bestX(eth(), coin, amount);
+  if (!q) throw new Error(`THORChain and Maya have no ${relayIsSecond(direction) ? `${coin.symbol} → ETH` : `ETH → ${coin.symbol}`} route right now.`);
   return q;
 }
 
@@ -76,15 +76,16 @@ export type HypeChainQuoteInput = { direction: HypeChainDirection; via: HypeChai
 export async function quoteHypeChain(i: HypeChainQuoteInput) {
   const amount = Number(i.amount);
   if (!(amount > 0)) throw new Error("Enter an amount above zero.");
-  const { relayQuote } = await import("@/lib/relay/relay.server");
+  const { relayQuote, SAMPLE_TON } = await import("@/lib/relay/relay.server");
   const who = "0x000000000000000000000000000000000000dEaD";
-  if (i.direction === "to_hype") {
-    const h1 = await quoteSideHop("to_hype", i.via, i.coin, amount);
+  if (relayIsSecond(i.direction)) {
+    const h1 = await quoteSideHop(i.direction, i.via, i.coin, amount);
     const fee = await ethFeeWei(RELAY_GAS);
     const midWei = toWei(floorAmount(h1.out, 8));
     if (!midWei || midWei <= fee) throw new Error("Too small: the ETH from step 1 wouldn't cover Ethereum's network fee.");
-    const r = await relayQuote("to_hype", who, midWei - fee, 100);
-    return { direction: i.direction, via: i.via, coin: i.coin, amountIn: amount, mid: h1.out, out: fromWei(r.outWei), amountUsd: h1.inputUsd ?? r.inUsd, outUsd: r.outUsd, protocol: h1.protocol, seconds: (h1.seconds ?? 0) + (r.seconds ?? 0) + 60 };
+    const rd = relayLegDirection(i.direction);
+    const r = await relayQuote(rd, who, midWei - fee, 100, rd === "to_ton" ? SAMPLE_TON : undefined);
+    return { direction: i.direction, via: i.via, coin: i.coin, amountIn: amount, mid: h1.out, out: fromUnits(legs(rd).to, r.outWei), amountUsd: h1.inputUsd ?? r.inUsd, outUsd: r.outUsd, protocol: h1.protocol, seconds: (h1.seconds ?? 0) + (r.seconds ?? 0) + 60 };
   }
   const inWei = toWei(floorAmount(amount, 8));
   if (!inWei) throw new Error("Enter an amount above zero.");
@@ -111,7 +112,7 @@ async function requestUnlocked(userId: string, tester: boolean, input: HypeChain
   const { relayBlocker, nativeBalance } = await import("@/lib/relay/relay.server");
   const link = await loadLink(userId);
   const { data: prof } = await supabaseAdmin.from("profiles").select("telegram_verified").eq("id", userId).maybeSingle();
-  const blocker = relayBlocker({ tester, telegramVerified: prof?.telegram_verified === true, link: link ? { mode: link.mode, hasKey: link.hasKey, pockets: link.pockets as string[] } : null });
+  const blocker = relayBlocker({ tester, telegramVerified: prof?.telegram_verified === true, needsTon: input.direction === "to_ton", link: link ? { mode: link.mode, hasKey: link.hasKey, pockets: link.pockets as string[] } : null });
   if (blocker) throw new Error(blocker);
   const evm = link!.addresses.EVM!.toLowerCase();
   const coin = input.via === "xchain" ? swapCoin(input.coin) : null;
@@ -119,7 +120,7 @@ async function requestUnlocked(userId: string, tester: boolean, input: HypeChain
   if (input.via === "tsd" && input.coin !== "TSD") throw new Error("Pick a coin.");
   const rp = coin ? receivePocket(coin) : null, sp = coin ? sendSource(coin)?.pocket ?? null : null;
   if (coin && input.direction === "from_hype" && !(rp && link!.addresses[rp])) throw new Error(`Your trading pocket can't hold ${coin.symbol} yet.`);
-  if (coin && input.direction === "to_hype" && !(sp && link!.addresses[sp])) throw new Error(`Seeds can't send ${coin.symbol} from your pocket yet.`);
+  if (coin && relayIsSecond(input.direction) && !(sp && link!.addresses[sp])) throw new Error(`Seeds can't send ${coin.symbol} from your pocket yet.`);
 
   const q = await quoteHypeChain(input);
   if (!(q.out >= input.shownOut * 0.99)) throw new Error(`The price moved more than 1% since you looked (now about ${fmt(q.out)}). Check the new quote and try again.`);
@@ -152,14 +153,14 @@ async function requestUnlocked(userId: string, tester: boolean, input: HypeChain
   });
   if (error || !id) throw new Error(clean(error?.message ?? "Could not start this swap."));
   const chainId = id as string;
-  const fromSym = input.direction === "to_hype" ? symbolOf(input.coin) : "HYPE";
-  const toSym = input.direction === "to_hype" ? "HYPE" : symbolOf(input.coin);
+  const fromSym = relayIsSecond(input.direction) ? symbolOf(input.coin) : "HYPE";
+  const toSym = relayIsSecond(input.direction) ? chainEndSymbol(input.direction) : symbolOf(input.coin);
   const fromAddr = input.direction === "from_hype" ? evm : input.via === "tsd" ? link!.addresses.TXC! : link!.addresses[sendSource(coin!)!.pocket]!;
   try {
     const { requestSendApproval } = await import("@/lib/pocket-send/approvals.server");
     const ap = await requestSendApproval({
       userId, linkId: link!.id, purpose: "hype_chain", refId: chainId, leg: `hype_chain:${input.direction}`, asset: fromSym, amount: q.amountIn,
-      from: fromAddr, to: evm,
+      from: fromAddr, to: input.direction === "to_ton" ? link!.addresses.TON! : evm,
       what: `Swap ${fmt(q.amountIn)} ${fromSym} to about ${fmt(input.shownOut)} ${toSym} (at least ${fmt(min)}) in two steps through ETH and Relay. Every step pays your own pocket.`,
       meta: { direction: input.direction, via: input.via, coin: input.coin },
     });
@@ -210,7 +211,7 @@ async function linkStillSame(r: Row) {
 }
 
 type Hop = "relay" | "tsd" | "xchain";
-const hopKind = (r: Row, leg: 1 | 2): Hop => ((r.direction === "to_hype") === (leg === 2) ? "relay" : (r.via as HypeChainVia));
+const hopKind = (r: Row, leg: 1 | 2): Hop => (relayIsSecond(r.direction as HypeChainDirection) === (leg === 2) ? "relay" : (r.via as HypeChainVia));
 
 /** A step this chain already started since the step began (never start a second one). */
 async function stepSince(r: Row, hop: Hop): Promise<string | null> {
@@ -267,7 +268,7 @@ async function follow(r: Row, hop: Hop, id: string, outAsset: string): Promise<F
 async function startSideHop(r: Row, leg: 1 | 2, amount: number, shownOut: number, tolerance: number): Promise<{ id: string } | { stop: string }> {
   const earlier = await stepSince(r, hopKind(r, leg));
   if (earlier) return { id: earlier };
-  const toHype = r.direction === "to_hype";
+  const toHype = relayIsSecond(r.direction as HypeChainDirection);
   try {
     if (r.via === "tsd") {
       const { startTsdRoute } = await import("@/lib/xchain/tsd-route.server");
@@ -307,7 +308,8 @@ async function startSideHop(r: Row, leg: 1 | 2, amount: number, shownOut: number
 async function step(r: Row): Promise<boolean> {
   const status = r.status as HypeChainStatus;
   const go = async (patch: Partial<Row>) => { await save(r.id, patch); return patch.status !== undefined && patch.status !== status; };
-  const toHype = r.direction === "to_hype";
+  const toHype = relayIsSecond(r.direction as HypeChainDirection);
+  const endSym = chainEndSymbol(r.direction as HypeChainDirection);
   const sym = symbolOf(r.coin_id);
   const ethIn = "Your ETH is in your trading pocket on Ethereum; swap it on Seeds → Swap when you like.";
 
@@ -320,9 +322,12 @@ async function step(r: Row): Promise<boolean> {
       if (ap.status === "cancelled") return go(move("cancelled", { error: "The approval request was closed. Nothing was sent." }));
       if (ap.status === "expired" || (ap.status === "pending" && Date.parse(ap.expires_at) <= Date.now())) return go(move("expired", { error: "Not approved in time. Nothing was sent." }));
       if (ap.status !== "approved") return go({});
-      if (!(await linkStillSame(r))) return go(move("cancelled", { error: "Your wallet link changed since this request. Nothing was sent." }));
+      const still = await linkStillSame(r);
+      if (!still) return go(move("cancelled", { error: "Your wallet link changed since this request. Nothing was sent." }));
+      const payTo = r.direction === "to_ton" ? still.addresses.TON : r.pocket;
+      if (!payTo) return go(move("cancelled", { error: "Your TON pocket is no longer on your link. Nothing was sent." }));
       const { spendApproval } = await import("@/lib/pocket-send/approvals.server");
-      await spendApproval({ purpose: "hype_chain", id: r.approval_id, leg: `hype_chain:${r.direction}`, userId: r.user_id, linkId: r.link_id, amount: Number(r.amount_in), from: ap.from_address, to: r.pocket });
+      await spendApproval({ purpose: "hype_chain", id: r.approval_id, leg: `hype_chain:${r.direction}`, userId: r.user_id, linkId: r.link_id, amount: Number(r.amount_in), from: ap.from_address, to: payTo });
       return go(move("approved"));
     }
 
@@ -361,7 +366,7 @@ async function step(r: Row): Promise<boolean> {
       const f = await follow(r, hopKind(r, 1), r.leg1_id!, eth().asset);
       if (f.state === "wait") return go(minutesSince(r.step_at) > HOP_STUCK_MINUTES && !r.error ? { error: "Step 1 is taking longer than usual; the team will check. Nothing is re-sent." } : {});
       if (f.state === "stopped") {
-        void notify(r, `Your ${toHype ? sym : "HYPE"} → ${toHype ? "HYPE" : sym} swap stopped at step 1: ${f.note}`);
+        void notify(r, `Your ${toHype ? sym : "HYPE"} → ${toHype ? endSym : sym} swap stopped at step 1: ${f.note}`);
         return go(move("failed", { error: `Step 1 stopped: ${f.note}`.slice(0, 300) }));
       }
       return go(move("mid", { mid_amount: f.paid ?? null }));
@@ -387,7 +392,10 @@ async function step(r: Row): Promise<boolean> {
       try {
         if (toHype) {
           const { relayQuote } = await import("@/lib/relay/relay.server");
-          fresh = fromWei((await relayQuote("to_hype", r.pocket, hand, r.slippage_bps)).outWei);
+          const rd = relayLegDirection(r.direction as HypeChainDirection);
+          const tonTo = rd === "to_ton" ? (await linkStillSame(r))?.addresses.TON : undefined;
+          if (rd === "to_ton" && !tonTo) return go(move("kept_mid", { error: `Your TON pocket is no longer on your link. ${ethIn}` }));
+          fresh = fromUnits(legs(rd).to, (await relayQuote(rd, r.pocket, hand, r.slippage_bps, tonTo ?? undefined)).outWei);
         } else {
           fresh = (await quoteSideHop("from_hype", r.via as HypeChainVia, r.coin_id, handEth)).out;
         }
@@ -402,7 +410,9 @@ async function step(r: Row): Promise<boolean> {
       if (toHype) {
         const { startRelayLeg } = await import("@/lib/relay/relay.server");
         try {
-          const id = await startRelayLeg(r.id, { direction: "to_hype", pocket: r.pocket, amountWei: hand, shownOut: fresh, minOutWei: toWei(floorAmount(Number(r.min_out), 8))!, amountUsd: Number(r.amount_usd) });
+          const rd = relayLegDirection(r.direction as HypeChainDirection);
+          const tonTo = rd === "to_ton" ? (await linkStillSame(r))?.addresses.TON : undefined;
+          const id = await startRelayLeg(r.id, { direction: rd, pocket: r.pocket, amountWei: hand, shownOut: fresh, minOutWei: toUnits(legs(rd).to, floorAmount(Number(r.min_out), 8))!, amountUsd: Number(r.amount_usd), ...(tonTo ? { recipient: tonTo } : {}) });
           return go(move("leg2", { leg2_id: id, mid_handed: handEth }));
         } catch (e) {
           const after = await stepSince(r, "relay");
@@ -423,7 +433,7 @@ async function step(r: Row): Promise<boolean> {
         void notify(r, `Step 2 of your swap didn't complete (${f.note}). ${ethIn}`);
         return go(move("kept_mid", { error: `Step 2 stopped: ${f.note} ${ethIn}`.slice(0, 300) }));
       }
-      void notify(r, `Swap done: ${fmt(Number(r.amount_in))} ${toHype ? sym : "HYPE"} → ${f.paid != null ? fmt(f.paid) : "about " + fmt(Number(r.shown_out))} ${toHype ? "HYPE" : sym}, in your own pocket.`);
+      void notify(r, `Swap done: ${fmt(Number(r.amount_in))} ${toHype ? sym : "HYPE"} → ${f.paid != null ? fmt(f.paid) : "about " + fmt(Number(r.shown_out))} ${toHype ? endSym : sym}, in your own pocket.`);
       return go(move("done", { amount_out: f.paid }));
     }
     default:
@@ -467,7 +477,7 @@ export async function listHypeChains(userId: string) {
     const d = r.direction as HypeChainDirection;
     return {
       ...r, amount_in: Number(r.amount_in), shown_out: Number(r.shown_out), amount_out: r.amount_out == null ? null : Number(r.amount_out),
-      symbolIn: d === "to_hype" ? sym : "HYPE", symbolOut: d === "to_hype" ? "HYPE" : sym,
+      symbolIn: relayIsSecond(d) ? sym : "HYPE", symbolOut: relayIsSecond(d) ? chainEndSymbol(d) : sym,
       label: HYPE_CHAIN_LABEL[r.status as HypeChainStatus] ?? r.status, steps: chainSteps(d, r.via as HypeChainVia, sym), terminal: isHypeChainTerminal(r.status),
     };
   });

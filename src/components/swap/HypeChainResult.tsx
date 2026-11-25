@@ -9,7 +9,7 @@ import { useSession } from "@/hooks/use-session";
 import { startHypeChainSwap, type quoteHypeChainSwap } from "@/lib/hype-chain/hype-chain.functions";
 import { getRelaySwapContext } from "@/lib/relay/relay.functions";
 import { RELAY_DEFAULT_SLIPPAGE_BPS, RELAY_SLIPPAGE_CHOICES_BPS } from "@/lib/relay/rules";
-import { chainMinimum, chainSteps } from "@/lib/hype-chain/rules";
+import { chainEndSymbol, chainMinimum, chainSteps, relayIsSecond } from "@/lib/hype-chain/rules";
 
 export type HypeChainQuoteResult = Awaited<ReturnType<typeof quoteHypeChainSwap>>;
 const fmtNum = (n: number) => (n === 0 ? "0" : n >= 1 ? n.toLocaleString("en-US", { maximumFractionDigits: 6 }) : n.toPrecision(6).replace(/0+$/, ""));
@@ -18,8 +18,8 @@ const fmtNum = (n: number) => (n === 0 ? "0" : n >= 1 ? n.toLocaleString("en-US"
 export function HypeChainResult({ q, amount, symbol }: { q: HypeChainQuoteResult; amount: string; symbol: string }) {
   const { user } = useSession();
   const qc = useQueryClient();
-  const toHype = q.direction === "to_hype";
-  const symIn = toHype ? symbol : "HYPE", symOut = toHype ? "HYPE" : symbol;
+  const toHype = relayIsSecond(q.direction);
+  const symIn = toHype ? symbol : "HYPE", symOut = toHype ? chainEndSymbol(q.direction) : symbol;
   const [slippage, setSlippage] = useState<number>(RELAY_DEFAULT_SLIPPAGE_BPS * 2);
   const [confirming, setConfirming] = useState(false);
   const fetchCtx = useServerFn(getRelaySwapContext);
@@ -38,7 +38,7 @@ export function HypeChainResult({ q, amount, symbol }: { q: HypeChainQuoteResult
     <div className="space-y-4 rounded-sm border border-border bg-surface p-5">
       <h2 className="font-display text-lg font-bold">{symIn} → {symOut} in one tap</h2>
       <ol className="space-y-1 font-mono text-xs">
-        {steps.map((s, i) => <li key={s}>Step {i + 1}: {s}{i === 0 ? ` (≈ ${fmtNum(q.mid)} ${toHype ? "ETH" : "ETH"})` : ""}</li>)}
+        {steps.map((s, i) => <li key={s}>Step {i + 1}: {s}{i === 0 ? ` (≈ ${fmtNum(q.mid)} $ETH)` : ""}</li>)}
       </ol>
       <p className="text-xs text-muted-foreground">
         One Telegram tap covers both steps. Step 2 uses only the ETH that actually arrived, and only if the price still meets your minimum. If it doesn't, Seeds stops and the ETH stays in your pocket.

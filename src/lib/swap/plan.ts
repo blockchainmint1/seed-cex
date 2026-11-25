@@ -18,7 +18,9 @@ export type SwapSide =
   | { kind: "coin"; id: SwapCoinId }
   | { kind: "token"; network: DexNetwork; address: string; symbol: string; name?: string }
   /** HYPE on Hyperliquid's HyperEVM, swapped with Ether through Relay. */
-  | { kind: "hype" };
+  | { kind: "hype" }
+  /** TON on The Open Network, bought with Ether through Relay into the member's own TON pocket (receive side only for now). */
+  | { kind: "ton" };
 
 export type TwoStepDirection = "dex_then_x" | "x_then_dex";
 
@@ -27,9 +29,9 @@ export type RouteOption =
   | { kind: "tsd"; direction: "buy" | "sell"; coin: SwapCoinId }
   | { kind: "dex"; network: DexNetwork; tokenIn: string; tokenOut: string }
   | { kind: "two"; direction: TwoStepDirection; network: DexNetwork; token: string; coin: SwapCoinId; mids: SwapCoinId[] }
-  | { kind: "relay"; direction: "to_hype" | "from_hype" }
+  | { kind: "relay"; direction: "to_hype" | "from_hype" | "to_ton" }
   /** Any coin or TSD <-> HYPE in one tap: THORChain/Maya or the TSD route to ETH, then Relay (src/lib/hype-chain). */
-  | { kind: "hype_chain"; direction: "to_hype" | "from_hype"; via: "tsd" | "xchain"; coin: string };
+  | { kind: "hype_chain"; direction: "to_hype" | "from_hype" | "to_ton"; via: "tsd" | "xchain"; coin: string };
 
 export type SwapPlan = { options: RouteOption[]; problem: string | null };
 
@@ -68,7 +70,7 @@ export function normalizeSide(s: SwapSide): SwapSide {
 export function sameSide(a: SwapSide, b: SwapSide): boolean {
   const x = normalizeSide(a), y = normalizeSide(b);
   if (x.kind !== y.kind) return false;
-  if (x.kind === "tsd" || x.kind === "hype") return true;
+  if (x.kind === "tsd" || x.kind === "hype" || x.kind === "ton") return true;
   if (x.kind === "coin" && y.kind === "coin") return x.id === y.id;
   if (x.kind === "token" && y.kind === "token") return x.network === y.network && sameAddr(x.address, y.address);
   return false;
@@ -111,6 +113,19 @@ export function planSwap(fromIn: SwapSide, toIn: SwapSide): SwapPlan {
   const from = normalizeSide(fromIn), to = normalizeSide(toIn);
   const none = (problem: string): SwapPlan => ({ options: [], problem });
   if (sameSide(from, to)) return none("Pick two different coins.");
+
+  // TON: bought with Ether through Relay into the member's own TON pocket; TSD and other coins reach ETH first.
+  if (from.kind === "ton") return none("Swapping TON into other coins isn't available yet. You can withdraw TON from Balances.");
+  if (to.kind === "ton") {
+    if (from.kind === "hype") return none("Swap HYPE to ETH first, then ETH to TON.");
+    if (from.kind === "coin" && from.id === "ETH") return { options: [{ kind: "relay", direction: "to_ton" }], problem: null };
+    if (from.kind === "tsd") return { options: [{ kind: "hype_chain", direction: "to_ton", via: "tsd", coin: "TSD" }], problem: null };
+    if (from.kind === "coin") {
+      const c = swapCoin(from.id), e = swapCoin("ETH");
+      if (c && e && c.protocols.some((p) => e.protocols.includes(p) && sendSource(c, p) !== null)) return { options: [{ kind: "hype_chain", direction: "to_ton", via: "xchain", coin: c.id }], problem: null };
+    }
+    return none("This coin can't reach TON yet. TON swaps go through ETH on Ethereum; swap this coin to a THORChain coin first.");
+  }
 
   // HYPE: Relay, with Ether on Ethereum on the other side (same pocket address on both networks).
   if (from.kind === "hype" || to.kind === "hype") {

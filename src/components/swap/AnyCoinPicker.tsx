@@ -57,6 +57,7 @@ export function AnyCoinPicker({ open, title, onClose, onPick }: { open: boolean;
   );
   const showTsd = !typed || "tsd texas stable dollar".includes(typed);
   const showHype = !typed || "hype hyperliquid".includes(typed);
+  const showTon = !typed || "ton toncoin".includes(typed);
   const pick = (s: SwapSide) => { onPick(normalizeSide(s)); onClose(); };
   const tokenRows = searching
     ? (settled ? (res.data ?? []) : []).map((t) => ({ address: t.address, symbol: t.symbol, name: t.name, liquidityUsd: t.liquidityUsd as number | null, ageDays: t.ageDays as number | null }))
@@ -106,6 +107,19 @@ export function AnyCoinPicker({ open, title, onClose, onPick }: { open: boolean;
                   <span>
                     <span className="block font-semibold">HYPE <span className="font-normal text-muted-foreground">· Hyperliquid</span></span>
                     <span className="block text-xs text-muted-foreground">Swapped with ETH through Relay</span>
+                  </span>
+                </button>
+              </li>
+            </>
+          ) : null}
+          {showTon ? (
+            <>
+              <li className={groupHead}>TON</li>
+              <li>
+                <button type="button" className={rowBtn} onClick={() => pick({ kind: "ton" })}>
+                  <span>
+                    <span className="block font-semibold">TON <span className="font-normal text-muted-foreground">· TON</span></span>
+                    <span className="block text-xs text-muted-foreground">Bought with ETH through Relay (receive only for now)</span>
                   </span>
                 </button>
               </li>
