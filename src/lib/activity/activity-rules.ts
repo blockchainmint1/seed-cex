@@ -109,8 +109,8 @@ export function twoTone(s: string): Tone {
 /* ------------------------------ swap records ------------------------------- */
 
 /** Which swap record a history row points at on the Swap page. */
-export type SwapRefKind = "send" | "tsd" | "dex" | "two" | "chain" | "relay";
-const SWAP_REF_KINDS: readonly string[] = ["send", "tsd", "dex", "two", "chain", "relay"];
+export type SwapRefKind = "send" | "tsd" | "dex" | "two" | "chain" | "relay" | "ton";
+const SWAP_REF_KINDS: readonly string[] = ["send", "tsd", "dex", "two", "chain", "relay", "ton"];
 
 /** The Swap page with that one record opened in My swaps. */
 export const swapHref = (kind: SwapRefKind, id: string) => `/swap?sw=${kind}:${encodeURIComponent(id)}`;

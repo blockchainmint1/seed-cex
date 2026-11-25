@@ -145,7 +145,7 @@ export async function loadActivity(userId: string) {
     rows.push({
       id: `n-${t.id}`, kind: "swap", at: t.created_at, title: "Swap TON → USD₮ on TON", detail: "STON.fi",
       sent: { amount: num(t.offer_units) / 1e9, coin: "TON" }, got: { amount: (t.received_units != null ? num(t.received_units) : num(t.shown_units)) / 1e6, coin: "USD₮ on TON" },
-      status: label[t.status] ?? t.status, tone: twoTone(t.status), href: "/swap?from=TON&to=USDT_TON",
+      status: label[t.status] ?? t.status, tone: twoTone(t.status), href: swapHref("ton", t.id),
       txUrl: t.txid ? `https://tonviewer.com/transaction/${t.txid}` : null,
     });
   }

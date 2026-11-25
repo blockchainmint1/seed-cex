@@ -14,6 +14,7 @@ import { DEX_NETWORKS, type DexNetwork } from "@/lib/dex/venues";
 import { cancelMyTwoStepSwap, getTwoStepSwaps } from "@/lib/two-step/two-step.functions";
 import { cancelMyRelaySwap, getRelaySwaps } from "@/lib/relay/relay.functions";
 import { cancelMyHypeChain, getHypeChainSwaps } from "@/lib/hype-chain/hype-chain.functions";
+import { getTonSwaps } from "@/lib/ston/ston.functions";
 import { RELAY_STATUS_LABEL, type RelayStatus } from "@/lib/relay/rules";
 import { getChain } from "@/lib/chains";
 import { TWO_STEP_LABEL, twoStepIndex, twoStepSteps, type TwoStepStatus } from "@/lib/two-step/rules";
@@ -23,6 +24,7 @@ type RouteRow = Awaited<ReturnType<typeof getTsdRoutes>>["routes"][number];
 type DexRow = Awaited<ReturnType<typeof getDexSwaps>>["swaps"][number];
 type TwoRow = Awaited<ReturnType<typeof getTwoStepSwaps>>["swaps"][number];
 type ChainRow = Awaited<ReturnType<typeof getHypeChainSwaps>>["swaps"][number];
+type TonRow = Awaited<ReturnType<typeof getTonSwaps>>["swaps"][number];
 type RelayRow = Awaited<ReturnType<typeof getRelaySwaps>>["swaps"][number];
 
 const num = (n: number | null | undefined, d = 8) => (n == null || !Number.isFinite(n) ? "—" : n.toLocaleString("en-US", { maximumFractionDigits: d }));
@@ -105,6 +107,8 @@ export function MySwaps({ signedIn, sends, focus }: { signedIn: boolean; sends: 
   const { data: chainData } = useQuery({ queryKey: ["hype-chains"], queryFn: () => fetchChains(), enabled: signedIn, refetchInterval: 15_000 });
   const cancelChain = useServerFn(cancelMyHypeChain);
   const stopChain = useMutation({ mutationFn: (id: string) => cancelChain({ data: { id } }), onSettled: () => qc.invalidateQueries({ queryKey: ["hype-chains"] }) });
+  const fetchTon = useServerFn(getTonSwaps);
+  const { data: tonData } = useQuery({ queryKey: ["ton-swaps", "mine"], queryFn: () => fetchTon(), enabled: signedIn, refetchInterval: (q) => (q.state.data?.swaps.some((t) => ["signing", "sent", "unknown"].includes(t.status)) ? 5_000 : 30_000) });
   const cancelRelay = useServerFn(cancelMyRelaySwap);
   const stopRelay = useMutation({
     mutationFn: (id: string) => cancelRelay({ data: { id } }),
@@ -121,6 +125,7 @@ export function MySwaps({ signedIn, sends, focus }: { signedIn: boolean; sends: 
     ...(twoData?.swaps ?? []).map((t) => ({ kind: "two" as const, at: t.created_at, t })),
     ...(relayData?.swaps ?? []).map((x) => ({ kind: "relay" as const, at: x.created_at, x })),
     ...(chainData?.swaps ?? []).map((x) => ({ kind: "chain" as const, at: x.created_at, x })),
+    ...(tonData?.swaps ?? []).map((n) => ({ kind: "ton" as const, at: n.createdAt, n })),
   ].sort((a, b) => b.at.localeCompare(a.at));
   const scrolled = useRef<string | null>(null);
   useEffect(() => {
@@ -139,6 +144,7 @@ export function MySwaps({ signedIn, sends, focus }: { signedIn: boolean; sends: 
       <ul className="divide-y divide-border">
         {rows.map((row) => {
           if (row.kind === "chain") return <ChainItem key={`h-${row.x.id}`} x={row.x} onCancel={() => stopChain.mutate(row.x.id)} cancelling={stopChain.isPending} focus={focusKey === `chain-${row.x.id}`} />;
+          if (row.kind === "ton") return <TonItem key={`n-${row.n.id}`} n={row.n} focus={focusKey === `ton-${row.n.id}`} />;
           if (row.kind === "relay") return <RelayItem key={`r-${row.x.id}`} x={row.x} onCancel={() => stopRelay.mutate(row.x.id)} cancelling={stopRelay.isPending} focus={focusKey === `relay-${row.x.id}`} />;
           if (row.kind === "two") return <TwoStepItem key={`w-${row.t.id}`} t={row.t} onCancel={() => stopTwo.mutate(row.t.id)} cancelling={stopTwo.isPending} focus={focusKey === `two-${row.t.id}`} />;
           if (row.kind === "dex") return <DexItem key={`d-${row.d.id}`} d={row.d} onCancel={() => stopDex.mutate(row.d.id)} cancelling={stopDex.isPending} focus={focusKey === `dex-${row.d.id}`} />;
@@ -253,6 +259,52 @@ function ChainItem({ x, onCancel, cancelling, focus }: { x: ChainRow; onCancel: 
           <span className="flex-1 text-[11px]">Tap Approve in Telegram to start. Nothing moves until you do.</span>
           <button type="button" disabled={cancelling} onClick={onCancel} className="h-8 rounded-md border border-border px-3 disabled:opacity-50">Cancel</button>
         </div>
+      ) : null}
+    </li>
+  );
+}
+
+const TON_AT: Record<string, number> = { signing: 0, sent: 1, unknown: 1, done: 2 };
+const TON_LABEL: Record<string, string> = { signing: "Sending TON", sent: "STON.fi swapping", unknown: "Checking", done: "Delivered", refunded: "TON returned", failed: "Not sent" };
+
+/** A standalone STON.fi swap (TON -> USD₮ on TON): one row with its two steps. */
+function TonItem({ n, focus }: { n: TonRow; focus?: boolean }) {
+  const stopped = n.status === "failed" || n.status === "refunded";
+  const steps = ["Send TON to STON.fi", "USD₮ arrives"];
+  const at = TON_AT[n.status] ?? 0;
+  const pct = n.status === "done" ? 100 : Math.max(Math.round((at / steps.length) * 100), 4);
+  return (
+    <li data-swap={`ton-${n.id}`} className={`space-y-2 px-4 py-3 text-xs ${focus ? "bg-primary/5 ring-1 ring-primary/30" : ""}`}>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <span className="font-semibold">
+          {num(n.ton)} TON → USD₮ on TON
+          <span className="ml-2 font-mono text-[10px] font-normal text-muted-foreground">STON.fi</span>
+        </span>
+        <span className={`font-mono text-[11px] ${n.status === "done" ? "text-primary" : stopped ? "text-destructive" : ""}`}>{TON_LABEL[n.status] ?? n.status}</span>
+      </div>
+      <div className="h-1 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+        <div className={`h-full rounded-full transition-all duration-700 ${stopped ? "bg-destructive" : "bg-primary"}`} style={{ width: `${stopped ? 100 : pct}%` }} />
+      </div>
+      <ol className="flex flex-wrap gap-x-4 gap-y-1.5">
+        {steps.map((s, i) => {
+          const done = !stopped && (n.status === "done" || i < at);
+          const live = !stopped && !done && i === at;
+          return (
+            <li key={s} className={`flex items-center gap-1.5 font-mono text-[11px] ${live ? "text-foreground" : done ? "text-primary" : "text-muted-foreground"}`}>
+              {done ? <CheckCircle2 className="h-3.5 w-3.5" /> : live ? <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" /> : stopped ? <XCircle className="h-3.5 w-3.5 opacity-60" /> : <Circle className="h-3.5 w-3.5 opacity-50" />}
+              {s}
+            </li>
+          );
+        })}
+      </ol>
+      <p className="font-mono text-[11px] text-muted-foreground">
+        {n.gotUsdt != null ? `Got ${num(n.gotUsdt, 6)} USD₮ on TON` : `At least ${num(n.minUsdt, 6)} USD₮ on TON`} · {when(n.createdAt)}
+      </p>
+      {n.error && n.status !== "done" ? <p className="text-[11px] text-muted-foreground">{n.error}</p> : null}
+      {n.txid ? (
+        <a href={`https://tonviewer.com/transaction/${n.txid}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-mono text-[11px] text-primary underline">
+          See it on Tonviewer <ExternalLink className="h-3 w-3" />
+        </a>
       ) : null}
     </li>
   );
