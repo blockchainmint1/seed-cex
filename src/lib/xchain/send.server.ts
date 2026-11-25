@@ -421,6 +421,7 @@ async function sendSwapFromPocketUnlocked(userId: string, isAdmin: boolean, inpu
       meta: { from: from.id, to: to.id, protocol },
     });
   }
+  if (!leg) { const { assertSwapLaneFree, coinLane } = await import("@/lib/swap/lanes.server"); const lanes = await import("@/lib/swap/lanes"); void coinLane; await assertSwapLaneFree(userId, { kind: "send", lanes: [lanes.assetLane(from.asset), lanes.assetLane(to.asset)].filter((x): x is string => !!x) }); }
   const { data: id, error } = await supabaseAdmin.rpc("reserve_swap_send", {
     _user_id: userId, _link_id: link!.id, _protocol: protocol, _pocket: src.pocket, _from_asset: from.asset, _to_asset: to.asset,
     _amount_in: Number(amount) / 1e8, _amount_usd: Math.round(inputUsd! * 100) / 100, _expected_out: route.expectedOut, _min_out: route.minOut ?? 0,

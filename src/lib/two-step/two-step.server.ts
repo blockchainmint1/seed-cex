@@ -234,6 +234,7 @@ async function requestTwoStepUnlocked(userId: string, tester: boolean, input: Tw
     amount_in: Number(input.amount), shown_mid: q.midOut, shown_out: input.shownOut, min_out: minOut, slippage_bps: input.slippageBps,
     amount_usd: Math.round((q.amountUsd ?? 0) * 100) / 100, from_address: fromAddress, to_address: toAddress,
   };
+  { const { assertSwapLaneFree, coinLane } = await import("@/lib/swap/lanes.server"); const lanes = await import("@/lib/swap/lanes"); await assertSwapLaneFree(userId, { kind: "two_step", lanes: lanes.twoStepLanes(net, input.token, coinLane(coin.id), coinLane(mid.id)) }); }
   const { data: id, error } = await supabaseAdmin.rpc("reserve_two_step_swap", { _row: row as never, _per_swap_max_usd: limits.perSwapUsd, _daily_max_usd: limits.dailyUsd });
   if (error || !id) throw new Error(clean(error?.message ?? "Could not start this swap."));
   const swapId = id as string;

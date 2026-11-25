@@ -171,6 +171,7 @@ async function requestUnlocked(userId: string, tester: boolean, input: RelaySwap
     shown_out: input.shownOut, min_out_wei: minWei.toString(), slippage_bps: input.slippageBps, amount_usd: Math.round((q.inUsd ?? 0) * 100) / 100,
     recipient,
   };
+  { const { assertSwapLaneFree, coinLane } = await import("@/lib/swap/lanes.server"); const lanes = await import("@/lib/swap/lanes"); void coinLane; await assertSwapLaneFree(userId, { kind: "relay", lanes: lanes.relayLanes(input.direction) }); }
   const { data: id, error } = await supabaseAdmin.rpc("reserve_relay_swap", { _row: row as never, _per_swap_max_usd: limits.perSwapUsd, _daily_max_usd: limits.dailyUsd });
   if (error || !id) throw new Error(clean(error?.message ?? "Could not start this swap."));
   const swapId = id as string;

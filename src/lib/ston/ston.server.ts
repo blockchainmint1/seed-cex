@@ -84,6 +84,7 @@ export async function startTonToUsdt(userId: string, tester: boolean, input: { a
     const limits = swapLimitsFor(tester);
     const baseline = await usdtTonBalance(pocket);
     if (baseline === null) throw new Error("Seeds couldn't read your USD₮ balance on TON right now. Nothing was sent.");
+    if (!chain) { const { assertSwapLaneFree, coinLane } = await import("@/lib/swap/lanes.server"); const lanes = await import("@/lib/swap/lanes"); void coinLane; await assertSwapLaneFree(userId, { kind: "ston", lanes: lanes.stonLanes() }); }
     const { data: id, error } = await supabaseAdmin.rpc("reserve_ton_swap", {
       _row: { user_id: userId, link_id: link.id, pocket, offer_units: offer.toString(), shown_units: shown.toString(), quote_units: fresh.toString(),
         min_out_units: minOut.toString(), usdt_baseline: baseline.toString(), amount_usd: amountUsd, parent_id: chain?.parentId ?? "" } as never,

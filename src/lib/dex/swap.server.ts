@@ -266,6 +266,7 @@ async function requestDexSwapUnlocked(userId: string, tester: boolean, input: De
     venue_name: venue.name,
     slippage_bps: input.slippageBps, amount_usd: Math.round((amountUsd ?? 0) * 100) / 100,
   };
+  { const { assertSwapLaneFree, coinLane } = await import("@/lib/swap/lanes.server"); const lanes = await import("@/lib/swap/lanes"); void coinLane; await assertSwapLaneFree(userId, { kind: "dex", lanes: lanes.dexLanes(net, input.tokenIn, input.tokenOut) }); }
   const { data: id, error } = await supabaseAdmin.rpc("reserve_dex_swap", { _row: row as never, _per_swap_max_usd: limits.perSwapUsd, _daily_max_usd: limits.dailyUsd });
   if (error || !id) throw new Error(clean(error?.message ?? "Could not start this swap."));
   const swapId = id as string;

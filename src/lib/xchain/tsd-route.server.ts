@@ -218,6 +218,7 @@ async function startTsdRouteUnlocked(userId: string, isAdmin: boolean, input: St
     }
   }
 
+  if (!opts.parentId) { const { assertSwapLaneFree, coinLane } = await import("@/lib/swap/lanes.server"); const lanes = await import("@/lib/swap/lanes"); void coinLane; await assertSwapLaneFree(userId, { kind: "tsd", lanes: [lanes.assetLane(coin.asset)].filter((x): x is string => !!x) }); }
   const { data: id, error } = await supabaseAdmin.rpc("reserve_tsd_route", {
     _user_id: userId, _link_id: link!.id, _direction: input.direction, _coin: coin.id, _coin_asset: coin.asset,
     _amount_in: q.amountIn, _amount_usd: Math.round((q.amountUsd ?? 0) * 100) / 100, _shown_usdc: q.usdc, _shown_out: q.out,
