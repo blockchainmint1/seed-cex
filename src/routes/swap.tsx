@@ -26,7 +26,8 @@ import { RelayResult, type RelayQuoteResult } from "@/components/swap/RelayResul
 import { quoteRelaySwap } from "@/lib/relay/relay.functions";
 import { HypeChainResult, type HypeChainQuoteResult } from "@/components/swap/HypeChainResult";
 import { quoteHypeChainSwap } from "@/lib/hype-chain/hype-chain.functions";
-import { quoteTonUsdt } from "@/lib/ston/ston.functions";
+import { getTonSwapContext, quoteTonUsdt } from "@/lib/ston/ston.functions";
+import { tonShortcutAmount } from "@/lib/swap/shortcut";
 import { TonUsdtResult, type TonUsdtQuote } from "@/components/swap/TonUsdtResult";
 
 type SwapSearch = { from?: string; to?: string; amount?: string; sw?: string };
@@ -241,6 +242,15 @@ function SwapPage() {
   const landsOutside = toCoin && landsOutsideHmeWallet(toCoin) ? toCoin : null;
   const tokenOnly = to.kind === "token" && !coinForToken(to.network, to.address);
 
+  // Shortcut hint: already holding enough TON for a "→ USD₮ on TON" swap means one STON.fi step beats the long route.
+  const wantsShortcut = Boolean(user) && to.kind === "ton_usdt" && from.kind !== "ton" && validAmount && fromPrice != null;
+  const fetchTonCtx = useServerFn(getTonSwapContext);
+  const tonCtx = useQuery({ queryKey: ["ton-swap-ctx", user?.id ?? null], queryFn: () => fetchTonCtx(), enabled: wantsShortcut, refetchInterval: 60_000 });
+  const tonRate = useQuery({ queryKey: ["ton-usdt-rate"], queryFn: () => fetchSton({ data: { amount: "1" } }), enabled: wantsShortcut && Boolean(tonCtx.data && !tonCtx.data.blocker), staleTime: 60_000 });
+  const shortcut = wantsShortcut && tonCtx.data && !tonCtx.data.blocker
+    ? tonShortcutAmount({ usd: amountNum * (fromPrice ?? 0), usdtPerTon: tonRate.data?.out ?? null, balanceTon: tonCtx.data.balanceTon ?? null, feeTon: tonRate.data?.networkTon ?? 0.265 })
+    : null;
+
   return (
     <div className="mx-auto max-w-7xl space-y-12 px-5 py-14">
       <header className="space-y-3">
@@ -370,6 +380,16 @@ function SwapPage() {
               <p className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Wallet className="h-3.5 w-3.5" /> Lands in your own trading pocket{to.kind === "tsd" ? " as TSD on TEXITcoin" : tokenOnly ? ` on ${toL.network}` : ""}.
               </p>
+            ) : null}
+            {shortcut ? (
+              <div className="space-y-2 rounded-sm border border-primary/40 bg-primary/10 p-3 text-xs text-foreground">
+                <p>
+                  <span className="font-semibold">Faster route:</span> you already have {fmtCompact(tonCtx.data?.balanceTon ?? 0)} TON in your TON pocket. Swapping about {shortcut} TON straight to USD₮ on TON is one quick STON.fi step instead of three, with fewer network fees — and your {fromL.symbol} stays put.
+                </p>
+                <button type="button" className="font-semibold text-primary underline" onClick={() => { setPair({ kind: "ton" }, { kind: "ton_usdt" }); setAmount(shortcut); }}>
+                  Use my TON instead
+                </button>
+              </div>
             ) : null}
             {landsOutside && (toPocket || !hasXchain) ? (
               <p className="border-l-2 border-warn pl-3 text-xs text-foreground">
