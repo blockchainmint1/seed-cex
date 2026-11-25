@@ -291,7 +291,7 @@
 - [x] Open withdrawals to all members (Bobby: everyone now, Nov 20)
 - [x] Paste a ton://transfer invoice into Withdraw: fills coin, address, amount and payment note; note bound into email code, row, Telegram approval and sender; migration 0114 makes it immutable once set (Nov 25, a134e04)
 - [x] Auditor sign-off on the payment-link batch (Nov 25, 9eca240..a134e04): cleared to publish, two Info notes only — native-TON comments stay deliberately unsupported, and the invoice destination/credit is the owner's to confirm
-- [ ] First small real payment to the TONAPI invoice: pay the smallest amount TONAPI accepts and confirm it credits the invoice before relying on it (blocked: Bobby's funds + tap; TP2)
+- [x] First small real payment to the TONAPI invoice: Bobby sent the USD₮ on TON withdrawal through Seeds and it credited; TON Console now shows the TON API **Lite** plan ($9.9/mo, 10 RPS) as Current (Nov 25, TP2 closed)
 
 ## Audit #3 (Nov 20) — built in preview, waiting on the auditor before publishing
 - [x] A1 exchange trades: taker pays first, maker's side sent only after that payment is confirmed on its network; vanished/rejected payment → trade on hold + payer's trading frozen (admin lifts in Admin → Accounts); slow payments go to admin without blame
@@ -485,10 +485,10 @@
 - [ ] Every possible automatic swap path (earlier request): continue separately; provider routes and approved multi-leg flow required
 
 - [x] TSD → TON one-tap route (TSD → ETH → Relay → TON) + ETH → TON, testers first (Bobby, Nov 25); needs audit + small funded test
-- [ ] USDT on TON: in-pocket TON → USDT swap + USDT (TON) withdrawals; first test = pay TONAPI Lite bill (Bobby, Nov 25)
+- [x] USDT on TON: in-pocket TON → USDT swap + USDT (TON) withdrawals; first test = pay TONAPI Lite bill — Bobby paid the bill through Seeds' own withdrawal form and the invoice credited (Nov 25)
 
 - [x] USD₮ on TON: balance on Balances, deposits + withdrawals (testers), TON → USD₮ swap on STON.fi in own pocket (testers) — awaiting audit + small funded test
-- [ ] First funded test: TSD → TON → USD₮ on TON, then pay TONAPI refill (needs auditor OK; refill details from the TONAPI screen)
+- [x] First funded test: pay TONAPI refill — done through Seeds' withdrawal form, invoice credited (Nov 25). TSD → TON funded swap done; the full one-tap TSD → USD₮ on TON run still needs to finish end to end on screen
 
 - [x] Balances Swap links open /swap already filled in on the pair that coin can actually do (sell what you hold to TSD, otherwise buy with TSD; USD₮ on TON opens TSD → USD₮ with a "Start with TSD → TON" tap) — src/lib/account/swap-link.ts tested, commit 056174c (Bobby, Nov 25)
 - [ ] One-tap TSD → USD₮ on TON (Seeds runs TSD → TON, then TON → USD₮ itself) (blocked: Bobby's answer on whether to build it; needs its own audit)
@@ -497,4 +497,5 @@
 - [ ] One tap for every remaining combo that still says "do X first" (ETH → USDT on TON, HYPE → TON, USDT on TON → anything, TON → TSD), always the fastest + cheapest route
 - [x] Swap tile: expand for per-step log with txids + TSD Bridge order link
 - [x] RL1: recognise equivalent HME Wallet public keys, preserve every coin/address, test refusals and prepare auditor handoff (Bobby approved Nov 25); not published, live re-link awaits owner test and independent review
-- [x] TONAPI refill link: decode/pre-fill withdrawals, preserve USD₮ comment through approvals and send; 1,655 tests pass and signed-in paste verified, audit handoff prepared; not published, funded payment awaits review and owner approval
+- [x] TONAPI refill link: decode/pre-fill withdrawals, preserve USD₮ comment through approvals and send; 1,655 tests pass and signed-in paste verified, audit handoff prepared; funded payment done and credited (Nov 25) — not yet published
+- [x] TONAPI plan: Lite ($9.9/mo, 10 RPS) purchased and Current (Nov 25). No code change needed — TON reads already retry on 429/5xx and move to the next server; nothing in the app assumed the free tier's 1 RPS
