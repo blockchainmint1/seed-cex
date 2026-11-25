@@ -20,7 +20,7 @@ import { gasWalletConfigured } from "./gas.server";
 import { toBaseUnits } from "./safety";
 import { landsOutsideHmeWallet, receivePocket, requoteOk, sendSource, swapLimitsFor } from "./send-rules";
 import {
-  afterBridgeFee, BRIDGE_USDC_CONTRACT, BRIDGE_USDC_ID, bridgeProgress, firstSendDone, gasNeedWei, gasPreflight, isTerminal, legPriceOk, mintOrderProblem,
+  afterBridgeFee, BRIDGE_USDC_CONTRACT, concurrentRouteBlocker, usdcOwedToOthers, BRIDGE_USDC_ID, bridgeProgress, firstSendDone, gasNeedWei, gasPreflight, isTerminal, legPriceOk, mintOrderProblem,
   GAS_SWAP_LEG, GAS_USDC_TRANSFER, legProtocols, pickLeg, redeemOrderProblem, routeBlocker, routeGasUnits, TSD_ROUTE, type RouteDirection, type RouteStage,
 } from "./tsd-route";
 
@@ -193,6 +193,11 @@ async function startTsdRouteUnlocked(userId: string, isAdmin: boolean, input: St
     if (reason) throw new Error(reason);
   }
 
+  {
+    const why = concurrentRouteBlocker(await openRoutesOf(userId));
+    if (why) throw new Error(why);
+  }
+
   if (input.direction === "buy") {
     const [bal, locked] = await freeTsd(userId, txc);
     if (bal == null) throw new Error("Couldn't read your TSD balance. Try again in a minute.");
@@ -262,7 +267,32 @@ async function freeTsd(userId: string, txcAddress: string): Promise<[number | nu
   const { setAsideFor } = await import("@/lib/set-asides.server");
   const [b, held] = await Promise.all([fetchOmniBalance(txcAddress), setAsideFor(userId, "tsd").catch(() => null)]);
   // Unreadable set-asides: report the balance as unreadable so nothing is sent.
-  return [b.online && held ? b.balance : null, held?.total ?? 0];
+  if (!b.online || !held) return [null, 0];
+  const inFlight = await tsdInFlight(userId);
+  return inFlight == null ? [null, 0] : [b.balance, held.total + inFlight];
+}
+
+/** QA-0009: TSD another open swap already sent whose transfer isn't in a block yet still shows in the balance. */
+async function tsdInFlight(userId: string): Promise<number | null> {
+  const { data, error } = await supabaseAdmin.from("tsd_routes").select("amount_in, tsd_txid")
+    .eq("user_id", userId).eq("direction", "buy").eq("stage", "bridging").not("tsd_txid", "is", null);
+  if (error) return null;
+  const { fetchOmniTx } = await import("@/lib/omni.server");
+  let sum = 0;
+  for (const r of data ?? []) {
+    const t = await fetchOmniTx(r.tsd_txid!).catch(() => null);
+    if (!t || !((t.confirmations ?? 0) >= 1)) sum += Number(r.amount_in);
+  }
+  return sum;
+}
+
+/** Other open swaps of this member (for the several-at-once rules in tsd-route.ts). */
+async function openRoutesOf(userId: string) {
+  const { data, error } = await supabaseAdmin.from("tsd_routes")
+    .select("id, direction, stage, resume_stage, amount_in, usdc_amount, tsd_txid, usdc_txid, swap_send_id")
+    .eq("user_id", userId).not("stage", "in", "(done,refunded,kept_usdc,failed)");
+  if (error) throw new Error("Couldn't check your other swaps. Nothing was sent.");
+  return data ?? [];
 }
 
 /* --------------------------------- advance --------------------------------- */
@@ -278,7 +308,16 @@ async function claim(id: string): Promise<Row | null> {
     .or(`working_until.is.null,working_until.lt.${now.toISOString()}`)
     .select("*")
     .maybeSingle();
-  return (data as Row | null) ?? null;
+  const row = (data as Row | null) ?? null;
+  if (!row) return null;
+  // QA-0009: one step at a time per member, so two swaps never sign from the same pocket at once.
+  const { data: busy, error } = await supabaseAdmin.from("tsd_routes").select("id").eq("user_id", row.user_id).neq("id", id)
+    .gt("working_until", now.toISOString()).limit(1);
+  if (error || (busy ?? []).length) {
+    await supabaseAdmin.from("tsd_routes").update({ working_until: null }).eq("id", id).eq("working_until", until);
+    return null;
+  }
+  return row;
 }
 
 async function save(id: string, patch: Partial<Row>) {
@@ -494,7 +533,8 @@ async function step(r: Row): Promise<boolean> {
           return go({});
         }
         const paid = Number(o.payoutAmount ?? 0);
-        const bal = await usdcBalance(r.evm_address);
+        const bal0 = await usdcBalance(r.evm_address);
+        const bal = bal0 == null ? null : bal0 - usdcOwedToOthers(await openRoutesOf(r.user_id), r.id);
         if (!(paid > 0) || bal == null || bal + 1e-6 < paid) return go({ bridge_out_txid: o.releaseTxHash ?? null }); // release not visible yet
         if (direct) {
           void notify(r, `Done: ${fmt(paid, 2)} USDC is in your EVM pocket. Tx ${o.releaseTxHash}`);
@@ -577,7 +617,8 @@ async function step(r: Row): Promise<boolean> {
         deposit = o.depositAddress ?? o.sendTo!;
         await save(r.id, { bridge_order_id: orderId, bridge_deposit: deposit });
       }
-      const bal = await usdcBalance(r.evm_address);
+      const bal0 = await usdcBalance(r.evm_address);
+      const bal = bal0 == null ? null : bal0 - usdcOwedToOthers(await openRoutesOf(r.user_id), r.id);
       if (bal == null || bal + 1e-6 < amount) return go({ error: "Waiting for the USDC to show in your EVM pocket." });
       const { withPocketKey, tellMember } = await import("./send.server");
       const { erc20TransferData, signEip1559 } = await import("@/lib/evm/tx.server");

@@ -269,3 +269,52 @@ export function gasPreflight(p: { needWei: bigint; haveWei: bigint | null; cover
   if (p.haveWei >= p.needWei) return null;
   return `Your EVM pocket needs about ${formatEth(p.needWei - p.haveWei)} ETH more for the Ethereum network fee. Add it to your pocket and start again — nothing has been sent.`;
 }
+
+/* ------------------------- several TSD swaps at once (QA-0009) ------------------------- */
+
+/** Most TSD swaps one member may have open at the same time. */
+export const MAX_OPEN_TSD_ROUTES = 5;
+
+export type OpenRouteLike = {
+  id: string; direction: string; stage: string; resume_stage?: string | null;
+  amount_in: number | string | null; usdc_amount: number | string | null;
+  tsd_txid: string | null; usdc_txid: string | null; swap_send_id: string | null;
+};
+const OPEN_DONE = new Set(["done", "refunded", "kept_usdc", "failed"]);
+const isOpen = (r: OpenRouteLike) => !OPEN_DONE.has(r.stage);
+
+/**
+ * A new swap may start only once every other open swap has sent its first coins, so the
+ * free-balance check never counts coins an earlier swap is about to send.
+ */
+export function routeBeforeFirstSend(r: OpenRouteLike): boolean {
+  if (!isOpen(r)) return false;
+  const stage = r.stage === "gas_pending" ? (r.resume_stage ?? "") : r.stage;
+  if (r.direction === "buy") return !r.tsd_txid && (stage === "reserved" || stage === "sending_tsd");
+  return !r.swap_send_id && !r.usdc_txid && (stage === "reserved" || stage === "swapping" || stage === "minting");
+}
+
+/** Why a new TSD swap can't start next to these open ones, or null. */
+export function concurrentRouteBlocker(open: OpenRouteLike[]): string | null {
+  const live = open.filter(isOpen);
+  if (live.some(routeBeforeFirstSend)) return "Your last TSD swap is still sending its first coins. Try again in a minute.";
+  if (live.length >= MAX_OPEN_TSD_ROUTES) return `You already have ${MAX_OPEN_TSD_ROUTES} TSD swaps on their way. Wait for one to finish.`;
+  return null;
+}
+
+/**
+ * USDC in the shared EVM pocket that belongs to OTHER open swaps and hasn't been sent on yet.
+ * A swap may only spend what is left after these, so it never takes another swap's coins.
+ */
+export function usdcOwedToOthers(open: OpenRouteLike[], selfId: string): number {
+  let owed = 0;
+  for (const r of open) {
+    if (r.id === selfId || !isOpen(r)) continue;
+    const stage = r.stage === "gas_pending" ? (r.resume_stage ?? "") : r.stage;
+    const amt = Number(r.usdc_amount ?? 0);
+    if (!(amt > 0)) continue;
+    if (r.direction === "buy" && stage === "swapping" && !r.swap_send_id) owed += amt;
+    if (r.direction === "sell" && stage === "minting" && !r.usdc_txid) owed += amt;
+  }
+  return owed;
+}
