@@ -5,11 +5,13 @@ import { keccak_256 } from "@noble/hashes/sha3.js";
 import { base58, hex } from "@scure/base";
 import { checkXprvMatches, newRecipientKeypair, openSealed, payloadSha256, type LinkChain } from "../hme-link.server";
 import { evmAddressFromPubkey } from "../wallet/vault";
-import { buildHandoff, coinIdentityKey, signTxcMessage, walletPocketWords, type KeyManifest } from "./seeds-key-reference";
+import { buildHandoff, manifestProblem, coinIdentityKey, signTxcMessage, walletPocketWords, type KeyManifest } from "./seeds-key-reference";
 import { verifyKeySignature } from "./signin.server";
 import { walletPocketMessage } from "./rules";
 
 const WORDS = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
+
+const MURL = "https://seeds.honest.money/api/public/key-signin/manifest/abc";
 
 function manifest(pub: string): KeyManifest {
   return { type: "seeds-key-signin", version: 1, domain: "seeds.honest.money", challenge_id: "a".repeat(32), challenge: "c".repeat(48), recipient_pubkey: pub, submit_url: "https://seeds.honest.money/api/public/key-signin/submit", expires_at: new Date(Date.now() + 60_000).toISOString(), pocket: 1106, key_host: "key.seeds.honest.money", issued_at: "2026-11-21T17:00:00.000Z" };
@@ -31,7 +33,7 @@ describe("coin hand-off (test vectors for the Seeds Key page)", () => {
     const kp = newRecipientKeypair();
     const key = coinIdentityKey(WORDS);
     const identity = signTxcMessage(key, "x").address;
-    const h = await buildHandoff({ manifest: manifest(kp.pub), words: WORDS, kind: "coin", identity });
+    const h = await buildHandoff({ manifestUrl: MURL, manifest: manifest(kp.pub), words: WORDS, kind: "coin", identity });
     expect(h.addresses.TXC).toBe("Tg7WMV1iBgw6w44Z8ZzftiSKPu1yEStXvy");
     expect(h.addresses.EVM).toBe("0x7231a79714ffD1b9f51216f79762fA38A40b4544");
     expect(h.message).toContain(`Payload-SHA256: ${payloadSha256(h.body.payload)}`);
@@ -62,7 +64,7 @@ describe("outside-wallet hand-off", () => {
 
   test("a wallet's sign-in hand-off is the Sign-In with Ethereum layout and verifies", async () => {
     const kp = newRecipientKeypair();
-    const h = await buildHandoff({ manifest: manifest(kp.pub), words: WORDS, kind: "evm", identity: addr });
+    const h = await buildHandoff({ manifestUrl: MURL, manifest: manifest(kp.pub), words: WORDS, kind: "evm", identity: addr });
     expect(h.message.startsWith("key.seeds.honest.money wants you to sign in with your Ethereum account:\n")).toBe(true);
     expect(h.message).toContain(`- urn:seeds:payload-sha256:${payloadSha256(h.body.payload)}`);
     expect(verifyKeySignature("evm", addr, h.message, personalSign(priv, h.message))).toBe(true);
@@ -103,8 +105,8 @@ describe("extra password (BIP39 passphrase) for HME Vault seeds", () => {
     const kp = newRecipientKeypair();
     const key = coinIdentityKey(WORDS, "TREZOR");
     const identity = signTxcMessage(key, "x").address;
-    const h = await buildHandoff({ manifest: manifest(kp.pub), words: WORDS, kind: "coin", identity, passphrase: "TREZOR" });
-    const plain = await buildHandoff({ manifest: manifest(kp.pub), words: WORDS, kind: "coin", identity });
+    const h = await buildHandoff({ manifestUrl: MURL, manifest: manifest(kp.pub), words: WORDS, kind: "coin", identity, passphrase: "TREZOR" });
+    const plain = await buildHandoff({ manifestUrl: MURL, manifest: manifest(kp.pub), words: WORDS, kind: "coin", identity });
     expect(h.addresses.TXC).not.toBe(plain.addresses.TXC);
     expect(h.addresses.ADA).not.toBe(plain.addresses.ADA);
     const { signature } = signTxcMessage(key, h.message);
@@ -119,15 +121,34 @@ describe("extra password (BIP39 passphrase) for HME Vault seeds", () => {
     const decomposed = "cafe\u0301 n\u0303";
     expect(hex.encode(coinIdentityKey(WORDS, composed))).toBe(hex.encode(coinIdentityKey(WORDS, decomposed)));
     const kp = newRecipientKeypair();
-    const a = await buildHandoff({ manifest: manifest(kp.pub), words: WORDS, kind: "coin", identity: "x", passphrase: composed });
-    const b = await buildHandoff({ manifest: manifest(kp.pub), words: WORDS, kind: "coin", identity: "x", passphrase: decomposed });
+    const a = await buildHandoff({ manifestUrl: MURL, manifest: manifest(kp.pub), words: WORDS, kind: "coin", identity: "x", passphrase: composed });
+    const b = await buildHandoff({ manifestUrl: MURL, manifest: manifest(kp.pub), words: WORDS, kind: "coin", identity: "x", passphrase: decomposed });
     expect(a.addresses).toEqual(b.addresses);
     expect(a.body.xpubs).toEqual(b.body.xpubs);
   });
 
   test("a password is never part of what Seeds receives", async () => {
     const kp = newRecipientKeypair();
-    const h = await buildHandoff({ manifest: manifest(kp.pub), words: WORDS, kind: "coin", identity: "x", passphrase: "correct horse battery" });
+    const h = await buildHandoff({ manifestUrl: MURL, manifest: manifest(kp.pub), words: WORDS, kind: "coin", identity: "x", passphrase: "correct horse battery" });
     expect(JSON.stringify({ m: h.message, b: h.body })).not.toContain("correct horse");
+  });
+});
+
+describe("look-alike site check (auditor HK2)", () => {
+  const m = manifest("x");
+  test("a real Seeds request passes", () => { expect(manifestProblem(MURL, m)).toBeNull(); });
+  test("a request from another site is refused", () => {
+    expect(manifestProblem("https://seeds-honest.money/api/public/key-signin/manifest/abc", m)).toBe("origin_not_allowed");
+  });
+  test("keys can't be sent to a different site", () => {
+    expect(manifestProblem(MURL, { ...m, submit_url: "https://evil.example/submit" })).toBe("submit_origin");
+  });
+  test("pocket must be 1106", () => { expect(manifestProblem(MURL, { ...m, pocket: 1107 })).toBe("bad_pocket"); });
+  test("expired request is refused", () => {
+    expect(manifestProblem(MURL, { ...m, expires_at: "2020-01-01T00:00:00.000Z" })).toBe("expired");
+  });
+  test("wrong match code is refused", () => { expect(manifestProblem(MURL, { ...m, pairing_code: "abc" })).toBe("pairing_mismatch"); });
+  test("buildHandoff refuses a look-alike site", async () => {
+    await expect(buildHandoff({ manifestUrl: "https://evil.example/m", manifest: m, words: WORDS, kind: "coin", identity: "x" })).rejects.toThrow("origin_not_allowed");
   });
 });

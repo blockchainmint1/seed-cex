@@ -28,7 +28,10 @@ covers the other side.
 - **Only talk to Seeds.** Accept a manifest URL (`r=`) only when its origin is on this list:
   `https://seeds.honest.money` and the Seeds preview (`https://id-preview--0ce4bcf5-5883-4de0-96d3-b161585d1bf4.lovable.app`).
   The manifest's `submit_url` must have the same origin as the manifest URL. Without this, a
-  look-alike site could hand the page its own manifest and collect pocket keys.
+  look-alike site could hand the page its own manifest and collect pocket keys. This check is
+  code, not just text: call `manifestProblem(r, manifest)` from the reference before showing
+  anything, and `buildHandoff` refuses on its own when it fails. After the POST, reload the page
+  so key material leaves memory (JavaScript can't wipe strings).
 - Show the site name from the manifest (`app_name`, `origin`) before anything is signed.
 - **Show the match code first.** Before scanning or signing, show `pairingCode(manifest.challenge)`
   (also sent as `manifest.pairing_code`; they must agree) in large digits with: *"Your Seeds screen
@@ -102,19 +105,19 @@ updates copy straight across.
 | `walletPocketWords(signature, host)` | turns a wallet's signature over `walletPocketMessage(host, kind, address)` into a 24-word pocket phrase |
 | `pairingCode(challenge)` (rules.ts) | the three-digit match code the Seeds tab also shows |
 | `shortKeyName(kind, identity)` (rules.ts) | the short name both screens show, e.g. `Coin TZZC…xsVd` |
-| `buildHandoff({ manifest, words, kind, identity, account?, passphrase? })` | derives every pocket key, seals them, and returns `{ message, body }` ready to sign and POST. Pass the **same** `passphrase` as `coinIdentityKey`; it is never sent |
+| `buildHandoff({ manifestUrl, manifest, words, kind, identity, account?, passphrase? })` | derives every pocket key, seals them, and returns `{ message, body }` ready to sign and POST. Pass the **same** `passphrase` as `coinIdentityKey`; it is never sent |
 
 ## Coin flow (`kind=coin`)
 
 1. Camera scan. A Cold Storage Coin's QR holds the 12- or 24-word phrase as plain text (also accept
    SeedQR "standard" digit form if you like). Validate with BIP-39; never show the words on screen.
 2. `key = coinIdentityKey(words)`, `identity = signTxcMessage(key, "x").address`.
-3. `h = await buildHandoff({ manifest, words, kind: "coin", identity })`.
+3. `h = await buildHandoff({ manifestUrl: r, manifest, words, kind: "coin", identity })`.
 4. `{ signature } = signTxcMessage(key, h.message)`.
 5. `POST manifest.submit_url` with `{ ...h.body, message: h.message, signature }`.
 6. If the answer is `409 { error: "use_pocket", account: N }`, repeat steps 3–5 with `account: N`.
-   This happens when the person revoked Seeds' access before, so Seeds uses the next pocket and
-   never reuses old keys.
+   Seeds always uses pocket 1106, so this should never happen; keep it only as a defensive retry
+   with the number Seeds returns.
 7. On `200`: wipe `words` and `key`, then show "You're signed in on Seeds". The Seeds tab that
    started it signs itself in within ~2 seconds. If this page was opened in that same tab, send the
    person back to `manifest.origin + "/key-signin?kind=coin"`.

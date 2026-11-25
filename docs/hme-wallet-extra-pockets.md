@@ -23,7 +23,7 @@ Nothing changes for the five pockets you send today (TXC, ISK, BTC, LTC, EVM). O
 ]
 ```
 
-As with `request`, replace `1106` with the pocket number you're actually using (1106–2105). Every path in one link must use the same pocket number.
+Every path uses pocket **1106**, always — also after a revoke. Seeds refuses any other pocket number (since Nov 22 2026).
 
 ## What the wallet sends (instant access only)
 
@@ -38,7 +38,7 @@ For each optional coin you include:
 - The signed delegate message is unchanged. Its `Paths:` line just lists the extra paths too.
 - Seeds checks that every private key matches its public half, then stores the keys encrypted, exactly like today.
 - **Approve-every-trade links must not include optional coins.** HME Wallet can't sign them, so Seeds refuses with `"<CHAIN> needs instant access"`.
-- Revoking and pocket rotation work exactly as today: rotating the pocket number rotates every coin.
+- Revoking works as today. There is no pocket rotation any more: a new link after a revoke uses 1106 again and must hand over every coin.
 - `paths` may now contain up to 11 entries.
 
 Solana note: ed25519 (SLIP-0010) has no public-key derivation, which is why SOL sends a raw key instead of an xpub. Most HD libraries can do this in a few lines (e.g. `micro-key-producer/slip10`, the same library HME Vault already uses).
@@ -126,7 +126,7 @@ The keys are checked and stored encrypted, like every other pocket. Seeds shows 
 
 1. **Seeds** adds the coin to its list with the exact key format and test vectors from an outside reference. It cross-checks against HME Wallet's derivation code, then lists the coin in `request_optional`.
 2. **HME Wallet** adds the derivation whenever it's ready. Until then it simply **skips** optional coins it doesn't know, which is already in `validateDelegate`. Older wallets keep linking normally.
-3. Neither side has to ship on the same day. Either order is safe. Seeds is usually first, because listing a coin costs nothing until a wallet sends it.
+3. **Seeds ships first, always.** Seeds refuses a whole link that contains a key path it doesn't know, so a wallet must wait for Seeds' written go-ahead before sending a new coin.
 4. **Members who are already linked** get the new coin by linking again from Seeds. Seeds asks for the same pocket number, and HME reuses it for the same site.
 
 **One fix needed on the HME Wallet side:** a new link to the same site on the same pocket should replace the old link record. Today both records stay in the wallet. Seeds has already retired the old one, but if the member later revokes the stale record, the wallet retires the pocket the new link is using.

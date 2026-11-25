@@ -18,7 +18,7 @@ which may only `kms:Sign` and `kms:GetPublicKey` on this one key.
 | SHA-256 fingerprint of the 32 decoded bytes | `0556577f852b0cf2a05a1c75ecbf806e6657ce193393d9e800137b6537c86d4d` |
 | Where the private key lives | AWS KMS (Seeds' AWS account; the exact key is named only in the server setting) |
 | Status | active |
-| Signed bytes | `vaultRequestBytes` in `src/lib/key-signin/vault-protocol.ts`, a verbatim copy of Seeds Key's `src/lib/seeds-key/vault-protocol.ts` (SHA-256 `fa3d955bae6c947b83d1bea2b7200aad956e061baeb03f4b975ba0591d1379a9`) |
+| Signed bytes | `vaultRequestBytes` in `src/lib/key-signin/vault-protocol.ts`, a verbatim copy of Seeds Key's `src/lib/seeds-key/vault-protocol.ts` (SHA-256 `1329b5a87994ec56fbacad19d71fefe27dffc4dca5e16e18306091cdf67107bb`) |
 
 Pin it as:
 
@@ -109,3 +109,6 @@ Previews never carry one. Its `domain`, `key_host`, `challenge_id`, `challenge`,
 3. Ship Seeds Key and HME Vault releases that trust **both** ids. Wait for an audited overlap, long enough for offline Vault phones to update.
 4. Switch Seeds to sign with the new id. Then ship Key and Vault releases that drop the old id, and mark it "retired" here.
 5. If a key is compromised, stop signing with it immediately. Ship Key and Vault updates that remove it. Offline Vault phones keep trusting it until updated, so tell members to update before linking.
+
+## Paths list (Nov 25 2026, auditor HK3)
+Vault accepts any list of well-formed pocket-1106 paths with no duplicates that includes every coin its own copy knows. A newer Seeds may ask for more coins (e.g. Stellar, TON, Sui); Vault derives only the coins it knows. **Vault and Seeds Key must ship this version of `vault-protocol.ts` before Seeds adds any coin.**

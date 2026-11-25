@@ -17,7 +17,7 @@ import { HDKey } from "@scure/bip32";
 import { entropyToMnemonic, mnemonicToSeedSync, validateMnemonic } from "@scure/bip39";
 import { wordlist } from "@scure/bip39/wordlists/english.js";
 import { normalizeMnemonic, pocketsFromMnemonic } from "../pockets/derive";
-import { keySigninMessage, type KeyKind } from "./rules";
+import { keySigninMessage, pairingCode, type KeyKind } from "./rules";
 
 const enc = new TextEncoder();
 const b58c = createBase58check(sha256);
@@ -27,7 +27,32 @@ export type KeyManifest = {
   recipient_pubkey: string; submit_url: string; expires_at: string; pocket: number;
   /** Seeds Key host and request time: wallet sign-ins sign them (Sign-In with Ethereum / Solana layout). */
   key_host: string | null; issued_at: string;
+  origin?: string; pairing_code?: string;
 };
+
+/** The only places a Seeds Key page may take a sign-in request from. */
+export const SEEDS_ORIGINS = ["https://seeds.honest.money", "https://id-preview--0ce4bcf5-5883-4de0-96d3-b161585d1bf4.lovable.app"] as const;
+
+/**
+ * Auditor HK2: the look-alike-site check, in code. Returns a reason to refuse, or null. The page
+ * must call it before showing anything; buildHandoff calls it again and refuses on any problem.
+ */
+export function manifestProblem(manifestUrl: string, m: KeyManifest, now: Date = new Date()): string | null {
+  let url: URL, submit: URL;
+  try { url = new URL(manifestUrl); submit = new URL(m.submit_url); } catch { return "bad_url"; }
+  if (!(SEEDS_ORIGINS as readonly string[]).includes(url.origin)) return "origin_not_allowed";
+  if (url.protocol !== "https:") return "not_https";
+  if (submit.origin !== url.origin) return "submit_origin";
+  if (m.origin !== undefined && m.origin !== url.origin) return "origin_mismatch";
+  if (m.domain !== url.host) return "domain_mismatch";
+  if (m.type !== "seeds-key-signin" || m.version !== 1) return "bad_type";
+  if (m.pocket !== 1106) return "bad_pocket";
+  if (m.pairing_code !== undefined && m.pairing_code !== pairingCode(m.challenge)) return "pairing_mismatch";
+  const exp = Date.parse(m.expires_at);
+  if (!Number.isFinite(exp) || exp <= now.getTime()) return "expired";
+  return null;
+}
+export { pairingCode };
 
 function concat(...parts: Uint8Array[]): Uint8Array {
   const out = new Uint8Array(parts.reduce((s, p) => s + p.length, 0));
@@ -103,7 +128,9 @@ export function walletPocketWords(signature: Uint8Array, keyHost: string): strin
 }
 
 /** Everything the submit endpoint needs except the signature (the caller signs `message` with the identity key). */
-export async function buildHandoff(p: { manifest: KeyManifest; words: string; kind: KeyKind; identity: string; account?: number; passphrase?: string }) {
+export async function buildHandoff(p: { manifestUrl: string; manifest: KeyManifest; words: string; kind: KeyKind; identity: string; account?: number; passphrase?: string }) {
+  const problem = manifestProblem(p.manifestUrl, p.manifest);
+  if (problem) throw new Error(`Refusing to hand over keys: ${problem}`);
   const account = p.account ?? p.manifest.pocket;
   // Same extra password as coinIdentityKey, or the pocket and the identity come from different wallets.
   const bundle = pocketsFromMnemonic(p.words, { account, passphrase: seedPassphrase(p.passphrase ?? "") });

@@ -1,10 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { ed25519, x25519 } from "@noble/curves/ed25519.js";
 import { base64urlnopad } from "@scure/base";
+import { hkdf } from "@noble/hashes/hkdf.js";
+import { sha256 } from "@noble/hashes/sha2.js";
 import {
   vaultAvailable,
   MAX_VAULT_REQUEST_MS, VAULT_EXAMPLE_SOURCE, VAULT_PATHS, VAULT_SIGNING_KEY_ID, canonicalIso, keyRequestWindow,
-  vaultRequestFor, vaultSignerFromSeed, type VaultRequestSource,
+  vaultRequestFor, vaultSignerFromSeed, VAULT_SIGNER_LABEL, type VaultRequestSource,
 } from "./vault-request";
 import { readSignedVaultRequest, vaultRequestBytes } from "./vault-protocol";
 import { KEY_REQUEST_TTL_MS } from "./rules";
@@ -169,5 +171,25 @@ describe("Vault signer in AWS KMS (Bobby, Nov 23 2026)", () => {
     const spki = new Uint8Array([...[0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00], ...pub]);
     expect(ed25519FromSpki(spki)).toEqual(pub);
     expect(() => ed25519FromSpki(spki.slice(1))).toThrow();
+  });
+});
+
+describe("Vault keeps working when Seeds adds a coin (auditor HK3)", () => {
+  const secret = hkdf(sha256, new TextEncoder().encode(SEED), new TextEncoder().encode("HME Seeds Vault"), new TextEncoder().encode(VAULT_SIGNER_LABEL), 32);
+  function resign(paths: string[]) {
+    const { request_sig: _s, ...u } = vaultRequestFor(source(), signer)!;
+    const v = { ...u, paths };
+    return { ...v, request_sig: base64urlnopad.encode(ed25519.sign(vaultRequestBytes(v), secret)) };
+  }
+  test("a request with an extra new coin (e.g. Stellar) is accepted", () => {
+    const r = resign([...VAULT_PATHS, "m/44'/148'/1106'"]);
+    expect(readSignedVaultRequest(r, trust).paths).toContain("m/44'/148'/1106'");
+  });
+  test("a request that drops a coin Vault expects is refused", () => {
+    expect(() => readSignedVaultRequest(resign(VAULT_PATHS.slice(1)), trust)).toThrow();
+  });
+  test("duplicates and other pockets are refused", () => {
+    expect(() => readSignedVaultRequest(resign([...VAULT_PATHS, VAULT_PATHS[0]!]), trust)).toThrow();
+    expect(() => readSignedVaultRequest(resign([...VAULT_PATHS, "m/44'/148'/1107'"]), trust)).toThrow();
   });
 });

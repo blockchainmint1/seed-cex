@@ -7,6 +7,8 @@ export const VAULT_REQUEST = "hm-seeds-key-vault-request";
 export const VAULT_RESPONSE = "hm-seeds-key-vault-response";
 export const LIVE_KEY_HOST = "key.seeds.honest.money";
 export const LIVE_SEEDS_DOMAIN = "seeds.honest.money";
+/** m/<purpose>'/<coin>'/1106' plus up to three more hardened levels. */
+const POCKET_PATH = /^m\/(44|84|1852)'\/\d{1,9}'\/1106'(\/\d{1,9}'){0,3}$/;
 export const MAX_RESPONSE_CHARS = 64 * 1024;
 export const MAX_REQUEST_CHARS = 8192;
 export const SCAN_TIMEOUT_MS = 120_000;
@@ -86,8 +88,17 @@ export function readSignedVaultRequest(
   )
     throw new Error(BAD);
   const paths = x["paths"];
+  // Auditor HK3: a newer Seeds may ask for more coins than this copy knows. Accept any list of
+  // well-formed pocket-1106 paths with no duplicates that still includes every coin this copy
+  // expects (so Seeds can never drop one). The paths are inside the signed bytes either way.
   const want = POCKET_COINS.map((c) => accountPath(c, SEEDS_POCKET));
-  if (!Array.isArray(paths) || paths.length !== want.length || paths.some((p, i) => p !== want[i]))
+  if (
+    !Array.isArray(paths) ||
+    paths.length > 40 ||
+    paths.some((p) => typeof p !== "string" || !POCKET_PATH.test(p)) ||
+    new Set(paths).size !== paths.length ||
+    want.some((w) => !paths.includes(w))
+  )
     throw new Error(BAD);
   const r: SignedVaultRequest = {
     type: VAULT_REQUEST,
@@ -102,7 +113,7 @@ export function readSignedVaultRequest(
     pocket: SEEDS_POCKET,
     issued_at: string("issued_at"),
     expires_at: string("expires_at"),
-    paths: want,
+    paths: paths as string[],
   };
   if (
     !/^[a-zA-Z0-9_-]{1,64}$/.test(r.signing_key_id) ||
