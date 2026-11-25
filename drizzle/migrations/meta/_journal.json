@@ -736,6 +736,13 @@
       "when": 1795609363570,
       "tag": "0104_qa_admin_delete_report",
       "breakpoints": true
+    },
+    {
+      "idx": 105,
+      "version": "7",
+      "when": 1795609971219,
+      "tag": "0105_freeze_native_withdrawal_txid",
+      "breakpoints": true
     }
   ]
 }

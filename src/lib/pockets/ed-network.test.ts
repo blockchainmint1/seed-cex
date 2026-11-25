@@ -8,7 +8,7 @@ afterEach(() => { globalThis.fetch = originalFetch; });
 const address = edAddress('XLM', ed25519.getPublicKey(new Uint8Array(32).fill(7)));
 const target = edAddress('XLM', ed25519.getPublicKey(new Uint8Array(32).fill(8)));
 const now = Math.floor(Date.now() / 1000);
-const ledger = { _embedded: { records: [{ base_fee_in_stroops: 100, base_reserve_in_stroops: 5_000_000, closed_at: new Date().toISOString() }] } };
+const ledger = { _embedded: { records: [{ sequence: 500, base_fee_in_stroops: 100, base_reserve_in_stroops: 5_000_000, closed_at: new Date().toISOString() }] } };
 const account = { sequence: '1', balances: [{ asset_type: 'native', balance: '2.0000000' }], subentry_count: 0, num_sponsoring: 0, num_sponsored: 0, thresholds: { med_threshold: 1 }, signers: [{ key: address, weight: 1 }] };
 
 function stub(handler: (url: URL, init?: RequestInit) => Response | Promise<Response>) {
@@ -30,8 +30,11 @@ test('Stellar live spendable uses the actual median fee and native reserve', asy
   expect(await readEdSpendable('XLM', address)).toBe(9_978_991n);
 });
 test('missing Stellar transaction becomes expired only with persisted expiry and later closed-ledger evidence', async () => {
-  stub((url) => url.pathname.includes('/transactions') ? new Response('{}', { status: 404 }) : Response.json(ledger));
+  stub((url) => url.pathname.includes('/transactions') ? new Response('{}', { status: 404, headers: { 'Latest-Ledger': '500' } }) : Response.json(ledger));
   expect(await edTxStatus('XLM', 'missing', target, 1n, address, { chain: 'XLM', expiresAt: now - 31 })).toEqual({ success: false, confirmations: 0, expired: true });
+  // Audit EF1: a 404 from a backend behind the head we read is never proof of expiry.
+  stub((url) => url.pathname.includes('/transactions') ? new Response('{}', { status: 404, headers: { 'Latest-Ledger': '499' } }) : Response.json(ledger));
+  expect(await edTxStatus('XLM', 'missing', target, 1n, address, { chain: 'XLM', expiresAt: now - 31 })).toBeNull();
   expect(await edTxStatus('XLM', 'missing', target, 1n, address, { chain: 'XLM', expiresAt: now })).toBeNull();
   expect(await edTxStatus('XLM', 'missing', target, 1n, address)).toBeNull();
 });

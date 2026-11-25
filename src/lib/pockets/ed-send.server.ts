@@ -9,7 +9,7 @@ import { parseTonPublicKey, TON_W5_CODE_HASH, TON_W5_WALLET_ID, type EdChain } f
 import { buildStellarTransfer } from "./stellar-tx";
 import { buildTonTransfer, tonDestination } from "./ton-tx";
 import { buildSuiTransfer, signSuiTransfer, suiGasBudget, type SuiCoinRef } from "./sui-tx";
-import { suiPaid, tonTraceStatus, stellarExpired, tonExpired, suiExpired, type TonTrace } from "./ed-confirm-rules";
+import { suiPaid, tonTraceStatus, stellarNotFoundExpired, tonExpired, suiExpired, type TonTrace } from "./ed-confirm-rules";
 
 type Link = KeyedLink & { xpubs?: Record<string, string> };
 type Recorder = (txid: string, meta?: EdSendMeta) => Promise<void>;
@@ -199,19 +199,28 @@ export async function edTxStatus(chain: EdChain, txid: string, to: string, units
   const meta = evidence && typeof evidence === "object" ? evidence as Record<string, unknown> : null;
   if (chain === "XLM") {
     const endpoint = edEndpoint("stellar");
-    try {
-      const r = await json<{ hash: string; successful: boolean }>(`${endpoint.url}/transactions/${encodeURIComponent(txid)}`, { headers: endpoint.headers });
-      return r.hash === txid ? { success: r.successful, confirmations: 1 } : null;
-    } catch (e) {
-      if (!(e instanceof NetworkHttpError) || e.status !== 404) throw e;
-      if (meta?.['chain'] !== chain || typeof meta['expiresAt'] !== "number") return null;
-      const ledger = await json<{ _embedded: { records: { closed_at: string }[] } }>(`${endpoint.url}/ledgers?order=desc&limit=1`, { headers: endpoint.headers });
-      const closed = ledger._embedded.records[0]?.closed_at;
-      return closed && stellarExpired(meta['expiresAt'], Date.parse(closed) / 1000) ? { success: false, confirmations: 0, expired: true } : null;
+    // Audit EF1: read the chain head first, then the transaction; a 404 counts only when the
+    // same response's Latest-Ledger header is at least as new as that head.
+    const canExpire = meta?.['chain'] === chain && typeof meta['expiresAt'] === "number";
+    let head: { sequence: number; closed_at: string } | undefined;
+    if (canExpire) {
+      const ledger = await json<{ _embedded: { records: { sequence: number; closed_at: string }[] } }>(`${endpoint.url}/ledgers?order=desc&limit=1`, { headers: endpoint.headers });
+      head = ledger._embedded.records[0];
     }
+    const res = await fetch(`${endpoint.url}/transactions/${encodeURIComponent(txid)}`, { headers: endpoint.headers, redirect: "manual", signal: AbortSignal.timeout(12_000) });
+    if (res.ok) {
+      const r = await res.json() as { hash: string; successful: boolean };
+      return r.hash === txid ? { success: r.successful, confirmations: 1 } : null;
+    }
+    if (res.status !== 404) throw new NetworkHttpError(res.status);
+    if (!canExpire || !head) return null;
+    return stellarNotFoundExpired(meta!['expiresAt'] as number, head, res.headers.get("Latest-Ledger")) ? { success: false, confirmations: 0, expired: true } : null;
   }
   if (chain === "SUI") {
     const client = suiClient();
+    // Audit EF1: epoch first, then the transaction, so a not-found comes from a node at least that fresh.
+    const canExpire = meta?.['chain'] === chain && typeof meta['expiresEpoch'] === "string";
+    const epochBefore = canExpire ? (await client.getCurrentSystemState({ signal: AbortSignal.timeout(12_000) })).systemState.epoch : null;
     try {
       const r = await client.getTransaction({ digest: txid, include: { balanceChanges: true }, signal: AbortSignal.timeout(12_000) });
       const tx = r.Transaction ?? r.FailedTransaction;
@@ -221,9 +230,8 @@ export async function edTxStatus(chain: EdChain, txid: string, to: string, units
       return { success: tx.status.success, confirmations: 1 };
     } catch (e) {
       if (!(e instanceof TransactionError) || e.reason !== "notFound" || e.digest !== txid) throw e;
-      if (meta?.['chain'] !== chain || typeof meta['expiresEpoch'] !== "string") return null;
-      const { systemState } = await client.getCurrentSystemState({ signal: AbortSignal.timeout(12_000) });
-      return suiExpired(meta['expiresEpoch'], systemState.epoch) ? { success: false, confirmations: 0, expired: true } : null;
+      if (!canExpire || epochBefore == null) return null;
+      return suiExpired(meta!['expiresEpoch'] as string, epochBefore) ? { success: false, confirmations: 0, expired: true } : null;
     }
   }
   // TON's wallet can accept an external message but skip its outgoing action (W5 +2 mode).

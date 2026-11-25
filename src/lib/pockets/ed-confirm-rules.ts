@@ -35,3 +35,11 @@ export function suiExpired(expiresEpoch: string, currentEpoch: string): boolean 
 export function suiPaid(changes: { address: string; coinType: string; amount: string }[] | undefined, to: string, units: bigint): boolean {
   return changes?.filter((c) => c.address === to && /^(0x0*2)::sui::SUI$/.test(c.coinType)).reduce((n, c) => n + BigInt(c.amount), 0n) === units;
 }
+/** Audit EF1: a Stellar 404 proves expiry only when that same response's Latest-Ledger is at
+ * least the head we read first, and that head closed past the signed expiry (+ margin). */
+export function stellarNotFoundExpired(expiresAt: number, head: { sequence: number; closed_at: string }, latestLedgerHeader: string | null): boolean {
+  const latest = latestLedgerHeader != null && /^\d+$/.test(latestLedgerHeader.trim()) ? Number(latestLedgerHeader.trim()) : NaN;
+  if (!Number.isSafeInteger(latest) || !Number.isSafeInteger(head.sequence) || latest < head.sequence) return false;
+  const closed = Date.parse(head.closed_at) / 1000;
+  return Number.isFinite(closed) && stellarExpired(expiresAt, closed);
+}

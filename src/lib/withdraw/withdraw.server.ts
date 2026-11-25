@@ -357,7 +357,12 @@ async function sendOne(r: Row): Promise<"sent" | "failed" | "unknown"> {
     const { destinationProblem, sendWithdrawal } = await import("./send.server");
     if (await destinationProblem(coin, r.to_address, from)) throw new Error("The destination is no longer allowed. Nothing was sent.");
     const sent = await sendWithdrawal(coin, link, from, r.to_address, BigInt(r.amount_units), async (id, meta) => {
-      await update({ txid: id, sent_at: new Date().toISOString(), ...(meta ? { send_meta: meta } : {}) });
+      // Audit EF3: record only onto a row still signing; a row the sweep already closed never broadcasts.
+      const { data: rec, error: recErr } = await supabaseAdmin.from("pocket_withdrawals")
+        .update({ txid: id, sent_at: new Date().toISOString(), ...(meta ? { send_meta: meta } : {}), updated_at: new Date().toISOString() } as never)
+        .eq("id", r.id).eq("status", "signing").select("id");
+      if (recErr) throw new Error(`Could not record the withdrawal: ${recErr.message}`);
+      if (!rec?.length) throw new Error("This withdrawal was closed while it was being prepared. Nothing was sent.");
       txid = id;
     }, r.destination_tag, tester);
     txid = sent;
