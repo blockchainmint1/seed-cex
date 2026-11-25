@@ -64,12 +64,12 @@ export const POCKET_SPECS: Record<PocketCoin, PocketSpec> = {
     recoveryNote: "restore the recovery phrase with Trezor's Monero method (not Ledger's — Ledger makes a different wallet from the same words), account",
   },
   // Accepted and stored only; no deposits or sends until Seeds' signer ships and is audited.
-  XLM: { id: "XLM", name: "Stellar", curve: "ed25519", purpose: 44, coinType: 148, covers: ["XLM"], hmeToday: false, signing: "planned", balanceReadable: false },
+  XLM: { id: "XLM", name: "Stellar", curve: "ed25519", purpose: 44, coinType: 148, covers: ["XLM"], hmeToday: false, signing: "planned", balanceReadable: true },
   TON: {
-    id: "TON", name: "TON", curve: "ed25519", purpose: 44, coinType: 607, covers: ["TON"], hmeToday: false, signing: "planned", balanceReadable: false,
+    id: "TON", name: "TON", curve: "ed25519", purpose: 44, coinType: 607, covers: ["TON"], hmeToday: false, signing: "planned", balanceReadable: true,
     recoveryNote: "restore the 12/24 recovery phrase (BIP39, not TON-only words) in a wallet that supports BIP39 for TON with wallet type W5, account",
   },
-  SUI: { id: "SUI", name: "Sui", curve: "ed25519", purpose: 44, coinType: 784, covers: ["SUI"], hmeToday: false, signing: "planned", balanceReadable: false },
+  SUI: { id: "SUI", name: "Sui", curve: "ed25519", purpose: 44, coinType: 784, covers: ["SUI"], hmeToday: false, signing: "planned", balanceReadable: true },
 };
 
 const SINGLE_KEY: readonly PocketCoin[] = ["SOL", "XMR", "XLM", "TON", "SUI"];

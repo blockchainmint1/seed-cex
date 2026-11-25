@@ -9,8 +9,8 @@
 import type { PocketCoin } from "./coins";
 import { cardanoRosetta, nodeEndpoints, thornodeEndpoints, type NodeEndpoint } from "@/lib/nodes.server";
 
-export type ExtraCoin = Extract<PocketCoin, "DOGE" | "BCH" | "ZEC" | "XRP" | "TRX" | "SOL" | "DASH" | "ATOM" | "RUNE" | "ADA">;
-export const EXTRA_COINS: ExtraCoin[] = ["DOGE", "BCH", "ZEC", "XRP", "TRX", "SOL", "DASH", "ATOM", "RUNE", "ADA"];
+export type ExtraCoin = Extract<PocketCoin, "DOGE" | "BCH" | "ZEC" | "XRP" | "TRX" | "SOL" | "DASH" | "ATOM" | "RUNE" | "ADA" | "XLM" | "TON" | "SUI">;
+export const EXTRA_COINS: ExtraCoin[] = ["DOGE", "BCH", "ZEC", "XRP", "TRX", "SOL", "DASH", "ATOM", "RUNE", "ADA", "XLM", "TON", "SUI"];
 
 const BOOK: Record<"DOGE" | "BCH" | "ZEC" | "DASH", string> = {
   DOGE: "https://dogebook.nownodes.io/api/v2",
@@ -20,7 +20,9 @@ const BOOK: Record<"DOGE" | "BCH" | "ZEC" | "DASH", string> = {
 };
 const KOIOS = ["https://api.koios.rest/api/v1"];
 const asPublic = (urls: string[]): NodeEndpoint[] => urls.map((url) => ({ url, headers: {}, provider: "public" }));
-const DECIMALS: Record<ExtraCoin, number> = { DOGE: 8, BCH: 8, ZEC: 8, XRP: 6, TRX: 6, SOL: 9, DASH: 8, ATOM: 6, RUNE: 8, ADA: 6 };
+const DECIMALS: Record<ExtraCoin, number> = { DOGE: 8, BCH: 8, ZEC: 8, XRP: 6, TRX: 6, SOL: 9, DASH: 8, ATOM: 6, RUNE: 8, ADA: 6, XLM: 7, TON: 9, SUI: 9 };
+const HORIZON = ["https://horizon.stellar.org", "https://horizon.stellar.lobstr.co"];
+const SUI_GRAPHQL = "https://graphql.mainnet.sui.io/graphql";
 const UA = { "User-Agent": "seeds-exchange/1.0", accept: "application/json" };
 
 async function getJson<T>(url: string, init?: RequestInit): Promise<T | null> {
@@ -104,6 +106,18 @@ export async function fetchExtraBalance(coin: ExtraCoin, address: string): Promi
     return toUnits(BigInt(r[0]?.balance ?? "0"), coin); // [] = address never used on-chain
   }
   if (isBookCoin(coin)) return (await bookReading(coin, address, false))?.balance ?? null;
+  if (coin === "XLM") return stellarBalance(address);
+  if (coin === "TON") return tonBalance(address);
+  if (coin === "SUI") {
+    // Sui retired public JSON-RPC; its GraphQL service answers balance reads.
+    const j = await getJson<{ data?: { address?: { balance?: { totalBalance?: string } | null } | null } }>(SUI_GRAPHQL, {
+      method: "POST", headers: { ...UA, "content-type": "application/json" },
+      body: JSON.stringify({ query: "query($a: SuiAddress!){ address(address:$a){ balance(coinType:\"0x2::sui::SUI\"){ totalBalance } } }", variables: { a: address } }),
+    });
+    if (!j?.data) return null;
+    return toUnits(BigInt(j.data.address?.balance?.totalBalance ?? "0"), coin);
+  }
+
   if (coin === "XRP") {
     const r = await firstOk(nodeEndpoints("xrp"), (u, h) => getJson<{ result?: { status?: string; error?: string; account_data?: { Balance: string } } }>(u,
       { method: "POST", headers: { ...UA, ...h, "content-type": "application/json" }, body: JSON.stringify({ method: "account_info", params: [{ account: address, ledger_index: "validated" }] }) }));
@@ -123,4 +137,27 @@ export async function fetchExtraBalance(coin: ExtraCoin, address: string): Promi
     return j?.result ? j : null;
   });
   return r?.result ? toUnits(BigInt(r.result.value), coin) : null;
+}
+
+/** Stellar: native XLM from Horizon; an account that was never funded doesn't exist yet (404 = 0). */
+async function stellarBalance(address: string): Promise<number | null> {
+  for (const base of HORIZON) {
+    try {
+      const res = await fetch(`${base}/accounts/${encodeURIComponent(address)}`, { headers: UA, signal: AbortSignal.timeout(8000) });
+      if (res.status === 404) return 0;
+      if (!res.ok) continue;
+      const j = (await res.json()) as { balances?: { asset_type: string; balance: string }[] };
+      const native = j.balances?.find((b) => b.asset_type === "native");
+      if (j.balances) return native ? Number(native.balance) : 0;
+    } catch { console.error(`[pockets] ${new URL(base).host} failed`); }
+  }
+  return null;
+}
+
+/** TON: balance in nanotons (an undeployed W5 wallet can still hold coins). */
+async function tonBalance(address: string): Promise<number | null> {
+  const a = await getJson<{ ok?: boolean; result?: string }>(`https://toncenter.com/api/v2/getAddressBalance?address=${encodeURIComponent(address)}`, { headers: UA });
+  if (a?.ok && a.result !== undefined) return toUnits(BigInt(a.result), "TON");
+  const b = await getJson<{ balance?: number | string }>(`https://tonapi.io/v2/accounts/${encodeURIComponent(address)}`, { headers: UA });
+  return b?.balance !== undefined ? toUnits(BigInt(b.balance), "TON") : null;
 }

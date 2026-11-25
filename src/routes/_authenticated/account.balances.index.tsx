@@ -81,7 +81,10 @@ function SpotBalances() {
   const extras: Extra[] = [
     ...(tokens.data ?? []).map((t): Extra => ({ key: `tok-${t.chain}-${t.contract}`, symbol: t.symbol, network: `${CHAIN_LABEL[t.chain]} · ${t.swappable ? "token" : `token ${shortContract(t.contract)} · not checked by Seeds`}`, kind: "token", balance: t.balance, token: t })),
     ...DEPOSIT_ASSETS.flatMap((a) => a.networks.filter((n) => !have.has(`${a.symbol}-${n.id}`)).map((n): Extra => ({ key: `relink-${a.symbol}-${n.id}`, symbol: a.symbol, network: n.label, kind: "relink", balance: null }))),
-    ...COMING_SOON.map((c): Extra => ({ key: `soon-${c.symbol}`, symbol: c.symbol, network: c.name, kind: "soon", balance: null })),
+    ...COMING_SOON.map((c): Extra => {
+      const got = balances.data?.extra.find((x) => x.coin === c.symbol);
+      return { key: `soon-${c.symbol}`, symbol: c.symbol, network: got ? `${c.name} · ${got.address.slice(0, 6)}…${got.address.slice(-4)}` : c.name, kind: "soon", balance: got?.balance ?? null };
+    }),
   ];
   const extrasShown = extras.filter((x) => {
     if (hideZero && !((x.balance ?? 0) > 0)) return false;
@@ -95,7 +98,7 @@ function SpotBalances() {
   const pageItems = all.slice(cur * PAGE, cur * PAGE + PAGE);
   const pageMain = pageItems.flatMap((i) => ("main" in i ? [i.main] : []));
   const pageExtra = pageItems.flatMap((i) => ("extra" in i ? [i.extra] : []));
-  const extraNote = (x: Extra) => x.kind === "soon" ? "Coming soon" : x.kind === "relink" ? "Re-link your wallet to add" : null;
+  const extraNote = (x: Extra) => x.kind === "soon" ? (x.balance != null ? null : "Coming soon") : x.kind === "relink" ? "Re-link your wallet to add" : null;
 
   const stranded = revokeCheck(rows.filter((r) => r.net.pocket === r.asset.symbol).map((r) => ({ coin: r.asset.symbol, balance: r.balance }))).stranded;
 
@@ -273,7 +276,7 @@ function SpotBalances() {
       ) : null}
       {balances.isError ? <Note tone="error">Balances could not be synced. Refresh to retry.</Note> : null}
       <p className="text-xs text-muted-foreground">
-        These are the coins at your trading pocket's own addresses — your HME Wallet holds the keys. Tokens on Ethereum and Base marked "not checked by Seeds" were found in your pocket but aren't on Seeds' list — check them before trusting their value. "Coming soon" coins can't be deposited yet.
+        These are the coins at your trading pocket's own addresses — your HME Wallet holds the keys. Tokens on Ethereum and Base marked "not checked by Seeds" were found in your pocket but aren't on Seeds' list — check them before trusting their value. Stellar, TON and Sui show your balance, but deposits stay closed until Seeds can send them back out.
       </p>
     </div>
   );
