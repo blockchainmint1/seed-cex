@@ -343,6 +343,12 @@ async function sendSwapFromPocketUnlocked(userId: string, isAdmin: boolean, inpu
   if (amount == null || amount <= 0n) throw new Error("Enter an amount with at most 8 decimal places.");
 
   const link = await loadLink(userId);
+  // Audit HC1: a chained leg must name a real, approved, in-progress parent owned by this
+  // member — checked here before any quote work, and again inside reserve_swap_send.
+  if (leg) {
+    const { data: parentLive } = await supabaseAdmin.rpc("swap_send_parent_live", { _user_id: userId, _route_id: leg.routeId });
+    if (parentLive !== true) throw new Error("This swap step has no approved parent swap. Nothing was sent.");
+  }
   // Early, cheap gate (no price yet) so non-pilot members never trigger quotes.
   const early = sendBlocker({ from, link, isAdmin: isAdmin || Boolean(leg), amountUsd: 0, protocol });
   if (early) throw new Error(early);

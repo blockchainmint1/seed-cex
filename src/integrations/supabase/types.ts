@@ -5931,6 +5931,10 @@ export type Database = {
           visitors: number
         }[]
       }
+      swap_send_parent_live: {
+        Args: { _route_id: string; _user_id: string }
+        Returns: boolean
+      }
       use_withdrawal_email_code: {
         Args: { _code_digest: string; _details: string; _user_id: string }
         Returns: string

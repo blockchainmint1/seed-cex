@@ -1,5 +1,9 @@
 # Roadmap
 
+- [ ] HC1: reserve_swap_send must verify a chained leg's parent (exists, member's own, approved) in SQL + sendSwapFromPocketUnlocked (auditor, Nov 25)
+- [ ] HC2: own-pocket swaps stay tap-free (Bobby, Nov 25) — Swap page wording must stop promising a tap on every swap
+- [ ] Q1: HME sign-in ticket shared-secret HMAC → asymmetric signing needs Honest.Money to build their half (blocked: HME team; offer Bobby a handoff draft)
+
 - [x] Auditor order-book review R1: trade Telegram tap shows buy/sell, price, what you get + far-from-market warning; approval locks the price (Bobby, Nov 22)
 - [x] R2: 3 payer-fault failed matches in 24h pauses placing orders; admins can clear (Bobby, Nov 22)
 - [x] R3: short cache on the Place-order balance check; fill-time check stays live (Bobby, Nov 22)

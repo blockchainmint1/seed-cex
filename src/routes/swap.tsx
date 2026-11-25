@@ -47,7 +47,7 @@ export const Route = createFileRoute("/swap")({
           "One swap form for every coin: Bitcoin, Ether, Solana and XRP through THORChain and Maya, any token on Uniswap, PancakeSwap and PulseX, and TSD. Seeds picks the best route and every swap pays your own pocket.",
       },
       { property: "og:title", content: "Swap any coin — Seeds" },
-      { property: "og:description", content: "Pick what you send and what you get. Seeds compares THORChain, Maya and the pools, shows every fee, and waits for your Telegram tap." },
+      { property: "og:description", content: "Pick what you send and what you get. Seeds compares THORChain, Maya and the pools and shows every fee. Multi-step swaps and outside payouts wait for your Telegram tap." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -410,7 +410,7 @@ function SwapPage() {
               <li>When no single network reaches (like PEPE → BTC): two swaps through a plain coin such as ETH or USDC, with one Telegram tap.</li>
               <li>When more than one can do it, every route is asked and the best price is picked for you. You can choose another.</li>
               <li>HYPE on Hyperliquid swaps through Relay, an outside bridge, paid back to the same pocket address. Other coins and TSD reach HYPE in one tap through ETH.</li>
-              <li>Every swap waits for your Approve tap in Telegram and pays back into your own pocket.</li>
+              <li>Every swap pays back into your own pocket. Multi-step routes run on one Approve tap in Telegram, and paying an outside address needs two-factor and a tap.</li>
             </ul>
           </div>
           <div className="rounded-sm border border-border bg-surface">
@@ -481,8 +481,8 @@ function SwapPage() {
             d: "Before any coin moves, the swap must pay exactly your pocket and coin, carry price protection, and pass a fresh price check and test run. Chain-to-chain vaults are confirmed by two independent servers.",
           },
           {
-            t: "3 · Tap and go",
-            d: "One Approve tap in Telegram, then Seeds sends from your own trading pocket (beta testers for now). A two-step swap stops safely — with the in-between coin in your pocket — if the price falls below your minimum.",
+            t: "3 · Confirm and go",
+            d: "Confirm on the page and Seeds sends from your own trading pocket (beta testers for now). Multi-step swaps and outside payouts wait for one Approve tap in Telegram. A two-step swap stops safely — with the in-between coin in your pocket — if the price falls below your minimum.",
           },
         ].map((s) => (
           <div key={s.t} className="rounded-sm border border-border bg-surface p-5">
