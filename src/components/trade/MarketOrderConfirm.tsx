@@ -106,9 +106,9 @@ export function MarketOrderConfirm({
               <li className="flex gap-2">
                 <Info className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
                 <span>
-                  Once matched, the trade settles wallet to wallet on the blockchain. That can take a few
-                  minutes; you can follow it under "Your escrows". If either side's coins aren't ready,
-                  the trade is cancelled and nothing is sent.
+                  Once matched, Seeds settles the coins on the blockchain for you, usually within a few
+                  minutes. You'll see it under "Your fills". If either side's coins aren't ready, the
+                  fill is cancelled and nothing is sent.
                 </span>
               </li>
               <li className="flex gap-2">

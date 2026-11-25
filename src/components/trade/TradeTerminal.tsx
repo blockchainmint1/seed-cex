@@ -3,7 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
 import { getMarketStats, getOrderBook, getPriceSeries, getTape } from "@/lib/market.functions";
-import { LegPanel } from "@/components/trade/LegPanel";
+import { TRADE_LABEL, mySide, tradeTone } from "@/lib/activity/activity-rules";
+import { TONE_CLASS } from "@/components/activity/ActivityTable";
 import {
   cancelAllOrders,
   cancelOrder,
@@ -446,41 +447,35 @@ export function TradeTerminal({ pairId }: { pairId: PairId }) {
             </div>
           </Panel>
 
-          <Panel title="Your escrows">
+          <Panel
+            title="Your fills"
+            right={user ? <Link to="/activity" className="font-mono text-[10px] text-primary hover:underline">all activity →</Link> : null}
+          >
             {!user ? (
               <p className="p-4 font-mono text-xs text-muted-foreground">
                 <Link to="/auth"
                   search={{ redirect: here }} className="text-primary underline-offset-4 hover:underline">
                   Sign in
                 </Link>{" "}
-                to see your escrowed trades.
+                to see your fills.
               </p>
             ) : (myTrades.data ?? []).filter((t) => t.pair === PAIR).length === 0 ? (
-              <p className="p-4 font-mono text-xs text-muted-foreground">No trades yet.</p>
+              <p className="p-4 font-mono text-xs text-muted-foreground">No fills yet.</p>
             ) : (
               <ul className="divide-y divide-border">
-                {(myTrades.data ?? []).filter((t) => t.pair === PAIR).map((t) => (
-                  <li key={t.id} className="p-4">
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-xs">
-                      <span className={t.side === "buy" ? "text-bid" : "text-ask"}>
-                        {t.side.toUpperCase()}
-                      </span>
+                {(myTrades.data ?? []).filter((t) => t.pair === PAIR).slice(0, 10).map((t) => {
+                  const side = mySide(t.side, t.role);
+                  return (
+                    <li key={t.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2.5 font-mono text-xs">
+                      <span className={side === "buy" ? "text-bid" : "text-ask"}>{side.toUpperCase()}</span>
                       <span className="tabular-nums">{fmtAmount(t.amount, 4)} {pair.base}</span>
                       <span className="tabular-nums">@ {px(t.price)}</span>
                       <span className="text-muted-foreground">{t.role}</span>
-                      <span className="rounded-sm border border-border px-2 py-0.5 tracking-wider uppercase">
-                        {t.status.replace(/_/g, " ")}
-                      </span>
+                      <span className={TONE_CLASS[tradeTone(t.status)]}>{TRADE_LABEL[t.status] ?? t.status}</span>
                       <span className="ml-auto text-muted-foreground">{fmtAgo(t.createdAt)}</span>
-                    </div>
-                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                      {t.escrows.map((e) => (
-                        <LegPanel key={e.leg} tradeId={t.id} leg={e} />
-                      ))}
-                    </div>
-
-                  </li>
-                ))}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </Panel>

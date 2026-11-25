@@ -6,9 +6,9 @@ export const Route = createFileRoute("/trade/ltc-tsd")({
   head: () => ({
     meta: [
       { title: "LTC / TSD Order Book — Seeds" },
-      { name: "description", content: "Live Litecoin/Texas Stable Dollar order book, trade tape, and peer-to-peer escrow settlement." },
+      { name: "description", content: "Live Litecoin/Texas Stable Dollar order book, and trade tape. No custody: coins settle wallet to wallet." },
       { property: "og:title", content: "LTC / TSD Order Book — Seeds" },
-      { property: "og:description", content: "Live Litecoin/Texas Stable Dollar order book, trade tape, and peer-to-peer escrow settlement." },
+      { property: "og:description", content: "Live Litecoin/Texas Stable Dollar order book, and trade tape. No custody: coins settle wallet to wallet." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
