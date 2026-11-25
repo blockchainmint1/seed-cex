@@ -69,7 +69,7 @@ export function SiteHeader() {
     // Activity always shows (signed-out visitors are sent to sign in and come
     // back), so the menu never shifts once the browser finds the session.
     { label: "Activity", to: "/activity" },
-    ...(user ? [{ label: "Profile", to: "/account" }] : []),
+    ...(user ? [{ label: "Account", to: "/account" }] : []),
     { label: "Help", to: "/help" },
     ...about,
     ...proof,
@@ -137,7 +137,7 @@ export function SiteHeader() {
                 className="hidden items-center gap-1.5 rounded-sm border border-primary/50 px-3 py-2 tracking-[0.04em] text-primary uppercase transition-colors hover:bg-primary/10 sm:inline-flex sm:px-3.5"
               >
                 <UserRound className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
-                Profile
+                Account
               </Link>
               <button
                 onClick={signOut}
