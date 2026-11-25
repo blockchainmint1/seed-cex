@@ -3,10 +3,10 @@ import { QRCodeSVG } from "qrcode.react";
 /**
  * Every scannable QR on Seeds. Always dark squares on a light card with a quiet border, in both
  * themes: many phone scanners (HME Wallet on iPhone included) can't read light-on-dark codes.
- * The two colors are fixed on purpose and are not theme tokens.
+ * Colors come from the --qr / --qr-foreground tokens, which stay dark-on-light in both themes.
  */
-const QR_DARK = "#0b1f12";
-const QR_LIGHT = "#ffffff";
+const QR_DARK = "var(--qr-foreground)";
+const QR_LIGHT = "var(--qr)";
 
 export function ScanQr({ value, size = 168, className, ...rest }: { value: string; size?: number; className?: string; "aria-label"?: string }) {
   return (
