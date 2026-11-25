@@ -69,5 +69,6 @@ export const getEvmTokenRows = createServerFn({ method: "POST" })
     const read = (c: "ethereum" | "base") => shared(balanceKey(`erc20-${c}`, data.address), { ...CACHE_TIMES.balance, force: data.fresh, good: (r) => r != null },
       () => fetchHeldTokens(c, data.address));
     const [ethereum, base] = await Promise.all([read("ethereum"), read("base")]);
-    return tokenRows({ ethereum, base });
+    // Retain suspicious display-only rows so members can inspect/restore their hidden list.
+    return tokenRows({ ethereum, base }, true);
   });

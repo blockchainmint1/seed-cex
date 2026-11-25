@@ -510,6 +510,8 @@
 - [x] TONAPI plan: Lite ($9.9/mo, 10 RPS) purchased and Current (Nov 25). No code change needed — TON reads already retry on 429/5xx and move to the next server; nothing in the app assumed the free tier's 1 RPS
 
 ## USDT on TRON (Bobby, Nov 25)
+- [x] Balances spam protection: hide unverified tokens by default, per-account browser hide/spam/remove/restore choices and a searchable hidden-token list; no coin movement or new token trading permissions
+- [ ] Independent review of spam-token display controls before publishing (blocked: auditor)
 - [x] Wire pinned TRC-20 USDT balances, safe sends, withdrawals and existing one-tap THORChain/TSD swaps; reuse TRX pocket keys and preserve all approvals (review-locked)
 - [x] Regression tests, independent TronWeb byte/signature check, signed-in screen checks and shareable auditor handoff (1,695 tests)
 - [ ] Enable deposits/sends after independent audit and a small owner-approved funded send/swap (blocked: auditor review and owner funds/taps)

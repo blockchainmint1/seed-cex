@@ -9,7 +9,7 @@ import { SWAP_COINS } from "@/lib/xchain/assets";
 export type TokenChain = "ethereum" | "base";
 export type ListedToken = { chain: TokenChain; contract: string; symbol: string; name: string; swappable: boolean };
 export type HeldToken = { chain: TokenChain; contract: string; symbol: string | null; name: string | null; decimals: number | null; raw: string };
-export type TokenRow = ListedToken & { balance: number | null };
+export type TokenRow = ListedToken & { balance: number | null; suspectedSpam?: boolean };
 
 /** Tokens that already have their own row (USDC, USDT, HEX). */
 const MAIN_ROWS = new Set([
@@ -27,7 +27,9 @@ export const LISTED_TOKENS: ListedToken[] = SWAP_COINS.flatMap((c) => {
   const m = /^(ETH|BASE)\.[^-]+-(0X[0-9A-F]{40})$/.exec(c.asset);
   if (!m) return [];
   const chain: TokenChain = m[1] === "ETH" ? "ethereum" : "base";
-  const contract = m[2]!.toLowerCase().replace(/^0x/, "0x");
+  const matchedContract = m[2];
+  if (!matchedContract) return [];
+  const contract = matchedContract.toLowerCase();
   if (MAIN_ROWS.has(key(chain, contract))) return [];
   return [{ chain, contract, symbol: c.symbol, name: c.name, swappable: true }];
 });
@@ -69,7 +71,7 @@ export function tokenUnits(raw: string, decimals: number): number {
  * Rows to show: every listed token (0 when not held, null when the network couldn't be read),
  * then held tokens that aren't listed or junk. `held` null = that network couldn't be read.
  */
-export function tokenRows(held: Partial<Record<TokenChain, HeldToken[] | null>>): TokenRow[] {
+export function tokenRows(held: Partial<Record<TokenChain, HeldToken[] | null>>, includeSuspicious = false): TokenRow[] {
   const byKey = new Map<string, HeldToken>();
   for (const ch of ["ethereum", "base"] as const) for (const h of held[ch] ?? []) byKey.set(key(ch, h.contract), h);
   const out: TokenRow[] = LISTED_TOKENS.map((t) => {
@@ -79,10 +81,15 @@ export function tokenRows(held: Partial<Record<TokenChain, HeldToken[] | null>>)
   });
   const listed = new Set(LISTED_TOKENS.map((t) => key(t.chain, t.contract)));
   for (const [k, h] of byKey) {
-    if (listed.has(k) || MAIN_ROWS.has(k) || looksLikeJunk(h) || looksLikeImpostor(h.symbol)) continue;
-    const balance = tokenUnits(h.raw, h.decimals!);
-    if (!(balance > 0)) continue;
-    out.push({ chain: h.chain, contract: h.contract.toLowerCase(), symbol: h.symbol!, name: capName(h.name ?? h.symbol!), swappable: false, balance });
+    if (listed.has(k) || MAIN_ROWS.has(k) || !/^0x[0-9a-f]{40}$/i.test(h.contract)) continue;
+    const suspectedSpam = looksLikeJunk(h) || looksLikeImpostor(h.symbol);
+    if (suspectedSpam && !includeSuspicious) continue;
+    if (!/^(0x[0-9a-f]+|\d+)$/i.test(h.raw) || BigInt(h.raw) <= 0n) continue;
+    const validDecimals = h.decimals != null && h.decimals >= 0 && h.decimals <= 36;
+    const balance = validDecimals && h.decimals != null ? tokenUnits(h.raw, h.decimals) : null;
+    if (balance != null && (!(balance > 0) || !Number.isFinite(balance))) continue;
+    const symbol = capName(h.symbol || "Unknown token");
+    out.push({ chain: h.chain, contract: h.contract.toLowerCase(), symbol, name: capName(h.name ?? symbol), swappable: false, balance, suspectedSpam });
   }
   return out;
 }

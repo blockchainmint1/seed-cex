@@ -6,8 +6,13 @@ import { getEvmTokenRows } from "@/lib/evm.functions";
 import { shortContract } from "@/lib/account/erc-tokens";
 import { DEPOSIT_ASSETS } from "@/lib/account/deposit-options";
 import type { TokenRow } from "@/lib/account/erc-tokens";
-import { ArrowDownToLine, ArrowUpFromLine, RefreshCw, Search } from "lucide-react";
+import { ArrowDownToLine, ArrowUpFromLine, RefreshCw, Search, Eye, EyeOff, ShieldAlert, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useSession } from "@/hooks/use-session";
+import { useTokenVisibility } from "@/components/account/use-token-visibility";
+import { hiddenReason, type TokenChoice } from "@/lib/account/token-visibility";
 import { Card, Note, TabTitle } from "@/components/account/ui";
 import { HmeWalletLinkCard } from "@/components/wallet/HmeWalletLinkCard";
 import { fmtCoin, fmtUsd, usePocketBalances, usePocketLink } from "@/components/account/use-pocket";
@@ -39,6 +44,9 @@ export const Route = createFileRoute("/_authenticated/account/balances/")({
 });
 
 function SpotBalances() {
+  const { user } = useSession();
+  const { prefs, setHideSpam, choose } = useTokenVisibility(user?.id);
+  const [showHidden, setShowHidden] = useState(false);
   const link = usePocketLink();
   const l = link.data;
   const { rows, total, unpriced, balances, refreshNow } = usePocketBalances(l?.addresses, l?.id);
@@ -53,9 +61,12 @@ function SpotBalances() {
     enabled: Boolean(evm),
     staleTime: 60_000,
     refetchInterval: 180_000,
-    queryFn: () => tokenRead({ data: { address: evm! } }),
+    queryFn: () => {
+      if (!evm) throw new Error("Link your trading pocket first.");
+      return tokenRead({ data: { address: evm } });
+    },
   });
-  useEffect(() => setPage(0), [q, hideZero]);
+  useEffect(() => setPage(0), [q, hideZero, showHidden, prefs.hideSpam]);
 
   if (link.isPending) return <p className="text-sm text-muted-foreground">Checking your trading pocket…</p>;
   if (!l)
@@ -68,20 +79,24 @@ function SpotBalances() {
 
   const term = q.trim().toLowerCase();
   const shown = rows.filter((r) => {
+    if (showHidden) return false;
     if (hideZero && !((r.balance ?? 0) > 0) && !(r.arriving > 0)) return false;
     if (!term) return true;
     return [r.asset.symbol, r.asset.name, r.net.label].some((s) => s.toLowerCase().includes(term));
   });
   const have = new Set(rows.map((r) => `${r.asset.symbol}-${r.net.id}`));
   const extras: Extra[] = [
-    ...(tokens.data ?? []).map((t): Extra => ({ key: `tok-${t.chain}-${t.contract}`, symbol: t.symbol, network: `${CHAIN_LABEL[t.chain]} · ${t.swappable ? "token" : `token ${shortContract(t.contract)} · not checked by Seeds`}`, kind: "token", balance: t.balance, token: t })),
+    ...(tokens.data ?? []).map((t): Extra => ({ key: `tok-${t.chain}-${t.contract}`, symbol: t.symbol, network: `${CHAIN_LABEL[t.chain]} · ${t.swappable ? "token" : `token ${shortContract(t.contract)} · ${t.suspectedSpam ? "suspected spam" : "not checked by Seeds"}`}`, kind: "token", balance: t.balance, token: t })),
     ...DEPOSIT_ASSETS.flatMap((a) => a.networks.filter((n) => !have.has(`${a.symbol}-${n.id}`)).map((n): Extra => ({ key: `relink-${a.symbol}-${n.id}`, symbol: a.symbol, network: n.label, kind: "relink", balance: null }))),
   ];
   const extrasShown = extras.filter((x) => {
-    if (hideZero && !((x.balance ?? 0) > 0)) return false;
+    const hidden = x.token ? hiddenReason(x.token, prefs) !== null : false;
+    if (hidden !== showHidden) return false;
+    if (!showHidden && hideZero && !((x.balance ?? 0) > 0)) return false;
     if (!term) return true;
-    return [x.symbol, x.network, x.token?.name ?? ""].some((s) => s.toLowerCase().includes(term));
+    return [x.symbol, x.network, x.token?.name ?? "", x.token?.contract ?? ""].some((s) => s.toLowerCase().includes(term));
   });
+  const hiddenCount = (tokens.data ?? []).filter((t) => hiddenReason(t, prefs) !== null).length;
   type Item = { main: (typeof shown)[number] } | { extra: Extra };
   const all: Item[] = [...shown.map((r) => ({ main: r })), ...extrasShown.map((x) => ({ extra: x }))];
   const pages = Math.max(1, Math.ceil(all.length / PAGE));
@@ -144,8 +159,19 @@ function SpotBalances() {
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search coin or network" className="w-full rounded-sm border border-border bg-background py-2 pr-3 pl-9 text-sm outline-none focus:border-primary" />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          <input type="checkbox" className="h-4 w-4 accent-[var(--primary)]" checked={hideZero} onChange={(e) => setHideZero(e.target.checked)} /> Hide zero balances
+          <Checkbox checked={hideZero} onCheckedChange={(checked) => setHideZero(checked === true)} /> Hide zero balances
         </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Checkbox checked={prefs.hideSpam} onCheckedChange={(checked) => setHideSpam(checked === true)} /> Hide spam tokens
+        </label>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
+        <div className="flex flex-wrap gap-2" aria-label="Token lists">
+          <Button variant={showHidden ? "ghost" : "secondary"} size="sm" aria-pressed={!showHidden} onClick={() => setShowHidden(false)}>Balances</Button>
+          <Button variant={showHidden ? "secondary" : "ghost"} size="sm" aria-pressed={showHidden} onClick={() => setShowHidden(true)}><EyeOff /> Spam / hidden ({hiddenCount})</Button>
+        </div>
+        <p className="text-xs text-muted-foreground">Token choices saved in this browser · coins stay in your pocket</p>
       </div>
 
       <ul className="divide-y divide-border rounded-md border border-border md:hidden">
@@ -179,17 +205,21 @@ function SpotBalances() {
           <li key={x.key} className="px-4 py-3">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <span className="font-semibold">{x.symbol}</span>
-                <span className="block text-xs text-muted-foreground">{x.network}</span>
+                <span className="break-all font-semibold">{x.symbol}</span>
+                <span className="block break-words text-xs text-muted-foreground">{x.network}</span>
+                {showHidden && x.token ? <span className="block text-xs text-muted-foreground">{hiddenReason(x.token, prefs)}</span> : null}
               </div>
               <div data-qa-mask className="text-right">
                 <span className="num block">{extraNote(x) ?? (x.balance == null ? (tokens.isFetching ? "Checking…" : "—") : fmtCoin(x.balance))}</span>
               </div>
             </div>
-            {x.token?.swappable ? <div className="mt-2 text-xs font-semibold text-primary"><SwapLink pair={tokenPair(x)} /></div> : null}
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              {!showHidden && x.token?.swappable ? <span className="text-xs font-semibold text-primary"><SwapLink pair={tokenPair(x)} /></span> : null}
+              {x.token ? <TokenActions token={x.token} hidden={showHidden} choose={choose} /> : null}
+            </div>
           </li>
         ))}
-        {!all.length ? <li className="px-4 py-6 text-center text-sm text-muted-foreground">{hideZero ? "No coins with a balance yet." : "No coins match."}</li> : null}
+        {!all.length ? <li className="px-4 py-6 text-center text-sm text-muted-foreground">{showHidden ? "No hidden tokens match." : hideZero ? "No visible coins with a balance match." : "No coins match."}</li> : null}
       </ul>
 
       <div className="hidden overflow-x-auto rounded-md border border-border md:block">
@@ -233,8 +263,9 @@ function SpotBalances() {
             {pageExtra.map((x) => (
               <tr key={x.key} className="border-b border-border/60 last:border-0">
                 <td className="px-3 py-2.5">
-                  <span className="font-semibold">{x.symbol}</span>
-                  <span className="block text-xs text-muted-foreground">{x.network}</span>
+                  <span className="break-all font-semibold">{x.symbol}</span>
+                  <span className="block break-words text-xs text-muted-foreground">{x.network}</span>
+                  {showHidden && x.token ? <span className="block text-xs text-muted-foreground">{hiddenReason(x.token, prefs)}</span> : null}
                 </td>
                 <td data-qa-mask className="num px-3 py-2.5 text-right">
                   {extraNote(x) ? <span className="text-xs text-muted-foreground">{extraNote(x)}</span> : x.balance == null ? (tokens.isFetching ? "Checking…" : "Not available") : fmtCoin(x.balance)}
@@ -243,12 +274,15 @@ function SpotBalances() {
                 <td data-qa-mask className="num px-3 py-2.5 text-right">{extraNote(x) || x.balance == null ? "—" : fmtCoin(x.balance)}</td>
                 <td className="num px-3 py-2.5 text-right text-muted-foreground">—</td>
                 <td className="px-3 py-2 text-right whitespace-nowrap">
-                  {x.token?.swappable ? <SwapLink pair={tokenPair(x)} className="px-1 text-xs font-semibold text-primary hover:underline" /> : null}
+                  <div className="flex items-center justify-end gap-1">
+                    {!showHidden && x.token?.swappable ? <SwapLink pair={tokenPair(x)} className="px-1 text-xs font-semibold text-primary hover:underline" /> : null}
+                    {x.token ? <TokenActions token={x.token} hidden={showHidden} choose={choose} /> : null}
+                  </div>
                 </td>
               </tr>
             ))}
             {!all.length ? (
-              <tr><td colSpan={6} className="px-3 py-6 text-center text-sm text-muted-foreground">{hideZero ? "No coins with a balance yet." : "No coins match."}</td></tr>
+              <tr><td colSpan={6} className="px-3 py-6 text-center text-sm text-muted-foreground">{showHidden ? "No hidden tokens match." : hideZero ? "No visible coins with a balance match." : "No coins match."}</td></tr>
             ) : null}
           </tbody>
         </table>
@@ -272,11 +306,26 @@ function SpotBalances() {
         </Note>
       ) : null}
       {balances.isError ? <Note tone="error">Balances could not be synced. Refresh to retry.</Note> : null}
+      {tokens.isError ? <Note tone="error">Token lists could not be synced. <Button variant="link" size="sm" onClick={() => void tokens.refetch()}>Retry</Button></Note> : null}
       <p className="text-xs text-muted-foreground">
         These are the coins at your trading pocket's own addresses — your HME Wallet holds the keys. Tokens on Ethereum and Base marked "not checked by Seeds" were found in your pocket but aren't on Seeds' list — check them before trusting their value. Stellar, TON and Sui deposits and withdrawals await security review and small live send tests.
       </p>
     </div>
   );
+}
+
+function TokenActions({ token, hidden, choose }: { token: TokenRow; hidden: boolean; choose: (token: TokenRow, choice: TokenChoice) => void }) {
+  const actions = [
+    { choice: hidden ? "show" : "hide", label: hidden ? "Restore token" : "Hide token", Icon: hidden ? Eye : EyeOff },
+    { choice: "spam", label: "Mark as spam", Icon: ShieldAlert },
+    { choice: "remove", label: "Remove from balances", Icon: X },
+  ] as const;
+  return <TooltipProvider>{actions.map(({ choice, label, Icon }) => (
+    <Tooltip key={choice}>
+      <TooltipTrigger asChild><Button variant="ghost" size="icon" aria-label={`${label}: ${token.symbol}`} onClick={() => choose(token, choice)}><Icon /></Button></TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  ))}</TooltipProvider>;
 }
 
 /**

@@ -34,6 +34,10 @@ describe("Ethereum and Base tokens on the Balances page", () => {
     expect(looksLikeJunk({ symbol: "PEPE", name: "Pepe", decimals: 18 })).toBe(false);
     expect(looksLikeJunk({ symbol: null, name: "x", decimals: 18 })).toBe(true);
   });
+  test("the hidden-list read retains suspicious tokens without giving them swap actions", () => {
+    const rows = tokenRows({ ethereum: [{ chain: "ethereum", contract: "0x" + "3".repeat(40), symbol: "USDT", name: "Visit claim.example.com", decimals: 6, raw: "12000000" }], base: [] }, true);
+    expect(rows.find((r) => r.contract === "0x" + "3".repeat(40))).toMatchObject({ balance: 12, swappable: false, suspectedSpam: true });
+  });
 });
 
 import { describe as dT2, expect as eT2, test as tT2 } from "bun:test";
