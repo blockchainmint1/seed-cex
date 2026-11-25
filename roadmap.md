@@ -480,3 +480,6 @@
 - [x] Activate audited tester sends in preview (Bobby approved Nov 25); regular members remain blocked
 - [ ] Publish reviewed fixes, owner-funded tester sends, then wider deposits/withdrawals (blocked: auditor re-check, Telegram readiness + wallet re-link, owner-funded live tests)
 - [ ] Every possible automatic swap path (earlier request): continue separately; provider routes and approved multi-leg flow required
+
+- [ ] TSD → TON one-tap route (TSD → ETH → Relay → TON), testers first (Bobby, Nov 25)
+- [ ] USDT on TON: in-pocket TON → USDT swap + USDT (TON) withdrawals; first test = pay TONAPI Lite bill (Bobby, Nov 25)
