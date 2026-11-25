@@ -93,7 +93,7 @@ export const WITHDRAW_COINS: WithdrawCoin[] = [
   { key: "TON:ton", symbol: "TON", network: "ton", networkLabel: "TON", pocket: "TON", kind: "ton", decimals: 9,
     keepNote: "Keep TON for network fees and wallet storage. Native TON only; no jettons. Send only to an address that needs no comment or memo.", explorerTx: "https://tonviewer.com/", addressHint: "UQ… or EQ… (mainnet, no memo)" },
   { key: "USDT:ton", symbol: "USDT", network: "ton", networkLabel: "TON", pocket: "TON", kind: "ton_usdt", decimals: 6, feeCoin: "TON",
-    keepNote: "Tether's USD₮ on TON only. Each send attaches 0.05 TON for network fees (most comes back), so keep about 0.1 TON in your TON pocket. Send only to an address that needs no comment or memo.", explorerTx: "https://tonviewer.com/transaction/", addressHint: "UQ… or EQ… (mainnet, no memo)" },
+    keepNote: "Tether's USD₮ on TON only. Each send attaches 0.05 TON for network fees (most comes back), so keep TON in your pocket for fees. Plain payment notes are included when supplied.", explorerTx: "https://tonviewer.com/transaction/", addressHint: "UQ… or EQ… address, or ton://transfer/…" },
   { key: "SUI:sui", symbol: "SUI", network: "sui", networkLabel: "Sui", pocket: "SUI", kind: "sui", decimals: 9,
     keepNote: "A little SUI stays behind for gas. Only native SUI coins are spent; other Sui tokens and objects are never touched.", explorerTx: "https://suiscan.xyz/mainnet/tx/", addressHint: "0x… (64 hexadecimal characters)" },
 ];

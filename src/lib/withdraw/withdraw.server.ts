@@ -25,11 +25,12 @@ import {
 } from "./rules";
 import { isKeyKind, pocketSource, type PocketSource, type SignInKind } from "@/lib/account/sign-in-kind";
 import { edSigningRecovery } from "@/lib/pockets/ed-send-rules";
+import { approvalPaymentCommentMatches, normalizeTonPaymentInput, paymentComment } from "./ton-payment-link";
 
 const SITE = "https://seeds.honest.money";
 const withdrawUrl = (c: WithdrawCoin) => `${SITE}/account/balances/withdraw?coin=${encodeURIComponent(c.symbol)}&network=${c.network}`;
 const EVM_CONFIRMATIONS = 12;
-const ROW_FIELDS = "id, chain, coin, amount, amount_usd, to_address, destination_tag, from_address, status, release_at, hold_hours, txid, error, confirmations, created_at, sent_at, cancelled_at";
+const ROW_FIELDS = "id, chain, coin, amount, amount_usd, to_address, destination_tag, payment_comment, from_address, status, release_at, hold_hours, txid, error, confirmations, created_at, sent_at, cancelled_at";
 
 function cleanDbError(msg: string): string {
   return msg.replace(/^.*?ERROR:\s*/i, "").trim();
@@ -149,10 +150,11 @@ export async function withdrawContext(userId: string, tester: boolean, key: stri
   };
 }
 
-export type WithdrawInput = { symbol: string; network: string; amount: string; to: string; tag?: string };
+export type WithdrawInput = { symbol: string; network: string; amount: string; to: string; tag?: string; comment?: string };
 
 /** Every check that doesn't need a code: returns exactly what would be sent. Throws a plain reason. */
 async function prepare(userId: string, tester: boolean, input: WithdrawInput) {
+  input = normalizeTonPaymentInput(input);
   const coin = withdrawCoin(input.symbol, input.network);
   if (!coin) throw new Error("Seeds can't send that coin on that network yet.");
   const [link, lim, who] = await Promise.all([loadLinkSafe(userId), limitsFor(userId), signInFor(userId)]);
@@ -189,7 +191,7 @@ async function prepare(userId: string, tester: boolean, input: WithdrawInput) {
   if (price == null && !lim.tester) throw new Error(`No live price for ${coin.symbol} right now, so your withdrawal limit can't be checked.`);
   const amountUsd = price == null ? 0 : Math.round(amount * price * 100) / 100;
   if (amountUsd > lim.perWithdrawalUsd) throw new Error(`Your withdrawal level allows up to $${lim.perWithdrawalUsd.toLocaleString("en-US")} per withdrawal.`);
-  return { coin, link, lim, from, to, tag: tag.tag, units, amount, amountText: unitsToText(units, coin.decimals), amountUsd };
+  return { coin, link, lim, from, to, tag: tag.tag, comment: input.comment ?? "", units, amount, amountText: unitsToText(units, coin.decimals), amountUsd };
 }
 
 /** Step 1: email a code for exactly this withdrawal. */
@@ -205,7 +207,7 @@ export async function sendWithdrawalEmailCode(userId: string, tester: boolean, i
   if ((count ?? 0) >= EMAIL_CODES_PER_HOUR) throw new Error("Too many withdrawal codes in the last hour. Wait a little and try again.");
 
   const secret = codeSecret();
-  const details = detailsText({ userId, key: p.coin.key, units: p.units, to: p.to, tag: p.tag });
+  const details = detailsText({ userId, key: p.coin.key, units: p.units, to: p.to, tag: p.tag, comment: p.comment });
   const code = newEmailCode();
   const expiresAt = new Date(Date.now() + EMAIL_CODE_TTL_MS).toISOString();
   const { error } = await supabaseAdmin.from("withdrawal_email_codes").insert({
@@ -214,7 +216,7 @@ export async function sendWithdrawalEmailCode(userId: string, tester: boolean, i
   if (error) throw new Error("Couldn't set up a withdrawal code. Try again.");
   await deliver(r.email, "withdrawal-code", {
     name: r.name, code, amount: p.amountText, symbol: p.coin.symbol, network: p.coin.networkLabel,
-    to: p.tag != null ? `${p.to} (tag ${p.tag})` : p.to, minutes: Math.round(EMAIL_CODE_TTL_MS / 60_000),
+    to: `${p.to}${p.tag != null ? ` (tag ${p.tag})` : ""}${p.comment ? ` · note: ${p.comment}` : ""}`, minutes: Math.round(EMAIL_CODE_TTL_MS / 60_000),
   });
   return { sentTo: maskEmail(r.email), expiresAt, amount: p.amountText, amountUsd: p.amountUsd };
 }
@@ -230,7 +232,7 @@ async function requestWithdrawalUnlocked(userId: string, tester: boolean, input:
   if (!freshTwoFactor(claims, Math.floor(Date.now() / 1000))) throw new Error("Enter the 6-digit code from your authenticator app to approve this withdrawal.");
   const p = await prepare(userId, tester, input);
   const secret = codeSecret();
-  const details = detailsText({ userId, key: p.coin.key, units: p.units, to: p.to, tag: p.tag });
+  const details = detailsText({ userId, key: p.coin.key, units: p.units, to: p.to, tag: p.tag, comment: p.comment });
   const { cleanEmailCode } = await import("./rules");
   const code = cleanEmailCode(input.emailCode);
   if (!code) throw new Error("Enter the 6-digit code from the Seeds email.");
@@ -252,17 +254,22 @@ async function requestWithdrawalUnlocked(userId: string, tester: boolean, input:
 
   const hold = p.lim.holdHours > 0 ? `then a ${p.lim.holdHours}-hour wait you can cancel` : "then it goes out within a few minutes (beta tester: no wait)";
   try {
+    if (p.comment) {
+      const { data: noted, error: noteError } = await supabaseAdmin.from("pocket_withdrawals")
+        .update({ payment_comment: p.comment }).eq("id", rowId).eq("status", "approving").is("approval_id", null).select("id");
+      if (noteError || !noted?.length) throw new Error("Could not save the payment note. Nothing was sent.");
+    }
     const { requestSendApproval } = await import("@/lib/pocket-send/approvals.server");
     const ap = await requestSendApproval({
       userId, linkId: p.link.id, purpose: "withdrawal", refId: rowId, leg: p.coin.key, asset: p.coin.symbol,
       amount: p.amount, from: p.from, to: p.to,
-      what: `Withdrawal on ${p.coin.networkLabel}${p.tag != null ? ` · destination tag ${p.tag}` : ""} (about $${p.amountUsd}) — ${hold}`,
-      meta: { withdrawal: rowId, network: p.coin.network },
+      what: `Withdrawal on ${p.coin.networkLabel}${p.tag != null ? ` · destination tag ${p.tag}` : ""}${p.comment ? ` · note: ${p.comment}` : ""} (about $${p.amountUsd}) — ${hold}`,
+      meta: { withdrawal: rowId, network: p.coin.network, payment_comment: p.comment },
     });
     await supabaseAdmin.from("pocket_withdrawals").update({ approval_id: ap.id }).eq("id", rowId);
     void tell(userId, "", "Withdrawal request", [
       `Withdraw ${p.amountText} ${p.coin.symbol} (about $${p.amountUsd}) from your trading pocket`,
-      `To ${p.to}${p.tag != null ? ` (tag ${p.tag})` : ""} on ${p.coin.networkLabel}`,
+      `To ${p.to}${p.tag != null ? ` (tag ${p.tag})` : ""} on ${p.coin.networkLabel}${p.comment ? ` · note: ${p.comment}` : ""}`,
       `Waiting for your Approve tap in Telegram, ${hold}. Cancel: ${withdrawUrl(p.coin)}`,
     ]);
     return { id: rowId, amount: p.amountText, amountUsd: p.amountUsd, holdHours: p.lim.holdHours, approvalExpiresAt: ap.expires_at };
@@ -274,12 +281,12 @@ async function requestWithdrawalUnlocked(userId: string, tester: boolean, input:
   }
 }
 
-type ApprovalLike = { id: string; ref_id: string; status: string; user_id: string; link_id: string; leg: string; amount: number; from_address: string; to_address: string };
+type ApprovalLike = { id: string; ref_id: string; status: string; user_id: string; link_id: string; leg: string; amount: number; from_address: string; to_address: string; meta?: unknown };
 
 /** After the Telegram tap (or its expiry): start the hold, or cancel. Called from approvals.server.ts; never throws. */
 export async function continueWithdrawal(a: ApprovalLike) {
   try {
-    const { data: row } = await supabaseAdmin.from("pocket_withdrawals").select("id, user_id, chain, coin, amount, to_address, status, hold_hours").eq("id", a.ref_id).maybeSingle();
+    const { data: row } = await supabaseAdmin.from("pocket_withdrawals").select("id, user_id, chain, coin, amount, to_address, status, hold_hours, payment_comment").eq("id", a.ref_id).maybeSingle();
     if (!row || row.status !== "approving") return;
     const coin = withdrawCoin(row.coin, row.chain);
     if (a.status !== "approved") {
@@ -288,7 +295,8 @@ export async function continueWithdrawal(a: ApprovalLike) {
       return;
     }
     const { spendApproval } = await import("@/lib/pocket-send/approvals.server");
-    await spendApproval({ purpose: "withdrawal", id: a.id, leg: a.leg, userId: a.user_id, linkId: a.link_id, amount: a.amount, from: a.from_address, to: a.to_address });
+    if (!approvalPaymentCommentMatches(row.payment_comment, a.meta)) throw new Error("The approved payment note does not match this withdrawal. Nothing was sent.");
+    await spendApproval({ purpose: "withdrawal", id: a.id, leg: a.leg, userId: a.user_id, linkId: a.link_id, amount: a.amount, from: a.from_address, to: a.to_address, ...(row.payment_comment ? { meta: { payment_comment: row.payment_comment } } : {}) });
     const { data: ok } = await supabaseAdmin.rpc("approve_pocket_withdrawal", { _id: row.id, _approval_id: a.id });
     if (!ok) return;
     if (row.hold_hours > 0) {
@@ -305,6 +313,8 @@ export async function continueWithdrawal(a: ApprovalLike) {
 
 /** Why an Approve tap can't be honoured any more, or null (approvals.server.ts). */
 export async function withdrawalApproveBlocker(a: ApprovalLike): Promise<string | null> {
+  const { data: row } = await supabaseAdmin.from("pocket_withdrawals").select("payment_comment").eq("id", a.ref_id).eq("user_id", a.user_id).maybeSingle();
+  if (!row || !approvalPaymentCommentMatches(row.payment_comment, a.meta)) return "The payment note no longer matches this withdrawal. Nothing was sent.";
   const link = await loadLinkSafe(a.user_id);
   if (!link || link.id !== a.link_id || !link.hasKey || !Object.values(link.addresses).includes(a.from_address)) return "Your wallet link changed since this request.";
   return readinessProblem(await readinessFor(a.user_id, link.id));
@@ -322,7 +332,7 @@ export async function cancelWithdrawal(userId: string, id: string) {
   return { ok: true };
 }
 
-type Row = { id: string; user_id: string; link_id: string; chain: string; coin: string; amount: number; amount_units: string; from_address: string; to_address: string; destination_tag: number | null; approval_id: string | null };
+type Row = { id: string; user_id: string; link_id: string; chain: string; coin: string; amount: number; amount_units: string; from_address: string; to_address: string; destination_tag: number | null; payment_comment: string; approval_id: string | null };
 
 async function sendOne(r: Row): Promise<"sent" | "failed" | "unknown"> {
   const update = async (patch: Record<string, unknown>) => {
@@ -335,8 +345,10 @@ async function sendOne(r: Row): Promise<"sent" | "failed" | "unknown"> {
     if (!coin) throw new Error("Seeds can't send this coin on this network.");
     // Only a withdrawal its owner approved in Telegram goes out (rows from before Nov 20 2026 had no tap).
     if (!r.approval_id) throw new Error("This withdrawal was asked for before every withdrawal needed a Telegram tap. Nothing was sent — ask again.");
-    const { data: ap } = await supabaseAdmin.from("send_approvals").select("status, ref_id, purpose").eq("id", r.approval_id).maybeSingle();
+    const { data: ap } = await supabaseAdmin.from("send_approvals").select("status, ref_id, purpose, meta").eq("id", r.approval_id).maybeSingle();
     if (!ap || ap.status !== "used" || ap.ref_id !== r.id || ap.purpose !== "withdrawal") throw new Error("No matching Telegram approval. Nothing was sent.");
+    const comment = paymentComment(coin.kind, r.payment_comment);
+    if (!approvalPaymentCommentMatches(comment, ap.meta)) throw new Error("No matching Telegram approval for the payment note. Nothing was sent.");
     const link = await loadLinkSafe(r.user_id);
     const tester = await isTester(r.user_id);
     const block = sendBlocker({
@@ -364,7 +376,7 @@ async function sendOne(r: Row): Promise<"sent" | "failed" | "unknown"> {
       if (recErr) throw new Error(`Could not record the withdrawal: ${recErr.message}`);
       if (!rec?.length) throw new Error("This withdrawal was closed while it was being prepared. Nothing was sent.");
       txid = id;
-    }, r.destination_tag, tester);
+    }, r.destination_tag, tester, comment);
     txid = sent;
     await update({ status: "sent", txid: sent, sent_at: new Date().toISOString(), confirmations: 0 });
     void tell(r.user_id, `✅ <b>Withdrawal sent</b>\n${r.amount} ${coin.symbol} on ${coin.networkLabel} to ${r.to_address}\nTx ${sent}`, "Withdrawal sent",
@@ -387,12 +399,12 @@ async function sendOne(r: Row): Promise<"sent" | "failed" | "unknown"> {
 /** Scheduled (and right after a no-wait approval): send every withdrawal whose hold is over, then update confirmations. */
 export async function advanceWithdrawals(onlyId?: string) {
   let q = supabaseAdmin.from("pocket_withdrawals")
-    .select("id, user_id, link_id, chain, coin, amount, amount_units, from_address, to_address, destination_tag, approval_id")
+    .select("id, user_id, link_id, chain, coin, amount, amount_units, from_address, to_address, destination_tag, payment_comment, approval_id")
     .eq("status", "held").lte("release_at", new Date().toISOString()).order("release_at").limit(10);
   if (onlyId) q = q.eq("id", onlyId);
   const { data: due } = await q;
   const results: Record<string, number> = { sent: 0, failed: 0, unknown: 0, skipped: 0, confirmed: 0 };
-  for (const r of (due ?? []) as Row[]) {
+  for (const r of due ?? []) {
     const { data: claimed } = await supabaseAdmin.rpc("claim_pocket_withdrawal", { _id: r.id });
     if (!claimed) { results['skipped'] = (results['skipped'] ?? 0) + 1; continue; }
     const outcome = await sendOne(r);

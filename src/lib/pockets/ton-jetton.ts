@@ -3,10 +3,10 @@
  * message body is built by Seeds; nothing from a quote service is ever signed as-is.
  */
 import { Address, beginCell, type Cell } from "@ton/core";
+import { checkedUsdtComment, USDT_TON_MASTER } from "./ton-payment";
+export { checkedUsdtComment, USDT_TON_MASTER, USDT_TON_DECIMALS } from "./ton-payment";
 
 /** Tether's official USD₮ jetton master on TON (6 decimals). */
-export const USDT_TON_MASTER = "EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs";
-export const USDT_TON_DECIMALS = 6;
 /** STON.fi DEX v1 router, its proxy-TON wallet and its USD₮ wallet (checked on both TON servers). */
 export const STON_ROUTER = "EQB3ncyBUTjZUA5EnFKR5_EnOMI9V1tTEAAPaiU71gc4TiUt";
 export const STON_PTON_WALLET = "EQARULUYsmJq1RiZ-YiH-IJLcAZUVkVff-KBPwEmmaQGH6aC";
@@ -29,11 +29,16 @@ export const sameTonAddress = (a: string, b: string): boolean => {
 };
 
 /** TEP-74 transfer: `units` USD₮ to `destination`'s wallet, excess TON back to `response`. */
-export function usdtTransferBody(i: { queryId: bigint; units: bigint; destination: string; response: string }): Cell {
+export function usdtTransferBody(i: { queryId: bigint; units: bigint; destination: string; response: string; comment?: string }): Cell {
   if (i.units <= 0n || i.units >= 1n << 120n) throw new Error("Invalid USD₮ amount");
-  return beginCell().storeUint(OP_JETTON_TRANSFER, 32).storeUint(i.queryId, 64).storeCoins(i.units)
+  const comment = checkedUsdtComment(i.comment);
+  const transfer = beginCell().storeUint(OP_JETTON_TRANSFER, 32).storeUint(i.queryId, 64).storeCoins(i.units)
     .storeAddress(Address.parse(i.destination)).storeAddress(Address.parse(i.response))
-    .storeBit(false).storeCoins(1n).storeBit(false).endCell();
+    .storeBit(false).storeCoins(1n);
+  // TEP-74 forward_payload: Either ^Cell, comment opcode 0 + UTF-8 bytes.
+  // Empty comments retain the audited empty inline payload byte-for-byte.
+  return comment ? transfer.storeBit(true).storeRef(beginCell().storeUint(0, 32).storeStringTail(comment).endCell()).endCell()
+    : transfer.storeBit(false).endCell();
 }
 
 /** STON.fi v1 TON->USD₮: pTON transfer of `offer` to the router with a swap payload paying `member`. */

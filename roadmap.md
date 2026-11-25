@@ -494,3 +494,4 @@
 - [ ] One tap for every remaining combo that still says "do X first" (ETH → USDT on TON, HYPE → TON, USDT on TON → anything, TON → TSD), always the fastest + cheapest route
 - [x] Swap tile: expand for per-step log with txids + TSD Bridge order link
 - [x] RL1: recognise equivalent HME Wallet public keys, preserve every coin/address, test refusals and prepare auditor handoff (Bobby approved Nov 25); not published, live re-link awaits owner test and independent review
+- [x] TONAPI refill link: decode/pre-fill withdrawals, preserve USD₮ comment through approvals and send; 1,655 tests pass and signed-in paste verified, audit handoff prepared; not published, funded payment awaits review and owner approval

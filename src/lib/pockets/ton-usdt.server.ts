@@ -59,12 +59,12 @@ export async function readUsdtTonSpendable(owner: string): Promise<{ units: bigi
 }
 
 /** USD₮ withdrawal: amount must be held; TON pays the 0.05 jetton gas + fee and keeps a little behind. */
-export async function sendUsdtTon(link: Link, from: string, to: string, units: bigint, record: Recorder): Promise<string> {
+export async function sendUsdtTon(link: Link, from: string, to: string, units: bigint, record: Recorder, comment = ""): Promise<string> {
   tonDestination(to);
   if (sameTonAddress(to, from)) throw new Error("That's your own pocket. Nothing was sent.");
   const { wallet, units: held } = await usdtSpendable(from);
   if (held < units) throw new Error("Not enough USD₮ in your TON pocket. Nothing was sent.");
-  const body = usdtTransferBody({ queryId: BigInt(Date.now()), units, destination: to, response: from });
+  const body = usdtTransferBody({ queryId: BigInt(Date.now()), units, destination: to, response: from, comment });
   return signAndSendTon(link, from, { to: wallet, units: USDT_SEND_GAS, body }, record, (balance, fee) => {
     if (balance < USDT_SEND_GAS + fee + TON_JETTON_KEEP) throw new Error("Your TON pocket needs about 0.1 TON for the USD₮ network fee. Nothing was sent.");
   });

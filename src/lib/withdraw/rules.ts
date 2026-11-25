@@ -113,8 +113,10 @@ export function unitsToText(units: bigint, decimals: number): string {
 }
 
 /** The exact withdrawal an email code is for. Any change (coin, network, amount, address) needs a new code. */
-export function detailsText(i: { userId: string; key: string; units: bigint; to: string; tag?: number | null }): string {
-  return `seeds-withdrawal|${i.userId}|${i.key}|${i.units.toString()}|${i.to.trim()}|${i.tag ?? ""}`;
+export function detailsText(i: { userId: string; key: string; units: bigint; to: string; tag?: number | null; comment?: string }): string {
+  const legacy = `seeds-withdrawal|${i.userId}|${i.key}|${i.units.toString()}|${i.to.trim()}|${i.tag ?? ""}`;
+  // Keep existing no-comment codes usable; JSON escapes delimiters in new notes.
+  return i.comment ? `${legacy}|comment:${JSON.stringify(i.comment)}` : legacy;
 }
 
 const b64url = (b: Uint8Array) => btoa(String.fromCharCode(...b)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");

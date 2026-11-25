@@ -3665,6 +3665,7 @@ export type Database = {
           hold_hours: number
           id: string
           link_id: string
+          payment_comment: string
           release_at: string
           send_meta: Json | null
           sent_at: string | null
@@ -3691,6 +3692,7 @@ export type Database = {
           hold_hours?: number
           id?: string
           link_id: string
+          payment_comment?: string
           release_at: string
           send_meta?: Json | null
           sent_at?: string | null
@@ -3717,6 +3719,7 @@ export type Database = {
           hold_hours?: number
           id?: string
           link_id?: string
+          payment_comment?: string
           release_at?: string
           send_meta?: Json | null
           sent_at?: string | null

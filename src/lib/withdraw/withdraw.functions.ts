@@ -20,8 +20,9 @@ const base = z.object({
   symbol: z.string().trim().min(2).max(6),
   network: z.string().trim().min(2).max(16),
   amount: z.string().trim().min(1).max(64),
-  to: z.string().trim().min(20).max(128),
+  to: z.string().trim().min(20).max(2048),
   tag: z.string().trim().max(10).optional(),
+  comment: z.string().max(120).optional(),
 });
 
 /** Step 1: email me a code for exactly this withdrawal. Nothing is reserved or signed. */

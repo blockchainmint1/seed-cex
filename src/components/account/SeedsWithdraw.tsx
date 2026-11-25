@@ -12,6 +12,7 @@ import { cancelWithdrawalFn, getWithdrawals, requestWithdrawalFn, sendWithdrawal
 import { WITHDRAW_STATUS } from "@/lib/withdraw/rules";
 import type { WithdrawCoin } from "@/lib/withdraw/catalog";
 import { isKeyKind, keyThing } from "@/lib/account/sign-in-kind";
+import { parseTonPaymentLink } from "@/lib/withdraw/ton-payment-link";
 
 /** Shared cache: whether Seeds can send this coin for the member, the rules, and their withdrawals. */
 export function useWithdrawals(key: string | null, enabled: boolean) {
@@ -32,15 +33,34 @@ export function SeedsWithdraw({ coin, from, balance }: { coin: WithdrawCoin; fro
   const [amount, setAmount] = useState("");
   const [to, setTo] = useState("");
   const [tag, setTag] = useState("");
+  const [comment, setComment] = useState("");
+  const [paymentError, setPaymentError] = useState<string | null>(null);
   const [checked, setChecked] = useState(false);
   const [sent, setSent] = useState<{ sentTo: string; amountUsd: number } | null>(null);
   const [emailCode, setEmailCode] = useState("");
   const [authCode, setAuthCode] = useState("");
   const [done, setDone] = useState<string | null>(null);
   const refresh = () => qc.invalidateQueries({ queryKey: ["withdrawals"] });
-  const details = { symbol: coin.symbol, network: coin.network, amount: amount.trim(), to: to.trim(), tag: coin.kind === "xrp" ? tag.trim() : undefined };
+  const details = { symbol: coin.symbol, network: coin.network, amount: amount.trim(), to: to.trim(), tag: coin.kind === "xrp" ? tag.trim() : undefined, ...(coin.kind === "ton_usdt" ? { comment } : {}) };
   // The emailed code is for these exact details; any edit needs a new code.
   const edit = (f: (v: string) => void) => (v: string) => { f(v); setSent(null); setEmailCode(""); setDone(null); };
+  const editDestination = (value: string) => {
+    setPaymentError(null);
+    setSent(null); setEmailCode(""); setAuthCode(""); setDone(null); setChecked(false);
+    try {
+      const payment = parseTonPaymentLink(value);
+      if (!payment) { setTo(value); return; }
+      if (payment.symbol !== coin.symbol || payment.network !== coin.network) {
+        setTo(value);
+        setPaymentError(`This link requests ${payment.amount ?? "an amount of"} ${payment.symbol} on TON. Select ${payment.symbol} on TON first, then paste it again.`);
+        return;
+      }
+      setTo(payment.to);
+      setAmount(payment.amount ?? ""); setComment(payment.comment); setTag("");
+    } catch (e) {
+      setTo(value); setPaymentError(e instanceof Error ? e.message : "That payment link could not be read.");
+    }
+  };
 
   const codeStep = useMutation({
     mutationFn: () => sendCode({ data: details }),
@@ -53,7 +73,7 @@ export function SeedsWithdraw({ coin, from, balance }: { coin: WithdrawCoin; fro
     },
     onSuccess: (r) => {
       setDone(`Check Telegram now: tap Approve within 15 minutes for ${r.amount} ${coin.symbol} (about $${r.amountUsd}). ${r.holdHours > 0 ? `Then Seeds waits ${r.holdHours} hours before sending — you can cancel until then.` : "Beta tester, so no wait: it goes out a few minutes after your tap."}`);
-      setAmount(""); setTo(""); setTag(""); setChecked(false); setSent(null); setEmailCode(""); refresh();
+      setAmount(""); setTo(""); setTag(""); setComment(""); setPaymentError(null); setChecked(false); setSent(null); setEmailCode(""); refresh();
     },
     onSettled: () => setAuthCode(""),
   });
@@ -61,7 +81,7 @@ export function SeedsWithdraw({ coin, from, balance }: { coin: WithdrawCoin; fro
 
   const d = ctx.data;
   const rows = (d?.withdrawals ?? []).filter((w) => w.coin === coin.symbol && w.chain === coin.network);
-  const ready = checked && amount.trim() && to.trim().length >= 20;
+  const ready = !paymentError && checked && amount.trim() && to.trim().length >= 20;
 
   return (
     <div className="space-y-4">
@@ -87,7 +107,7 @@ export function SeedsWithdraw({ coin, from, balance }: { coin: WithdrawCoin; fro
           ) : null}
         </div>
       ) : d ? (
-        <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); if (sent) submit.mutate(); else codeStep.mutate(); }}>
+        <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); if (!ready || codeStep.isPending || submit.isPending) return; if (sent) submit.mutate(); else codeStep.mutate(); }}>
           <label className="block">
             <span className={fieldLabel}>Amount ({coin.symbol})</span>
             <div className="mt-1 flex gap-2">
@@ -100,8 +120,15 @@ export function SeedsWithdraw({ coin, from, balance }: { coin: WithdrawCoin; fro
           </label>
           <label className="block">
             <span className={fieldLabel}>Send to ({coin.networkLabel} address)</span>
-            <input className={`${inputCls} mt-1 font-mono`} value={to} onChange={(e) => edit(setTo)(e.target.value)} placeholder={coin.addressHint} spellCheck={false} autoComplete="off" />
+            <input className={`${inputCls} mt-1 font-mono`} value={to} onChange={(e) => editDestination(e.target.value)} placeholder={coin.addressHint} spellCheck={false} autoComplete="off" />
           </label>
+          {paymentError ? <Note tone="error">{paymentError}</Note> : null}
+          {coin.kind === "ton_usdt" ? (
+            <label className="block">
+              <span className={fieldLabel}>Payment note</span>
+              <input className={`${inputCls} mt-1`} value={comment} maxLength={120} onChange={(e) => { edit(setComment)(e.target.value); setChecked(false); }} placeholder="Optional" autoComplete="off" />
+            </label>
+          ) : null}
           {coin.kind === "xrp" ? (
             <label className="block">
               <span className={fieldLabel}>Destination tag (if the receiver gave you one)</span>
@@ -142,7 +169,7 @@ export function SeedsWithdraw({ coin, from, balance }: { coin: WithdrawCoin; fro
           {done ? <Note tone="ok">{done}</Note> : null}
           {sent ? (
             <div className="flex flex-wrap items-center gap-3">
-              <Button type="submit" disabled={submit.isPending || emailCode.length !== 6 || authCode.length !== 6}>
+              <Button type="submit" disabled={!ready || submit.isPending || emailCode.length !== 6 || authCode.length !== 6}>
                 <Send /> {submit.isPending ? "Checking…" : "Approve and ask Telegram"}
               </Button>
               <button type="button" className="text-xs font-semibold text-primary hover:underline" disabled={codeStep.isPending} onClick={() => codeStep.mutate()}>
@@ -168,6 +195,7 @@ export function SeedsWithdraw({ coin, from, balance }: { coin: WithdrawCoin; fro
                 <div className="min-w-0">
                   <p><span className="num font-semibold">{fmtCoin(Number(w.amount))} {w.coin}</span> <span className="text-muted-foreground">(${Number(w.amount_usd).toFixed(2)})</span></p>
                   <p className="truncate font-mono text-xs text-muted-foreground">to {w.to_address}{w.destination_tag != null ? ` · tag ${w.destination_tag}` : ""}</p>
+                  {w.payment_comment ? <p className="break-words text-xs text-muted-foreground">Note: {w.payment_comment}</p> : null}
                   <p className="text-xs text-muted-foreground">
                     {WITHDRAW_STATUS[w.status] ?? w.status}
                     {w.status === "held" ? ` · sends ${new Date(w.release_at).toLocaleString()}` : ""}

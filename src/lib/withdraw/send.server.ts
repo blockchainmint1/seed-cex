@@ -177,7 +177,7 @@ export type Recorder = (txid: string, meta?: EdSendMeta) => Promise<void>;
  * Sign and broadcast one transfer of `units` from the pocket at `from` to `to`.
  * Re-reads balances and fees first and refuses (nothing sent) if the pocket can't cover them.
  */
-export async function sendWithdrawal(c: WithdrawCoin, link: Link, from: string, to: string, units: bigint, record: Recorder, destinationTag?: number | null, tester = false): Promise<string> {
+export async function sendWithdrawal(c: WithdrawCoin, link: Link, from: string, to: string, units: bigint, record: Recorder, destinationTag?: number | null, tester = false, comment = ""): Promise<string> {
   const { withPocketKey } = await import("@/lib/xchain/send.server");
   const coins = Number(units) / 10 ** c.decimals;
   switch (c.kind) {
@@ -189,7 +189,7 @@ export async function sendWithdrawal(c: WithdrawCoin, link: Link, from: string, 
     }
     case "ton_usdt": {
       const { sendUsdtTon } = await import("@/lib/pockets/ton-usdt.server");
-      return sendUsdtTon(link, from, to, units, record);
+      return sendUsdtTon(link, from, to, units, record, comment);
     }
     case "evm": {
       const { chain, asset } = evmAsset(c);

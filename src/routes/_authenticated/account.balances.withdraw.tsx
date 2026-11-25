@@ -101,7 +101,7 @@ function Withdraw() {
                           <Link to="/activity" className="text-primary underline">Cancel an order</Link> to free it.
                         </Note>
                       ) : null}
-                      <SeedsWithdraw coin={coin} from={row.address} balance={free} />
+                      <SeedsWithdraw key={coin.key} coin={coin} from={row.address} balance={free} />
                       {withdrawRoute(net) === "hme" && !keyKind ? (
                         <details className="rounded-sm border border-border px-3 py-2 text-sm">
                           <summary className="cursor-pointer font-semibold">Or send it yourself from HME Wallet</summary>
