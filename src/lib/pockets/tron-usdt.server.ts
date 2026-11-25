@@ -77,6 +77,7 @@ export async function prepareUsdtTronSend(from: string, to: string, units: bigin
     const energy = tronUsdtSimulationEnergy(simulation);
     const price = (key: string) => { const n = fees.chainParameter?.find((p) => p.key === key)?.value; if (!n || !Number.isSafeInteger(n) || n <= 0) throw new Error("TRON fee rates couldn't be verified."); return BigInt(n); };
     const budget = tronUsdtFeeBudget(energy, price("getEnergyFee"), price("getTransactionFee"), memo ? price("getMemoFee") : 0n);
+    if (!account.address) throw new Error("Your TRON pocket hasn't been activated yet. Send some TRX to it first (it pays the network fee). Nothing was sent.");
     const permission = account.owner_permission;
     const keys = permission?.keys;
     const key = keys?.[0];
@@ -109,15 +110,30 @@ export async function sendUsdtTron(link: KeyedLink, from: string, to: string, un
   return signed.txid;
 }
 
+export const TRON_EXPIRY_MARGIN_MS = 60_000;
+/** A node answers an unknown txid with an empty object. */
+export function tronTxAbsent(receipt: unknown, tx: unknown): boolean {
+  const empty = (v: unknown) => !!v && typeof v === "object" && Object.keys(v as object).length === 0;
+  return empty(receipt) && empty(tx);
+}
 /** Missing/ambiguous responses stay unknown; only two matching finalized receipts prove outcome. */
 export async function usdtTronTxStatus(txid: string, from: string, to: string, units: bigint, evidence: unknown) {
-  const meta = evidence && typeof evidence === "object" ? evidence as { chain?: unknown; rawDataHex?: unknown } : null;
+  const meta = evidence && typeof evidence === "object" ? evidence as { chain?: unknown; rawDataHex?: unknown; expiresAt?: unknown } : null;
   if (meta?.chain !== "TRON" || typeof meta.rawDataHex !== "string") return null;
+  // Audit TR1: after the recorded on-chain expiry + margin, two finalized servers past that time
+  // with no trace of the txid prove it can never land → failed. Anything else stays unknown.
+  const expiresAt = typeof meta.expiresAt === "number" && Number.isSafeInteger(meta.expiresAt) ? meta.expiresAt : null;
+  const pastExpiry = expiresAt !== null && Date.now() > expiresAt + TRON_EXPIRY_MARGIN_MS;
   const statuses = await two(async (e) => {
-    const [receipt, tx] = await Promise.all([
+    const [receipt, tx, solid] = await Promise.all([
       nodeCall<TronReceipt>(e, "/walletsolidity/gettransactioninfobyid", { value: txid }),
       nodeCall<{ txID?: string; raw_data_hex?: string; raw_data?: { contract?: Array<{ type?: string; parameter?: { value?: { owner_address?: string; contract_address?: string; data?: string; call_value?: number } } }> } }>(e, "/walletsolidity/gettransactionbyid", { value: txid }),
+      pastExpiry ? nodeCall<{ block_header?: { raw_data?: { timestamp?: number } } }>(e, "/walletsolidity/getnowblock", {}) : Promise.resolve(null),
     ]);
+    if (pastExpiry && expiresAt !== null && tronTxAbsent(receipt, tx)) {
+      const t = solid?.block_header?.raw_data?.timestamp;
+      return Number.isSafeInteger(t) && (t as number) > expiresAt + TRON_EXPIRY_MARGIN_MS ? false : null;
+    }
     const raw = tx.raw_data_hex;
     const contracts = tx.raw_data?.contract;
     const contract = contracts?.[0];

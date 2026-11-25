@@ -162,7 +162,8 @@ export type DepositState = { ok: true; address: string } | { ok: false; reason: 
 export function depositState(
   net: DepositNetwork, linked: boolean, addresses: Record<string, string | undefined>, seedsSendBlocker?: string | null,
 ): DepositState {
-  if (net.token === "USDT_TRON" && tronUsdtStage() === "review") return { ok: false, reason: tronUsdtBlocker() ?? "USDT on TRON isn't ready for deposits." };
+  // Deposits open to everyone only at "open": a non-tester must never deposit what they can't send out.
+  if (net.token === "USDT_TRON" && tronUsdtStage() !== "open") return { ok: false, reason: tronUsdtStage() === "review" ? (tronUsdtBlocker() ?? "USDT on TRON isn't ready for deposits.") : "USDT on TRON deposits open to everyone after beta testers finish live sends. Testers: it arrives at the same address as your TRX." };
   const newChain = edSendBlocker(net.pocket);
   if (newChain && edSendStage() === "review") return { ok: false, reason: newChain };
   if (!linked) return { ok: false, reason: "Link your HME Wallet trading pocket first — deposits go to that pocket." };

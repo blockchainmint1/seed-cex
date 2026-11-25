@@ -50,19 +50,21 @@ describe("pinned USDT and unchanged pocket", () => {
 });
 
 describe("send rules and audit stage", () => {
-  test("nothing new can move while independent review is outstanding", () => {
-    expect(tronUsdtStage()).toBe("review");
-    expect(tronUsdtBlocker(true)).not.toBeNull();
+  test("only beta testers can move it at the testers stage", () => {
+    expect(tronUsdtStage()).toBe("testers");
+    expect(tronUsdtBlocker(true)).toBeNull();
+    expect(tronUsdtBlocker(true, "review")).not.toBeNull();
     expect(tronUsdtBlocker(false)).not.toBeNull();
     expect(tronUsdtBlocker(false, "testers")).not.toBeNull();
     expect(tronUsdtBlocker(true, "testers")).toBeNull();
     expect(tronUsdtBlocker(false, "open")).toBeNull();
   });
-  test("deposits remain closed even with the TRX key and withdrawal readiness", () => {
+  test("deposits stay closed until open, so no non-tester deposit is one-way", () => {
     const net = findNetwork(findAsset("USDT"), "trx");
     if (!net) throw new Error("Missing TRON network");
     expect(depositState(net, true, { TRX: from }, null).ok).toBe(false);
-    expect(withdrawalBlocker({ symbol: "USDT", networkLabel: "TRON", pocket: "TRX", tester: true, frozen: false, link: { mode: "access", hasKey: true, address: from } })).not.toBeNull();
+    expect(withdrawalBlocker({ symbol: "USDT", networkLabel: "TRON", pocket: "TRX", tester: true, frozen: false, link: { mode: "access", hasKey: true, address: from } })).toBeNull();
+    expect(withdrawalBlocker({ symbol: "USDT", networkLabel: "TRON", pocket: "TRX", tester: false, frozen: false, link: { mode: "access", hasKey: true, address: from } })).not.toBeNull();
   });
   test("TRON USDT sends through THORChain, not Maya or Ethereum", () => {
     const coin = swapCoin("USDT.TRON");
@@ -71,13 +73,16 @@ describe("send rules and audit stage", () => {
     expect(sendSource(coin, "maya")).toBeNull();
     expect(routePockets("buy", coin).sort()).toEqual(["EVM", "TRX", "TXC"]);
   });
-  test("both buy and sell starts are gated before the first coin moves", () => {
+  test("swaps open to testers only, both directions", () => {
     const coin = swapCoin("USDT.TRON"), btc = swapCoin("BTC");
     if (!coin || !btc) throw new Error("Missing swap coin");
     const link = { mode: "access", hasKey: true, pockets: ["TXC", "TRX", "EVM", "BTC"] };
-    for (const direction of ["buy", "sell"] as const) expect(routeBlocker({ direction, coin, link, isAdmin: true, amountUsd: 50, tsdAmount: 50 })).not.toBeNull();
-    expect(sendBlocker({ from: coin, to: btc, link, isAdmin: true, amountUsd: 50 })).not.toBeNull();
-    expect(sendBlocker({ from: btc, to: coin, link, isAdmin: true, amountUsd: 50 })).not.toBeNull();
+    for (const direction of ["buy", "sell"] as const) {
+      expect(routeBlocker({ direction, coin, link, isAdmin: true, amountUsd: 50, tsdAmount: 50 })).toBeNull();
+      expect(routeBlocker({ direction, coin, link, isAdmin: false, amountUsd: 50, tsdAmount: 50 })).not.toBeNull();
+    }
+    expect(sendBlocker({ from: coin, to: btc, link, isAdmin: true, amountUsd: 50 })).toBeNull();
+    expect(sendBlocker({ from: btc, to: coin, link, isAdmin: false, amountUsd: 50 })).not.toBeNull();
     expect(sendBlocker({ from: btc, link, isAdmin: true, amountUsd: 50 })).toBeNull();
   });
   test("prefilled Balances links select the intended one-tap TSD pair", () => {

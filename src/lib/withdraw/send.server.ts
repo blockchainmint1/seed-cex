@@ -208,28 +208,32 @@ export async function sendWithdrawal(c: WithdrawCoin, link: Link, from: string, 
       const id = c.evmChain!;
       const { estimateGas, fetchNonce, sendRawTransaction, suggestFees } = await import("@/lib/evm.server");
       const { erc20TransferData, signEip1559 } = await import("@/lib/evm/tx.server");
-      const [bal, gasBal, nonce, fees] = await Promise.all([
-        evmRaw(id, asset.contract, from), asset.contract ? evmRaw(id, null, from) : Promise.resolve(null), fetchNonce(id, from), suggestFees(id),
-      ]);
-      if (bal == null || nonce == null || !fees) throw new Error(`${chain.name} couldn't be read. Nothing was sent.`);
-      const target = asset.contract ?? to;
-      const data = asset.contract ? erc20TransferData(to, units) : "0x";
-      const value = asset.contract ? 0n : units;
-      const est = await estimateGas(id, { from, to: target, data, value: `0x${value.toString(16)}` });
-      if (est == null) throw new Error(`${chain.name} refused to estimate this send (not enough balance?). Nothing was sent.`);
-      const gasLimit = (est * 12n) / 10n;
-      const feeWei = gasLimit * fees.maxFeePerGas;
-      const native = EVM_NATIVE[id] ?? chain.nativeSymbol;
-      if (Number(feeWei) / 1e18 > (EVM_MAX_FEE[id] ?? 0)) throw new Error(`${chain.name} network fees are unusually high right now. Nothing was sent — ask again later.`);
-      if (bal < units) throw new Error(`Your pocket no longer holds ${coins} ${c.symbol}. Nothing was sent.`);
-      const gasHave = asset.contract ? (gasBal ?? 0n) : bal - units;
-      if (gasHave < feeWei) throw new Error(`Not enough ${native} left in your pocket on ${chain.name} for the network fee. Nothing was sent.`);
-      const signed = await withPocketKey(link, "EVM", from, async (priv) =>
-        signEip1559({ privateKeyHex: bytesToHex(priv), chainId: chain.evmChainId!, nonce, ...fees, gasLimit, to: target, value, data }));
-      if (signed.from.toLowerCase() !== from.toLowerCase()) throw new Error("The stored key doesn't match your pocket address. Nothing was sent.");
-      await record(signed.hash);
-      await sendRawTransaction(id, signed.raw);
-      return signed.hash;
+      // Audit LN2b: same per-pocket signing lease as the swap engines, nonce read → broadcast.
+      const { withEvmSignLock } = await import("@/lib/evm/sign-lock.server");
+      return withEvmSignLock(id, from, async () => {
+        const [bal, gasBal, nonce, fees] = await Promise.all([
+          evmRaw(id, asset.contract, from), asset.contract ? evmRaw(id, null, from) : Promise.resolve(null), fetchNonce(id, from), suggestFees(id),
+        ]);
+        if (bal == null || nonce == null || !fees) throw new Error(`${chain.name} couldn't be read. Nothing was sent.`);
+        const target = asset.contract ?? to;
+        const data = asset.contract ? erc20TransferData(to, units) : "0x";
+        const value = asset.contract ? 0n : units;
+        const est = await estimateGas(id, { from, to: target, data, value: `0x${value.toString(16)}` });
+        if (est == null) throw new Error(`${chain.name} refused to estimate this send (not enough balance?). Nothing was sent.`);
+        const gasLimit = (est * 12n) / 10n;
+        const feeWei = gasLimit * fees.maxFeePerGas;
+        const native = EVM_NATIVE[id] ?? chain.nativeSymbol;
+        if (Number(feeWei) / 1e18 > (EVM_MAX_FEE[id] ?? 0)) throw new Error(`${chain.name} network fees are unusually high right now. Nothing was sent — ask again later.`);
+        if (bal < units) throw new Error(`Your pocket no longer holds ${coins} ${c.symbol}. Nothing was sent.`);
+        const gasHave = asset.contract ? (gasBal ?? 0n) : bal - units;
+        if (gasHave < feeWei) throw new Error(`Not enough ${native} left in your pocket on ${chain.name} for the network fee. Nothing was sent.`);
+        const signed = await withPocketKey(link, "EVM", from, async (priv) =>
+          signEip1559({ privateKeyHex: bytesToHex(priv), chainId: chain.evmChainId!, nonce, ...fees, gasLimit, to: target, value, data }));
+        if (signed.from.toLowerCase() !== from.toLowerCase()) throw new Error("The stored key doesn't match your pocket address. Nothing was sent.");
+        await record(signed.hash);
+        await sendRawTransaction(id, signed.raw);
+        return signed.hash;
+      });
     }
     case "omni": {
       const { omniSimpleSend } = await import("@/lib/omni.server");

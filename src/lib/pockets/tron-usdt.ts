@@ -12,7 +12,7 @@ export const USDT_TRON_DECIMALS = 6;
 export const TRON_USDT_MAX_FEE_SUN = 100_000_000n;
 export const TRON_USDT_MAX_BYTES = 1500n;
 export type TronUsdtStage = "review" | "testers" | "open";
-export function tronUsdtStage(): TronUsdtStage { return "review"; }
+export function tronUsdtStage(): TronUsdtStage { return "testers"; }
 export function tronUsdtBlocker(tester = false, stage = tronUsdtStage()): string | null {
   if (stage === "open" || (stage === "testers" && tester)) return null;
   return stage === "review"
@@ -55,7 +55,7 @@ export function tronUsdtFeeBudget(energy: bigint, energyPrice: bigint, bytePrice
   // Budget the full burn cost, even if staked/delegated resources would make it cheaper.
   const feeLimit = (energy * energyPrice * 12n + 9n) / 10n;
   const totalSun = feeLimit + TRON_USDT_MAX_BYTES * bytePrice + memoFee;
-  if (totalSun > TRON_USDT_MAX_FEE_SUN) throw new Error("TRON's USDT network fee exceeds the safety ceiling. Nothing was sent.");
+  if (totalSun > TRON_USDT_MAX_FEE_SUN) throw new Error("TRON's network fee for this send is above Seeds' 100 TRX safety limit right now (sends to an address that has never held USDT cost more). Nothing was sent — try again later or send to an address that already holds USDT.");
   return { feeLimit, totalSun };
 }
 

@@ -513,3 +513,6 @@
 - [x] Wire pinned TRC-20 USDT balances, safe sends, withdrawals and existing one-tap THORChain/TSD swaps; reuse TRX pocket keys and preserve all approvals (review-locked)
 - [x] Regression tests, independent TronWeb byte/signature check, signed-in screen checks and shareable auditor handoff (1,695 tests)
 - [ ] Enable deposits/sends after independent audit and a small owner-approved funded send/swap (blocked: auditor review and owner funds/taps)
+
+- [x] TRON audit follow-up: testers stage, TR1 expiry closure, LN2b EVM withdrawal/trade lock, TR2/TR3 wording (docs/tron-audit-fixes-tr1-ln2b-2026-11-25.md) — needs auditor review
+- [ ] Bobby: fund TRON pocket (USDT + ~30–50 TRX) and pay the address-only bill as first funded test

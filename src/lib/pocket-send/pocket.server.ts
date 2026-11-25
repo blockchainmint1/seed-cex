@@ -260,28 +260,32 @@ export async function sendFromPocket(p: {
   const value = isNative ? units : 0n;
   const data = isNative ? "0x" : erc20TransferData(p.to, units);
   const target = isNative ? p.to : (asset.contract as string);
-  const [nonce, fees, gas] = await Promise.all([
-    fetchNonce(chainId, p.from),
-    suggestFees(chainId),
-    estimateGas(chainId, { from: p.from, to: target, data, value: `0x${value.toString(16)}` }),
-  ]);
-  if (nonce === null || !fees) throw new Error(`${chain.name} didn't return fee data. Nothing was sent.`);
-  const gasLimit = ((gas ?? (isNative ? 21_000n : 90_000n)) * 12n) / 10n;
-  // Worst-case network fee, in the chain's own coin. Refuse before signing if the pocket can't pay it.
-  const maxFee = Number(gasLimit * fees.maxFeePerGas) / 1e18;
-  const feeHave = isNative ? (bal.balance ?? 0) - p.amount : (bal.feeBalance ?? 0);
-  if (feeHave + 1e-12 < maxFee) {
-    throw new Error(`Your trading pocket needs about ${maxFee.toPrecision(3)} ${chain.nativeSymbol} on ${chain.name} for the network fee. Nothing was sent.`);
-  }
-  const signed = await withPocketKey(p.link, "EVM", p.from, async (priv) =>
-    signEip1559({
-      privateKeyHex: bytesToHex(priv), chainId: chain.evmChainId as number, nonce,
-      maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
-      gasLimit, to: target, value, data,
-    }),
-  );
-  if (signed.from.toLowerCase() !== p.from.toLowerCase()) throw new Error("The stored key doesn't match your pocket address. Nothing was sent.");
-  if (p.record) await p.record(signed.hash);
-  await sendRawTransaction(chainId, signed.raw);
-  return { txid: signed.hash, chain: chainId, from: p.from, raw: signed.raw, nonce };
+  // Audit LN2b: one EVM send at a time per pocket, shared with the swap engines.
+  const { withEvmSignLock } = await import("@/lib/evm/sign-lock.server");
+  return withEvmSignLock(chainId, p.from, async () => {
+    const [nonce, fees, gas] = await Promise.all([
+      fetchNonce(chainId, p.from),
+      suggestFees(chainId),
+      estimateGas(chainId, { from: p.from, to: target, data, value: `0x${value.toString(16)}` }),
+    ]);
+    if (nonce === null || !fees) throw new Error(`${chain.name} didn't return fee data. Nothing was sent.`);
+    const gasLimit = ((gas ?? (isNative ? 21_000n : 90_000n)) * 12n) / 10n;
+    // Worst-case network fee, in the chain's own coin. Refuse before signing if the pocket can't pay it.
+    const maxFee = Number(gasLimit * fees.maxFeePerGas) / 1e18;
+    const feeHave = isNative ? (bal.balance ?? 0) - p.amount : (bal.feeBalance ?? 0);
+    if (feeHave + 1e-12 < maxFee) {
+      throw new Error(`Your trading pocket needs about ${maxFee.toPrecision(3)} ${chain.nativeSymbol} on ${chain.name} for the network fee. Nothing was sent.`);
+    }
+    const signed = await withPocketKey(p.link, "EVM", p.from, async (priv) =>
+      signEip1559({
+        privateKeyHex: bytesToHex(priv), chainId: chain.evmChainId as number, nonce,
+        maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
+        gasLimit, to: target, value, data,
+      }),
+    );
+    if (signed.from.toLowerCase() !== p.from.toLowerCase()) throw new Error("The stored key doesn't match your pocket address. Nothing was sent.");
+    if (p.record) await p.record(signed.hash);
+    await sendRawTransaction(chainId, signed.raw);
+    return { txid: signed.hash, chain: chainId, from: p.from, raw: signed.raw, nonce };
+  });
 }
