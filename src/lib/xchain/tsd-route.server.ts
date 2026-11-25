@@ -521,7 +521,17 @@ async function step(r: Row): Promise<boolean> {
           void notify(r, `TSD Bridge returned your ${r.amount_in} TSD to your pocket. Tx ${o.refundTxid ?? "pending"}`);
           return go(move("refunded", { bridge_out_txid: o.refundTxid ?? null }));
         }
-        if (p === "failed") return go(move("failed", { error: `TSD Bridge reports this order ${o.status}${o.error ? ` (${o.error})` : ""}. Your TSD is with TSD Bridge; the team will sort it out with them.` }));
+        if (p === "failed") {
+          if (r.tsd_txid) {
+            const { fetchOmniTx } = await import("@/lib/omni.server");
+            const t = await fetchOmniTx(r.tsd_txid);
+            // Our own node answered clearly: the TSD transfer is gone (double-spent from the wallet) or was rejected.
+            if (t.found === false || (t.found && (t.confirmations ?? 0) >= 1 && t.valid === false)) {
+              return go(move("failed", { error: "Your TSD transfer to TSD Bridge was cancelled by another send from your wallet. TSD Bridge received nothing, so this swap is over and nothing more will be sent." }));
+            }
+          }
+          return go(move("failed", { error: `TSD Bridge reports this order ${o.status}${o.error ? ` (${o.error})` : ""}. Your TSD is with TSD Bridge; the team will sort it out with them.` }));
+        }
         if (p === "waiting") {
           if (r.tsd_txid) {
             const { fetchOmniTx } = await import("@/lib/omni.server");
