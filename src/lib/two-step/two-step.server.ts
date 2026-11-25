@@ -402,7 +402,7 @@ async function step(r: Row): Promise<boolean> {
   const go = async (patch: Partial<Row>) => {
     await save(r.id, patch);
     const changed = patch.status !== undefined && patch.status !== status;
-    if (changed && true && STOP.has(String(patch.status))) void import("@/lib/swap/stop-alert.server").then((m) => m.alertSwapStopped({ userId: r.user_id, id: r.id, what: `${r.amount_in} ${r.symbol_in} → ${r.symbol_out}`, was: String(status), now: String(patch.status), why: patch.error }));
+    if (changed && STOP.has(String(patch.status))) void import("@/lib/swap/stop-alert.server").then((m) => m.alertSwapStopped({ userId: r.user_id, id: r.id, what: `${r.amount_in} ${r.symbol_in} → ${r.symbol_out}`, was: String(status), now: String(patch.status), why: patch.error }));
     return changed;
   };
   const net = r.network as DexNetwork;

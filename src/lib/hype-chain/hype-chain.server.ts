@@ -523,8 +523,8 @@ async function step(r: Row): Promise<boolean> {
         const after = await tonStepSince(r);
         if (after) return go(move("leg3", { leg3_id: after }));
         const m = e instanceof Error ? e.message : String(e);
-        // A price or balance read that didn't answer is temporary: nothing was sent, so try again next minute (up to 30 min).
-        if (/couldn't (price|read)|didn't answer/i.test(m) && minutesSince(r.step_at) < 30) return go({ error: `${m} Retrying.`.slice(0, 300) });
+        // A price, balance or STON.fi read that didn't answer (or TON servers disagreeing on the pocket sequence) is temporary (audit TD2): nothing was sent, so try again next minute (up to 30 min).
+        if (/couldn't (price|read)|didn't answer|isn't answering|servers disagree/i.test(m) && minutesSince(r.step_at) < 30) return go({ error: `${m} Retrying.`.slice(0, 300) });
         return go(move("kept_mid", { error: `${m} ${tonIn}`.slice(0, 300) }));
       }
     }
