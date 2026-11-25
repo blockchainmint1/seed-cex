@@ -708,6 +708,13 @@
       "when": 1795550328537,
       "tag": "0100_relay_swaps",
       "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "7",
+      "when": 1795577936752,
+      "tag": "0101_hype_chains",
+      "breakpoints": true
     }
   ]
 }

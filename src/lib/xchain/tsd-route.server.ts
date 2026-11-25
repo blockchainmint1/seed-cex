@@ -154,12 +154,12 @@ export async function quoteTsdRoute(direction: RouteDirection, coin: SwapCoin, a
 export type StartRouteInput = { direction: RouteDirection; coin: string; amount: string; shownOut: number };
 
 /** Audit C2: the free-coins check and the hold it leads to run one at a time per member. */
-export async function startTsdRoute(userId: string, isAdmin: boolean, input: StartRouteInput, opts: { waitForFirstSend?: boolean } = {}) {
+export async function startTsdRoute(userId: string, isAdmin: boolean, input: StartRouteInput, opts: { waitForFirstSend?: boolean; parentId?: string } = {}) {
   const { withPocketSpendLock } = await import("@/lib/set-asides.server");
   return withPocketSpendLock(userId, () => startTsdRouteUnlocked(userId, isAdmin, input, opts));
 }
 
-async function startTsdRouteUnlocked(userId: string, isAdmin: boolean, input: StartRouteInput, opts: { waitForFirstSend?: boolean } = {}) {
+async function startTsdRouteUnlocked(userId: string, isAdmin: boolean, input: StartRouteInput, opts: { waitForFirstSend?: boolean; parentId?: string } = {}) {
   const coin = swapCoin(input.coin);
   if (!coin) throw new Error("Pick a coin.");
   const { loadLink } = await import("./send.server");
@@ -217,7 +217,7 @@ async function startTsdRouteUnlocked(userId: string, isAdmin: boolean, input: St
     _user_id: userId, _link_id: link!.id, _direction: input.direction, _coin: coin.id, _coin_asset: coin.asset,
     _amount_in: q.amountIn, _amount_usd: Math.round((q.amountUsd ?? 0) * 100) / 100, _shown_usdc: q.usdc, _shown_out: q.out,
     _bridge_fee_bps: q.bridgeFeeBps, _txc_address: txc, _evm_address: evm, _coin_address: coinAddress,
-    _per_swap_max_usd: swapLimitsFor(isAdmin).perSwapUsd, _daily_max_usd: swapLimitsFor(isAdmin).dailyUsd, _protocol: q.protocol ?? "thorchain",
+    _per_swap_max_usd: swapLimitsFor(isAdmin).perSwapUsd, _daily_max_usd: swapLimitsFor(isAdmin).dailyUsd, _protocol: q.protocol ?? "thorchain", _parent_id: opts.parentId,
   });
   if (error || !id) throw new Error(clean(error?.message ?? "Could not start this swap."));
   // Answer the member as soon as their first coins have left (or the swap stopped); the
@@ -725,6 +725,7 @@ export async function listTsdRoutes(userId: string) {
     .from("tsd_routes")
     .select("id, protocol, direction, coin, amount_in, amount_usd, shown_usdc, shown_out, fresh_out, usdc_amount, amount_out, stage, resume_stage, error, tsd_txid, usdc_txid, bridge_out_txid, swap_send_id, created_at, updated_at")
     .eq("user_id", userId)
+    .is("parent_id", null)
     .order("created_at", { ascending: false })
     .limit(10);
   if (error) throw new Error(error.message);

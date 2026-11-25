@@ -72,11 +72,11 @@ async function rpc<T>(c: RelayChain, method: string, params: unknown[]) {
   const { evmRpc } = await import("@/lib/evm.server");
   return evmRpc<T>(c, method, params);
 }
-async function nativeBalance(c: RelayChain, a: string): Promise<bigint | null> {
+export async function nativeBalance(c: RelayChain, a: string): Promise<bigint | null> {
   const h = await rpc<string>(c, "eth_getBalance", [a, "latest"]);
   return h ? BigInt(h) : null;
 }
-async function fees(c: RelayChain) {
+export async function fees(c: RelayChain) {
   const { suggestFees } = await import("@/lib/evm.server");
   const s = await suggestFees(c);
   if (!s) return null;
@@ -84,7 +84,7 @@ async function fees(c: RelayChain) {
   const max = gp && BigInt(gp) > s.maxFeePerGas ? BigInt(gp) : s.maxFeePerGas;
   return { maxFeePerGas: max, maxPriorityFeePerGas: s.maxPriorityFeePerGas > max ? max : s.maxPriorityFeePerGas };
 }
-const feeNeed = (maxFee: bigint) => (RELAY_DEPOSIT_GAS * maxFee * 15n) / 10n;
+export const feeNeed = (maxFee: bigint) => (RELAY_DEPOSIT_GAS * maxFee * 15n) / 10n;
 
 async function sameLink(userId: string, evm: string) {
   const { loadLink } = await import("@/lib/xchain/send.server");
@@ -348,7 +348,7 @@ export async function listRelaySwaps(userId: string) {
   for (const r of open ?? []) await advanceRelaySwap(r.id).catch(() => undefined);
   const { data, error } = await supabaseAdmin.from("relay_swaps")
     .select("id, direction, amount_in, shown_out, amount_out, status, error, deposit_txid, out_txid, created_at")
-    .eq("user_id", userId).order("created_at", { ascending: false }).limit(20);
+    .eq("user_id", userId).is("parent_id", null).order("created_at", { ascending: false }).limit(20);
   if (error) throw new Error(error.message);
   return (data ?? []).map((r) => {
     const l = legs(r.direction as RelayDirection);
@@ -357,4 +357,19 @@ export async function listRelaySwaps(userId: string) {
       symbolIn: SYMBOL[l.from], symbolOut: SYMBOL[l.to], fromChain: l.from, toChain: l.to, terminal: isRelayTerminal(r.status),
     };
   });
+}
+
+/**
+ * A Relay step of a one-tap HYPE swap (src/lib/hype-chain): reserved already approved by the
+ * chain's single Telegram tap and tagged with it, then carried by the same stage machine
+ * (fresh quote >= min, test run, hash before broadcast).
+ */
+export async function startRelayLeg(chainId: string, i: { direction: RelayDirection; pocket: string; amountWei: bigint; shownOut: number; minOutWei: bigint; amountUsd: number }) {
+  const { data: id, error } = await supabaseAdmin.rpc("reserve_relay_leg", {
+    _chain_id: chainId,
+    _row: { direction: i.direction, pocket: i.pocket, amount_in: fromWei(i.amountWei), amount_in_wei: i.amountWei.toString(), shown_out: i.shownOut, min_out_wei: i.minOutWei.toString(), amount_usd: Math.round(i.amountUsd * 100) / 100 } as never,
+  });
+  if (error || !id) throw new Error(clean(error?.message ?? "Could not start the Relay step."));
+  void advanceRelaySwap(id as string).catch(() => undefined);
+  return id as string;
 }

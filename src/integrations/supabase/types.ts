@@ -1214,6 +1214,96 @@ export type Database = {
           },
         ]
       }
+      hype_chains: {
+        Row: {
+          amount_in: number
+          amount_out: number | null
+          amount_usd: number
+          approval_id: string | null
+          coin_id: string
+          created_at: string
+          direction: string
+          error: string | null
+          eth_baseline_wei: string | null
+          id: string
+          leg1_id: string | null
+          leg2_id: string | null
+          link_id: string
+          mid_amount: number | null
+          mid_handed: number | null
+          min_out: number
+          pocket: string
+          protocol: string | null
+          shown_mid: number
+          shown_out: number
+          slippage_bps: number
+          status: string
+          step_at: string
+          updated_at: string
+          user_id: string
+          via: string
+          working_until: string | null
+        }
+        Insert: {
+          amount_in: number
+          amount_out?: number | null
+          amount_usd?: number
+          approval_id?: string | null
+          coin_id: string
+          created_at?: string
+          direction: string
+          error?: string | null
+          eth_baseline_wei?: string | null
+          id?: string
+          leg1_id?: string | null
+          leg2_id?: string | null
+          link_id: string
+          mid_amount?: number | null
+          mid_handed?: number | null
+          min_out: number
+          pocket: string
+          protocol?: string | null
+          shown_mid: number
+          shown_out: number
+          slippage_bps: number
+          status?: string
+          step_at?: string
+          updated_at?: string
+          user_id: string
+          via: string
+          working_until?: string | null
+        }
+        Update: {
+          amount_in?: number
+          amount_out?: number | null
+          amount_usd?: number
+          approval_id?: string | null
+          coin_id?: string
+          created_at?: string
+          direction?: string
+          error?: string | null
+          eth_baseline_wei?: string | null
+          id?: string
+          leg1_id?: string | null
+          leg2_id?: string | null
+          link_id?: string
+          mid_amount?: number | null
+          mid_handed?: number | null
+          min_out?: number
+          pocket?: string
+          protocol?: string | null
+          shown_mid?: number
+          shown_out?: number
+          slippage_bps?: number
+          status?: string
+          step_at?: string
+          updated_at?: string
+          user_id?: string
+          via?: string
+          working_until?: string | null
+        }
+        Relationships: []
+      }
       ignite_admin_emails: {
         Row: {
           id: string
@@ -4295,6 +4385,7 @@ export type Database = {
           link_id: string
           min_out_wei: string
           out_txid: string | null
+          parent_id: string | null
           pocket: string
           quoted_out_wei: string | null
           request_id: string | null
@@ -4320,6 +4411,7 @@ export type Database = {
           link_id: string
           min_out_wei: string
           out_txid?: string | null
+          parent_id?: string | null
           pocket: string
           quoted_out_wei?: string | null
           request_id?: string | null
@@ -4345,6 +4437,7 @@ export type Database = {
           link_id?: string
           min_out_wei?: string
           out_txid?: string | null
+          parent_id?: string | null
           pocket?: string
           quoted_out_wei?: string | null
           request_id?: string | null
@@ -4861,6 +4954,7 @@ export type Database = {
           gas_txid: string | null
           id: string
           link_id: string | null
+          parent_id: string | null
           protocol: string
           resume_stage: string | null
           shown_out: number
@@ -4896,6 +4990,7 @@ export type Database = {
           gas_txid?: string | null
           id?: string
           link_id?: string | null
+          parent_id?: string | null
           protocol?: string
           resume_stage?: string | null
           shown_out: number
@@ -4931,6 +5026,7 @@ export type Database = {
           gas_txid?: string | null
           id?: string
           link_id?: string | null
+          parent_id?: string | null
           protocol?: string
           resume_stage?: string | null
           shown_out?: number
@@ -5681,6 +5777,7 @@ export type Database = {
         }
         Returns: string
       }
+      reserve_hype_chain: { Args: { _row: Json }; Returns: string }
       reserve_lock_outpoints: {
         Args: { _spend_ids: string[] }
         Returns: boolean
@@ -5700,6 +5797,10 @@ export type Database = {
           _to_address: string
           _user_id: string
         }
+        Returns: string
+      }
+      reserve_relay_leg: {
+        Args: { _chain_id: string; _row: Json }
         Returns: string
       }
       reserve_relay_swap: {
@@ -5741,6 +5842,7 @@ export type Database = {
           _direction: string
           _evm_address: string
           _link_id: string
+          _parent_id?: string
           _per_swap_max_usd: number
           _protocol: string
           _shown_out: number

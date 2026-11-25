@@ -104,10 +104,10 @@ describe("HYPE through Relay", () => {
     expect(planSwap(coin("ETH"), { kind: "hype" }).options).toEqual([{ kind: "relay", direction: "to_hype" }]);
     expect(planSwap({ kind: "hype" }, coin("ETH")).options).toEqual([{ kind: "relay", direction: "from_hype" }]);
   });
-  test("HYPE with anything but ETH says to go through ETH", () => {
-    const p = planSwap({ kind: "hype" }, coin("BTC"));
-    expect(p.options).toEqual([]);
-    expect(p.problem).toMatch(/ETH/);
-    expect(planSwap({ kind: "tsd" }, { kind: "hype" }).options).toEqual([]);
+  test("any other coin or TSD reaches HYPE in one tap through ETH", () => {
+    expect(planSwap({ kind: "hype" }, coin("BTC")).options).toEqual([{ kind: "hype_chain", direction: "from_hype", via: "xchain", coin: "BTC" }]);
+    expect(planSwap(coin("BTC"), { kind: "hype" }).options).toEqual([{ kind: "hype_chain", direction: "to_hype", via: "xchain", coin: "BTC" }]);
+    expect(planSwap({ kind: "tsd" }, { kind: "hype" }).options).toEqual([{ kind: "hype_chain", direction: "to_hype", via: "tsd", coin: "TSD" }]);
+    expect(planSwap({ kind: "hype" }, { kind: "tsd" }).options).toEqual([{ kind: "hype_chain", direction: "from_hype", via: "tsd", coin: "TSD" }]);
   });
 });

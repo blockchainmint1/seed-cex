@@ -21,6 +21,8 @@ export const Route = createFileRoute("/api/public/jobs/tsd-routes")({
         const { advanceOpenTwoSteps } = await import("@/lib/two-step/two-step.server");
         const twoStep = await advanceOpenTwoSteps().catch((e) => { console.error("[two-step] job failed", e); return null; });
         // Relay swaps (ETH on Ethereum <-> HYPE on HyperEVM).
+        const { advanceOpenHypeChains } = await import("@/lib/hype-chain/hype-chain.server");
+        await advanceOpenHypeChains().catch((e) => { console.error("[hype-chain] job failed", e); return null; });
         const { advanceOpenRelaySwaps } = await import("@/lib/relay/relay.server");
         const relay = await advanceOpenRelaySwaps().catch((e) => { console.error("[relay-swap] job failed", e); return null; });
         return Response.json({ ok: true, ...result, ai, dex, twoStep, relay });

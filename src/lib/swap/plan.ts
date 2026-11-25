@@ -27,7 +27,9 @@ export type RouteOption =
   | { kind: "tsd"; direction: "buy" | "sell"; coin: SwapCoinId }
   | { kind: "dex"; network: DexNetwork; tokenIn: string; tokenOut: string }
   | { kind: "two"; direction: TwoStepDirection; network: DexNetwork; token: string; coin: SwapCoinId; mids: SwapCoinId[] }
-  | { kind: "relay"; direction: "to_hype" | "from_hype" };
+  | { kind: "relay"; direction: "to_hype" | "from_hype" }
+  /** Any coin or TSD <-> HYPE in one tap: THORChain/Maya or the TSD route to ETH, then Relay (src/lib/hype-chain). */
+  | { kind: "hype_chain"; direction: "to_hype" | "from_hype"; via: "tsd" | "xchain"; coin: string };
 
 export type SwapPlan = { options: RouteOption[]; problem: string | null };
 
@@ -113,8 +115,15 @@ export function planSwap(fromIn: SwapSide, toIn: SwapSide): SwapPlan {
   // HYPE: Relay, with Ether on Ethereum on the other side (same pocket address on both networks).
   if (from.kind === "hype" || to.kind === "hype") {
     const other = from.kind === "hype" ? to : from;
-    if (other.kind === "coin" && other.id === "ETH") return { options: [{ kind: "relay", direction: from.kind === "hype" ? "from_hype" : "to_hype" }], problem: null };
-    return none("HYPE swaps go through Relay with ETH on Ethereum for now. Swap to ETH first, then ETH to HYPE.");
+    const direction = from.kind === "hype" ? ("from_hype" as const) : ("to_hype" as const);
+    if (other.kind === "coin" && other.id === "ETH") return { options: [{ kind: "relay", direction }], problem: null };
+    if (other.kind === "tsd") return { options: [{ kind: "hype_chain", direction, via: "tsd", coin: "TSD" }], problem: null };
+    if (other.kind === "coin") {
+      const c = swapCoin(other.id), e = swapCoin("ETH");
+      const reach = c && e && c.protocols.some((p) => e.protocols.includes(p) && (direction === "to_hype" ? sendSource(c, p) !== null : sendSource(e, p) !== null && receivePocket(c) !== null));
+      if (reach) return { options: [{ kind: "hype_chain", direction, via: "xchain", coin: c.id }], problem: null };
+    }
+    return none("This coin can't reach HYPE yet. HYPE swaps go through ETH on Ethereum; swap this coin to a THORChain coin first.");
   }
 
   // TSD on one side: TSD Bridge first (or last), then THORChain/Maya or an Ethereum pool.

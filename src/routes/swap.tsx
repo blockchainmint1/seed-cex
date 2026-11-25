@@ -23,6 +23,8 @@ import { PocketSwap, QuoteDetails, type DexCoin, type DexQuoteResult } from "@/c
 import { TwoStepResult, type TwoStepQuoteResult } from "@/components/swap/TwoStepResult";
 import { RelayResult, type RelayQuoteResult } from "@/components/swap/RelayResult";
 import { quoteRelaySwap } from "@/lib/relay/relay.functions";
+import { HypeChainResult, type HypeChainQuoteResult } from "@/components/swap/HypeChainResult";
+import { quoteHypeChainSwap } from "@/lib/hype-chain/hype-chain.functions";
 
 type SwapSearch = { from?: string; to?: string; amount?: string };
 const sideOk = (v: unknown): v is string => v === "TSD" || v === "HYPE" || (typeof v === "string" && Boolean(swapCoin(v as SwapCoinId)));
@@ -95,6 +97,7 @@ type Result =
   | { kind: "dex"; opt: Extract<RouteOption, { kind: "dex" }>; out: number | null; label: string; data: DexQuoteResult; error?: undefined }
   | { kind: "two"; opt: Extract<RouteOption, { kind: "two" }>; out: number | null; label: string; data: TwoStepQuoteResult; error?: undefined }
   | { kind: "relay"; opt: Extract<RouteOption, { kind: "relay" }>; out: number | null; label: string; data: RelayQuoteResult; error?: undefined }
+  | { kind: "hype_chain"; opt: Extract<RouteOption, { kind: "hype_chain" }>; out: number | null; label: string; data: HypeChainQuoteResult; error?: undefined }
   | { kind: "error"; opt: RouteOption; out: null; label: string; error: string };
 
 function optionLabel(o: RouteOption): string {
@@ -102,6 +105,7 @@ function optionLabel(o: RouteOption): string {
   if (o.kind === "tsd") return "TSD Bridge + THORChain / Maya";
   if (o.kind === "dex") return `Pools on ${DEX_NETWORKS[o.network].name}`;
   if (o.kind === "relay") return "Relay";
+  if (o.kind === "hype_chain") return o.via === "tsd" ? "TSD Bridge + Relay via ETH" : "THORChain / Maya + Relay via ETH";
   return `Two steps on ${DEX_NETWORKS[o.network].name}`;
 }
 
@@ -149,6 +153,7 @@ function SwapPage() {
   const fetchDex = useServerFn(quoteDexSwap);
   const fetchTwo = useServerFn(quoteTwoStepSwap);
   const fetchRelay = useServerFn(quoteRelaySwap);
+  const fetchChain = useServerFn(quoteHypeChainSwap);
   const quote = useMutation({
     mutationFn: async (): Promise<Result[]> => {
       const opts = outside ? plan.options.filter((o) => o.kind === "xchain") : plan.options;
@@ -172,6 +177,11 @@ function SwapPage() {
           if (o.kind === "relay") {
             const d = await fetchRelay({ data: { direction: o.direction, amount } });
             return { kind: "relay", opt: o, out: d.out, label, data: d };
+          }
+          if (o.kind === "hype_chain") {
+            const d = await fetchChain({ data: { direction: o.direction, via: o.via, coin: o.coin, amount } });
+            if (!d.ok) return { kind: "error", opt: o, out: null, label, error: d.error ?? "No price right now." };
+            return { kind: "hype_chain", opt: o, out: d.out, label, data: d };
           }
           const d = await fetchTwo({ data: { direction: o.direction, network: o.network, token: o.token, coin: o.coin, amount } });
           const name = d.ok && d.mid && d.protocol
@@ -399,7 +409,7 @@ function SwapPage() {
               <li>TSD on one side: TSD Bridge turns it into USDC in your own pocket first (or last).</li>
               <li>When no single network reaches (like PEPE → BTC): two swaps through a plain coin such as ETH or USDC, with one Telegram tap.</li>
               <li>When more than one can do it, every route is asked and the best price is picked for you. You can choose another.</li>
-              <li>HYPE on Hyperliquid swaps with ETH through Relay, an outside bridge, paid back to the same pocket address.</li>
+              <li>HYPE on Hyperliquid swaps through Relay, an outside bridge, paid back to the same pocket address. Other coins and TSD reach HYPE in one tap through ETH.</li>
               <li>Every swap waits for your Approve tap in Telegram and pays back into your own pocket.</li>
             </ul>
           </div>
@@ -568,6 +578,7 @@ function Selected({ r, from, to, amount, destination, signedIn, sendCtx, linkCtx
     );
   }
   if (r.kind === "relay") return <RelayResult q={r.data} amount={amount} />;
+  if (r.kind === "hype_chain") return <HypeChainResult q={r.data} amount={amount} symbol={sideLabel(r.opt.direction === "to_hype" ? from : to).symbol} />;
   if (r.kind === "two") {
     return <TwoStepResult q={r.data} amount={amount} symbolIn={sideLabel(from).symbol} symbolOut={sideLabel(to).symbol} />;
   }
