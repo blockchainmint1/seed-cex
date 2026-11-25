@@ -5,7 +5,7 @@ import type { KeyedLink } from "@/lib/xchain/send.server";
 import { signAndSendTon, tonCall, tonJson, NetworkHttpError, tonMessageExpired } from "./ed-send.server";
 import { tonDestination } from "./ton-tx";
 import type { EdSendMeta } from "./ed-send-rules";
-import { USDT_TON_MASTER, USDT_SEND_GAS, TON_JETTON_KEEP, usdtTransferBody, usdtTraceStatus, sameTonAddress, stonSwapMessage, checkStonQuote, type StonSimulation, type JettonTrace, TON_NATIVE_ID } from "./ton-jetton";
+import { USDT_TON_MASTER, USDT_SEND_GAS, TON_JETTON_KEEP, usdtTransferBody, usdtTraceStatus, usdtFeeAllowance, sameTonAddress, stonSwapMessage, checkStonQuote, type StonSimulation, type JettonTrace, TON_NATIVE_ID } from "./ton-jetton";
 
 type Link = KeyedLink & { xpubs?: Record<string, string> };
 type Recorder = (txid: string, meta?: EdSendMeta) => Promise<void>;
@@ -54,7 +54,8 @@ async function usdtSpendable(owner: string): Promise<{ wallet: string; units: bi
 
 export async function readUsdtTonSpendable(owner: string): Promise<{ units: bigint; feeUnits: bigint }> {
   const [{ units }, info] = await Promise.all([usdtSpendable(owner), tonCall<{ balance: string }>("getAddressInformation", { address: owner })]);
-  return { units, feeUnits: BigInt(info.balance) };
+  // Audit TA4: report TON net of what the send itself needs, so a pocket short on TON is refused up front.
+  return { units, feeUnits: usdtFeeAllowance(BigInt(info.balance)) };
 }
 
 /** USD₮ withdrawal: amount must be held; TON pays the 0.05 jetton gas + fee and keeps a little behind. */

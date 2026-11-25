@@ -224,19 +224,37 @@ describe("Sui exact native payment", () => {
 });
 
 describe("native-chain delivery confirmations", () => {
-  const target = "0:" + "1".repeat(64);
-  const trace: TonTrace = { transaction: { aborted: false, success: true, in_msg: { hash: "message-id" }, account: { address: "source" }, out_msgs: [{ destination: { address: target }, value: "123456789" }] }, children: [{ transaction: { aborted: false, success: true, account: { address: target }, out_msgs: [] } }] };
-  test("TON confirms only the exact outgoing amount and successful destination transaction", () => expect(tonTraceStatus(trace, "message-id", target, 123456789n)).toEqual({ success: true, confirmations: 1 }));
-  test("TON accepted-but-skipped action is a failure, not a payment", () => expect(tonTraceStatus({ ...trace, transaction: { ...trace.transaction, out_msgs: [] } }, "message-id", target, 123456789n)?.success).toBe(false));
-  test("TON simulated traces never confirm", () => expect(tonTraceStatus({ ...trace, emulated: true }, "message-id", target, 123456789n)).toBeNull());
-  test("TON unrelated message ids never confirm", () => expect(tonTraceStatus(trace, "another-message", target, 123456789n)).toBeNull());
-  test("TON waits until the destination transaction is seen", () => expect(tonTraceStatus({ ...trace, children: [] }, "message-id", target, 123456789n)).toBeNull());
-  test("TON mismatched amount never confirms", () => expect(tonTraceStatus(trace, "message-id", target, 123456788n)?.success).toBe(false));
+  // Cut from a live TONAPI /v2/traces response (Nov 25 2026): out_msgs is empty on every node even
+  // though the wallet sent one message; the payment shows only as the child's in_msg (audit TA1).
+  const target = "0:28e94dc6f5b11c0dc706244fd59b12e30dc019dfee22812d9b95d2916fd16337";
+  const wallet = "0:0f1722307df4d92d35fedc6e8d5b288f3023dc9703ad76eb34be00ffc6cdf679";
+  const paid = 6463073460n;
+  const trace: TonTrace = {
+    emulated: false,
+    transaction: { aborted: false, success: true, account: { address: wallet },
+      in_msg: { hash: "message-id", value: 0, destination: { address: wallet } }, out_msgs: [],
+      action_phase: { success: true, skipped_actions: 0, total_actions: 1 } },
+    children: [{ emulated: false, transaction: { aborted: false, success: true, account: { address: target },
+      in_msg: { hash: "child", value: 6463073460, destination: { address: target } }, out_msgs: [],
+      action_phase: { success: true, skipped_actions: 0, total_actions: 0 } }, children: [] }],
+  };
+  const root = trace.transaction;
+  test("TON confirms a real TONAPI trace (empty out_msgs) from the destination's incoming amount", () => expect(tonTraceStatus(trace, "message-id", target, paid)).toEqual({ success: true, confirmations: 1 }));
+  test("TON skipped action in the wallet's action phase is a failure", () => expect(tonTraceStatus({ ...trace, transaction: { ...root, action_phase: { success: true, skipped_actions: 1, total_actions: 1 } }, children: [] }, "message-id", target, paid)?.success).toBe(false));
+  test("TON failed action phase is a failure", () => expect(tonTraceStatus({ ...trace, transaction: { ...root, action_phase: { success: false, skipped_actions: 0, total_actions: 1 } }, children: [] }, "message-id", target, paid)?.success).toBe(false));
+  test("TON aborted wallet transaction is a failure", () => expect(tonTraceStatus({ ...trace, transaction: { ...root, aborted: true } }, "message-id", target, paid)?.success).toBe(false));
+  test("TON simulated traces never confirm", () => expect(tonTraceStatus({ ...trace, emulated: true }, "message-id", target, paid)).toBeNull());
+  test("TON unrelated message ids never confirm", () => expect(tonTraceStatus(trace, "another-message", target, paid)).toBeNull());
+  test("TON waits (never fails) until the destination transaction is seen", () => expect(tonTraceStatus({ ...trace, children: [] }, "message-id", target, paid)).toBeNull());
+  test("TON mismatched amount never confirms and never fails", () => expect(tonTraceStatus(trace, "message-id", target, paid - 1n)).toBeNull());
+  test("TON a different destination never confirms", () => expect(tonTraceStatus(trace, "message-id", "0:" + "2".repeat(64), paid)).toBeNull());
+  test("TON failed destination transaction is reported as failed", () => {
+    const [c] = trace.children!; if (!c) throw new Error("fixture");
+    expect(tonTraceStatus({ ...trace, children: [{ ...c, transaction: { ...c.transaction, success: false, aborted: true } }] }, "message-id", target, paid)?.success).toBe(false);
+  });
   test("TON imprecise numeric evidence keeps waiting instead of declaring a paid send failed", () => {
-    const huge = { ...trace, transaction: { ...trace.transaction, out_msgs: [{ destination: { address: target }, value: 9007199254740992 }] } };
-    expect(tonTraceStatus(huge, "message-id", target, 9007199254740992n)).toBeNull();
-    const exact = { ...huge, transaction: { ...huge.transaction, out_msgs: [{ destination: { address: target }, value: "9007199254740992" }] } };
-    expect(tonTraceStatus(exact, "message-id", target, 9007199254740992n)?.success).toBe(true);
+    const [c] = trace.children!; if (!c) throw new Error("fixture");
+    expect(tonTraceStatus({ ...trace, children: [{ ...c, transaction: { ...c.transaction, in_msg: { ...c.transaction.in_msg, value: 9007199254740992 } } }] }, "message-id", target, 9007199254740992n)).toBeNull();
   });
   test("Sui verifies exactly native SUI credited to the chosen recipient", () => {
     expect(suiPaid([{ address: "recipient", coinType: "0x2::sui::SUI", amount: "123" }], "recipient", 123n)).toBe(true);

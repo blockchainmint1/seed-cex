@@ -163,3 +163,19 @@ export function tonArrived(baseline: number | null, now: number | null, minOut: 
   if (baseline == null || now == null || !Number.isFinite(baseline) || !Number.isFinite(now) || !(minOut > 0)) return false;
   return now - baseline >= minOut * 0.999; // tiny allowance for rounding in the 9-decimal reading
 }
+
+export type TonAccountEvent = { timestamp: number; in_progress?: boolean; actions: { type: string; status: string; TonTransfer?: { recipient?: { address?: string }; amount?: number | string } }[] };
+/**
+ * Audit TA5: a Relay TON payout counts as arrived only when the pocket's own history shows one
+ * finished incoming TON transfer of at least the agreed minimum since the swap started. The member's
+ * own spending can't hide it, and a smaller unrelated deposit can't fake it.
+ */
+export function tonPayoutSeen(events: TonAccountEvent[] | null | undefined, pocketRaw: string, minNanoton: bigint, sinceUnix: number): boolean {
+  if (!events || !(minNanoton > 0n) || !Number.isFinite(sinceUnix)) return false;
+  return events.some((e) => !e.in_progress && e.timestamp >= sinceUnix && e.actions.some((a) => {
+    const t = a.TonTransfer;
+    if (a.type !== "TonTransfer" || a.status !== "ok" || !t || t.recipient?.address !== pocketRaw) return false;
+    const v = typeof t.amount === "number" ? (Number.isSafeInteger(t.amount) ? BigInt(t.amount) : null) : typeof t.amount === "string" && /^\d+$/.test(t.amount) ? BigInt(t.amount) : null;
+    return v !== null && v >= minNanoton;
+  }));
+}

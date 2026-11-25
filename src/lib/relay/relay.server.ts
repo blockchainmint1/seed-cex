@@ -18,7 +18,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Database } from "@/integrations/supabase/types";
 import {
   agreedMinWei, checkRelayQuote, CHAIN_IDS, fromWei, isRelayTerminal, legs, NETWORK_NAME, quoteBody, relayProgress, RELAY_API,
-  RELAY_DEPOSIT_GAS, RELAY_MIN_USD, RELAY_STUCK_MINUTES, requoteOk, SYMBOL, toWei, fromUnits, toUnits, tonArrived, paysOtherPocket, isTonAddress, type CheckedDeposit, type RelayChain, type RelayDirection, type RelayStatus,
+  RELAY_DEPOSIT_GAS, RELAY_MIN_USD, RELAY_STUCK_MINUTES, requoteOk, SYMBOL, toWei, fromUnits, toUnits, tonArrived, tonPayoutSeen, type TonAccountEvent, paysOtherPocket, isTonAddress, type CheckedDeposit, type RelayChain, type RelayDirection, type RelayStatus,
 } from "./rules";
 
 type Row = Database["public"]["Tables"]["relay_swaps"]["Row"];
@@ -318,11 +318,17 @@ async function step(r: Row): Promise<boolean> {
       if (p.status === "done") {
         // The payout must be a successful transaction on the destination network.
         if (to === "ton") {
-          // TON payout: the member's own TON pocket must have grown by at least the agreed minimum.
-          const { fetchExtraBalance } = await import("@/lib/pockets/io.server");
-          const now = await fetchExtraBalance("TON", r.recipient!);
-          if (now == null) return go({});
-          if (!tonArrived(r.dest_baseline == null ? null : Number(r.dest_baseline), now, fromUnits("ton", BigInt(r.min_out_wei)))) {
+          // TON payout (audit TA5): the pocket's own history must show an incoming TON transfer of at
+          // least the agreed minimum since this swap started; the balance is no longer the proof.
+          const { Address } = await import("@ton/core");
+          const { tonEndpoint } = await import("@/lib/nodes.server");
+          const ep = tonEndpoint(true);
+          const raw = Address.parse(r.recipient!).toRawString();
+          const since = Math.floor(Date.parse(r.created_at) / 1000);
+          const res = await fetch(`${ep.url}/accounts/${encodeURIComponent(raw)}/events?limit=50&start_date=${since}`, { headers: ep.headers }).catch(() => null);
+          const body = res && res.ok ? await res.json().catch(() => null) as { events?: TonAccountEvent[] } | null : null;
+          if (!body) return go({});
+          if (!tonPayoutSeen(body.events, raw, BigInt(r.min_out_wei), since)) {
             return go(minutesSince(r.step_at) > RELAY_STUCK_MINUTES ? { error: "Relay says it paid, but the TON hasn't shown up in your pocket yet; the team will check." } : {});
           }
         } else if (p.outTxid) {

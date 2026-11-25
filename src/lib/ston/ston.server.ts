@@ -1,12 +1,13 @@
 /**
  * TON -> USD₮ on TON through STON.fi, inside the member's own TON pocket (testers first).
  * Own-pocket swap (coins leave and come back as another coin to the same pocket), so no Telegram tap
- * (Bobby, Nov 25: HC2 "keep tap-free"). Order: fresh quote ≤1% worse than shown → USD₮ baseline →
- * row (one open per member) → signed swap whose minimum is written into the message → id recorded
+ * (Bobby, Nov 25: HC2 "keep tap-free"). Order: fresh quote ≤1% worse than shown (signed minimum = 99% of the fresh quote or better) →
+ * dollar caps → USD₮ baseline → row (one open per member) → signed swap whose minimum is written into the message → id recorded
  * before broadcast → done only when the pocket's USD₮ grew by at least the minimum.
  */
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { edSendBlocker } from "@/lib/pockets/ed-send-rules";
+import { stonMinimum, tonSwapUsd } from "./rules";
 import { swapMinimum, tonUnits, TON_JETTON_KEEP, STON_FORWARD_GAS } from "@/lib/pockets/ton-jetton";
 
 const TON = 1_000_000_000n;
@@ -61,17 +62,26 @@ export async function startTonToUsdt(userId: string, tester: boolean, input: { a
     const offer = parseOffer(input.amount);
     if (!/^\d{1,18}$/.test(input.shownOutUnits)) throw new Error("Get a fresh price first.");
     const shown = BigInt(input.shownOutUnits);
-    const minOut = swapMinimum(shown);
     const { stonQuote, usdtTonBalance, sendStonSwap } = await import("@/lib/pockets/ton-usdt.server");
     const fresh = await stonQuote(offer);
-    if (fresh < minOut) throw new Error("The price moved more than 1% since you looked. Nothing was sent — check the new price.");
+    // Audit TA2: the signed minimum follows Seeds' own fresh quote, never the browser's number alone.
+    const minOut = stonMinimum(shown, fresh);
+    // Audit TA3: same per-swap and 24-hour dollar caps as every other own-pocket swap.
+    const { fetchQuotes, TRACKED } = await import("@/lib/cmc.server");
+    const tonUsd = (await fetchQuotes(TRACKED).catch(() => null))?.quotes.find((q) => q.symbol === "TON")?.price ?? null;
+    const amountUsd = tonSwapUsd(offer, tonUsd);
+    if (amountUsd === null) throw new Error("Seeds couldn't price TON right now. Nothing was sent — try again in a minute.");
+    const { swapLimitsFor } = await import("@/lib/xchain/send-rules");
+    const limits = swapLimitsFor(tester);
     const baseline = await usdtTonBalance(pocket);
     if (baseline === null) throw new Error("Seeds couldn't read your USD₮ balance on TON right now. Nothing was sent.");
-    const { data: row, error } = await supabaseAdmin.from("ton_swaps").insert({
-      user_id: userId, link_id: link.id, pocket, offer_units: offer.toString(), shown_units: shown.toString(),
-      min_out_units: minOut.toString(), usdt_baseline: baseline.toString(),
-    } as never).select("id").single();
-    if (error || !row) throw new Error(error?.code === "23505" ? "You already have a TON swap on its way. Wait for it to finish." : "Couldn't start the swap. Nothing was sent.");
+    const { data: id, error } = await supabaseAdmin.rpc("reserve_ton_swap", {
+      _row: { user_id: userId, link_id: link.id, pocket, offer_units: offer.toString(), shown_units: shown.toString(), quote_units: fresh.toString(),
+        min_out_units: minOut.toString(), usdt_baseline: baseline.toString(), amount_usd: amountUsd } as never,
+      _per_swap_max_usd: limits.perSwapUsd, _daily_max_usd: limits.dailyUsd,
+    });
+    if (error || !id) throw new Error(error?.code === "23505" ? "You already have a TON swap on its way. Wait for it to finish." : (error?.message?.replace(/^.*?ERROR:\s*/, "") || "Couldn't start the swap. Nothing was sent."));
+    const row = { id: id as string };
     try {
       await sendStonSwap(link, pocket, offer, minOut, async (txid, meta) => {
         const { error: e } = await supabaseAdmin.from("ton_swaps").update({ txid, send_meta: meta ?? null }).eq("id", row.id).eq("status", "signing").is("txid", null);

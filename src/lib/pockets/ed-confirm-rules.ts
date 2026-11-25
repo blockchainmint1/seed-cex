@@ -1,24 +1,41 @@
 /** Delivery evidence, not just an accepted request or advanced wallet sequence. */
 export type TonTrace = {
   emulated?: boolean;
-  transaction: { aborted: boolean; success: boolean; in_msg?: { hash: string }; account: { address: string };
-    out_msgs: { destination?: { address: string }; value: number | string }[] };
+  transaction: {
+    aborted: boolean; success: boolean; account: { address: string };
+    in_msg?: { hash?: string; value?: number | string | null; destination?: { address?: string | null } | null };
+    /** TONAPI traces leave this empty even when the wallet sent messages (audit TA1); never rely on it. */
+    out_msgs?: unknown[];
+    action_phase?: { success?: boolean; skipped_actions?: number; total_actions?: number } | null;
+  };
   children?: TonTrace[];
 };
+
+/** A nanoton amount read exactly, or null when it is missing or too big to be read safely. */
+function exactUnits(v: unknown): bigint | null {
+  if (typeof v === "number") return Number.isSafeInteger(v) && v >= 0 ? BigInt(v) : null;
+  if (typeof v === "string" && /^\d+$/.test(v)) return BigInt(v);
+  return null;
+}
+
+/**
+ * Audit TA1: payment proof comes from the destination's own transaction in the trace (its incoming
+ * message carries the amount), and "accepted but skipped" proof from the wallet's action phase.
+ * Anything less certain returns null, so a paid send is never marked failed and re-requestable.
+ */
 export function tonTraceStatus(trace: TonTrace, messageId: string, destination: string, units: bigint) {
-  if (trace.emulated || trace.transaction.in_msg?.hash !== messageId) return null;
-  // Imprecise evidence is not proof of failure: never release a hold on a parsing error.
-  if (trace.transaction.out_msgs.some((m) => m.destination?.address === destination &&
-    ((typeof m.value === "number" && !Number.isSafeInteger(m.value)) || !/^\d+$/.test(String(m.value))))) return null;
-  const msg = trace.transaction.out_msgs.find((m) => {
-    if (m.destination?.address !== destination) return false;
-    if (typeof m.value === "number" && !Number.isSafeInteger(m.value)) return false;
-    return /^\d+$/.test(String(m.value)) && BigInt(m.value) === units;
-  });
-  const child = trace.children?.find((c) => c.transaction.account.address === destination);
-  if (trace.transaction.aborted || !trace.transaction.success || !msg) return { success: false, confirmations: 1 };
-  if (!child || child.emulated) return null;
-  return { success: !child.transaction.aborted && child.transaction.success, confirmations: 1 };
+  const root = trace.transaction;
+  if (trace.emulated || root.in_msg?.hash !== messageId) return null;
+  if (root.aborted || !root.success) return { success: false, confirmations: 1 };
+  const toDest = (trace.children ?? []).filter((c) => c.transaction.account.address === destination && c.transaction.in_msg?.destination?.address === destination);
+  for (const c of toDest) {
+    const v = exactUnits(c.transaction.in_msg?.value);
+    if (v === null) return null; // imprecise evidence: keep waiting
+    if (v === units) return c.emulated ? null : { success: !c.transaction.aborted && c.transaction.success, confirmations: 1 };
+  }
+  const ap = root.action_phase;
+  if (ap && ((typeof ap.skipped_actions === "number" && ap.skipped_actions > 0) || ap.success === false)) return { success: false, confirmations: 1 };
+  return null;
 }
 
 /** Negative chain evidence is required; wall-clock age and a timeout alone never fail a send. */

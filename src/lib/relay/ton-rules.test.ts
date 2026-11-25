@@ -70,3 +70,21 @@ describe("TON routes", () => {
     expect(planSwap({ kind: "ton" }, { kind: "tsd" }).options).toEqual([]);
   });
 });
+
+import { tonPayoutSeen } from "./rules";
+describe("Relay TON payout proof (audit TA5)", () => {
+  const me = "0:" + "a".repeat(64);
+  const ev = (amount: number | string, opts: { ts?: number; to?: string; status?: string; inProgress?: boolean } = {}) => ({
+    timestamp: opts.ts ?? 2000, in_progress: opts.inProgress ?? false,
+    actions: [{ type: "TonTransfer", status: opts.status ?? "ok", TonTransfer: { recipient: { address: opts.to ?? me }, amount } }],
+  });
+  test("an incoming transfer of at least the minimum after the swap started counts", () => expect(tonPayoutSeen([ev(17_000_000_000)], me, 16_000_000_000n, 1000)).toBe(true));
+  test("a smaller unrelated deposit does not count", () => expect(tonPayoutSeen([ev(1_000_000_000)], me, 16_000_000_000n, 1000)).toBe(false));
+  test("a transfer from before the swap does not count", () => expect(tonPayoutSeen([ev(17_000_000_000, { ts: 999 })], me, 16_000_000_000n, 1000)).toBe(false));
+  test("a payment to someone else does not count", () => expect(tonPayoutSeen([ev(17_000_000_000, { to: "0:" + "b".repeat(64) })], me, 16_000_000_000n, 1000)).toBe(false));
+  test("failed or still-running transfers do not count", () => {
+    expect(tonPayoutSeen([ev(17_000_000_000, { status: "failed" })], me, 16_000_000_000n, 1000)).toBe(false);
+    expect(tonPayoutSeen([ev(17_000_000_000, { inProgress: true })], me, 16_000_000_000n, 1000)).toBe(false);
+  });
+  test("no history means not yet", () => expect(tonPayoutSeen(null, me, 1n, 1000)).toBe(false));
+});

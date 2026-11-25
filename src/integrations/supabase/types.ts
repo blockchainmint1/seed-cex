@@ -4780,6 +4780,7 @@ export type Database = {
       }
       ton_swaps: {
         Row: {
+          amount_usd: number
           created_at: string
           error: string | null
           id: string
@@ -4787,6 +4788,7 @@ export type Database = {
           min_out_units: number
           offer_units: number
           pocket: string
+          quote_units: number | null
           received_units: number | null
           send_meta: Json | null
           shown_units: number
@@ -4797,6 +4799,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          amount_usd?: number
           created_at?: string
           error?: string | null
           id?: string
@@ -4804,6 +4807,7 @@ export type Database = {
           min_out_units: number
           offer_units: number
           pocket: string
+          quote_units?: number | null
           received_units?: number | null
           send_meta?: Json | null
           shown_units: number
@@ -4814,6 +4818,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          amount_usd?: number
           created_at?: string
           error?: string | null
           id?: string
@@ -4821,6 +4826,7 @@ export type Database = {
           min_out_units?: number
           offer_units?: number
           pocket?: string
+          quote_units?: number | null
           received_units?: number | null
           send_meta?: Json | null
           shown_units?: number
@@ -5892,6 +5898,10 @@ export type Database = {
           _user_id: string
           _vault: string
         }
+        Returns: string
+      }
+      reserve_ton_swap: {
+        Args: { _daily_max_usd: number; _per_swap_max_usd: number; _row: Json }
         Returns: string
       }
       reserve_tsd_route: {

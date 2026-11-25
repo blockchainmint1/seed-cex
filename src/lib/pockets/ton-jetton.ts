@@ -97,3 +97,10 @@ export function usdtTraceStatus(trace: JettonTrace, messageId: string, senderJet
   if (BigInt(m.decoded_body!.amount!) !== units) return null;
   return { success: !dest.transaction.aborted && dest.transaction.success, confirmations: 1 };
 }
+
+/** TON a USD₮ send needs before any code, 2FA or tap (audit TA4): jetton gas + the TON fee cap + what stays behind. */
+export const USDT_SEND_TON_NEED = USDT_SEND_GAS + 50_000_000n + TON_JETTON_KEEP; // 0.13 TON (fee cap = ED_FEE_CAP.TON)
+/** TON left for the fee check after the allowance; 0 means "not enough TON for the network fee". */
+export function usdtFeeAllowance(tonBalance: bigint): bigint {
+  return tonBalance >= USDT_SEND_TON_NEED ? tonBalance - USDT_SEND_TON_NEED + 1n : 0n;
+}
