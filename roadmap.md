@@ -493,3 +493,4 @@
 - [x] One-tap TSD/coin → ETH → TON → USDT on TON (three steps, one tap) — built; needs audit before real money
 - [ ] One tap for every remaining combo that still says "do X first" (ETH → USDT on TON, HYPE → TON, USDT on TON → anything, TON → TSD), always the fastest + cheapest route
 - [x] Swap tile: expand for per-step log with txids + TSD Bridge order link
+- [x] RL1: recognise equivalent HME Wallet public keys, preserve every coin/address, test refusals and prepare auditor handoff (Bobby approved Nov 25); not published, live re-link awaits owner test and independent review

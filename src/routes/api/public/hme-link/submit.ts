@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
   ACCEPTED_CHAINS, ALLOWED_CHAINS, type LinkChain, chainForPath, checkXprvMatches, delegateMessage, json,
-  linkDomainFor, openSealed, parseExtKey, payloadSha256, validAccount, verifyTxcMessage,
+  linkDomainFor, openSealed, canonicalLinkedPublicKey, sameLinkedPublicKey, payloadSha256, validAccount, verifyTxcMessage,
 } from "@/lib/hme-link.server";
 import { decryptDelegatedKey, encryptDelegatedKey } from "@/lib/delegation.server";
 import { pocketNumberProblem, replaceProblem } from "@/lib/hme-link-rules";
@@ -44,8 +44,7 @@ export const Route = createFileRoute("/api/public/hme-link/submit")({
         for (const c of chains) {
           const x = b.xpubs?.[c];
           if (!x) return json({ error: `missing xpub ${c}` }, 400);
-          try { parseExtKey(c, x); } catch { return json({ error: `bad xpub ${c}` }, 400); }
-          xpubs[c] = x;
+          try { xpubs[c] = canonicalLinkedPublicKey(c, x); } catch { return json({ error: `bad xpub ${c}` }, 400); }
         }
 
         const payloadSha = b.mode === "access" ? (b.payload ? payloadSha256(b.payload) : "") : "none";
@@ -69,7 +68,8 @@ export const Route = createFileRoute("/api/public/hme-link/submit")({
           return json({ error: "Your trading pocket comes from a coin or wallet you linked. Stop Seeds' access to it in Account → Security first, then link HME Wallet." }, 409);
         const problem = replaceProblem(
           active ? { account: active.account, paths: active.paths as string[], mode: active.mode, hasKey: Boolean(active.key_ciphertext), xpubs: (active.xpubs ?? {}) as Record<string, string> } : null,
-          { account: b.account!, chains, mode: b.mode, xpubs },
+          { account: b.account, chains, mode: b.mode, xpubs },
+          sameLinkedPublicKey,
         );
         if (problem) return json({ error: problem }, 409);
 

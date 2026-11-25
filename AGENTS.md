@@ -8,7 +8,7 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
-- HME Wallet links: src/lib/hme-link.server.ts, hme-link-rules.ts (tested), api/public/hme-link/*. Every link (HME Wallet or coin/wallet) uses pocket 1106 only (SEEDS_POCKET), also after a revoke; a re-link must keep every coin. hme_links rows = permanent history (trigger blocks deletes/edits; hme-link-history.ts). Why: dropped keys strand coins; the record must stay whole.
+- HME links: hme-link.server.ts + hme-link-rules.ts (tested), api/public/hme-link/*. Every link/relink uses pocket 1106 (SEEDS_POCKET), keeps every coin, and compares parsed public material (raw fallback); HME submit stores canonical xpubs. hme_links = permanent history (hme-link-history.ts, trigger blocks deletes/edits). Why: re-encoding must not replace a wallet or strand coins.
 - P2P marketplace logic lives in src/lib/p2p.server.ts (reserve against the live HME-pocket balance, flag drops; release via pocket-send). Why: no custody; safety = on-chain checks + seller score.
 - Every HME-pocket send needs the owner's Telegram tap (src/lib/pocket-send/AGENTS.md).
 - Area rules live in each folder's AGENTS.md under src/lib/: dex (pools), relay (Relay ETH<->HYPE swaps), two-step (one Swap form + two-step swaps), pockets (keys/chain I/O), email, ai (Seeds AI), mcp, help, recruit (Admin → Marketing), key-signin (coin/wallet sign-in), loans (Seeds Lend P2P loans), step-up ("confirm it's you", trusted 2FA/Telegram); Ignite rules are in src/lib/AGENTS.md.

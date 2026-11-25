@@ -66,6 +66,7 @@ export function refuseDroppedCoins(coins: PocketCoin[]): string {
 export function replaceProblem(
   active: (LinkLike & { mode?: string; hasKey?: boolean; xpubs?: Record<string, string> }) | null,
   incoming: { account: number; chains: PocketCoin[]; mode?: string; xpubs?: Record<string, string> },
+  sameKey: (coin: PocketCoin, stored: string, incoming: string) => boolean = (_coin, a, b) => a === b,
 ): string | null {
   if (!active) return null;
   if (incoming.account !== active.account) return REFUSE_OTHER_POCKET;
@@ -73,7 +74,7 @@ export function replaceProblem(
   if (active.xpubs && incoming.xpubs) {
     for (const c of linkCoins(active)) {
       const a = active.xpubs[c], b = incoming.xpubs[c];
-      if (a && b && a !== b) return REFUSE_OTHER_WALLET;
+      if (a && b && !sameKey(c, a, b)) return REFUSE_OTHER_WALLET;
     }
   }
   // Audit carry-over: instant access -> approve-each-trade hands Seeds no key, so Seeds would

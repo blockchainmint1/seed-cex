@@ -145,6 +145,26 @@ export function openSealed(payloadB64url: string, recipientPrivHex: string, reci
 
 // ---------- extended keys ----------
 const LTC_VERSIONS = { public: 0x019da462, private: 0x019d9cfe };
+// SLIP-0132 public encodings only. Seeds' receive script comes from the coin,
+// not these version bytes; store a standard xpub so every reader agrees.
+const PUBLIC_VERSIONS = new Set([
+  0x0488b21e, // xpub
+  0x049d7cb2, 0x04b24746, // ypub, zpub
+  0x0295b43f, 0x02aa7ed3, // Ypub, Zpub
+  0x019da462, 0x01b26ef6, // Ltub, Mtub
+]);
+
+function publicExtKey(key: string): HDKey | null {
+  const raw = b58c.decode(key); // verifies the checksum before changing anything
+  if (raw.length !== 78) return null;
+  const version = new DataView(raw.buffer, raw.byteOffset, raw.byteLength).getUint32(0);
+  if (!PUBLIC_VERSIONS.has(version)) return null;
+  const canonical = Uint8Array.from(raw);
+  new DataView(canonical.buffer).setUint32(0, 0x0488b21e);
+  const parsed = HDKey.fromExtendedKey(b58c.encode(canonical));
+  if (parsed.privateKey || !parsed.publicKey || !parsed.chainCode) throw new Error("bad public extended key");
+  return parsed;
+}
 
 /** Validates a submitted public half: account xpub, a 32-byte base58 key (Solana), hex A‖cc (Cardano) or an address (Monero). */
 export function parseExtKey(chain: LinkChain, key: string): HDKey | Uint8Array | string {
@@ -156,8 +176,41 @@ export function parseExtKey(chain: LinkChain, key: string): HDKey | Uint8Array |
     if (k.length !== 32) throw new Error("bad Solana key");
     return k;
   }
+  const publicKey = publicExtKey(key);
+  if (publicKey) return publicKey;
   if (chain === "LTC" && (key.startsWith("Ltub") || key.startsWith("Ltpv"))) return HDKey.fromExtendedKey(key, LTC_VERSIONS);
   return HDKey.fromExtendedKey(key);
+}
+
+/** Compare the entire account public material, never just one child key.
+ * Unrecognised formats retain the old exact-string comparison (fail closed).
+ */
+export function sameLinkedPublicKey(chain: LinkChain, stored: string, incoming: string): boolean {
+  try {
+    const a = parseExtKey(chain, stored), b = parseExtKey(chain, incoming);
+    if (a instanceof HDKey && b instanceof HDKey) {
+      if (a.privateKey || b.privateKey || !a.publicKey || !b.publicKey || !a.chainCode || !b.chainCode) return stored === incoming;
+      return hex.encode(a.publicKey) === hex.encode(b.publicKey) &&
+        hex.encode(a.chainCode) === hex.encode(b.chainCode);
+    }
+    if (a instanceof Uint8Array && b instanceof Uint8Array) return hex.encode(a) === hex.encode(b);
+    return typeof a === "string" && typeof b === "string" && a === b;
+  } catch {
+    return stored === incoming;
+  }
+}
+
+/** Canonical public encoding for storage; keeps downstream address derivation unchanged. */
+export function canonicalLinkedPublicKey(chain: LinkChain, key: string): string {
+  const parsed = parseExtKey(chain, key);
+  if (parsed instanceof HDKey) {
+    if (parsed.privateKey) throw new Error("expected public key");
+    return parsed.publicExtendedKey;
+  }
+  // Ed25519 address/key formats remain pinned to the existing handoff.
+  if (chain === "XMR" && typeof parsed === "string") return parsed;
+  if (chain === "ADA" && parsed instanceof Uint8Array) return hex.encode(parsed);
+  return key;
 }
 
 /** Every private half must match the public half the wallet sent. */
