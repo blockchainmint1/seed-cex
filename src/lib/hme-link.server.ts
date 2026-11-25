@@ -4,6 +4,7 @@
  *   access  → sealed account xprvs (X25519 + HKDF-SHA256 + AES-256-GCM)
  *   approve → xpubs only; Seeds proposes PSBTs the user approves in-wallet.
  */
+import { edReceiveAddress } from "./pockets/ed25519-chains";
 import { x25519 } from "@noble/curves/ed25519.js";
 import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { sha256 } from "@noble/hashes/sha2.js";
@@ -35,6 +36,9 @@ export const KEY_FORMATS: Record<(typeof OPTIONAL_CHAINS)[number], string> = {
   SOL: "slip10-ed25519",
   ADA: "cip1852-icarus",
   XMR: "slip10-ed25519-monero-trezor",
+  XLM: "slip10-ed25519-stellar-g-address",
+  TON: "slip10-ed25519-ton-w5-hex-pubkey",
+  SUI: "slip10-ed25519-sui-0x-address",
 };
 
 /** Optional coins for the manifest; `paths` lets an "Add new coins" request ask for the member's current pocket. */
@@ -146,6 +150,7 @@ const LTC_VERSIONS = { public: 0x019da462, private: 0x019d9cfe };
 export function parseExtKey(chain: LinkChain, key: string): HDKey | Uint8Array | string {
   if (chain === "ADA") return parseCardanoXpub(key);
   if (chain === "XMR") return moneroPublicToAddress(key);
+  if (chain === "XLM" || chain === "TON" || chain === "SUI") return edReceiveAddress(chain, key);
   if (chain === "SOL") {
     const k = base58.decode(key);
     if (k.length !== 32) throw new Error("bad Solana key");

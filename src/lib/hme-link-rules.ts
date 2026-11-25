@@ -9,7 +9,7 @@ import { HME_WALLET_CANT_HOLD } from "./pockets/hme-support";
 /** Pockets requested from every wallet today (HME Wallet derives these five). */
 export const ALLOWED_CHAINS = ["TXC", "ISK", "BTC", "LTC", "EVM"] as const;
 /** Pockets Seeds accepts when a wallet chooses to send them (see docs/hme-wallet-extra-pockets.md). */
-export const OPTIONAL_CHAINS = ["DOGE", "BCH", "ZEC", "XRP", "TRX", "SOL", "DASH", "ATOM", "RUNE", "ADA", "XMR"] as const;
+export const OPTIONAL_CHAINS = ["DOGE", "BCH", "ZEC", "XRP", "TRX", "SOL", "DASH", "ATOM", "RUNE", "ADA", "XMR", "XLM", "TON", "SUI"] as const;
 export const ACCEPTED_CHAINS = [...ALLOWED_CHAINS, ...OPTIONAL_CHAINS] as const;
 
 export type LinkLike = { account: number; paths: string[] };

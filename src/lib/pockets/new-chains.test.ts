@@ -106,8 +106,8 @@ describe("Dash, Cosmos and THORChain", () => {
 });
 
 describe("link manifest", () => {
-  test("lists all 11 optional coins with their exact key method", () => {
-    expect([...OPTIONAL_CHAINS]).toEqual(["DOGE", "BCH", "ZEC", "XRP", "TRX", "SOL", "DASH", "ATOM", "RUNE", "ADA", "XMR"]);
+  test("lists all 14 optional coins with their exact key method", () => {
+    expect([...OPTIONAL_CHAINS]).toEqual(["DOGE", "BCH", "ZEC", "XRP", "TRX", "SOL", "DASH", "ATOM", "RUNE", "ADA", "XMR", "XLM", "TON", "SUI"]);
     const byChain = Object.fromEntries(optionalRequest().map((r) => [r.chain, r]));
     expect(byChain.ADA).toEqual({ chain: "ADA", path: "m/1852'/1815'/1106'", curve: "ed25519-bip32", format: "cip1852-icarus" });
     expect(byChain.XMR).toEqual({ chain: "XMR", path: "m/44'/128'/1106'", curve: "ed25519", format: "slip10-ed25519-monero-trezor" });

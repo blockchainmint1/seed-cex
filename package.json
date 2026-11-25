@@ -83,6 +83,11 @@
   "devDependencies": {
     "@eslint/js": "^9.32.0",
     "@lovable.dev/vite-tanstack-config": "2.27.1",
+    "@mysten/sui": "^3.0.1",
+    "@stellar/stellar-base": "^15.0.0",
+    "@ton/core": "0.62.0",
+    "@ton/crypto": "^3.3.0",
+    "@ton/ton": "15.3.1",
     "@types/node": "^22.16.5",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",

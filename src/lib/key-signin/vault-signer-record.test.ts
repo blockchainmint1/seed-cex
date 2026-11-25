@@ -1,8 +1,9 @@
+import { ed25519 } from "@noble/curves/ed25519.js";
 import { describe, expect, it } from "bun:test";
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { base64urlnopad } from "@scure/base";
-import { readSignedVaultRequest } from "./vault-protocol";
+import { readSignedVaultRequest, vaultRequestBytes } from "./vault-protocol";
 import { VAULT_KMS_SIGNING_KEY_ID } from "./vault-request";
 
 // The public record people check before pinning must agree with itself (Bobby, Nov 23 2026: AWS KMS key).
@@ -31,7 +32,11 @@ describe("published Vault signer record", () => {
     const ex = JSON.parse(m![1]!);
     expect(ex.signing_key_id).toBe("seeds-vault-kms-2026-11");
     const trust = { "seeds-vault-kms-2026-11": PUB };
-    expect(readSignedVaultRequest(ex, trust as never, Date.parse("2026-01-01T00:05:00.000Z"))).toBeTruthy();
+    // The example predates Stellar/TON/Sui (16 paths): its signature still checks out with the pinned key,
+    // and Seeds' own reader now refuses it because it lacks coins Seeds asks for today.
+    const { request_sig, ...unsigned } = ex;
+    expect(ed25519.verify(base64urlnopad.decode(request_sig), vaultRequestBytes(unsigned), base64urlnopad.decode(PUB))).toBe(true);
+    expect(() => readSignedVaultRequest(ex, trust as never, Date.parse("2026-01-01T00:05:00.000Z"))).toThrow();
     expect(() => readSignedVaultRequest(ex, trust as never, Date.parse("2026-11-23T00:00:00.000Z"))).toThrow();
     expect(() => readSignedVaultRequest(ex, { "seeds-vault-2026-11": "KuDdTWX-bDwxkSff2lULKVwvUS_Dfa0tZLy_iWefuxc" } as never, Date.parse("2026-01-01T00:05:00.000Z"))).toThrow();
   });

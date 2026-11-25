@@ -112,7 +112,7 @@ describe("extra password (BIP39 passphrase) for HME Vault seeds", () => {
     const { signature } = signTxcMessage(key, h.message);
     expect(verifyKeySignature("coin", identity, h.message, signature)).toBe(true);
     const xprvs = JSON.parse(openSealed(h.body.payload, kp.priv, kp.pub)) as Record<string, string>;
-    expect(Object.keys(h.body.xpubs).length).toBe(16);
+    expect(Object.keys(h.body.xpubs).length).toBe(19);
     for (const [c, pub] of Object.entries(h.body.xpubs)) expect(checkXprvMatches(c as LinkChain, xprvs[c]!, pub as string)).toBe(true);
   });
 

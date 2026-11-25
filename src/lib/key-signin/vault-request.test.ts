@@ -43,11 +43,12 @@ describe("Seeds-signed HME Vault requests (v2)", () => {
     expect(Object.keys(r).sort()).toEqual(["challenge", "challenge_id", "domain", "expires_at", "issued_at", "key_host", "paths", "pocket", "recipient_pubkey", "request_sig", "signing_key_id", "type", "v"]);
   });
 
-  test("the 16 pocket-1106 paths, in the agreed order", () => {
+  test("the 19 pocket-1106 paths, in the agreed order", () => {
     expect(VAULT_PATHS).toEqual([
       "m/44'/696969'/1106'", "m/44'/969696'/1106'", "m/84'/0'/1106'", "m/44'/2'/1106'", "m/44'/60'/1106'",
       "m/44'/3'/1106'", "m/44'/145'/1106'", "m/44'/133'/1106'", "m/44'/144'/1106'", "m/44'/195'/1106'",
       "m/44'/501'/1106'/0'", "m/44'/5'/1106'", "m/44'/118'/1106'", "m/44'/931'/1106'", "m/1852'/1815'/1106'", "m/44'/128'/1106'",
+      "m/44'/148'/1106'", "m/44'/607'/1106'", "m/44'/784'/1106'/0'/0'",
     ]);
   });
 
@@ -181,15 +182,15 @@ describe("Vault keeps working when Seeds adds a coin (auditor HK3)", () => {
     const v = { ...u, paths };
     return { ...v, request_sig: base64urlnopad.encode(ed25519.sign(vaultRequestBytes(v), secret)) };
   }
-  test("a request with an extra new coin (e.g. Stellar) is accepted", () => {
-    const r = resign([...VAULT_PATHS, "m/44'/148'/1106'"]);
-    expect(readSignedVaultRequest(r, trust).paths).toContain("m/44'/148'/1106'");
+  test("a request with an extra new coin (e.g. a future Polkadot pocket) is accepted", () => {
+    const r = resign([...VAULT_PATHS, "m/44'/354'/1106'"]);
+    expect(readSignedVaultRequest(r, trust).paths).toContain("m/44'/354'/1106'");
   });
   test("a request that drops a coin Vault expects is refused", () => {
     expect(() => readSignedVaultRequest(resign(VAULT_PATHS.slice(1)), trust)).toThrow();
   });
   test("duplicates and other pockets are refused", () => {
     expect(() => readSignedVaultRequest(resign([...VAULT_PATHS, VAULT_PATHS[0]!]), trust)).toThrow();
-    expect(() => readSignedVaultRequest(resign([...VAULT_PATHS, "m/44'/148'/1107'"]), trust)).toThrow();
+    expect(() => readSignedVaultRequest(resign([...VAULT_PATHS, "m/44'/354'/1107'"]), trust)).toThrow();
   });
 });

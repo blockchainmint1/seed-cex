@@ -2,8 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { HME_WALLET_CANT_HOLD, hmeCantHoldWarning, hmeWalletCanHold, recoveryLines, revokeCheck } from "./hme-support";
 
 describe("coins HME Wallet can't hold", () => {
-  test("the eleven extra coins are flagged", () => {
-    expect([...HME_WALLET_CANT_HOLD].sort()).toEqual(["ADA", "ATOM", "BCH", "DASH", "DOGE", "RUNE", "SOL", "TRX", "XMR", "XRP", "ZEC"]);
+  test("the fourteen extra coins are flagged", () => {
+    expect([...HME_WALLET_CANT_HOLD].sort()).toEqual(["ADA", "ATOM", "BCH", "DASH", "DOGE", "RUNE", "SOL", "SUI", "TON", "TRX", "XLM", "XMR", "XRP", "ZEC"]);
   });
   test("the five wallet coins are not", () => {
     for (const c of ["TXC", "ISK", "BTC", "LTC", "EVM"] as const) expect(hmeWalletCanHold(c)).toBe(true);

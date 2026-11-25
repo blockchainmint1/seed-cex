@@ -14,6 +14,7 @@ import type { PocketCoin } from "./coins";
 
 const b58c = createBase58check(sha256);
 
+import { suiAddress, tonAddress, xlmAddress } from "./ed25519-chains";
 export function hash160(b: Uint8Array): Uint8Array {
   return ripemd160(sha256(b));
 }
@@ -145,6 +146,9 @@ export function addressFor(coin: PocketCoin, pubkey: Uint8Array): string {
     case "DASH": return p2pkhAddress([76], pubkey);
     case "ATOM": return bech32.encode("cosmos", bech32.toWords(hash160(pubkey)));
     case "RUNE": return bech32.encode("thor", bech32.toWords(hash160(pubkey)));
+    case "XLM": return xlmAddress(pubkey);
+    case "TON": return tonAddress(pubkey);
+    case "SUI": return suiAddress(pubkey);
     case "ADA":
     case "XMR":
       throw new Error(`${coin} addresses are built from two keys — use cardano.ts / monero.ts`);
