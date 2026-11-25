@@ -600,7 +600,7 @@ async function chainLogs(userId: string, ids: string[]): Promise<Map<string, Cha
   const [t, x, rl, tn] = await Promise.all([
     supabaseAdmin.from("tsd_routes").select("parent_id, created_at, updated_at, direction, stage, bridge_order_id, tsd_txid, usdc_txid, bridge_out_txid, swap_send_id").eq("user_id", userId).in("parent_id", ids),
     supabaseAdmin.from("swap_sends").select("parent_id, created_at, from_asset, to_asset, txid, out_txid, status").eq("user_id", userId).in("parent_id", ids),
-    supabaseAdmin.from("relay_swaps").select("parent_id, created_at, updated_at, direction, deposit_txid, out_txid, status").eq("user_id", userId).in("parent_id", ids),
+    supabaseAdmin.from("relay_swaps").select("parent_id, created_at, updated_at, direction, deposit_txid, out_txid, status, amount_in, shown_out, amount_out, request_id").eq("user_id", userId).in("parent_id", ids),
     supabaseAdmin.from("ton_swaps").select("parent_id, created_at, updated_at, txid, status").eq("user_id", userId).in("parent_id", ids),
   ]);
   const legIds = (t.data ?? []).map((r) => r.swap_send_id).filter(Boolean) as string[];
@@ -619,9 +619,15 @@ async function chainLogs(userId: string, ids: string[]): Promise<Map<string, Cha
     if (r.out_txid) add(r.parent_id, { at: r.created_at, text: "Payout received", txid: r.out_txid, url: null });
   }
   for (const r of rl.data ?? []) {
-    if (r.deposit_txid) add(r.parent_id, { at: r.created_at, text: "Sent ETH to Relay", txid: r.deposit_txid, url: ETH_TX + r.deposit_txid });
-    if (r.out_txid) add(r.parent_id, { at: r.updated_at, text: "Relay paid out", txid: r.out_txid, url: null });
-    if (r.status === "done") add(r.parent_id, { at: r.updated_at, text: "Relay step done", txid: null, url: null });
+    const toTon = r.direction === "to_ton";
+    const outSym = toTon ? "TON" : r.direction === "to_hype" ? "HYPE" : "ETH";
+    const inSym = r.direction === "from_hype" ? "HYPE" : "ETH";
+    const num = (v: unknown) => (v == null ? null : Number(v));
+    if (r.request_id) add(r.parent_id, { at: r.created_at, text: `Relay order · expecting ≈ ${num(r.shown_out) ?? "?"} ${outSym}`, txid: null, url: r.deposit_txid ? `https://relay.link/transaction/${r.deposit_txid}` : null });
+    if (r.deposit_txid) add(r.parent_id, { at: r.created_at, text: `Sent ${num(r.amount_in) ?? ""} ${inSym} to Relay`.replace("  ", " "), txid: r.deposit_txid, url: (inSym === "HYPE" ? "https://hyperevmscan.io/tx/" : ETH_TX) + r.deposit_txid });
+    if (r.out_txid) add(r.parent_id, { at: r.updated_at, text: `Relay paid out${num(r.amount_out) != null ? ` ${num(r.amount_out)} ${outSym}` : ""}${toTon ? " to your TON pocket" : ""}`, txid: r.out_txid, url: toTon ? `https://tonviewer.com/transaction/${r.out_txid}` : outSym === "HYPE" ? `https://hyperevmscan.io/tx/${r.out_txid}` : ETH_TX + r.out_txid });
+    if (r.status === "done") add(r.parent_id, { at: r.updated_at, text: `Relay step done — ${outSym} arrived`, txid: null, url: null });
+    else if (r.deposit_txid && !r.out_txid) add(r.parent_id, { at: r.updated_at, text: `Waiting for Relay to pay out ${outSym} (usually 1–5 minutes)`, txid: null, url: null });
   }
   for (const r of tn.data ?? []) {
     if (r.txid) add(r.parent_id, { at: r.created_at, text: "Sent TON to STON.fi", txid: r.txid, url: `https://tonviewer.com/transaction/${r.txid}` });
