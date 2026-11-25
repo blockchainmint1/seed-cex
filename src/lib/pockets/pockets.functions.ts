@@ -30,6 +30,14 @@ export const getMyExtraPocketBalances = createServerFn({ method: "GET" })
       r.balance = v.balance;
       r.arriving = v.arriving;
     }));
+    // USD₮ on TON (Tether's jetton) lives at the same TON pocket address.
+    const ton = rows.find((r) => r.coin === "TON");
+    if (ton) {
+      const { usdtTonBalance } = await import("./ton-usdt.server");
+      const v = await shared(balanceKey("usdt-ton", ton.address), { ...CACHE_TIMES.balance, force: input.fresh, good: (x) => x.balance !== null },
+        async () => { const u = await usdtTonBalance(ton.address); return { balance: u === null ? null : Number(u) / 1e6, arriving: 0 }; });
+      rows.push({ coin: "USDT_TON", address: ton.address, balance: v.balance, arriving: 0 });
+    }
     // Monero: read from the last scan by Seeds' Monero server (display only; sends read live).
     const xmr = extraPocketAddresses(data).XMR;
     if (xmr) {

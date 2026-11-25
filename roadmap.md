@@ -483,3 +483,6 @@
 
 - [x] TSD → TON one-tap route (TSD → ETH → Relay → TON) + ETH → TON, testers first (Bobby, Nov 25); needs audit + small funded test
 - [ ] USDT on TON: in-pocket TON → USDT swap + USDT (TON) withdrawals; first test = pay TONAPI Lite bill (Bobby, Nov 25)
+
+- [x] USD₮ on TON: balance on Balances, deposits + withdrawals (testers), TON → USD₮ swap on STON.fi in own pocket (testers) — awaiting audit + small funded test
+- [ ] First funded test: TSD → TON → USD₮ on TON, then pay TONAPI refill (needs auditor OK; refill details from the TONAPI screen)

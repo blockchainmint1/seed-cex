@@ -20,7 +20,9 @@ export type SwapSide =
   /** HYPE on Hyperliquid's HyperEVM, swapped with Ether through Relay. */
   | { kind: "hype" }
   /** TON on The Open Network, bought with Ether through Relay into the member's own TON pocket (receive side only for now). */
-  | { kind: "ton" };
+  | { kind: "ton" }
+  /** Tether's USD₮ on TON, swapped from TON on STON.fi inside the member's own TON pocket. */
+  | { kind: "ton_usdt" };
 
 export type TwoStepDirection = "dex_then_x" | "x_then_dex";
 
@@ -31,7 +33,9 @@ export type RouteOption =
   | { kind: "two"; direction: TwoStepDirection; network: DexNetwork; token: string; coin: SwapCoinId; mids: SwapCoinId[] }
   | { kind: "relay"; direction: "to_hype" | "from_hype" | "to_ton" }
   /** Any coin or TSD <-> HYPE in one tap: THORChain/Maya or the TSD route to ETH, then Relay (src/lib/hype-chain). */
-  | { kind: "hype_chain"; direction: "to_hype" | "from_hype" | "to_ton"; via: "tsd" | "xchain"; coin: string };
+  | { kind: "hype_chain"; direction: "to_hype" | "from_hype" | "to_ton"; via: "tsd" | "xchain"; coin: string }
+  /** TON -> USD₮ on TON through STON.fi, own TON pocket only (src/lib/ston). */
+  | { kind: "ston" };
 
 export type SwapPlan = { options: RouteOption[]; problem: string | null };
 
@@ -70,7 +74,7 @@ export function normalizeSide(s: SwapSide): SwapSide {
 export function sameSide(a: SwapSide, b: SwapSide): boolean {
   const x = normalizeSide(a), y = normalizeSide(b);
   if (x.kind !== y.kind) return false;
-  if (x.kind === "tsd" || x.kind === "hype" || x.kind === "ton") return true;
+  if (x.kind === "tsd" || x.kind === "hype" || x.kind === "ton" || x.kind === "ton_usdt") return true;
   if (x.kind === "coin" && y.kind === "coin") return x.id === y.id;
   if (x.kind === "token" && y.kind === "token") return x.network === y.network && sameAddr(x.address, y.address);
   return false;
@@ -114,8 +118,13 @@ export function planSwap(fromIn: SwapSide, toIn: SwapSide): SwapPlan {
   const none = (problem: string): SwapPlan => ({ options: [], problem });
   if (sameSide(from, to)) return none("Pick two different coins.");
 
+  // USD₮ on TON: only from TON, on STON.fi, in the member's own TON pocket.
+  if (from.kind === "ton" && to.kind === "ton_usdt") return { options: [{ kind: "ston" }], problem: null };
+  if (from.kind === "ton_usdt") return none("Swapping USD₮ on TON into other coins isn't available yet. You can withdraw it from Balances.");
+  if (to.kind === "ton_usdt") return none("Get TON first (TSD, ETH and many coins swap to TON), then swap TON to USD₮ on TON.");
+
   // TON: bought with Ether through Relay into the member's own TON pocket; TSD and other coins reach ETH first.
-  if (from.kind === "ton") return none("Swapping TON into other coins isn't available yet. You can withdraw TON from Balances.");
+  if (from.kind === "ton") return none("TON swaps into USD₮ on TON for now. You can also withdraw TON from Balances.");
   if (to.kind === "ton") {
     if (from.kind === "hype") return none("Swap HYPE to ETH first, then ETH to TON.");
     if (from.kind === "coin" && from.id === "ETH") return { options: [{ kind: "relay", direction: "to_ton" }], problem: null };

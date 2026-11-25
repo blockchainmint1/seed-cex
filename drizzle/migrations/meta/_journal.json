@@ -750,6 +750,13 @@
       "when": 1795612062656,
       "tag": "0106_relay_ton_payouts",
       "breakpoints": true
+    },
+    {
+      "idx": 107,
+      "version": "7",
+      "when": 1795612778439,
+      "tag": "0107_ton_usdt_and_ston_swaps",
+      "breakpoints": true
     }
   ]
 }

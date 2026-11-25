@@ -8,7 +8,7 @@
 import type { ChainId } from "@/lib/chains";
 import type { PocketCoin } from "@/lib/pockets/coins";
 
-export type WithdrawKind = "evm" | "utxo" | "omni" | "btc" | "doge" | "bch" | "xrp" | "trx" | "sol" | "xmr" | "ada" | "xlm" | "ton" | "sui";
+export type WithdrawKind = "evm" | "utxo" | "omni" | "btc" | "doge" | "bch" | "xrp" | "trx" | "sol" | "xmr" | "ada" | "xlm" | "ton" | "sui" | "ton_usdt";
 
 export type WithdrawCoin = {
   /** "<symbol>:<network id>", e.g. "USDC:base". */
@@ -92,6 +92,8 @@ export const WITHDRAW_COINS: WithdrawCoin[] = [
     keepNote: "Stellar's account reserve and selling liabilities stay behind, plus the network fee. Send only to a personal G-address that needs no memo; exchange deposits requiring a memo aren't supported.", explorerTx: "https://stellar.expert/explorer/public/tx/", addressHint: "G… (no memo required)" },
   { key: "TON:ton", symbol: "TON", network: "ton", networkLabel: "TON", pocket: "TON", kind: "ton", decimals: 9,
     keepNote: "Keep TON for network fees and wallet storage. Native TON only; no jettons. Send only to an address that needs no comment or memo.", explorerTx: "https://tonviewer.com/", addressHint: "UQ… or EQ… (mainnet, no memo)" },
+  { key: "USDT:ton", symbol: "USDT", network: "ton", networkLabel: "TON", pocket: "TON", kind: "ton_usdt", decimals: 6, feeCoin: "TON",
+    keepNote: "Tether's USD₮ on TON only. Each send attaches 0.05 TON for network fees (most comes back), so keep about 0.1 TON in your TON pocket. Send only to an address that needs no comment or memo.", explorerTx: "https://tonviewer.com/transaction/", addressHint: "UQ… or EQ… (mainnet, no memo)" },
   { key: "SUI:sui", symbol: "SUI", network: "sui", networkLabel: "Sui", pocket: "SUI", kind: "sui", decimals: 9,
     keepNote: "A little SUI stays behind for gas. Only native SUI coins are spent; other Sui tokens and objects are never touched.", explorerTx: "https://suiscan.xyz/mainnet/tx/", addressHint: "0x… (64 hexadecimal characters)" },
 ];

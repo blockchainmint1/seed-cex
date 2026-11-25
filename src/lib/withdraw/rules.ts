@@ -73,8 +73,9 @@ export const NEEDS_EMAIL_TO_WITHDRAW =
 export type LinkLike = { mode: string; hasKey: boolean; address: string | null } | null;
 
 /** First reason Seeds can't send this coin for this member at all (before readiness), or null. */
-export function sendBlocker(p: { link: LinkLike; tester: boolean; frozen: boolean; symbol: string; networkLabel: string; kind?: SignInKind }): string | null {
-  const newChain = edSendBlocker(p.symbol, p.tester);
+export function sendBlocker(p: { link: LinkLike; tester: boolean; frozen: boolean; symbol: string; networkLabel: string; kind?: SignInKind; pocket?: string }): string | null {
+  // Gate by the pocket too, so a token on a new chain (USD₮ on TON) follows that chain's stage.
+  const newChain = edSendBlocker(p.pocket ?? p.symbol, p.tester) ?? edSendBlocker(p.symbol, p.tester);
   if (newChain) return newChain;
   if (WITHDRAW_PILOT_TESTERS_ONLY && !p.tester) return "Withdrawals from Seeds are open to beta testers first. They open to members after that.";
   if (p.frozen) return "Withdrawals are paused on your account while the Seeds team takes a look. Contact support@honest.money if you didn't expect this.";

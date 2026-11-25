@@ -24,7 +24,7 @@ export async function destinationProblem(c: WithdrawCoin, to: string, own: strin
   const t = to.trim();
   if (!t) return "Enter the address to send to.";
   if (t === own || t.toLowerCase() === own.toLowerCase()) return "That's your trading pocket's own address.";
-  if (c.kind === "xlm" || c.kind === "ton" || c.kind === "sui") {
+  if (c.kind === "xlm" || c.kind === "ton" || c.kind === "sui" || c.kind === "ton_usdt") {
     try {
       const { xlmDecodeAddress, validSuiAddress } = await import("@/lib/pockets/ed25519-chains");
       if (c.kind === "xlm") {
@@ -34,7 +34,7 @@ export async function destinationProblem(c: WithdrawCoin, to: string, own: strin
         catch { return "Stellar couldn't check whether that address requires a memo. Try again later."; }
       }
       if (c.kind === "sui" && (!validSuiAddress(t) || /^0x0+$/.test(t))) throw new Error("Use a full Sui mainnet address, not the zero address.");
-      if (c.kind === "ton") {
+      if (c.kind === "ton" || c.kind === "ton_usdt") {
         const { tonDestination } = await import("@/lib/pockets/ton-tx");
         if (tonDestination(t).equals(tonDestination(own))) return "That's your trading pocket's own address.";
       }
@@ -91,6 +91,10 @@ export async function readBalance(c: WithdrawCoin, address: string): Promise<Bal
         const { readEdSpendable } = await import("@/lib/pockets/ed-send.server");
         const u = await readEdSpendable(c.pocket as "XLM" | "TON" | "SUI", address);
         return { units: u, feeUnits: u };
+      }
+      case "ton_usdt": {
+        const { readUsdtTonSpendable } = await import("@/lib/pockets/ton-usdt.server");
+        return await readUsdtTonSpendable(address);
       }
       case "evm": {
         const { asset } = evmAsset(c);
@@ -182,6 +186,10 @@ export async function sendWithdrawal(c: WithdrawCoin, link: Link, from: string, 
     case "sui": {
       const { sendEdNative } = await import("@/lib/pockets/ed-send.server");
       return sendEdNative(c.pocket as "XLM" | "TON" | "SUI", link, from, to, units, record, tester);
+    }
+    case "ton_usdt": {
+      const { sendUsdtTon } = await import("@/lib/pockets/ton-usdt.server");
+      return sendUsdtTon(link, from, to, units, record);
     }
     case "evm": {
       const { chain, asset } = evmAsset(c);
@@ -310,6 +318,11 @@ export async function txStatus(c: WithdrawCoin, txid: string, to?: string, units
     if (!to || units === undefined) return null;
     const { edTxStatus } = await import("@/lib/pockets/ed-send.server");
     return edTxStatus(c.pocket as "XLM" | "TON" | "SUI", txid, to, units, from, evidence);
+  }
+  if (c.kind === "ton_usdt") {
+    if (!to || units === undefined || !from) return null;
+    const { usdtTonTxStatus } = await import("@/lib/pockets/ton-usdt.server");
+    return usdtTonTxStatus(txid, from, to, units, evidence);
   }
   if (c.kind !== "evm") return null;
   const { fetchEvmTxStatus } = await import("@/lib/evm.server");

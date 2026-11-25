@@ -25,10 +25,12 @@ import { RelayResult, type RelayQuoteResult } from "@/components/swap/RelayResul
 import { quoteRelaySwap } from "@/lib/relay/relay.functions";
 import { HypeChainResult, type HypeChainQuoteResult } from "@/components/swap/HypeChainResult";
 import { quoteHypeChainSwap } from "@/lib/hype-chain/hype-chain.functions";
+import { quoteTonUsdt } from "@/lib/ston/ston.functions";
+import { TonUsdtResult, type TonUsdtQuote } from "@/components/swap/TonUsdtResult";
 
 type SwapSearch = { from?: string; to?: string; amount?: string };
-const sideOk = (v: unknown): v is string => v === "TSD" || v === "HYPE" || v === "TON" || (typeof v === "string" && Boolean(swapCoin(v as SwapCoinId)));
-const toSide = (v: string): SwapSide => (v === "TSD" ? { kind: "tsd" } : v === "HYPE" ? { kind: "hype" } : v === "TON" ? { kind: "ton" } : { kind: "coin", id: v as SwapCoinId });
+const sideOk = (v: unknown): v is string => v === "TSD" || v === "HYPE" || v === "TON" || v === "USDT_TON" || (typeof v === "string" && Boolean(swapCoin(v as SwapCoinId)));
+const toSide = (v: string): SwapSide => (v === "TSD" ? { kind: "tsd" } : v === "HYPE" ? { kind: "hype" } : v === "TON" ? { kind: "ton" } : v === "USDT_TON" ? { kind: "ton_usdt" } : { kind: "coin", id: v as SwapCoinId });
 
 export const Route = createFileRoute("/swap")({
   staticData: { sitemap: true },
@@ -76,6 +78,7 @@ function sideLabel(s: SwapSide): { symbol: string; network: string } {
   if (s.kind === "tsd") return { symbol: "TSD", network: "TEXITcoin" };
   if (s.kind === "hype") return { symbol: "HYPE", network: "Hyperliquid" };
   if (s.kind === "ton") return { symbol: "TON", network: "TON" };
+  if (s.kind === "ton_usdt") return { symbol: "USD₮", network: "TON" };
   if (s.kind === "coin") {
     const c = swapCoin(s.id)!;
     return { symbol: c.symbol, network: c.network };
@@ -89,6 +92,7 @@ function asDexCoin(s: SwapSide, address: string): DexCoin {
   if (s.kind === "token") return { address: s.address, symbol: s.symbol, name: s.name ?? s.symbol };
   if (s.kind === "hype") return { address, symbol: "HYPE", name: "Hyperliquid" };
   if (s.kind === "ton") return { address, symbol: "TON", name: "Toncoin" };
+  if (s.kind === "ton_usdt") return { address, symbol: "USD₮", name: "Tether USD on TON" };
   const c = swapCoin(s.id)!;
   return { address, symbol: c.symbol, name: c.name };
 }
@@ -100,6 +104,7 @@ type Result =
   | { kind: "two"; opt: Extract<RouteOption, { kind: "two" }>; out: number | null; label: string; data: TwoStepQuoteResult; error?: undefined }
   | { kind: "relay"; opt: Extract<RouteOption, { kind: "relay" }>; out: number | null; label: string; data: RelayQuoteResult; error?: undefined }
   | { kind: "hype_chain"; opt: Extract<RouteOption, { kind: "hype_chain" }>; out: number | null; label: string; data: HypeChainQuoteResult; error?: undefined }
+  | { kind: "ston"; opt: Extract<RouteOption, { kind: "ston" }>; out: number | null; label: string; data: TonUsdtQuote; error?: undefined }
   | { kind: "error"; opt: RouteOption; out: null; label: string; error: string };
 
 function optionLabel(o: RouteOption): string {
@@ -107,6 +112,7 @@ function optionLabel(o: RouteOption): string {
   if (o.kind === "tsd") return "TSD Bridge + THORChain / Maya";
   if (o.kind === "dex") return `Pools on ${DEX_NETWORKS[o.network].name}`;
   if (o.kind === "relay") return "Relay";
+  if (o.kind === "ston") return "STON.fi on TON";
   if (o.kind === "hype_chain") return o.via === "tsd" ? "TSD Bridge + Relay via ETH" : "THORChain / Maya + Relay via ETH";
   return `Two steps on ${DEX_NETWORKS[o.network].name}`;
 }
@@ -156,6 +162,7 @@ function SwapPage() {
   const fetchTwo = useServerFn(quoteTwoStepSwap);
   const fetchRelay = useServerFn(quoteRelaySwap);
   const fetchChain = useServerFn(quoteHypeChainSwap);
+  const fetchSton = useServerFn(quoteTonUsdt);
   const quote = useMutation({
     mutationFn: async (): Promise<Result[]> => {
       const opts = outside ? plan.options.filter((o) => o.kind === "xchain") : plan.options;
@@ -179,6 +186,10 @@ function SwapPage() {
           if (o.kind === "relay") {
             const d = await fetchRelay({ data: { direction: o.direction, amount } });
             return { kind: "relay", opt: o, out: d.out, label, data: d };
+          }
+          if (o.kind === "ston") {
+            const d = await fetchSton({ data: { amount } });
+            return { kind: "ston", opt: o, out: d.out, label, data: d };
           }
           if (o.kind === "hype_chain") {
             const d = await fetchChain({ data: { direction: o.direction, via: o.via, coin: o.coin, amount } });
@@ -581,6 +592,7 @@ function Selected({ r, from, to, amount, destination, signedIn, sendCtx, linkCtx
     );
   }
   if (r.kind === "relay") return <RelayResult q={r.data} amount={amount} />;
+  if (r.kind === "ston") return <TonUsdtResult q={r.data} amount={amount} />;
   if (r.kind === "hype_chain") return <HypeChainResult q={r.data} amount={amount} symbol={sideLabel(r.opt.direction === "from_hype" ? to : from).symbol} />;
   if (r.kind === "two") {
     return <TwoStepResult q={r.data} amount={amount} symbolIn={sideLabel(from).symbol} symbolOut={sideLabel(to).symbol} />;

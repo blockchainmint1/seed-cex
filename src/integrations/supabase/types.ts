@@ -4778,6 +4778,60 @@ export type Database = {
         }
         Relationships: []
       }
+      ton_swaps: {
+        Row: {
+          created_at: string
+          error: string | null
+          id: string
+          link_id: string
+          min_out_units: number
+          offer_units: number
+          pocket: string
+          received_units: number | null
+          send_meta: Json | null
+          shown_units: number
+          status: string
+          txid: string | null
+          updated_at: string
+          usdt_baseline: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          id?: string
+          link_id: string
+          min_out_units: number
+          offer_units: number
+          pocket: string
+          received_units?: number | null
+          send_meta?: Json | null
+          shown_units: number
+          status?: string
+          txid?: string | null
+          updated_at?: string
+          usdt_baseline: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          id?: string
+          link_id?: string
+          min_out_units?: number
+          offer_units?: number
+          pocket?: string
+          received_units?: number | null
+          send_meta?: Json | null
+          shown_units?: number
+          status?: string
+          txid?: string | null
+          updated_at?: string
+          usdt_baseline?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       trade_events: {
         Row: {
           actor_id: string | null

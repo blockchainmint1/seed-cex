@@ -131,7 +131,7 @@ export async function withdrawContext(userId: string, tester: boolean, key: stri
   const readiness = link ? await readinessFor(userId, link.id) : null;
   const address = coin && link ? link.addresses[coin.pocket] ?? null : null;
   const moneroDown = coin?.kind === "xmr" ? await moneroBlocker(userId, link?.id ?? null, address) : null;
-  const blocker = moneroDown ?? sendBlocker({ link: link ? { mode: link.mode, hasKey: link.hasKey, address: coin ? address : "-" } : null, tester, frozen: lim.frozen, symbol: coin?.symbol ?? "", networkLabel: coin?.networkLabel ?? "", kind: who.kind })
+  const blocker = moneroDown ?? sendBlocker({ link: link ? { mode: link.mode, hasKey: link.hasKey, address: coin ? address : "-" } : null, tester, frozen: lim.frozen, symbol: coin?.symbol ?? "", networkLabel: coin?.networkLabel ?? "", kind: who.kind, ...(coin ? { pocket: coin.pocket } : {}) })
     ?? (!who.hasEmail ? NEEDS_EMAIL_TO_WITHDRAW : null)
     ?? (readiness ? readinessProblem(readiness, who.pocket.kind, who.pocket.viaLink) : null);
   return {
@@ -157,7 +157,7 @@ async function prepare(userId: string, tester: boolean, input: WithdrawInput) {
   if (!coin) throw new Error("Seeds can't send that coin on that network yet.");
   const [link, lim, who] = await Promise.all([loadLinkSafe(userId), limitsFor(userId), signInFor(userId)]);
   const from = link?.addresses[coin.pocket] ?? null;
-  const block = sendBlocker({ link: link ? { mode: link.mode, hasKey: link.hasKey, address: from } : null, tester, frozen: lim.frozen, symbol: coin.symbol, networkLabel: coin.networkLabel, kind: who.kind });
+  const block = sendBlocker({ link: link ? { mode: link.mode, hasKey: link.hasKey, address: from } : null, tester, frozen: lim.frozen, symbol: coin.symbol, networkLabel: coin.networkLabel, kind: who.kind, pocket: coin.pocket });
   if (block) throw new Error(block);
   if (!who.hasEmail) throw new Error(NEEDS_EMAIL_TO_WITHDRAW);
   if (!link || !from) throw new Error("Your trading pocket is no longer linked. Nothing was sent.");
@@ -341,7 +341,7 @@ async function sendOne(r: Row): Promise<"sent" | "failed" | "unknown"> {
     const tester = await isTester(r.user_id);
     const block = sendBlocker({
       link: link ? { mode: link.mode, hasKey: link.hasKey, address: link.addresses[coin.pocket] ?? null } : null,
-      tester, frozen: false, symbol: coin.symbol, networkLabel: coin.networkLabel,
+      tester, frozen: false, symbol: coin.symbol, networkLabel: coin.networkLabel, pocket: coin.pocket,
     });
     if (block) throw new Error(block);
     if (!link) throw new Error("Your trading pocket is no longer linked. Nothing was sent.");
@@ -372,7 +372,7 @@ async function sendOne(r: Row): Promise<"sent" | "failed" | "unknown"> {
     return "sent";
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    const nativeEd = coin && ["xlm", "ton", "sui"].includes(coin.kind);
+    const nativeEd = coin && ["xlm", "ton", "sui", "ton_usdt"].includes(coin.kind);
     const definiteRejection = msg === "Stellar rejected this transaction." || msg === "Sui rejected this transaction.";
     const unsure = txid !== null && (maybeBroadcast(msg) || (nativeEd && !definiteRejection));
     await supabaseAdmin.from("pocket_withdrawals").update({ status: unsure ? "unknown" : "failed", error: msg.slice(0, 500), updated_at: new Date().toISOString() }).eq("id", r.id);
@@ -403,7 +403,7 @@ export async function advanceWithdrawals(onlyId?: string) {
   // A killed request cannot run its catch block. Adopt its recorded id independently of
   // another withdrawal being requested; never re-sign or infer expiry from request age.
   const { data: interrupted } = await supabaseAdmin.from("pocket_withdrawals").select("id, txid, updated_at")
-    .eq("status", "signing").in("coin", ["XLM", "TON", "SUI"]).lt("updated_at", new Date(Date.now() - 600_000).toISOString()).limit(25);
+    .eq("status", "signing").in("chain", ["xlm", "ton", "sui"]).lt("updated_at", new Date(Date.now() - 600_000).toISOString()).limit(25);
   for (const row of interrupted ?? []) {
     const outcome = edSigningRecovery(row.txid, Date.parse(row.updated_at), Date.now());
     if (!outcome) continue;
@@ -423,7 +423,7 @@ export async function advanceWithdrawals(onlyId?: string) {
   const { txStatus } = await import("./send.server");
   for (const s of sent ?? []) {
     const coin = withdrawCoin(s.coin, s.chain);
-    if (!coin || !s.txid || !["evm", "xlm", "ton", "sui"].includes(coin.kind)) continue;
+    if (!coin || !s.txid || !["evm", "xlm", "ton", "sui", "ton_usdt"].includes(coin.kind)) continue;
     const st = await txStatus(coin, s.txid, s.to_address, BigInt(s.amount_units), s.from_address, s.send_meta).catch(() => null);
     if (!st || st.confirmations == null) {
       await supabaseAdmin.from("pocket_withdrawals").update({ updated_at: new Date().toISOString() }).eq("id", s.id).in("status", ["sent", "unknown"]);

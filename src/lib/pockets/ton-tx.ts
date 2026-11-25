@@ -1,5 +1,6 @@
-/** W5 v5R1 mainnet, native TON only; no sweep modes, plugins, jettons or arbitrary payloads. */
-import { Address, beginCell, external, internal, SendMode, storeMessage } from "@ton/core";
+/** W5 v5R1 mainnet: one outgoing message, no sweep modes or plugins. A body is only ever one Seeds
+ * built itself in ton-jetton.ts (USDT transfer or STON.fi swap); never a payload from outside. */
+import { Address, beginCell, type Cell, external, internal, SendMode, storeMessage } from "@ton/core";
 import { WalletContractV5R1 } from "@ton/ton";
 import { ed25519 } from "@noble/curves/ed25519.js";
 import { tonAddress } from "./ed25519-chains";
@@ -13,8 +14,11 @@ export function tonDestination(to: string): Address {
 export async function buildTonTransfer(input: {
   publicKey: Uint8Array; from: string; to: string; units: bigint; seqno: number;
   deploy: boolean; expiresAt: number; privateKey?: Uint8Array;
+  /** Seeds-built message body (jetton transfer / swap); sent bounceable so a refusal returns the TON. */
+  body?: Cell;
 }) {
-  const dest = tonDestination(input.to);
+  const dest = input.body ? Address.parse(input.to) : tonDestination(input.to);
+  if (dest.workChain !== 0) throw new Error("TON contract must be on workchain 0");
   const wallet = WalletContractV5R1.create({ workchain: 0, publicKey: Buffer.from(input.publicKey) });
   if (tonAddress(input.publicKey) !== input.from || wallet.address.equals(dest)) throw new Error("TON pocket or destination mismatch");
   if (input.privateKey && !Buffer.from(ed25519.getPublicKey(input.privateKey)).equals(Buffer.from(input.publicKey))) throw new Error("TON key mismatch");
@@ -22,7 +26,7 @@ export async function buildTonTransfer(input: {
   const body = await wallet.createTransfer({
     seqno: input.seqno, timeout: input.expiresAt,
     sendMode: SendMode.PAY_GAS_SEPARATELY | SendMode.IGNORE_ERRORS,
-    messages: [internal({ to: dest, value: input.units, bounce: false })],
+    messages: [input.body ? internal({ to: dest, value: input.units, bounce: true, body: input.body }) : internal({ to: dest, value: input.units, bounce: false })],
     signer: async (cell) => {
       if (!input.privateKey) return Buffer.alloc(64); // fee simulation only; never broadcast
       const signature = ed25519.sign(cell.hash(), input.privateKey);

@@ -129,24 +129,7 @@ export async function sendEdNative(chain: EdChain, link: Link, from: string, to:
     return tx.txid;
   }
   if (chain === "TON") {
-    const publicHalf = link.xpubs?.['TON'];
-    if (!publicHalf) throw new Error("TON public key is missing. Nothing was sent.");
-    const publicKey = parseTonPublicKey(publicHalf);
-    const info = await tonInfo(from);
-    const seqno = tonSeqno(info, publicKey);
-    if (await tonSecondSeqno(from, publicKey) !== seqno) throw new Error("TON servers disagree about the pocket sequence. Nothing was sent.");
-    const args = { publicKey, from, to, units, seqno, deploy: info.state === "uninitialized", expiresAt: Math.floor(Date.now() / 1000) + 120 };
-    const unsigned = await buildTonTransfer(args);
-    const estimate = await tonCall<{ source_fees: Record<string, number | string> }>("estimateFee", { address: from, body: unsigned.body, init_code: unsigned.initCode, init_data: unsigned.initData, ignore_chksig: true });
-    const names = ["in_fwd_fee", "storage_fee", "gas_fee", "fwd_fee"];
-    const fee = names.reduce((n, k) => { const v = estimate.source_fees[k]; if (v === undefined || !/^\d+$/.test(String(v))) throw new Error("TON fee estimate is incomplete"); return n + BigInt(v); }, 0n) * 2n;
-    checkNativeSpend(chain, units, BigInt(info.balance), fee, TON_KEEP);
-    const tx = await withPocketKey(link, chain, from, (privateKey) => buildTonTransfer({ ...args, privateKey }));
-    await record(tx.txid, { chain, expiresAt: seqno === 0 ? 0xffffffff : args.expiresAt, seqno, publicKeyHex: Buffer.from(publicKey).toString("hex") });
-    try { await tonCall("sendBoc", { boc: tx.boc }); }
-    catch { throw new Error("TON network broadcast outcome is unknown. Do not retry; Seeds will check its message id."); }
-    // Acknowledgement is not delivery. The confirmation watcher checks the full trace.
-    return tx.txid;
+    return signAndSendTon(link, from, { to, units }, record, (balance, fee) => checkNativeSpend(chain, units, balance, fee, TON_KEEP));
   }
   const client = suiClient();
   const [{ referenceGasPrice }, { systemState }] = await Promise.all([client.getReferenceGasPrice({ signal: AbortSignal.timeout(12_000) }), client.getCurrentSystemState({ signal: AbortSignal.timeout(12_000) })]);
@@ -251,3 +234,43 @@ export async function edTxStatus(chain: EdChain, txid: string, to: string, units
     return tonExpired(meta['expiresAt'], meta['seqno'], seqno, info.sync_utime) ? { success: false, confirmations: 0, expired: true } : null;
   }
 }
+/**
+ * One W5 message from the member's own TON pocket: native TON, or a body Seeds built itself
+ * (ton-jetton.ts). Two servers must agree on the wallet, the fee is estimated before the KMS unlock,
+ * `check` sees the live balance and doubled fee, and the message id is recorded before one broadcast.
+ */
+export async function signAndSendTon(link: Link, from: string, msg: { to: string; units: bigint; body?: Cell }, record: Recorder, check: (balance: bigint, fee: bigint) => void): Promise<string> {
+  const publicHalf = link.xpubs?.['TON'];
+  if (!publicHalf) throw new Error("TON public key is missing. Nothing was sent.");
+  const publicKey = parseTonPublicKey(publicHalf);
+  const info = await tonInfo(from);
+  const seqno = tonSeqno(info, publicKey);
+  if (await tonSecondSeqno(from, publicKey) !== seqno) throw new Error("TON servers disagree about the pocket sequence. Nothing was sent.");
+  const args = { publicKey, from, to: msg.to, units: msg.units, seqno, deploy: info.state === "uninitialized", expiresAt: Math.floor(Date.now() / 1000) + 120, ...(msg.body ? { body: msg.body } : {}) };
+  const unsigned = await buildTonTransfer(args);
+  const estimate = await tonCall<{ source_fees: Record<string, number | string> }>("estimateFee", { address: from, body: unsigned.body, init_code: unsigned.initCode, init_data: unsigned.initData, ignore_chksig: true });
+  const names = ["in_fwd_fee", "storage_fee", "gas_fee", "fwd_fee"];
+  const fee = names.reduce((n, k) => { const v = estimate.source_fees[k]; if (v === undefined || !/^\d+$/.test(String(v))) throw new Error("TON fee estimate is incomplete"); return n + BigInt(v); }, 0n) * 2n;
+  if (fee <= 0n || fee > ED_FEE_CAP.TON) throw new Error("TON fees exceed the safety cap. Nothing was sent.");
+  check(BigInt(info.balance), fee);
+  const tx = await withPocketKey(link, "TON", from, (privateKey) => buildTonTransfer({ ...args, privateKey }));
+  await record(tx.txid, { chain: "TON", expiresAt: seqno === 0 ? 0xffffffff : args.expiresAt, seqno, publicKeyHex: Buffer.from(publicKey).toString("hex") });
+  try { await tonCall("sendBoc", { boc: tx.boc }); }
+  catch { throw new Error("TON network broadcast outcome is unknown. Do not retry; Seeds will check its message id."); }
+  // Acknowledgement is not delivery. The confirmation watcher checks the full trace.
+  return tx.txid;
+}
+
+/** Missing TON message: expired only when both servers show the signed seqno never moved past expiry. */
+export async function tonMessageExpired(from: string, evidence: unknown): Promise<boolean> {
+  const meta = evidence && typeof evidence === "object" ? evidence as Record<string, unknown> : null;
+  if (meta?.['chain'] !== "TON" || typeof meta['expiresAt'] !== "number" || typeof meta['seqno'] !== "number" || typeof meta['publicKeyHex'] !== "string" || !/^[0-9a-f]{64}$/i.test(meta['publicKeyHex'])) return false;
+  if (meta['seqno'] === 0) return false;
+  const info = await tonInfo(from);
+  const key = Buffer.from(meta['publicKeyHex'], "hex");
+  const seqno = tonSeqno(info, key);
+  if (await tonSecondSeqno(from, key) !== seqno) return false;
+  return tonExpired(meta['expiresAt'], meta['seqno'], seqno, info.sync_utime);
+}
+
+export { tonCall, NetworkHttpError, json as tonJson };
