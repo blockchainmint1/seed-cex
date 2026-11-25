@@ -601,7 +601,7 @@ async function chainLogs(userId: string, ids: string[]): Promise<Map<string, Cha
     supabaseAdmin.from("tsd_routes").select("parent_id, created_at, updated_at, direction, stage, bridge_order_id, tsd_txid, usdc_txid, bridge_out_txid, swap_send_id").eq("user_id", userId).in("parent_id", ids),
     supabaseAdmin.from("swap_sends").select("parent_id, created_at, from_asset, to_asset, txid, out_txid, status").eq("user_id", userId).in("parent_id", ids),
     supabaseAdmin.from("relay_swaps").select("parent_id, created_at, updated_at, direction, deposit_txid, out_txid, status, amount_in, shown_out, amount_out, request_id").eq("user_id", userId).in("parent_id", ids),
-    supabaseAdmin.from("ton_swaps").select("parent_id, created_at, updated_at, txid, status").eq("user_id", userId).in("parent_id", ids),
+    supabaseAdmin.from("ton_swaps").select("parent_id, created_at, updated_at, txid, status, offer_units, shown_units, received_units").eq("user_id", userId).in("parent_id", ids),
   ]);
   const legIds = (t.data ?? []).map((r) => r.swap_send_id).filter(Boolean) as string[];
   const legs = legIds.length ? (await supabaseAdmin.from("swap_sends").select("id, txid, status").eq("user_id", userId).in("id", legIds)).data ?? [] : [];
@@ -616,7 +616,8 @@ async function chainLogs(userId: string, ids: string[]): Promise<Map<string, Cha
   }
   for (const r of x.data ?? []) {
     if (r.txid) add(r.parent_id, { at: r.created_at, text: `Sent ${r.from_asset} → ${r.to_asset} on THORChain/Maya`, txid: r.txid, url: THOR_TX + r.txid.replace(/^0x/, "") });
-    if (r.out_txid) add(r.parent_id, { at: r.created_at, text: "Payout received", txid: r.out_txid, url: null });
+    if (r.out_txid) add(r.parent_id, { at: r.created_at, text: "Payout received", txid: r.out_txid, url: /^0x/.test(r.out_txid) ? ETH_TX + r.out_txid : null });
+    else if (r.txid && !["failed", "refunded", "done"].includes(String(r.status))) add(r.parent_id, { at: r.created_at, text: "Waiting for THORChain/Maya to pay out", txid: null, url: THOR_TX + r.txid.replace(/^0x/, "") });
   }
   for (const r of rl.data ?? []) {
     const toTon = r.direction === "to_ton";
@@ -630,8 +631,11 @@ async function chainLogs(userId: string, ids: string[]): Promise<Map<string, Cha
     else if (r.deposit_txid && !r.out_txid) add(r.parent_id, { at: r.updated_at, text: `Waiting for Relay to pay out ${outSym} (usually 1–5 minutes)`, txid: null, url: null });
   }
   for (const r of tn.data ?? []) {
-    if (r.txid) add(r.parent_id, { at: r.created_at, text: "Sent TON to STON.fi", txid: r.txid, url: `https://tonviewer.com/transaction/${r.txid}` });
-    if (r.status === "done") add(r.parent_id, { at: r.updated_at, text: "USD₮ arrived in your TON pocket", txid: null, url: null });
+    const u = (v: unknown, d: number) => (v == null ? null : Number(v) / 10 ** d);
+    const tonIn = u(r.offer_units, 9), usdtShown = u(r.shown_units, 6), usdtGot = u(r.received_units, 6);
+    if (r.txid) add(r.parent_id, { at: r.created_at, text: `Sent ${tonIn ?? ""} TON to STON.fi · expecting ≈ ${usdtShown ?? "?"} USD₮`.replace("Sent  TON", "Sent TON"), txid: r.txid, url: `https://tonviewer.com/transaction/${r.txid}` });
+    if (r.status === "done") add(r.parent_id, { at: r.updated_at, text: `USD₮ arrived in your TON pocket${usdtGot != null ? ` · ${usdtGot} USD₮` : ""}`, txid: null, url: null });
+    else if (r.txid && !["failed", "refunded"].includes(String(r.status))) add(r.parent_id, { at: r.updated_at, text: "Waiting for STON.fi to pay out USD₮ (usually under a minute)", txid: null, url: null });
   }
   for (const l of out.values()) l.sort((a, b) => a.at.localeCompare(b.at));
   return out;
