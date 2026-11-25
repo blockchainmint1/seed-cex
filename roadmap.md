@@ -489,3 +489,5 @@
 
 - [x] Balances Swap links open /swap already filled in on the pair that coin can actually do (sell what you hold to TSD, otherwise buy with TSD; USD₮ on TON opens TSD → USD₮ with a "Start with TSD → TON" tap) — src/lib/account/swap-link.ts tested, commit 056174c (Bobby, Nov 25)
 - [ ] One-tap TSD → USD₮ on TON (Seeds runs TSD → TON, then TON → USD₮ itself) (blocked: Bobby's answer on whether to build it; needs its own audit)
+
+- [ ] One-tap multi-leg swaps for every route (route popup, one approval, per-step status record), starting with TSD → TON → USDT on TON — needs its own audit before real money

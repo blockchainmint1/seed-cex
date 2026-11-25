@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ExternalLink, Repeat } from "lucide-react";
+import { swapPairForCoinSymbol } from "@/lib/account/swap-link";
 import { Button } from "@/components/ui/button";
 import { Card, Note, TabTitle } from "@/components/account/ui";
 import { CoinNetworkPicker } from "@/components/account/CoinNetworkPicker";
@@ -166,7 +167,7 @@ function Steps({ net, symbol, account }: { net: DepositNetwork; symbol: string; 
           <li>Swap your {symbol} to TSD on Seeds (it lands back in this pocket).</li>
           <li>Withdraw the TSD from HME Wallet → Trading pocket #{account} → Send.</li>
         </ol>
-        <Button asChild><Link to="/swap"><Repeat /> Swap {symbol} to TSD</Link></Button>
+        <Button asChild><Link to="/swap" search={swapPairForCoinSymbol(symbol) ?? {}}><Repeat /> Swap {symbol} to TSD</Link></Button>
       </div>
     );
   const fee = FEE_COIN[net.id];

@@ -14,6 +14,7 @@ import { getMyExtraPocketBalances } from "@/lib/pockets/pockets.functions";
 import { POCKET_SPECS, type PocketCoin } from "@/lib/pockets/coins";
 import { HME_WALLET_CANT_HOLD, listCoins, revokeCheck } from "@/lib/pockets/hme-support";
 import { Link } from "@tanstack/react-router";
+import { swapPairForCoinSymbol } from "@/lib/account/swap-link";
 import { arrivingShown } from "@/lib/account/arriving";
 import { Arriving } from "@/components/account/Arriving";
 
@@ -97,7 +98,7 @@ export function HmePocketBalances({ addresses, linkId }: { addresses: Record<str
     {stranded.length ? (
       <p role="status" className="mt-3 border-l-2 border-warn pl-3 text-sm text-foreground">
         You have {listCoins(stranded.map((r) => r.coin))} here. HME Wallet can’t hold {stranded.length > 1 ? "these coins" : "this coin"}, so{" "}
-        <Link to="/swap" className="text-primary underline">swap {stranded.length > 1 ? "them" : "it"} back to TSD</Link> before you revoke Seeds’ access.
+        <Link to="/swap" search={swapPairForCoinSymbol(stranded[0]?.coin ?? "") ?? {}} className="text-primary underline">swap {stranded.length > 1 ? "them" : "it"} back to TSD</Link> before you revoke Seeds’ access.
       </p>
     ) : null}
     <p className="mt-3 text-xs text-muted-foreground">Confirmed funds at this pocket’s receive addresses; coins still waiting for a block show as “arriving” and can’t be spent yet. Native BTC, LTC and ETH are separate from their exchange-settlement tokens.</p>

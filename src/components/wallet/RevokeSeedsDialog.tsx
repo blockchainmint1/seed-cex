@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
+import { swapPairForCoinSymbol } from "@/lib/account/swap-link";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -71,7 +72,7 @@ export function RevokeSeedsDialog({ extraCoins, pending, onConfirm, keyAccount =
                 After you revoke, Seeds can’t swap them for you. They’d stay put, and you’d need your recovery phrase in another
                 wallet that supports each coin to get them out.
               </p>
-              <Button asChild size="sm"><Link to="/swap">Swap to TSD</Link></Button>
+              <Button asChild size="sm"><Link to="/swap" search={swapPairForCoinSymbol(check.stranded[0]?.coin ?? "") ?? {}}>Swap to TSD</Link></Button>
             </div>
           ) : check.unknown.length > 0 || balances.isError ? (
             <p className="border-l-2 border-warn pl-3 text-sm text-foreground">
