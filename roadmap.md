@@ -1,7 +1,7 @@
 # Roadmap
 
-- [ ] HC1: reserve_swap_send must verify a chained leg's parent (exists, member's own, approved) in SQL + sendSwapFromPocketUnlocked (auditor, Nov 25)
-- [ ] HC2: own-pocket swaps stay tap-free (Bobby, Nov 25) — Swap page wording must stop promising a tap on every swap
+- [x] HC1: reserve_swap_send verifies a chained leg's parent (exists, member's own, approved) in SQL + sendSwapFromPocketUnlocked (commit f5fa587, Nov 25)
+- [x] HC2: own-pocket swaps stay tap-free (Bobby, Nov 25) — Swap page wording no longer promises a tap on every swap (commit f5fa587)
 - [ ] Q1: HME sign-in ticket shared-secret HMAC → asymmetric signing needs Honest.Money to build their half (blocked: HME team; offer Bobby a handoff draft)
 
 - [x] Auditor order-book review R1: trade Telegram tap shows buy/sell, price, what you get + far-from-market warning; approval locks the price (Bobby, Nov 22)
