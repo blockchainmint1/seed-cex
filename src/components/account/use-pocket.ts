@@ -24,7 +24,7 @@ type Raw = {
   utxo: { symbol: string; online: boolean; balance: number; arriving?: number }[];
   btc: { online: boolean; confirmed: number; arriving?: number } | null;
   evm: { chain: string; symbol: string; online: boolean; balance: number }[];
-  extra: { coin: string; balance: number | null; arriving?: number }[];
+  extra: { coin: string; address?: string; balance: number | null; arriving?: number }[];
 };
 
 export type BalanceRow = {

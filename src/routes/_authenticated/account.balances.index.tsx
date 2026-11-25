@@ -83,7 +83,7 @@ function SpotBalances() {
     ...DEPOSIT_ASSETS.flatMap((a) => a.networks.filter((n) => !have.has(`${a.symbol}-${n.id}`)).map((n): Extra => ({ key: `relink-${a.symbol}-${n.id}`, symbol: a.symbol, network: n.label, kind: "relink", balance: null }))),
     ...COMING_SOON.map((c): Extra => {
       const got = balances.data?.extra.find((x) => x.coin === c.symbol);
-      return { key: `soon-${c.symbol}`, symbol: c.symbol, network: got ? `${c.name} · ${got.address.slice(0, 6)}…${got.address.slice(-4)}` : c.name, kind: "soon", balance: got?.balance ?? null };
+      return { key: `soon-${c.symbol}`, symbol: c.symbol, network: got?.address ? `${c.name} · ${got.address.slice(0, 6)}…${got.address.slice(-4)}` : c.name, kind: "soon", balance: got?.balance ?? null };
     }),
   ];
   const extrasShown = extras.filter((x) => {
