@@ -9,6 +9,7 @@ import { SiteLogo } from "@/components/site/SiteLogo";
 
 
 const about = [
+  { label: "Influencers & affiliates", to: "/influencers" as const },
   { label: "How it works", to: "/how-it-works" as const },
   { label: "To the Moon classes", to: "/to-the-moon" as const },
   { label: "Texas Stable Dollar", to: "/tsd" as const },

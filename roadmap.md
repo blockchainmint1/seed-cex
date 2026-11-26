@@ -1,5 +1,11 @@
 # Roadmap
 
+## Influencer and community page (Bobby, Nov 26)
+- [x] Build /influencers with honest benefits/trade-offs, existing affiliate link access and individually agreed rewards
+- [x] Clearly distinguish live AI/referral tools from planned competitions and cryptoU.ai teaching; propose welcome sessions, transparent strategy reviews, office hours and creator kits without invented payouts
+- [x] Add navigation; signed-out desktop/mobile have no overflow or runtime errors; owner's real invite copied and referral results opened; 33 existing referral/return-path tests pass; auditor note prepared
+- [ ] Publish influencer page (blocked: independent review)
+
 ## Completed TON payment still counted open (Bobby, Nov 26)
 - [x] Trace the count to the 12 USDT TONAPI invoice; confirmed recipient jetton delivery, not a new withdrawal
 - [x] Verify representation-independent signed-message proof for native TON and USD₮; 1,736 tests pass, build OK; exact already-paid row corrected and signed-in Activity shows Confirmed / zero in progress; auditor handoff prepared
