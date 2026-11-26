@@ -18,6 +18,7 @@ import { Route as ComingSoonRouteImport } from './routes/coming-soon'
 import { Route as CustodyRouteImport } from './routes/custody'
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
 import { Route as IgniteRouteImport } from './routes/ignite'
+import { Route as InfluencersRouteImport } from './routes/influencers'
 import { Route as KeySigninRouteImport } from './routes/key-signin'
 import { Route as LbtcRouteImport } from './routes/lbtc'
 import { Route as LinkAccountRouteImport } from './routes/link-account'
@@ -212,6 +213,11 @@ const HowItWorksRoute = HowItWorksRouteImport.update({
 const IgniteRoute = IgniteRouteImport.update({
   id: '/ignite',
   path: '/ignite',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InfluencersRoute = InfluencersRouteImport.update({
+  id: '/influencers',
+  path: '/influencers',
   getParentRoute: () => rootRouteImport,
 } as any)
 const KeySigninRoute = KeySigninRouteImport.update({
@@ -1026,6 +1032,7 @@ export interface FileRoutesByFullPath {
   '/custody': typeof CustodyRoute
   '/how-it-works': typeof HowItWorksRoute
   '/ignite': typeof IgniteRoute
+  '/influencers': typeof InfluencersRoute
   '/key-signin': typeof KeySigninRoute
   '/lbtc': typeof LbtcRoute
   '/link-account': typeof LinkAccountRoute
@@ -1187,6 +1194,7 @@ export interface FileRoutesByTo {
   '/custody': typeof CustodyRoute
   '/how-it-works': typeof HowItWorksRoute
   '/ignite': typeof IgniteRoute
+  '/influencers': typeof InfluencersRoute
   '/key-signin': typeof KeySigninRoute
   '/lbtc': typeof LbtcRoute
   '/link-account': typeof LinkAccountRoute
@@ -1345,6 +1353,7 @@ export interface FileRoutesById {
   '/custody': typeof CustodyRoute
   '/how-it-works': typeof HowItWorksRoute
   '/ignite': typeof IgniteRoute
+  '/influencers': typeof InfluencersRoute
   '/key-signin': typeof KeySigninRoute
   '/lbtc': typeof LbtcRoute
   '/link-account': typeof LinkAccountRoute
@@ -1508,6 +1517,7 @@ export interface FileRouteTypes {
     | '/custody'
     | '/how-it-works'
     | '/ignite'
+    | '/influencers'
     | '/key-signin'
     | '/lbtc'
     | '/link-account'
@@ -1669,6 +1679,7 @@ export interface FileRouteTypes {
     | '/custody'
     | '/how-it-works'
     | '/ignite'
+    | '/influencers'
     | '/key-signin'
     | '/lbtc'
     | '/link-account'
@@ -1826,6 +1837,7 @@ export interface FileRouteTypes {
     | '/custody'
     | '/how-it-works'
     | '/ignite'
+    | '/influencers'
     | '/key-signin'
     | '/lbtc'
     | '/link-account'
@@ -1989,6 +2001,7 @@ export interface RootRouteChildren {
   CustodyRoute: typeof CustodyRoute
   HowItWorksRoute: typeof HowItWorksRoute
   IgniteRoute: typeof IgniteRoute
+  InfluencersRoute: typeof InfluencersRoute
   KeySigninRoute: typeof KeySigninRoute
   LbtcRoute: typeof LbtcRoute
   LinkAccountRoute: typeof LinkAccountRoute
@@ -2155,6 +2168,13 @@ declare module '@tanstack/react-router' {
       path: '/ignite'
       fullPath: '/ignite'
       preLoaderRoute: typeof IgniteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/influencers': {
+      id: '/influencers'
+      path: '/influencers'
+      fullPath: '/influencers'
+      preLoaderRoute: typeof InfluencersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/key-signin': {
@@ -3409,6 +3429,7 @@ const rootRouteChildren: RootRouteChildren = {
   CustodyRoute: CustodyRoute,
   HowItWorksRoute: HowItWorksRoute,
   IgniteRoute: IgniteRoute,
+  InfluencersRoute: InfluencersRoute,
   KeySigninRoute: KeySigninRoute,
   LbtcRoute: LbtcRoute,
   LinkAccountRoute: LinkAccountRoute,
