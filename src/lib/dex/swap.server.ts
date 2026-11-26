@@ -693,15 +693,22 @@ export async function listDexSwaps(userId: string) {
   for (const r of open ?? []) await advanceDexSwap(r.id).catch(() => undefined);
   const { data, error } = await supabaseAdmin
     .from("dex_swaps")
-    .select("id, network, tsd_side, token_in, token_out, symbol_in, symbol_out, decimals_out, amount_in, shown_out, min_out_units, venue_name, slippage_bps, approve_txid, swap_txid, amount_out, status, error, created_at, updated_at")
+    .select("id, network, tsd_side, token_in, token_out, symbol_in, symbol_out, decimals_out, amount_in, shown_out, min_out_units, venue_name, slippage_bps, approve_txid, swap_txid, amount_out, status, error, created_at, updated_at, tsd_route_id")
     .eq("user_id", userId)
     // A two-step swap's pool hop is shown inside that swap, never as a second row.
     .is("two_step_id", null)
     .order("created_at", { ascending: false })
     .limit(20);
   if (error) throw new Error(error.message);
-  return (data ?? []).map((r) => ({
+  // The TSD Bridge leg of a TSD swap, from the member's own linked route rows only.
+  const routeIds = (data ?? []).map((r) => r.tsd_route_id).filter((x): x is string => !!x);
+  const { data: legs } = routeIds.length
+    ? await supabaseAdmin.from("tsd_routes").select("id, bridge_order_id, tsd_txid, usdc_txid, bridge_out_txid, created_at, updated_at").eq("user_id", userId).in("id", routeIds)
+    : { data: [] as never[] };
+  const legById = new Map((legs ?? []).map((l) => [l.id, l]));
+  return (data ?? []).map(({ tsd_route_id, ...r }) => ({
     ...r,
+    bridge: tsd_route_id ? legById.get(tsd_route_id) ?? null : null,
     amount_in: Number(r.amount_in),
     shown_out: Number(r.shown_out),
     amount_out: r.amount_out == null ? null : Number(r.amount_out),

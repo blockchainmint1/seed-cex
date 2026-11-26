@@ -347,8 +347,14 @@ function DexItem({ d, onCancel, cancelling, focus }: { d: DexRow; onCancel: () =
       {d.error ? <p className="text-[11px] text-muted-foreground">{d.error}</p> : null}
       <SwapDetails entries={log(
         { at: d.created_at, text: `Swap started: ${num(d.amount_in)} ${d.symbol_in}` },
-        d.approve_txid ? { at: d.created_at, text: `Approved ${d.symbol_in} for ${venue}`, txid: d.approve_txid, url: `${d.explorerTx}${d.approve_txid}` } : null,
+        d.bridge?.bridge_order_id ? { at: d.bridge.created_at, text: "TSD Bridge order", url: bridgeOrderUrl(d.bridge.bridge_order_id) } : null,
+        side === "buy" && d.bridge?.tsd_txid ? { at: d.bridge.created_at, text: "Sent TSD to TSD Bridge", txid: d.bridge.tsd_txid, url: TXC_TX + d.bridge.tsd_txid } : null,
+        side === "sell" && d.bridge?.usdc_txid ? { at: d.bridge.created_at, text: "Sent USDC to TSD Bridge", txid: d.bridge.usdc_txid, url: ETH_TX + d.bridge.usdc_txid } : null,
+        side === "buy" && d.bridge?.bridge_out_txid ? { at: d.bridge.updated_at, text: `TSD Bridge paid out USDC`, txid: d.bridge.bridge_out_txid, url: /^0x/.test(d.bridge.bridge_out_txid) ? ETH_TX + d.bridge.bridge_out_txid : null } : null,
+        // The pool permission is for the coin actually swapped (USDC after the bridge on a TSD buy), sent after the bridge paid.
+        d.approve_txid ? { at: side === "buy" && d.bridge ? d.bridge.updated_at : d.created_at, text: `Approved ${side === "buy" ? "USDC" : d.symbol_in} for ${venue}`, txid: d.approve_txid, url: `${d.explorerTx}${d.approve_txid}` } : null,
         d.swap_txid ? { at: d.updated_at, text: `${venue} swap`, txid: d.swap_txid, url: `${d.explorerTx}${d.swap_txid}` } : null,
+        side === "sell" && d.bridge?.bridge_out_txid ? { at: d.bridge.updated_at, text: "TSD Bridge paid out TSD", txid: d.bridge.bridge_out_txid, url: TXC_TX + d.bridge.bridge_out_txid } : null,
         d.status === "done" ? { at: d.updated_at, text: `Delivered ${d.amount_out != null ? num(d.amount_out) : ""} ${d.symbol_out}` } : null,
       )} />
       {d.status === "awaiting_approval" ? (
