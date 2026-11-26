@@ -3,6 +3,7 @@
  * message body is built by Seeds; nothing from a quote service is ever signed as-is.
  */
 import { Address, beginCell, type Cell } from "@ton/core";
+import { tonMessageMatches } from "./ton-message-proof";
 import { checkedUsdtComment, USDT_TON_MASTER } from "./ton-payment";
 export { checkedUsdtComment, USDT_TON_MASTER, USDT_TON_DECIMALS } from "./ton-payment";
 
@@ -85,12 +86,12 @@ export const tonUnits = (s: string): bigint => {
 /** Delivery evidence for a USD₮ send from a TONAPI trace: the destination's jetton wallet took exactly `units`. */
 export type JettonTrace = {
   emulated?: boolean;
-  transaction: { aborted: boolean; success: boolean; account: { address: string };
+  transaction: { hash?: string; raw?: string; aborted: boolean; success: boolean; account: { address: string };
     in_msg?: { hash?: string; decoded_op_name?: string; decoded_body?: { amount?: string } } };
   children?: JettonTrace[];
 };
 export function usdtTraceStatus(trace: JettonTrace, messageId: string, senderJettonWallet: string, destJettonWallet: string, units: bigint) {
-  if (trace.emulated || trace.transaction.in_msg?.hash !== messageId) return null;
+  if (trace.emulated || !tonMessageMatches(trace.transaction, messageId)) return null;
   if (trace.transaction.aborted || !trace.transaction.success) return { success: false, confirmations: 1 };
   const own = trace.children?.find((c) => sameTonAddress(c.transaction.account.address, senderJettonWallet));
   if (!own || own.emulated) return null;

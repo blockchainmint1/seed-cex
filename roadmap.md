@@ -1,5 +1,10 @@
 # Roadmap
 
+## Completed TON payment still counted open (Bobby, Nov 26)
+- [x] Trace the count to the 12 USDT TONAPI invoice; confirmed recipient jetton delivery, not a new withdrawal
+- [x] Verify representation-independent signed-message proof for native TON and USD₮; 1,736 tests pass, build OK; exact already-paid row corrected and signed-in Activity shows Confirmed / zero in progress; auditor handoff prepared
+- [ ] Publish confirmation correction (blocked: independent audit)
+
 ## Monero paste-install correction (Bobby, Nov 26)
 - [x] Diagnose uploaded terminal transcript: outer closing delimiter joined the last command, so bash waited for more input; no installation started
 - [x] Add shared paste-block emitter and parser regression tests for watch and signer without running installer commands

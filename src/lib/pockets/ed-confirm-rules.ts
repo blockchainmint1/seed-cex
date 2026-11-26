@@ -1,7 +1,9 @@
 /** Delivery evidence, not just an accepted request or advanced wallet sequence. */
+import { tonMessageMatches } from "./ton-message-proof";
 export type TonTrace = {
   emulated?: boolean;
   transaction: {
+    hash?: string; raw?: string;
     aborted: boolean; success: boolean; account: { address: string };
     in_msg?: { hash?: string; value?: number | string | null; destination?: { address?: string | null } | null };
     /** TONAPI traces leave this empty even when the wallet sent messages (audit TA1); never rely on it. */
@@ -25,7 +27,7 @@ function exactUnits(v: unknown): bigint | null {
  */
 export function tonTraceStatus(trace: TonTrace, messageId: string, destination: string, units: bigint) {
   const root = trace.transaction;
-  if (trace.emulated || root.in_msg?.hash !== messageId) return null;
+  if (trace.emulated || !tonMessageMatches(root, messageId)) return null;
   if (root.aborted || !root.success) return { success: false, confirmations: 1 };
   const toDest = (trace.children ?? []).filter((c) => c.transaction.account.address === destination && c.transaction.in_msg?.destination?.address === destination);
   for (const c of toDest) {
