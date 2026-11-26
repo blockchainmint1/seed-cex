@@ -15,8 +15,8 @@
 - [x] Bobby chose the addresses: EC2 watch node = node-xmr.honest.money (it runs monerod), DigitalOcean signer = sign-xmr.honest.money
 - [x] Add certificate and install paste blocks to the emitter, syntax-tested with no stderr, carrying the real host names and certificate paths; 18 tooling tests pass
 - [x] Bobby points both DNS names at the two hosts' public addresses and opens port 80 for certificate issuance (verified 21:31 UTC: node-xmr -> 54.156.195.149, sign-xmr -> 68.183.163.101; port 80 answers HTTP 200 on both; 18081/18088/18089 not publicly reachable; 443 still closed, which is expected before the install block)
-- [ ] Run the certificate block (monero-5-node-xmr-cert.sh / monero-5-sign-xmr-cert.sh) on each host, then the install block, and read the gateway credential into project secrets (blocked: operator terminal; credentials never in chat)
-- [ ] Confirm EC2 sync finished, then connect the five MONERO_* settings and verify both hosts before any wallet key is loaded (blocked: host result and secrets)
+- [x] Certificates (expire 2027-02-24, auto-renew) and install blocks done on both hosts; Bobby saved both URLs/tokens to secrets, MONERO_WALLET_FILE_SECRET generated; both hosts refuse calls without the token (403)
+- [ ] Confirm EC2 sync finished, then verify both hosts with the saved tokens before any wallet key is loaded (blocked: EC2 sync)
 
 ## Monero paste-install correction (Bobby, Nov 26)
 - [x] Bobby confirmed continue original EC2 watcher + separate DigitalOcean signer now (21:07 UTC); any shared Bridge signer integration deferred, no security architecture change
