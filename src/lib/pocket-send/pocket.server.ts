@@ -132,12 +132,13 @@ export async function pocketLegBalance(address: string, leg: LegId, need = 0, op
         opts.balanceOnly ? Promise.resolve(null) : loadUtxosFor("txc", address).catch(() => []),
       ]);
       if (!omni.online) return { balance: null, feeBalance: null, chain: null, reason: "The TEXITcoin node is not reachable" };
-      return { balance: omni.balance, feeBalance: utxos ? utxos.reduce((s, u) => s + u.amount, 0) : null, chain: null, reason: null };
+      return { balance: omni.balance, feeBalance: utxos ? Math.round(utxos.reduce((s, u) => s + u.amount, 0) * 1e8) / 1e8 : null, chain: null, reason: null };
     }
     if (def.kind === "utxo") {
       const { loadUtxosFor, loadDisplayUtxosFor } = await import("@/lib/utxo/io.server");
       const utxos = opts.display ? await loadDisplayUtxosFor(def.chain as UtxoChainId, address) : await loadUtxosFor(def.chain as UtxoChainId, address, { atLeast: need });
-      const bal = utxos.reduce((s, u) => s + u.amount, 0);
+      // Coin amounts are 8-decimal; summing floats leaves artifacts like 3.9994048999999996 (QA-0019).
+      const bal = Math.round(utxos.reduce((s, u) => s + u.amount, 0) * 1e8) / 1e8;
       return { balance: bal, feeBalance: bal, chain: null, reason: null };
     }
     const { fetchTokenBalance } = await import("@/lib/evm.server");
