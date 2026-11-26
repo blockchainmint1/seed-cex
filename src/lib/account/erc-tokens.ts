@@ -5,6 +5,7 @@
  * Found tokens are display only, labelled "not checked by Seeds", and junk-looking names are hidden.
  */
 import { SWAP_COINS } from "@/lib/xchain/assets";
+import { ECOSYSTEM_TOKENS } from "@/lib/dex/ecosystem-tokens";
 
 export type TokenChain = "ethereum" | "base";
 export type ListedToken = { chain: TokenChain; contract: string; symbol: string; name: string; swappable: boolean };
@@ -32,7 +33,7 @@ export const LISTED_TOKENS: ListedToken[] = SWAP_COINS.flatMap((c) => {
   const contract = matchedContract.toLowerCase();
   if (MAIN_ROWS.has(key(chain, contract))) return [];
   return [{ chain, contract, symbol: c.symbol, name: c.name, swappable: true }];
-});
+}).concat(ECOSYSTEM_TOKENS.map((t) => ({ chain: "ethereum" as const, contract: t.address.toLowerCase(), symbol: t.symbol, name: t.name, swappable: true })));
 
 /** Symbols a fake token might borrow (audit T2): every listed token plus the big names with their own rows. */
 const PROTECTED_SYMBOLS = new Set(["USDC", "USDT", "HEX", "ETH", "WETH", "BTC", "WBTC", "CBBTC", "DAI", "TSD", "TXC", ...LISTED_TOKENS.map((t) => t.symbol.toUpperCase())]);
