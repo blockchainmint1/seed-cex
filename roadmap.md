@@ -12,6 +12,9 @@
 - [ ] Publish confirmation correction (blocked: independent audit)
 
 ## Monero paste-install correction (Bobby, Nov 26)
+- [x] Bobby confirmed continue original EC2 watcher + separate DigitalOcean signer now (21:07 UTC); any shared Bridge signer integration deferred, no security architecture change
+- [ ] Confirm EC2 corrected installer/sync status and deploy separate signer (blocked: operator terminal result and provisioned DO host)
+- [ ] Configure trusted HTTPS on both hosts and connect project secrets (blocked: actual host addresses/certificates and operator-generated credentials; never in chat)
 - [x] Diagnose uploaded terminal transcript: outer closing delimiter joined the last command, so bash waited for more input; no installation started
 - [x] Add shared paste-block emitter and parser regression tests for watch and signer without running installer commands
 - [x] Check the other Monero paste flow, direct installers, saved bundle and scheduled watch job for the same problem; preserve existing records/settings and host protections
