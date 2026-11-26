@@ -14,8 +14,8 @@
 ## Monero host addresses and secure connection (Bobby, Nov 26)
 - [x] Bobby chose the addresses: EC2 watch node = node-xmr.honest.money (it runs monerod), DigitalOcean signer = sign-xmr.honest.money
 - [x] Add certificate and install paste blocks to the emitter, syntax-tested with no stderr, carrying the real host names and certificate paths; 18 tooling tests pass
-- [ ] Bobby points both DNS names at the two hosts' public addresses and opens port 80 for certificate issuance (blocked: Bobby's DNS control)
-- [ ] Run the certificate block, then the install block, on each host and read the gateway credential into project secrets (blocked: operator terminal; credentials never in chat)
+- [x] Bobby points both DNS names at the two hosts' public addresses and opens port 80 for certificate issuance (verified 21:31 UTC: node-xmr -> 54.156.195.149, sign-xmr -> 68.183.163.101; port 80 answers HTTP 200 on both; 18081/18088/18089 not publicly reachable; 443 still closed, which is expected before the install block)
+- [ ] Run the certificate block (monero-5-node-xmr-cert.sh / monero-5-sign-xmr-cert.sh) on each host, then the install block, and read the gateway credential into project secrets (blocked: operator terminal; credentials never in chat)
 - [ ] Confirm EC2 sync finished, then connect the five MONERO_* settings and verify both hosts before any wallet key is loaded (blocked: host result and secrets)
 
 ## Monero paste-install correction (Bobby, Nov 26)
