@@ -1,5 +1,11 @@
 # Roadmap
 
+## Monero paste-install correction (Bobby, Nov 26)
+- [x] Diagnose uploaded terminal transcript: outer closing delimiter joined the last command, so bash waited for more input; no installation started
+- [x] Add shared paste-block emitter and parser regression tests for watch and signer without running installer commands
+- [x] Check the other Monero paste flow, direct installers, saved bundle and scheduled watch job for the same problem; preserve existing records/settings and host protections
+- [x] Deliver corrected v2 paste commands with Ctrl+C recovery instruction; all three displayed command blocks parse without warnings, 8 tooling tests pass; owner runs on EC2/DO
+
 ## TON and TRON deposit access (Bobby, Nov 26)
 - [x] Allow USDT-TRON deposits for members already cleared by its existing authenticated sender; no public withdrawal/stage or protection changes
 - [x] Check deposit eligibility per network rather than reuse the selected network's blocker; unknown checks stay closed
