@@ -11,9 +11,17 @@
 - [x] Verify representation-independent signed-message proof for native TON and USD₮; 1,736 tests pass, build OK; exact already-paid row corrected and signed-in Activity shows Confirmed / zero in progress; auditor handoff prepared
 - [ ] Publish confirmation correction (blocked: independent audit)
 
+## Monero host addresses and secure connection (Bobby, Nov 26)
+- [x] Bobby chose the addresses: EC2 watch node = node-xmr.honest.money (it runs monerod), DigitalOcean signer = sign-xmr.honest.money
+- [x] Add certificate and install paste blocks to the emitter, syntax-tested with no stderr, carrying the real host names and certificate paths; 18 tooling tests pass
+- [ ] Bobby points both DNS names at the two hosts' public addresses and opens port 80 for certificate issuance (blocked: Bobby's DNS control)
+- [ ] Run the certificate block, then the install block, on each host and read the gateway credential into project secrets (blocked: operator terminal; credentials never in chat)
+- [ ] Confirm EC2 sync finished, then connect the five MONERO_* settings and verify both hosts before any wallet key is loaded (blocked: host result and secrets)
+
 ## Monero paste-install correction (Bobby, Nov 26)
 - [x] Bobby confirmed continue original EC2 watcher + separate DigitalOcean signer now (21:07 UTC); any shared Bridge signer integration deferred, no security architecture change
-- [ ] Confirm EC2 corrected installer/sync status and deploy separate signer (blocked: operator terminal result and provisioned DO host)
+- [x] DigitalOcean signer binaries installed; no blockchain sync started there (Bobby confirmed 21:14 UTC)
+- [ ] Confirm EC2 corrected installer/sync status (blocked: operator terminal result)
 - [ ] Configure trusted HTTPS on both hosts and connect project secrets (blocked: actual host addresses/certificates and operator-generated credentials; never in chat)
 - [x] Diagnose uploaded terminal transcript: outer closing delimiter joined the last command, so bash waited for more input; no installation started
 - [x] Add shared paste-block emitter and parser regression tests for watch and signer without running installer commands

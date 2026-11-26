@@ -102,6 +102,16 @@ ReadWritePaths=/var/lib/seeds-monero
 WantedBy=multi-user.target
 EOF
 fi
+cat > /etc/nginx/conf.d/seeds-monero-acme.conf <<EOF
+server {
+    listen 80;
+    server_name $host;
+    access_log off;
+    error_log /dev/null;
+    location /.well-known/acme-challenge/ { root /var/www/html; }
+    location / { return 404; }
+}
+EOF
 cat > /etc/nginx/conf.d/seeds-monero.conf <<EOF
 server {
     listen 443 ssl;
