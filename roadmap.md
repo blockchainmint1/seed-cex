@@ -518,3 +518,10 @@
 
 - [x] TRON audit follow-up: testers stage, TR1 expiry closure, LN2b EVM withdrawal/trade lock, TR2/TR3 wording (docs/tron-audit-fixes-tr1-ln2b-2026-11-25.md) — needs auditor review
 - [ ] Bobby: fund TRON pocket (USDT + ~30–50 TRX) and pay the address-only bill as first funded test
+
+## Withdrawal status: Confirmed for every coin (Bobby, Nov 26)
+- [x] QA-0013: TXC/ISK/LTC/TSD withdrawals now move from "Sent" to "Confirmed" (commit 0dcd5e8)
+- [x] Same check added for BTC, DOGE, BCH, XRP, TRX, SOL, ADA and XMR; status only, no change to how or when coins move (commit 114bdd8, 1,713 tests)
+- [x] Independent review of 64e977a..114bdd8: cleared to publish (Nov 26). A row is marked failed only on a final-ledger verdict that the coins did not move; every missing/unreachable/unclear answer keeps waiting. TS1 closed.
+- [ ] WC1 (record, not a fix): an XRP transaction whose last-ledger deadline passed, or a Solana transaction whose blockhash expired, can never land but still has no terminal state — it just keeps waiting (safe direction, same as before). Closing it needs the deadline recorded at send time, as Stellar/TON/Sui/TRON do.
+- [ ] Funded test sequences for TON and TRON remain open on the team's side (blocked: owner funds/taps)
