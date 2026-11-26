@@ -345,6 +345,20 @@ export async function txStatus(c: WithdrawCoin, txid: string, to?: string, units
     const { usdtTronTxStatus } = await import("@/lib/pockets/tron-usdt.server");
     return usdtTronTxStatus(txid, from, to, units, evidence);
   }
+  if (c.kind === "utxo" && c.utxoChain) {
+    // QA-0013: TXC/ISK/LTC sends never moved past "Sent". Unknown to the node = keep waiting, never fail.
+    const { confirmationsFor } = await import("@/lib/utxo/io.server");
+    const confirmations = await confirmationsFor(c.utxoChain, txid);
+    return confirmations == null ? null : { confirmations, success: true as boolean | null };
+  }
+  if (c.kind === "omni") {
+    const { fetchOmniTx } = await import("@/lib/omni.server");
+    const tx = await fetchOmniTx(txid);
+    if (!tx.found || tx.confirmations == null) return null;
+    // Only a mined transaction the Omni layer marks invalid is a rejection; unmined stays pending.
+    const success = tx.confirmations >= 1 ? tx.valid !== false : null;
+    return { confirmations: tx.confirmations, success };
+  }
   if (c.kind !== "evm") return null;
   const { fetchEvmTxStatus } = await import("@/lib/evm.server");
   return fetchEvmTxStatus(c.evmChain!, txid);

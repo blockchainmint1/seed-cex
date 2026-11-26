@@ -439,7 +439,7 @@ export async function advanceWithdrawals(onlyId?: string) {
   const { txStatus } = await import("./send.server");
   for (const s of sent ?? []) {
     const coin = withdrawCoin(s.coin, s.chain);
-    if (!coin || !s.txid || !["evm", "xlm", "ton", "sui", "ton_usdt", "tron_usdt"].includes(coin.kind)) continue;
+    if (!coin || !s.txid || !["evm", "xlm", "ton", "sui", "ton_usdt", "tron_usdt", "utxo", "omni"].includes(coin.kind)) continue;
     const st = await txStatus(coin, s.txid, s.to_address, BigInt(s.amount_units), s.from_address, s.send_meta).catch(() => null);
     if (!st || st.confirmations == null) {
       await supabaseAdmin.from("pocket_withdrawals").update({ updated_at: new Date().toISOString() }).eq("id", s.id).in("status", ["sent", "unknown"]);
