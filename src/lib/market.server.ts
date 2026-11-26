@@ -1,3 +1,4 @@
+import { statsFromTape } from "./market-stats";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -129,23 +130,8 @@ export type MarketStats = {
 
 export async function fetchStats(pair: string): Promise<MarketStats> {
   const tape = await fetchTape(pair, 200);
-  if (!tape.length) {
-    return { last: null, changePct: null, high24h: null, low24h: null, volume24h: 0 };
-  }
-  const cutoff = Date.now() - 24 * 60 * 60 * 1000;
-  const recent = tape.filter((t) => new Date(t.createdAt).getTime() >= cutoff);
-  const window = recent.length ? recent : tape;
-  const prices = window.map((t) => t.price);
-  const last = window[0].price;
-  const first = window[window.length - 1].price;
-
-  return {
-    last,
-    changePct: first ? ((last - first) / first) * 100 : null,
-    high24h: Math.max(...prices),
-    low24h: Math.min(...prices),
-    volume24h: window.reduce((sum, t) => sum + t.amount, 0),
-  };
+  const { quoteVolume24h: _q, ...stats } = statsFromTape(tape);
+  return stats;
 }
 
 export type Candle = { t: string; price: number };

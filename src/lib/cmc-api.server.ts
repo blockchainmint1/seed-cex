@@ -1,3 +1,4 @@
+import { statsFromTape } from "./market-stats";
 /**
  * CoinMarketCap-compatible public market data.
  *
@@ -95,12 +96,8 @@ export async function sharedTicker() {
 }
 
 function quoteVolume(tape: TapeEntry[]): number {
-  const cutoff = Date.now() - 86_400_000;
-  const recent = tape.filter((t) => new Date(t.createdAt).getTime() >= cutoff);
-  // Mirror fetchStats: with no fills in the last 24h, fall back to the tape
-  // window so base_volume and quote_volume always describe the same trades.
-  const window = recent.length ? recent : tape;
-  return window.reduce((sum, t) => sum + t.amount * t.price, 0);
+  // Same 24h-only window as fetchStats (statsFromTape), so base and quote volume describe the same trades.
+  return statsFromTape(tape).quoteVolume24h;
 }
 
 
