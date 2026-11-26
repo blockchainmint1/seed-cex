@@ -74,3 +74,8 @@ export async function adaSubmit(cborHex: string): Promise<string> {
   if (!r.ok) throw new Error(`Cardano refused the send: ${text.slice(0, 200)}`);
   return text.replace(/"/g, "").trim();
 }
+
+/** Koios tx_status rows for one transaction; null when unreachable (keep waiting). */
+export async function adaTxStatus(txid: string): Promise<unknown> {
+  try { return await koios<unknown>("/tx_status", { method: "POST", body: JSON.stringify({ _tx_hashes: [txid] }) }); } catch { return null; }
+}

@@ -13,6 +13,7 @@
  *     rules, pilot access, pause and address are re-checked; the key is opened, the transaction is
  *     signed, its id stored, then broadcast. A crashed send is never re-signed.
  */
+import { XMR_CONFIRMATIONS } from "@/lib/monero/rules";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { limitsFor } from "@/lib/withdraw-limits.server";
 import { nextLevelText } from "@/lib/withdraw-limits";
@@ -439,7 +440,7 @@ export async function advanceWithdrawals(onlyId?: string) {
   const { txStatus } = await import("./send.server");
   for (const s of sent ?? []) {
     const coin = withdrawCoin(s.coin, s.chain);
-    if (!coin || !s.txid || !["evm", "xlm", "ton", "sui", "ton_usdt", "tron_usdt", "utxo", "omni"].includes(coin.kind)) continue;
+    if (!coin || !s.txid) continue;
     const st = await txStatus(coin, s.txid, s.to_address, BigInt(s.amount_units), s.from_address, s.send_meta).catch(() => null);
     if (!st || st.confirmations == null) {
       await supabaseAdmin.from("pocket_withdrawals").update({ updated_at: new Date().toISOString() }).eq("id", s.id).in("status", ["sent", "unknown"]);
@@ -451,7 +452,7 @@ export async function advanceWithdrawals(onlyId?: string) {
       const { data: changed } = await supabaseAdmin.from("pocket_withdrawals").update({ status: "failed", error: reason, confirmations: st.confirmations, updated_at: new Date().toISOString() }).eq("id", s.id).in("status", ["sent", "unknown"]).select("id");
       if (changed?.length) void tell(s.user_id, `⚠ ${s.amount} ${s.coin}: ${reason}`, expired ? "Withdrawal expired" : "Withdrawal rejected", [reason]);
     } else if (st.success === true) {
-      const done = st.confirmations >= (coin.kind === "evm" ? EVM_CONFIRMATIONS : 1);
+      const done = st.confirmations >= (coin.kind === "evm" ? EVM_CONFIRMATIONS : coin.kind === "xmr" ? XMR_CONFIRMATIONS : 1);
       await supabaseAdmin.from("pocket_withdrawals").update({ status: done ? "confirmed" : "sent", confirmations: st.confirmations, updated_at: new Date().toISOString() }).eq("id", s.id);
       if (done) results['confirmed'] = (results['confirmed'] ?? 0) + 1;
     }

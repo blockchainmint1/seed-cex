@@ -192,3 +192,29 @@ export async function tronSun(address: string): Promise<bigint> {
   const r = await tronPost<{ balance?: number }>("/wallet/getaccount", { address, visible: true });
   return BigInt(r.balance ?? 0);
 }
+
+// ---------- Withdrawal confirmation reads (raw answers; confirm-rules.ts decides) ----------
+
+/** Blockbook /tx for DOGE/BCH/BTC; null when not found or unreachable (keep waiting). */
+export async function bookTx(coin: "DOGE" | "BCH" | "BTC", txid: string): Promise<unknown> {
+  const base = coin === "BTC" ? "https://btcbook.nownodes.io/api/v2" : BOOK[coin];
+  try {
+    const res = await fetch(`${base}/tx/${encodeURIComponent(txid)}`, { headers: bookHeaders(), signal: AbortSignal.timeout(10_000) });
+    return res.ok ? await res.json() : null;
+  } catch { return null; }
+}
+
+export async function xrpTx(hash: string): Promise<unknown> {
+  try { return await xrp<unknown>("tx", { transaction: hash }); } catch { return null; }
+}
+
+export async function tronSolidTx(txid: string): Promise<unknown> {
+  try { return await tronPost<unknown>("/walletsolidity/gettransactionbyid", { value: txid }); } catch { return null; }
+}
+
+export async function solSigStatus(sig: string): Promise<unknown> {
+  try {
+    const r = await sol<{ value: unknown[] }>("getSignatureStatuses", [[sig], { searchTransactionHistory: true }]);
+    return r.value?.[0] ?? null;
+  } catch { return null; }
+}

@@ -186,3 +186,16 @@ export async function sendMonero(link: { id: string; ciphertext: string | null }
     return signed.txid;
   }, 30_000);
 }
+
+/** The member's watch wallet's reading of one sent transfer (no refresh: the scheduled scan keeps height current). */
+export async function moneroTransfer(from: string, txid: string): Promise<unknown> {
+  if (!moneroServerReady()) return null;
+  const { data: w } = await supabaseAdmin.from("monero_wallets").select("link_id, wallet_name, status").eq("address", from).eq("status", "ready").limit(1).maybeSingle();
+  if (!w?.wallet_name) return null;
+  try {
+    return await withLease(`confirm:${w.link_id}`, async () => {
+      await walletRpc("open_wallet", { filename: w.wallet_name, password: await walletPassword(w.wallet_name) });
+      return walletRpc<unknown>("get_transfer_by_txid", { txid, account_index: 0 });
+    }, 5_000);
+  } catch { return null; }
+}

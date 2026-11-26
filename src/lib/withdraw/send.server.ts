@@ -328,7 +328,7 @@ export async function sendWithdrawal(c: WithdrawCoin, link: Link, from: string, 
   }
 }
 
-/** EVM only: confirmations and success of a sent withdrawal. Other networks return null (shown as "Sent"). */
+/** Confirmations and success of a sent withdrawal, for every coin Seeds sends. null = keep waiting. */
 export async function txStatus(c: WithdrawCoin, txid: string, to?: string, units?: bigint, from?: string, evidence?: unknown) {
   if (c.kind === "xlm" || c.kind === "ton" || c.kind === "sui") {
     if (!to || units === undefined) return null;
@@ -358,6 +358,20 @@ export async function txStatus(c: WithdrawCoin, txid: string, to?: string, units
     // Only a mined transaction the Omni layer marks invalid is a rejection; unmined stays pending.
     const success = tx.confirmations >= 1 ? tx.valid !== false : null;
     return { confirmations: tx.confirmations, success };
+  }
+  const rules = await import("./confirm-rules");
+  if (c.kind === "btc" || c.kind === "doge" || c.kind === "bch") {
+    const { bookTx } = await import("@/lib/xchain/send-io.server");
+    return rules.readBlockbookTx(await bookTx(c.kind === "btc" ? "BTC" : c.kind === "doge" ? "DOGE" : "BCH", txid));
+  }
+  if (c.kind === "xrp") { const { xrpTx } = await import("@/lib/xchain/send-io.server"); return rules.readXrpTx(await xrpTx(txid)); }
+  if (c.kind === "trx") { const { tronSolidTx } = await import("@/lib/xchain/send-io.server"); return rules.readTronTx(await tronSolidTx(txid)); }
+  if (c.kind === "sol") { const { solSigStatus } = await import("@/lib/xchain/send-io.server"); return rules.readSolStatus(await solSigStatus(txid)); }
+  if (c.kind === "ada") { const { adaTxStatus } = await import("@/lib/pockets/cardano-io.server"); return rules.readKoiosStatus(await adaTxStatus(txid)); }
+  if (c.kind === "xmr") {
+    if (!from) return null;
+    const { moneroTransfer } = await import("@/lib/monero/wallet.server");
+    return rules.readMoneroTransfer(await moneroTransfer(from, txid));
   }
   if (c.kind !== "evm") return null;
   const { fetchEvmTxStatus } = await import("@/lib/evm.server");
