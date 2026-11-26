@@ -135,7 +135,7 @@ function Market() {
                 <div className="font-mono text-[11px] text-muted-foreground">fee {o.feePct}%{o.priceMode === "market" ? ` · market ${o.marginPct >= 0 ? "+" : ""}${o.marginPct}%` : ""}</div>
               </div>
               <div className="font-mono text-xs">
-                ${o.minFiat.toLocaleString()} – ${Math.floor(o.maxFiat).toLocaleString()}
+                ${o.minFiat.toLocaleString(undefined, { maximumFractionDigits: 2 })} – ${o.maxFiat.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                 {o.side === "sell" ? (
                   <div className={o.fundsOk ? "flex items-center gap-1 text-[11px] text-primary" : "flex items-center gap-1 text-[11px] text-destructive"}>
                     <BadgeCheck className="h-3 w-3" /> {o.fundsOk ? "funds verified" : "no verified funds"}
@@ -190,7 +190,7 @@ function BuyDialog({ offer, onClose }: { offer: Offer; onClose: () => void }) {
             <label className="block">
               <span className="font-mono text-[11px] text-muted-foreground uppercase">{sellAd ? "Buyer pays you (USD)" : "You pay (USD)"}</span>
               <Input value={fiat} onChange={(e) => { setFiat(e.target.value); m.reset(); }} inputMode="decimal" />
-              <span className="font-mono text-[11px] text-muted-foreground">${offer.minFiat} – ${Math.floor(offer.maxFiat)}</span>
+              <span className="font-mono text-[11px] text-muted-foreground">${offer.minFiat.toLocaleString(undefined, { maximumFractionDigits: 2 })} – ${offer.maxFiat.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
             </label>
             <label className="block">
               <span className="font-mono text-[11px] text-muted-foreground uppercase">{sellAd ? "Get paid with" : "Pay with"}</span>
