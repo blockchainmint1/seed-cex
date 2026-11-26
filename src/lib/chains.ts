@@ -6,6 +6,8 @@
  * directly.
  */
 
+import { ECOSYSTEM_TOKENS } from "@/lib/dex/ecosystem-tokens";
+
 export type ChainId = "txc" | "ethereum" | "base" | "bsc" | "ltc" | "isk" | "zcu" | "btc" | "pulsechain" | "hyperevm" | "avalanche";
 
 /** Every settlement leg Seeds can deliver on-chain. */
@@ -101,6 +103,7 @@ export const CHAINS: ChainDef[] = [
       { symbol: "USDC", contract: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", decimals: 6 },
       { symbol: "USDT", contract: "0xdAC17F958D2ee523a2206206994597C13D831ec7", decimals: 6 },
       { symbol: "HEX", contract: HEX_CONTRACT, decimals: 8 },
+      ...ECOSYSTEM_TOKENS.map((t) => ({ symbol: t.symbol, contract: t.address, decimals: t.decimals })),
     ],
     explorer: "https://etherscan.io/address/",
   },

@@ -1,0 +1,3 @@
+# Monero host tooling
+- bootstrap.sh installs only a hash-pinned official binary and optionally starts a loopback-RPC watch node; install.sh separately adds authenticated wallet services, with signer wallets in a private tmpfs and no outbound network. Why: blockchain sync can start before keys or money paths are activated.
+- Never accept wallet keys or print generated gateway/RPC credentials in setup output; the offline signer uses a separate host and accepts only the cold-sign RPC allowlist. Why: host setup must not become a second key intake or leak spend material.

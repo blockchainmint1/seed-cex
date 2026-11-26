@@ -85,9 +85,9 @@ describe("routes and gates", () => {
     expect(planSwap({ kind: "tsd" }, { kind: "ton_usdt" }).options).toEqual([{ kind: "hype_chain", direction: "to_ton_usdt", via: "tsd", coin: "TSD" }]);
     expect(planSwap({ kind: "ton_usdt" }, { kind: "ton" }).options).toEqual([]);
   });
-  test("testers only while TON is in its tester stage; needs instant access and a TON pocket", () => {
+  test("public TON activation still needs instant access and a TON pocket", () => {
     const link = { mode: "access", hasKey: true, pockets: ["TON"] };
-    expect(stonBlocker(false, link)).toMatch(/beta testers/);
+    expect(stonBlocker(false, link)).toBeNull();
     expect(stonBlocker(true, link)).toBeNull();
     expect(stonBlocker(true, { ...link, pockets: ["EVM"] })).toMatch(/no TON pocket/);
     expect(stonBlocker(true, { ...link, mode: "approve" })).toMatch(/instant access/);

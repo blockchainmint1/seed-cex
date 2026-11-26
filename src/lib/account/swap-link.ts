@@ -13,6 +13,7 @@
 import { SWAP_COINS, swapCoin, type SwapCoinId } from "@/lib/xchain/assets";
 import { coinForToken, planSwap, type SwapSide } from "@/lib/swap/plan";
 import type { TokenChain } from "@/lib/account/erc-tokens";
+import { ECOSYSTEM_TOKENS } from "@/lib/dex/ecosystem-tokens";
 
 /** What the swap form's URL carries: a `from` and a `to`, both words it accepts. */
 export type SwapPair = { from: string; to: string };
@@ -54,6 +55,8 @@ const SPECIAL: Record<string, { side: SwapSide; token: string }> = {
 export function sideFor(symbol: string, netId: string): { side: SwapSide; token: string } | null {
   const special = SPECIAL[`${symbol}:${netId}`];
   if (special) return special;
+  const wrapped = netId === "ethereum" ? ECOSYSTEM_TOKENS.find((t) => t.symbol === symbol) : null;
+  if (wrapped) return { side: { kind: "token", network: "ethereum", address: wrapped.address, symbol: wrapped.symbol, name: wrapped.name }, token: wrapped.symbol };
   for (const id of SWAP_IDS) {
     const coin = swapCoin(id);
     if (!coin || coin.symbol !== symbol) continue;

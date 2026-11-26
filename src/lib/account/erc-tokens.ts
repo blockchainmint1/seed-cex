@@ -19,6 +19,7 @@ const MAIN_ROWS = new Set([
   "ethereum:0x2b591e99afe9f32eaa6214f7b7629768c40eeb39",
   "base:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
   "base:0xfde4c96c8593536e31f229ea8f37b2ada2699bb2",
+  ...ECOSYSTEM_TOKENS.map((t) => `ethereum:${t.address.toLowerCase()}`),
 ]);
 
 const key = (chain: string, contract: string) => `${chain}:${contract.toLowerCase()}`;
@@ -33,10 +34,10 @@ export const LISTED_TOKENS: ListedToken[] = SWAP_COINS.flatMap((c) => {
   const contract = matchedContract.toLowerCase();
   if (MAIN_ROWS.has(key(chain, contract))) return [];
   return [{ chain, contract, symbol: c.symbol, name: c.name, swappable: true }];
-}).concat(ECOSYSTEM_TOKENS.map((t) => ({ chain: "ethereum" as const, contract: t.address.toLowerCase(), symbol: t.symbol, name: t.name, swappable: true })));
+});
 
 /** Symbols a fake token might borrow (audit T2): every listed token plus the big names with their own rows. */
-const PROTECTED_SYMBOLS = new Set(["USDC", "USDT", "HEX", "ETH", "WETH", "BTC", "WBTC", "CBBTC", "DAI", "TSD", "TXC", ...LISTED_TOKENS.map((t) => t.symbol.toUpperCase())]);
+const PROTECTED_SYMBOLS = new Set(["USDC", "USDT", "HEX", "ETH", "WETH", "BTC", "WBTC", "CBBTC", "DAI", "TSD", "TXC", ...LISTED_TOKENS.map((t) => t.symbol.toUpperCase()), ...ECOSYSTEM_TOKENS.map((t) => t.symbol.toUpperCase())]);
 
 /** An unlisted token using a listed coin's symbol is an impostor (only the real contract may use it). */
 export function looksLikeImpostor(symbol: string | null): boolean {

@@ -3,7 +3,8 @@ import type { EdChain } from "./ed25519-chains";
 
 export type EdSendStage = "review" | "testers" | "open";
 // Review first; after clearance use "testers" for funded tests, then "open" after those pass.
-export function edSendStage(): EdSendStage { return "testers"; }
+// Bobby confirmed live tests and approved release to all members on Nov 26, 2026.
+export function edSendStage(): EdSendStage { return "open"; }
 export const ED_SENDS_ENABLED = edSendStage() === "open";
 export function edStageAllows(stage: EdSendStage, tester: boolean): boolean {
   return stage === "open" || (stage === "testers" && tester);

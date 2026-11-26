@@ -7,6 +7,21 @@ const toSide = (v: string): SwapSide =>
   v === "TSD" ? { kind: "tsd" } : v === "HYPE" ? { kind: "hype" } : v === "TON" ? { kind: "ton" } : v === "USDT_TON" ? { kind: "ton_usdt" } : { kind: "coin", id: v as never };
 
 describe("balances Swap link", () => {
+  for (const [symbol, address] of [
+    ["wTXC", "0x9FC65df3997073B8551Ffd617154B5102fACbb88"],
+    ["wISK", "0xFB38867D064Df981F159b886007F1273a346b0BB"],
+    ["wZCU", "0x61b1F4D5db2436C089593828C26F21e25c4A9C9d"],
+  ] as const) {
+    test(`${symbol} main balance row preserves its pinned Ethereum swap route`, () => {
+      const wrapped = sideFor(symbol, "ethereum");
+      expect(wrapped?.side).toMatchObject({ kind: "token", network: "ethereum", address, symbol });
+      expect(swapPairForRow(symbol, "ethereum", 0)).toEqual({ from: "TSD", to: symbol });
+      expect(swapPairForRow(symbol, "ethereum", 1)).toEqual({ from: symbol, to: "TSD" });
+      expect(sideFor(symbol, "base")).toBeNull();
+      if (!wrapped) throw new Error("Missing wrapped side");
+      expect(planSwap({ kind: "tsd" }, wrapped.side).options).toEqual([{ kind: "dex", network: "ethereum", tokenIn: "0x7e5d000000000000000000000000000000007e5d", tokenOut: address }]);
+    });
+  }
   test("a USD₮-on-TON row opens the form on TSD → USD₮ on TON", () => {
     expect(swapPairForRow("USDT", "ton", 0)).toEqual({ from: "TSD", to: "USDT_TON" });
   });

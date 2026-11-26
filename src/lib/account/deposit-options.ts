@@ -12,6 +12,7 @@
 import { POCKET_SPECS, type PocketCoin } from "@/lib/pockets/coins";
 import { edSendBlocker, edSendStage } from "@/lib/pockets/ed-send-rules";
 import { tronUsdtBlocker, tronUsdtStage } from "@/lib/pockets/tron-usdt";
+import { ECOSYSTEM_TOKENS } from "@/lib/dex/ecosystem-tokens";
 
 export type EvmChain = "ethereum" | "base" | "bsc" | "zcu" | "pulsechain" | "hyperevm" | "avalanche";
 
@@ -106,6 +107,7 @@ export const DEPOSIT_ASSETS: DepositAsset[] = [
     "To see or send it in HME Wallet, add HEX as a custom token: 0x2b591e99afE9f32eAA6214f7B7629768c40Eeb39.",
   ])] },
   { symbol: "pHEX", name: "HEX on PulseChain", market: "/trade/phex-tsd", networks: [pulse("pHEX")] },
+  ...ECOSYSTEM_TOKENS.map((t): DepositAsset => ({ symbol: t.symbol, name: t.name, networks: [{ ...evm("ethereum", "Ethereum", "ETH", [`Send ${t.symbol} on Ethereum only. Token contract: ${t.address}.`]), seedsSends: true }] })),
   { symbol: "HYPE", name: "Hyperliquid", market: "/trade/hype-tsd", networks: [hyperevm] },
   { symbol: "XMR", name: "Monero", networks: [monero] },
   { symbol: "ADA", name: "Cardano", networks: [cardano] },

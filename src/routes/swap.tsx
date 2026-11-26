@@ -10,6 +10,8 @@ import { getTsdRouteQuote } from "@/lib/xchain/tsd-route.functions";
 import { quoteDexSwap } from "@/lib/dex/dex.functions";
 import { DEX_NETWORKS } from "@/lib/dex/venues";
 import { displaySymbol } from "@/lib/dex/starters";
+import { ECOSYSTEM_TOKENS } from "@/lib/dex/ecosystem-tokens";
+import { sideFor } from "@/lib/account/swap-link";
 import { TSD_DEX } from "@/lib/dex/swap-rules";
 import { quoteTwoStepSwap } from "@/lib/two-step/two-step.functions";
 import { bestIndex, coinForToken, normalizeSide, planSwap, sameSide, type RouteOption, type SwapSide } from "@/lib/swap/plan";
@@ -32,8 +34,8 @@ import { usePocketBalances, usePocketLink, fmtCoin, type BalanceRow } from "@/co
 import { TonUsdtResult, type TonUsdtQuote } from "@/components/swap/TonUsdtResult";
 
 type SwapSearch = { from?: string; to?: string; amount?: string; sw?: string };
-const sideOk = (v: unknown): v is string => v === "TSD" || v === "HYPE" || v === "TON" || v === "USDT_TON" || (typeof v === "string" && Boolean(swapCoin(v as SwapCoinId)));
-const toSide = (v: string): SwapSide => (v === "TSD" ? { kind: "tsd" } : v === "HYPE" ? { kind: "hype" } : v === "TON" ? { kind: "ton" } : v === "USDT_TON" ? { kind: "ton_usdt" } : { kind: "coin", id: v as SwapCoinId });
+const sideOk = (v: unknown): v is string => v === "TSD" || v === "HYPE" || v === "TON" || v === "USDT_TON" || (typeof v === "string" && (Boolean(swapCoin(v as SwapCoinId)) || ECOSYSTEM_TOKENS.some((t) => t.symbol === v)));
+const toSide = (v: string): SwapSide => (v === "TSD" ? { kind: "tsd" } : v === "HYPE" ? { kind: "hype" } : v === "TON" ? { kind: "ton" } : v === "USDT_TON" ? { kind: "ton_usdt" } : sideFor(v, "ethereum")?.side ?? { kind: "coin", id: v as SwapCoinId });
 
 export const Route = createFileRoute("/swap")({
   staticData: { sitemap: true },

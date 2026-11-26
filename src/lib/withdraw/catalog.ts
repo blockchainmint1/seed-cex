@@ -7,6 +7,7 @@
  */
 import type { ChainId } from "@/lib/chains";
 import type { PocketCoin } from "@/lib/pockets/coins";
+import { ECOSYSTEM_TOKENS } from "@/lib/dex/ecosystem-tokens";
 
 export type WithdrawKind = "evm" | "utxo" | "omni" | "btc" | "doge" | "bch" | "xrp" | "trx" | "sol" | "xmr" | "ada" | "xlm" | "ton" | "sui" | "ton_usdt" | "tron_usdt";
 
@@ -70,6 +71,7 @@ export const WITHDRAW_COINS: WithdrawCoin[] = [
   evm("BNB", "bsc", "BNB Chain", "bsc", 18, undefined, BSCSCAN),
   evm("ZCU", "zcu", "ZeroChill", "zcu", 18, undefined, "https://explorer.zerochill.com/tx/"),
   evm("HEX", "ethereum", "Ethereum", "ethereum", 8, "ETH", ETHERSCAN),
+  ...ECOSYSTEM_TOKENS.map((t) => evm(t.symbol, "ethereum", "Ethereum", "ethereum", t.decimals, "ETH", ETHERSCAN)),
   evm("PLS", "pulsechain", "PulseChain", "pulsechain", 18, undefined, PULSESCAN),
   evm("pHEX", "pulsechain", "PulseChain", "pulsechain", 8, "PLS", PULSESCAN),
   evm("HYPE", "hyperevm", "HyperEVM", "hyperevm", 18, undefined, "https://hyperevmscan.io/tx/"),

@@ -87,6 +87,15 @@ export async function readinessFor(userId: string, linkId: string | null) {
 
 async function usdPrice(symbol: string): Promise<number | null> {
   if (symbol === "TSD") return 1;
+  // Wrapped coins must be priced by their pinned Ethereum contract, never by their native ticker.
+  const { ECOSYSTEM_TOKENS } = await import("@/lib/dex/ecosystem-tokens");
+  const wrapped = ECOSYSTEM_TOKENS.find((t) => t.symbol === symbol);
+  if (wrapped) {
+    const { tokenMarket } = await import("@/lib/dex/market.server");
+    const market = await tokenMarket("ethereum", wrapped.address);
+    const price = market?.priceUsd;
+    return price != null && Number.isFinite(price) && price > 0 ? price : null;
+  }
   const { fetchQuotes, TRACKED } = await import("@/lib/cmc.server");
   const q = await fetchQuotes(TRACKED);
   const p = q.quotes.find((x) => x.symbol === symbol)?.price;

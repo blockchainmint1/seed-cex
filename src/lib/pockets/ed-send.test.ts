@@ -27,9 +27,9 @@ const otherPub = ed25519.getPublicKey(other);
 const from = (c: "XLM" | "TON" | "SUI") => edAddress(c, pub);
 const to = (c: "XLM" | "TON" | "SUI") => edAddress(c, otherPub);
 
-describe("one gate for audited tester deposits and withdrawals", () => {
-  test("activation remains off", () => expect(ED_SENDS_ENABLED).toBe(false));
-  test("the approved activation is testers only", () => expect(edSendStage()).toBe("testers"));
+describe("one gate for audited deposits and withdrawals", () => {
+  test("Bobby approved public activation after live tests", () => expect(ED_SENDS_ENABLED).toBe(true));
+  test("the approved activation is open", () => expect(edSendStage()).toBe("open"));
   test("review stage allows nobody, including testers", () => {
     expect(edStageAllows("review", false)).toBe(false); expect(edStageAllows("review", true)).toBe(false);
   });
@@ -50,13 +50,13 @@ describe("one gate for audited tester deposits and withdrawals", () => {
       expect(depositState(net, true, { [chain]: from(chain) }, null).ok).toBe(true);
       expect(sendBlocker({ symbol: chain, networkLabel: chain, tester: true, frozen: false, link: { mode: "access", hasKey: true, address: from(chain) } })).toBeNull();
     });
-    test(`${chain} stays closed for non-testers and unknown readiness`, () => {
+    test(`${chain} allows non-testers but unknown readiness stays closed`, () => {
       const net = findNetwork(findAsset(chain), chain.toLowerCase());
       if (!net) throw new Error("Network missing");
-      expect(depositState(net, true, { [chain]: from(chain) }, edSendBlocker(chain, false)).ok).toBe(false);
+      expect(depositState(net, true, { [chain]: from(chain) }, edSendBlocker(chain, false)).ok).toBe(true);
       expect(depositState(net, true, { [chain]: from(chain) }).ok).toBe(false);
-      expect(sendBlocker({ symbol: chain, networkLabel: chain, tester: false, frozen: false, link: { mode: "access", hasKey: true, address: from(chain) } })).not.toBeNull();
-      expect(edSendBlocker(chain)).not.toBeNull();
+      expect(sendBlocker({ symbol: chain, networkLabel: chain, tester: false, frozen: false, link: { mode: "access", hasKey: true, address: from(chain) } })).toBeNull();
+      expect(edSendBlocker(chain)).toBeNull();
     });
   }
   test("existing BTC withdrawals aren't gated by this change", () => expect(edSendBlocker("BTC")).toBeNull());

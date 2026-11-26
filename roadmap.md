@@ -1,5 +1,14 @@
 # Roadmap
 
+## Remaining coin withdrawals (Bobby, Nov 26)
+- [x] Open XLM/TON/SUI and USD₮ on TON to eligible members in code after Bobby's live-test confirmation; existing approvals, fee checks and link protection remain
+- [x] Add Ethereum wTXC/wISK/wZCU deposits/withdrawals with pinned contracts and protected ERC-20 sender; Balances Swap links keep the correct token prefilled
+- [x] Prepare EC2 watch-sync and DigitalOcean offline-signer paste commands plus authenticated wallet deployment bundle; official v0.18.5.4 hash verified
+- [ ] Monero live activation (blocked: Bobby provisions hosts, TLS and secrets; full sync, deployment audit and small owner-approved send)
+- [ ] Zcash transparent withdrawals (blocked: no qualified current-format signer; BitGo ZIP-244 package isolated runtime probe does not start under current bundle/import setup, no Zcash RPC provider validated). No new dependency or ZEC money path activated
+- [x] Verify changed paths and deliver auditor handoff: 1,726 Bun tests + 5 proxy tests; signed-in withdrawal forms and three Balances → Swap links checked
+- [ ] Publish widened withdrawals and accept Monero deployments only after independent review (blocked: auditor)
+
 ## TON reference value (Bobby, Nov 25)
 - [x] Correct TON identity in the shared reference price feed and verify the signed-in balance value (254.71915799 TON, $243.69 during verification)
 - [x] Check all price consumers for the same mismatch without changing settled history, permissions or settings (coverage and source/deployed limitations in auditor note)
