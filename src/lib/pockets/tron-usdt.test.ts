@@ -59,10 +59,12 @@ describe("send rules and audit stage", () => {
     expect(tronUsdtBlocker(true, "testers")).toBeNull();
     expect(tronUsdtBlocker(false, "open")).toBeNull();
   });
-  test("deposits stay closed until open, so no non-tester deposit is one-way", () => {
+  test("tester deposits require verified send readiness; non-testers still cannot withdraw", () => {
     const net = findNetwork(findAsset("USDT"), "trx");
     if (!net) throw new Error("Missing TRON network");
-    expect(depositState(net, true, { TRX: from }, null).ok).toBe(false);
+    expect(depositState(net, true, { TRX: from }, null)).toEqual({ ok: true, address: from });
+    expect(depositState(net, true, { TRX: from }, tronUsdtBlocker(false)).ok).toBe(false);
+    expect(depositState(net, true, { TRX: from }).ok).toBe(false);
     expect(withdrawalBlocker({ symbol: "USDT", networkLabel: "TRON", pocket: "TRX", tester: true, frozen: false, link: { mode: "access", hasKey: true, address: from } })).toBeNull();
     expect(withdrawalBlocker({ symbol: "USDT", networkLabel: "TRON", pocket: "TRX", tester: false, frozen: false, link: { mode: "access", hasKey: true, address: from } })).not.toBeNull();
   });

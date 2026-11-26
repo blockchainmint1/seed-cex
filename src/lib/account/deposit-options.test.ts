@@ -1,9 +1,35 @@
 import { describe, expect, test } from "bun:test";
-import { DEPOSIT_ASSETS, depositState, findAsset, findNetwork, withdrawRoute } from "./deposit-options";
+import { DEPOSIT_ASSETS, depositState, depositStates, findAsset, findNetwork, withdrawRoute } from "./deposit-options";
 
 const addrs = { TXC: "Ttxc", BTC: "bc1q", EVM: "0xabc", DOGE: "Ddoge", ZEC: "t1zec" };
 
 describe("deposit catalog", () => {
+  test("TON and TRON USDT deposits use their own verified withdrawal readiness", () => {
+    const states = depositStates(findAsset("USDT"), true, { EVM: "0xabc", TON: "ton-pocket", TRX: "tron-pocket" }, { ton: null, trx: "Not a beta tester" });
+    expect(states["ton"]).toEqual({ ok: true, address: "ton-pocket" });
+    expect(states["trx"]?.ok).toBe(false);
+    expect(states["ethereum"]).toEqual({ ok: true, address: "0xabc" });
+  });
+  test("USDT on TRON deposits open for a member who can send it back out", () => {
+    const net = findNetwork(findAsset("USDT"), "trx");
+    if (!net) throw new Error("Missing TRON network");
+    expect(depositState(net, true, { TRX: "tron-pocket" }, null)).toEqual({ ok: true, address: "tron-pocket" });
+    expect(depositState(net, true, { TRX: "tron-pocket" }).ok).toBe(false);
+    expect(depositState(net, true, { TRX: "tron-pocket" }, "Telegram not connected").ok).toBe(false);
+    expect(depositState(net, false, { TRX: "tron-pocket" }, null).ok).toBe(false);
+  });
+  test("native TON deposits open only with a linked, withdrawal-ready TON pocket", () => {
+    const net = findNetwork(findAsset("TON"), "ton");
+    if (!net) throw new Error("Missing TON network");
+    expect(depositState(net, true, { TON: "ton-pocket" }, null)).toEqual({ ok: true, address: "ton-pocket" });
+    expect(depositState(net, true, { TON: "ton-pocket" }).ok).toBe(false);
+    expect(depositState(net, true, {}, null).ok).toBe(false);
+  });
+  test("unknown sibling readiness cannot borrow another network's clearance", () => {
+    const states = depositStates(findAsset("USDT"), true, { TON: "ton-pocket", TRX: "tron-pocket" }, { ton: null });
+    expect(states["ton"]?.ok).toBe(true);
+    expect(states["trx"]?.ok).toBe(false);
+  });
   test("TSD deposits to the TEXITcoin address", () => {
     const net = findNetwork(findAsset("TSD"), undefined)!;
     expect(net.pocket).toBe("TXC");

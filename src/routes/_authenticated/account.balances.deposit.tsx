@@ -1,13 +1,15 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { useQueries } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { ScanQr } from "@/components/site/ScanQr";
 import { AlertTriangle, Check, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, Note, TabTitle } from "@/components/account/ui";
 import { CoinNetworkPicker } from "@/components/account/CoinNetworkPicker";
 import { fmtCoin, usePocketBalances, usePocketLink } from "@/components/account/use-pocket";
-import { depositState, findAsset, findNetwork, withdrawRoute } from "@/lib/account/deposit-options";
-import { useWithdrawals } from "@/components/account/SeedsWithdraw";
+import { depositStates, findAsset, findNetwork, withdrawRoute } from "@/lib/account/deposit-options";
+import { getWithdrawals } from "@/lib/withdraw/withdraw.functions";
 
 type Search = { coin?: string; network?: string };
 
@@ -39,11 +41,19 @@ function Deposit() {
   const asset = findAsset(search.coin);
   const net = findNetwork(asset, search.network);
   const linked = new Set(Object.keys(l?.addresses ?? {}));
-  // Networks only Seeds can send out (PulseChain): deposits open only when this member could withdraw them.
-  const seedsKey = asset && net && withdrawRoute(net) === "seeds" ? `${asset.symbol}:${net.id}` : null;
-  const seeds = useWithdrawals(seedsKey, Boolean(l) && seedsKey !== null);
-  const seedsBlocker = seeds.data ? seeds.data.blocker : undefined;
-  const state = net ? depositState(net, Boolean(l), l?.addresses ?? {}, seedsBlocker) : null;
+  // Check each Seeds-sent network independently, including before selection.
+  const readWithdrawals = useServerFn(getWithdrawals);
+  const sendNetworks = asset?.networks.filter((n) => withdrawRoute(n) === "seeds") ?? [];
+  const checks = useQueries({ queries: sendNetworks.map((n) => {
+    const key = `${asset?.symbol}:${n.id}`;
+    return { queryKey: ["withdrawals", key], queryFn: () => readWithdrawals({ data: { key } }), enabled: Boolean(l), refetchInterval: 20_000 };
+  }) });
+  const blockers = Object.fromEntries(sendNetworks.flatMap((n, i) => {
+    const data = checks[i]?.data;
+    return data ? [[n.id, data.blocker]] : [];
+  }));
+  const states = depositStates(asset, Boolean(l), l?.addresses ?? {}, blockers);
+  const state = net ? states[net.id] : null;
   const row = net ? rows.find((r) => r.asset.symbol === asset?.symbol && r.net.id === net.id) : undefined;
   const balance = row?.balance ?? null;
   const arriving = row?.arriving ?? 0;
@@ -63,7 +73,11 @@ function Deposit() {
             linked={linked}
             onAsset={(coin) => { setCopied(false); navigate({ search: { coin, network: undefined }, replace: true }); }}
             onNetwork={(network) => { setCopied(false); navigate({ search: (p) => ({ ...p, network }), replace: true }); }}
-            disabledNote={(n) => (l && !depositState(n, true, l.addresses, seedsBlocker).ok ? "Not available" : null)}
+            disabledNote={(n) => {
+              if (!l) return null;
+              if (withdrawRoute(n) === "seeds" && !Object.hasOwn(blockers, n.id)) return "Checking…";
+              return states[n.id]?.ok ? null : "Not available";
+            }}
           />
           {net && state ? (
             <div className="mt-6 border-t border-border pt-6">

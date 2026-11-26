@@ -1,5 +1,11 @@
 # Roadmap
 
+## TON and TRON deposit access (Bobby, Nov 26)
+- [x] Allow USDT-TRON deposits for members already cleared by its existing authenticated sender; no public withdrawal/stage or protection changes
+- [x] Check deposit eligibility per network rather than reuse the selected network's blocker; unknown checks stay closed
+- [x] Verify signed-in TON/native TRX and both USDT networks; 1,730 tests pass, build OK, auditor note prepared
+- [ ] Publish deposit change (blocked: independent review)
+
 ## Remaining coin withdrawals (Bobby, Nov 26)
 - [x] Open XLM/TON/SUI and USD₮ on TON to eligible members in code after Bobby's live-test confirmation; existing approvals, fee checks and link protection remain
 - [x] Add Ethereum wTXC/wISK/wZCU deposits/withdrawals with pinned contracts and protected ERC-20 sender; Balances Swap links keep the correct token prefilled

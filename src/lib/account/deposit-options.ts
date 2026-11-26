@@ -164,8 +164,9 @@ export type DepositState = { ok: true; address: string } | { ok: false; reason: 
 export function depositState(
   net: DepositNetwork, linked: boolean, addresses: Record<string, string | undefined>, seedsSendBlocker?: string | null,
 ): DepositState {
-  // Deposits open to everyone only at "open": a non-tester must never deposit what they can't send out.
-  if (net.token === "USDT_TRON" && tronUsdtStage() !== "open") return { ok: false, reason: tronUsdtStage() === "review" ? (tronUsdtBlocker() ?? "USDT on TRON isn't ready for deposits.") : "USDT on TRON deposits open to everyone after beta testers finish live sends. Testers: it arrives at the same address as your TRX." };
+  // Review stays locked. At testers/open, the member's server-verified send blocker
+  // below decides: an eligible tester can receive without opening a one-way deposit.
+  if (net.token === "USDT_TRON" && tronUsdtStage() === "review") return { ok: false, reason: tronUsdtBlocker() ?? "USDT on TRON isn't ready for deposits." };
   const newChain = edSendBlocker(net.pocket);
   if (newChain && edSendStage() === "review") return { ok: false, reason: newChain };
   if (!linked) return { ok: false, reason: "Link your HME Wallet trading pocket first — deposits go to that pocket." };
@@ -177,4 +178,12 @@ export function depositState(
   if (!address)
     return { ok: false, reason: `Your linked pocket doesn't include ${POCKET_SPECS[net.pocket].name} yet. Use "Add new coins" on Account → Security once HME Wallet can share it.` };
   return { ok: true, address };
+}
+
+/** Readiness belongs to a specific network, never whichever sibling is selected. */
+export function depositStates(
+  asset: DepositAsset | undefined, linked: boolean, addresses: Record<string, string | undefined>,
+  blockers: Partial<Record<string, string | null>>,
+): Record<string, DepositState> {
+  return Object.fromEntries((asset?.networks ?? []).map((net) => [net.id, depositState(net, linked, addresses, blockers[net.id])]));
 }
