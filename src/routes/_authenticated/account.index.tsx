@@ -5,6 +5,7 @@ import { ArrowDownToLine, ArrowRight, ArrowUpFromLine, CheckCircle2, Circle, Spr
 import { getMyProfile } from "@/lib/profile.functions";
 import { listApiKeys } from "@/lib/api-keys.functions";
 import { getMyAiPlans } from "@/lib/ai/ai.functions";
+import { getMyFeePrep } from "@/lib/fee-prep.functions";
 import { Button } from "@/components/ui/button";
 import { Card, TabTitle } from "@/components/account/ui";
 import { fmtCoin, fmtUsd, usePocketBalances, usePocketLink } from "@/components/account/use-pocket";
@@ -35,6 +36,10 @@ function Overview() {
   const profile = useQuery({ queryKey: ["my-profile"], queryFn: () => loadProfile() });
   const keys = useQuery({ queryKey: ["api-keys"], queryFn: () => loadKeys() });
   const plans = useQuery({ queryKey: ["ai-my-plans"], queryFn: () => loadPlans() });
+  const loadFees = useServerFn(getMyFeePrep);
+  const fees = useQuery({ queryKey: ["my-fee-prep-overview"], queryFn: () => loadFees(), staleTime: 30_000 });
+  const feesReady = fees.data?.ethereum.level === "enough" && fees.data?.base.level === "enough";
+  const feeStep = { done: feesReady, label: "Add or convert some ETH for network fees on Ethereum and Base", to: "/welcome" as const, search: { step: "fees" as const } };
   const link = usePocketLink();
   const l = link.data;
   const { rows, total, unpriced, balances } = usePocketBalances(l?.addresses, l?.id);
@@ -54,6 +59,7 @@ function Overview() {
   const steps = keyKind ? [
     { done: Boolean(l), label: "Trading pocket set up", to: "/account/security" as const },
     { done: funded, label: "Deposit into your trading pocket", to: "/account/balances/deposit" as const },
+    feeStep,
     { done: Boolean(id.data?.email), label: "Add an email (needed for withdrawals)", to: "/account/profile" as const },
     { done: Boolean(tf.data), label: "Turn on two-factor sign-in", to: "/account/security" as const },
     { done: Boolean(p?.telegram_verified), label: "Connect Telegram alerts", to: "/account/alerts" as const },
@@ -62,6 +68,7 @@ function Overview() {
     { done: p?.hm_status === "active" || p?.hm_status === "oceanfront", label: "Honest.Money membership active", to: "/account/profile" as const },
     { done: Boolean(l), label: "Link your HME Wallet trading pocket", to: "/account/security" as const },
     { done: funded, label: "Deposit into your trading pocket", to: "/account/balances/deposit" as const },
+    feeStep,
     { done: Boolean(p?.telegram_verified), label: "Connect Telegram alerts", to: "/account/alerts" as const },
     { done: livePlans > 0, label: "Lock in an AI plan (optional)", to: "/account/ai" as const },
     { done: liveKeys > 0, label: "Create an API key for a bot (optional)", to: "/account/api-keys" as const },
@@ -128,7 +135,7 @@ function Overview() {
         <ol className="space-y-1">
           {steps.map((s) => (
             <li key={s.label}>
-              <Link to={s.to} className="flex items-center gap-3 rounded-sm px-2 py-2 text-sm hover:bg-muted">
+              <Link to={s.to} search={"search" in s ? s.search : undefined} className="flex items-center gap-3 rounded-sm px-2 py-2 text-sm hover:bg-muted">
                 {s.done ? <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" /> : <Circle className="h-4 w-4 shrink-0 text-muted-foreground" />}
                 <span className={s.done ? "text-muted-foreground line-through decoration-muted-foreground/50" : "text-foreground"}>{s.label}</span>
                 {!s.done ? <ArrowRight className="ml-auto h-4 w-4 text-muted-foreground" /> : null}
