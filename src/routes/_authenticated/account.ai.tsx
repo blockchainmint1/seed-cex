@@ -336,6 +336,7 @@ function RealSection({ p, symbol, busy, oneTapLimitUsd, onAnswer, onBuyNow }: { 
       ) : (
         <p className="mt-1 text-sm text-muted-foreground">{p.execute ? "Nothing bought yet." : "Real buying is off for this plan."}</p>
       )}
+      {p.positions && p.positions.positions.length ? <PositionBox s={p.positions} symbol={symbol} /> : null}
       {d?.moves.length ? (
         <ul className="mt-2 space-y-1 text-sm">
           {d.moves.map((m) => (
@@ -460,5 +461,43 @@ function RealStartDialog({ open, onClose, onChoose }: {
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+  );
+}
+
+const usd2 = (n: number) => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const signed = (n: number) => `${n >= 0 ? "+" : "−"}${usd2(Math.abs(n))}`;
+const tone = (n: number | null) => (n == null ? "text-muted-foreground" : n >= 0 ? "text-primary" : "text-destructive");
+
+/** QA-0008 position tracker: what this plan's Seeds buys are worth now and how far up or down. */
+function PositionBox({ s, symbol }: { s: import("@/lib/ai/positions").PositionSummary; symbol: (id: string) => string }) {
+  return (
+    <div className="mt-3 rounded-md border border-border bg-card p-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className={fieldLabel}>Position</p>
+        <p className="text-sm">
+          Worth <b className="num">{s.value == null ? "—" : `${usd2(s.value)} TSD`}</b>
+          {" · "}
+          <b className={`num ${tone(s.total)}`}>{s.total == null ? "price not available" : `${signed(s.total)} TSD${s.totalPct != null ? ` (${signed(s.totalPct)}%)` : ""}`}</b>
+        </p>
+      </div>
+      <div className="mt-2 overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead className="text-muted-foreground"><tr className="text-left"><th className="py-1 pr-3 font-normal">Coin</th><th className="pr-3 font-normal">Held</th><th className="pr-3 font-normal">Avg cost</th><th className="pr-3 font-normal">Paid</th><th className="pr-3 font-normal">Worth</th><th className="font-normal">Up / down</th></tr></thead>
+          <tbody className="num">
+            {s.positions.map((x) => (
+              <tr key={x.coin} className="border-t border-border">
+                <td className="py-1 pr-3 font-semibold">{symbol(x.coin)}</td>
+                <td className="pr-3">{n8(x.units)}</td>
+                <td className="pr-3">{x.avgCost == null ? "—" : usd2(x.avgCost)}</td>
+                <td className="pr-3">{usd2(x.cost)}</td>
+                <td className="pr-3">{x.value == null ? "—" : usd2(x.value)}</td>
+                <td className={tone(x.unrealized)}>{x.unrealized == null ? "—" : `${signed(x.unrealized)}${x.unrealizedPct != null ? ` (${signed(x.unrealizedPct)}%)` : ""}`}{x.realized ? <span className="text-muted-foreground"> · sold {signed(x.realized)}</span> : null}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="mt-2 text-[11px] text-muted-foreground">In TSD, from this plan's own Seeds buys and sells only, valued at the latest daily close. Coins sent in from outside don't count.</p>
+    </div>
   );
 }

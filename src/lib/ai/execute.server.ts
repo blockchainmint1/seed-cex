@@ -80,6 +80,15 @@ export async function planLedger(plan: { id: string; commit_tsd: number }): Prom
   return ledgerFrom(Number(plan.commit_tsd), done);
 }
 
+/** QA-0008: the plan's positions from its own finished Seeds trades, valued at the newest daily close. */
+export async function planPositions(planId: string) {
+  const { positionsFrom } = await import("./positions");
+  const { data } = await db.from("ai_plan_moves").select("side, coin_id, amount_in, amount_out, finished_at").eq("plan_id", planId).eq("status", "done").order("finished_at", { ascending: true });
+  const moves = (data ?? []).map((m) => ({ side: m.side as "buy" | "sell", coin: m.coin_id, amountIn: Number(m.amount_in ?? 0), amountOut: Number(m.amount_out ?? 0) }));
+  const prices = await latestPrices([...new Set(moves.map((m) => m.coin))]);
+  return positionsFrom(moves, prices);
+}
+
 /** Why this plan can't buy for real right now, or null. */
 export async function planRealBlocker(plan: PlanRow): Promise<string | null> {
   const [s, admin] = await Promise.all([execSettings(), isTesterUser(plan.user_id)]);

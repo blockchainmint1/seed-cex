@@ -23,6 +23,8 @@ export type MyAiPlan = {
   execute: boolean;
   /** What the plan owns from its finished real trades (TSD + coin units), when real buying has run. */
   ledger: { tsd: number; units: Record<string, number> } | null;
+  /** Position tracker (QA-0008): cost, value and up/down from this plan's own Seeds trades only. */
+  positions: import("./positions").PositionSummary | null;
   /** The newest day with real trades: waiting for an OK, running, or finished. */
   realDay: AiRealDay | null;
   /** The latest check keeps some or all of the plan in TSD, waiting for a signal. */
@@ -51,7 +53,7 @@ export const getMyAiPlans = createServerFn({ method: "GET" })
       supabase.from("profiles").select("telegram_verified").eq("id", userId).maybeSingle(),
       supabase.from("ai_plan_moves").select("id, check_id, plan_id, seq, side, coin_id, usd, amount, status, amount_in, amount_out, error").order("created_at", { ascending: false }).limit(500),
     ]);
-    const { isTesterUser, planLedger } = await import("./execute.server");
+    const { isTesterUser, planLedger, planPositions } = await import("./execute.server");
     const tester = await isTesterUser(userId);
     const realDays = new Map<string, AiRealDay>();
     for (const c of checks ?? []) {
@@ -67,6 +69,7 @@ export const getMyAiPlans = createServerFn({ method: "GET" })
     }
     const ranReal = new Set((moves ?? []).filter((m) => m.status === "done").map((m) => m.plan_id));
     const ledgers = new Map(await Promise.all((plans ?? []).filter((p) => ranReal.has(p.id)).map(async (p) => [p.id, await planLedger({ id: p.id, commit_tsd: Number(p.commit_tsd) })] as const)));
+    const positions = new Map(await Promise.all((plans ?? []).filter((p) => ranReal.has(p.id)).map(async (p) => [p.id, await planPositions(p.id)] as const)));
     const { aiSettings } = await import("./ai.server");
     const { swapSendContext } = await import("@/lib/xchain/send.server");
     const { oneTapLimitFor } = await import("./execute.server");
@@ -84,7 +87,7 @@ export const getMyAiPlans = createServerFn({ method: "GET" })
         id: p.id, name: p.name, status: p.status, commitTsd: Number(p.commit_tsd), lockedAt: p.locked_at,
         telegramDaily: p.telegram_daily, settings: p.settings as unknown as PlanSettings,
         lastCheck: history.get(p.id)?.[0] ?? null, history: history.get(p.id) ?? [],
-        execute: p.execute === true, ledger: ledgers.get(p.id) ?? null, realDay: realDays.get(p.id) ?? null,
+        execute: p.execute === true, ledger: ledgers.get(p.id) ?? null, positions: positions.get(p.id) ?? null, realDay: realDays.get(p.id) ?? null,
         waitingInTsd: latestTargets.has(p.id) && planWaitingInTsd(p.settings as unknown as PlanSettings, latestTargets.get(p.id)),
         canBuyNow: latestTargets.has(p.id) && canBuyNow(p.settings as unknown as PlanSettings, latestTargets.get(p.id)),
         overrideDays: (p.override_days as string[] | null) ?? [],
