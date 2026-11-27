@@ -573,3 +573,7 @@
 - [x] Independent review of 64e977a..114bdd8: cleared to publish (Nov 26). A row is marked failed only on a final-ledger verdict that the coins did not move; every missing/unreachable/unclear answer keeps waiting. TS1 closed.
 - [ ] WC1 (record, not a fix): an XRP transaction whose last-ledger deadline passed, or a Solana transaction whose blockhash expired, can never land but still has no terminal state — it just keeps waiting (safe direction, same as before). Closing it needs the deadline recorded at send time, as Stellar/TON/Sui/TRON do.
 - [ ] Funded test sequences for TON and TRON remain open on the team's side (blocked: owner funds/taps)
+
+## QA-0010 withdrawal guidance (Nov 27)
+- [x] Compare HME Wallet's actual pocket controls and correct Seeds withdrawal page, metadata and help: Move back sweeps supported native coins to the main wallet; it is not an amount/address Send and excludes tokens. No withdrawal logic or HME Wallet changes.
+- [ ] Tester confirmation after the reviewed update is published (blocked: independent review, release and tester).

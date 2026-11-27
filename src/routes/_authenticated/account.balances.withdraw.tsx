@@ -23,7 +23,7 @@ export const Route = createFileRoute("/_authenticated/account/balances/withdraw"
   head: () => ({
     meta: [
       { title: "Withdraw crypto — Seeds" },
-      { name: "description", content: "Withdraw any coin from your HME trading pocket: Seeds sends it after an email code, your authenticator code and a Telegram tap, or send it yourself from HME Wallet." },
+      { name: "description", content: "Withdraw crypto from your trading pocket through Seeds with an email code, your authenticator code and a Telegram tap. HME Wallet's Move back returns supported native coins to your main wallet." },
       { property: "og:title", content: "Withdraw crypto — Seeds" },
       { property: "og:description", content: "How to move coins out of your HME trading pocket, coin by coin." },
       { property: "og:type", content: "website" },
@@ -32,8 +32,6 @@ export const Route = createFileRoute("/_authenticated/account/balances/withdraw"
   }),
   component: Withdraw,
 });
-
-const FEE_COIN: Record<string, string> = { "txc-omni": "TXC", ethereum: "ETH", base: "ETH", bsc: "BNB", zcu: "ZCU", pulsechain: "PLS", hyperevm: "HYPE", avalanche: "AVAX" };
 
 function Withdraw() {
   const search = Route.useSearch();
@@ -58,7 +56,7 @@ function Withdraw() {
     <div className="space-y-5">
       <TabTitle
         title="Withdraw"
-        desc={`Seeds can send any coin in your trading pocket to an outside address. Every withdrawal needs a code we email you, your authenticator code and your tap in Telegram, then your level's wait.${keyKind ? "" : " Coins HME Wallet supports can also be sent from HME Wallet yourself."}`}
+        desc={`Seeds can send any coin in your trading pocket to an outside address. Every withdrawal needs a code we email you, your authenticator code and your tap in Telegram, then your level's wait.${keyKind ? "" : " HME Wallet's Move back returns supported native coins to your main wallet; it doesn't send a chosen amount to an outside address."}`}
       />
       {!link.isPending && !l ? (
         <Note tone="warn">
@@ -104,11 +102,11 @@ function Withdraw() {
                       <SeedsWithdraw key={coin.key} coin={coin} from={row.address} balance={free} />
                       {withdrawRoute(net) === "hme" && !keyKind ? (
                         <details className="rounded-sm border border-border px-3 py-2 text-sm">
-                          <summary className="cursor-pointer font-semibold">Or send it yourself from HME Wallet</summary>
+                          <summary className="cursor-pointer font-semibold">HME Wallet's Move back option</summary>
                           <div className="mt-3"><Steps net={net} symbol={asset.symbol} account={l.account} /></div>
                           {inTrades > 0 ? (
                             <p className="mt-3 text-xs text-muted-foreground">
-                              If you send coins that are in trades this way, Seeds cancels the newest orders they no longer cover and tells you.
+                              Move back can also move coins that are in trades. Seeds cancels the newest orders they no longer cover and tells you.
                             </p>
                           ) : null}
                         </details>
@@ -162,23 +160,23 @@ function Steps({ net, symbol, account }: { net: DepositNetwork; symbol: string; 
   if (route === "swap")
     return (
       <div className="space-y-3">
-        <Note tone="warn">HME Wallet can't send {symbol}. Take it out in two steps:</Note>
+        <Note tone="warn">HME Wallet's Move back doesn't move {symbol}. Take it out in two steps:</Note>
         <ol className="list-decimal space-y-1.5 pl-5 text-sm">
           <li>Swap your {symbol} to TSD on Seeds (it lands back in this pocket).</li>
-          <li>Withdraw the TSD from HME Wallet → Trading pocket #{account} → Send.</li>
+          <li>Return to Seeds → Account → Balances → Withdraw, choose TSD, and complete the Seeds withdrawal.</li>
         </ol>
         <Button asChild><Link to="/swap" search={swapPairForCoinSymbol(symbol) ?? {}}><Repeat /> Swap {symbol} to TSD</Link></Button>
       </div>
     );
-  const fee = FEE_COIN[net.id];
   return (
     <div className="space-y-3">
+      <Note>To send a chosen amount of {symbol} to an outside address, use Seeds' withdrawal form. HME Wallet has no Send button for trading pocket #{account}.</Note>
       <ol className="list-decimal space-y-1.5 pl-5 text-sm">
-        <li>Open HME Wallet and choose <b>Trading pocket #{account}</b>.</li>
-        <li>Pick <b>{symbol}</b> on <b>{net.label}</b> and tap <b>Send</b>.</li>
-        <li>Paste the destination address, check it twice, and confirm in your wallet.</li>
+        <li>Open HME Wallet and find <b>Seeds</b> under <b>Shared with trading sites</b> (pocket #{account}).</li>
+        <li><b>Move back</b> attempts to return all supported native coins to your main wallet, less network fees—not just the coin selected here.</li>
+        <li>Check which coins moved. Any later send to an outside address is from your main wallet.</li>
       </ol>
-      {fee && fee !== symbol ? <p className="text-xs text-muted-foreground">You'll need a little {fee} in the pocket for the network fee.</p> : null}
+      <Note tone="warn">Move back does not move tokens such as TSD, USDC or wrapped coins, or chains HME Wallet doesn't support. Withdraw those through Seeds first, and keep enough native coins for their network fees. Don't revoke while coins still need to leave through Seeds.</Note>
       <Button asChild><a href="https://mobile.honest.money" target="_blank" rel="noreferrer"><ExternalLink /> Open HME Wallet</a></Button>
     </div>
   );

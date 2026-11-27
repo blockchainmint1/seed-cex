@@ -5,7 +5,7 @@
  */
 import type { HelpArticle, HelpCategory, HelpCategoryId, HelpFaq, HelpLink } from "./types";
 
-export const HELP_REVIEWED = "November 22, 2026";
+export const HELP_REVIEWED = "November 27, 2026";
 
 export const HELP_CATEGORIES: HelpCategory[] = [
   { id: "start", title: "Getting started", blurb: "What Seeds is, signing in and the setup guide." },
@@ -447,7 +447,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
   {
     slug: "withdraw",
     title: "Withdraw coins",
-    summary: "Seeds can send any coin out for you after an email code, your authenticator code and a Telegram tap, then a wait you can cancel. Coins HME Wallet supports can also be sent from HME Wallet.",
+    summary: "Withdraw through Seeds with an email code, your authenticator code and a Telegram tap. HME Wallet's Move back returns supported native coins to your main wallet, not to an outside address.",
     category: "money",
     keywords: ["withdraw", "send", "cash out", "take out", "pulsechain", "hold"],
     blocks: [
@@ -467,8 +467,9 @@ export const HELP_ARTICLES: HelpArticle[] = [
         "The withdrawal waits (**at least 24 hours**; 48 hours at the first level). You can cancel it until then.",
         "After the wait, Seeds sends it and shows the transaction.",
       ] },
-      { h: "Or send it yourself from HME Wallet" },
-      { p: "For coins HME Wallet supports, you can also tap **Open HME Wallet** and send from your trading pocket there." },
+      { h: "HME Wallet's Move back option" },
+      { p: "HME Wallet has no Send button for the trading pocket. Under **Shared with trading sites**, find **Seeds** and its pocket number. **Move back** attempts to return all supported native coins to your main wallet, less network fees. It does not let you choose an amount or outside address. You can then send from your main wallet." },
+      { note: "Move back does not move tokens such as TSD, USDC or wrapped coins, or chains HME Wallet doesn't support. Withdraw those through Seeds first and keep enough native coins for their network fees. Don't revoke while coins still need to leave through Seeds.", tone: "warn" },
       { note: "Zcash can't be withdrawn yet. ISK and ZCU need a live price to check your limit, so they may be unavailable for now.", tone: "info" },
     ],
     links: [{ label: "Withdraw", to: "/account/balances/withdraw" }],
@@ -953,7 +954,7 @@ export const HELP_FAQS: HelpFaq[] = [
   { category: "money", q: "What fees does Seeds charge?", a: "None to traders: 0% maker and taker, and no Seeds fee on deposits, withdrawals, P2P or swaps. You still pay each blockchain's network fee and any swap partner's fee, which are shown before you confirm.", article: "fees" },
   { category: "money", q: "Why do I need ETH?", a: "Ethereum and Base charge their network fee in ETH. Keep about **$10 of ETH on Ethereum** and **$1 on Base** in your trading pocket.", article: "network-fees" },
   { category: "money", q: "Why can't I deposit a certain coin?", a: "Seeds only opens a deposit when the coin can leave again, and when your linked pocket has an address for it. For example, ZEC is closed for now, and PulseChain opens once Seeds can send withdrawals for you.", article: "deposit" },
-  { category: "money", q: "How do I withdraw?", a: "Account → Balances → **Withdraw**, pick the coin, then confirm with an email code, your authenticator code and a Telegram tap. Seeds sends it after a wait you can cancel. Coins HME Wallet supports can also be sent from HME Wallet.", article: "withdraw" },
+  { category: "money", q: "How do I withdraw?", a: "Account → Balances → **Withdraw**, pick the coin, then confirm with an email code, your authenticator code and a Telegram tap. Seeds sends it after a wait you can cancel. HME Wallet has no pocket Send button: its **Move back** returns supported native coins to your main wallet, not to an outside address, and does not move tokens such as TSD or USDC.", article: "withdraw" },
   { category: "money", q: "How do I raise my withdrawal limit?", a: "It rises by itself as you build history: time as a member, number of withdrawals and amount withdrawn. Levels above New need two-factor on.", article: "withdrawal-levels" },
   { category: "money", q: "Why does my withdrawal say I need to re-link my wallet?", a: "Seeds-sent withdrawals need a wallet link made **after** you turned on two-factor. Re-link once from Account → Security. Your pocket and coins stay the same.", article: "two-factor" },
   { category: "account", q: "Do I have to use Telegram?", a: "It's strongly recommended. Coins only leave your pocket after you tap Approve in the Seeds Telegram bot, so trades, P2P releases and swaps need it.", article: "telegram-alerts" },
