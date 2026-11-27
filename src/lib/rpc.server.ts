@@ -85,11 +85,13 @@ export async function rpcBatch<T = unknown>(
   chain: RpcChain,
   calls: Array<{ method: string; params: unknown[] }>,
   timeoutMs = 8_000,
+  /** Wallet-scoped calls, e.g. Omni lookups, must use the same path as single RPCs. */
+  path = "",
 ): Promise<Array<T | RpcError>> {
   if (!calls.length) return [];
   const c = creds(chain);
   if (!c) throw new RpcError(`${chain.toUpperCase()} RPC is not configured`);
-  const res = await fetch(c.url, {
+  const res = await fetch(path ? c.url.replace(/\/+$/, "") + path : c.url, {
     method: "POST",
     signal: AbortSignal.timeout(timeoutMs),
     headers: { "content-type": "application/json", authorization: `Basic ${btoa(`${c.user}:${c.pass}`)}` },

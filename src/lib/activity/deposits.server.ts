@@ -12,7 +12,7 @@ import { nodeEndpoints, type NodeNetwork } from "@/lib/nodes.server";
 import { EXPLORER_BASE } from "@/lib/utxo/explorer-rules";
 import { EVM_NATIVE, WITHDRAW_COINS, type WithdrawCoin } from "@/lib/withdraw/catalog";
 import {
-  FIRST_PAGES, HISTORY_NETWORKS, SYNC_EVERY_MS, alchemyDeposits, esploraDeposit, isOmniCarrier, omniDeposit, seedsLabel, watchedDeposit,
+  FIRST_PAGES, HISTORY_NETWORKS, SYNC_EVERY_MS, alchemyDeposits, esploraDeposit, isOmniCarrier, omniDepositBatch, seedsLabel, watchedDeposit,
   type AlchemyTransfer, type EsploraTx, type FoundDeposit, type OmniTx, type SeedsTx,
 } from "./deposit-rules";
 
@@ -67,19 +67,19 @@ async function readEsplora(chain: "txc" | "isk", address: string, known: Set<str
   const rows: Row[] = [];
   const maxPages = firstTime ? FIRST_PAGES : 2;
   let after: string | null = null;
+  let omniComplete = true;
   for (let page = 0; page < maxPages; page++) {
     const txs = await esploraPage(chain, address, after);
     if (!txs) return { rows, complete: false };
     const carriers = chain === "txc" ? txs.filter((t) => t.status?.confirmed && isOmniCarrier(t) && !known.has(t.txid.toLowerCase())) : [];
     if (carriers.length) {
       const { rpcBatch } = await import("@/lib/rpc.server");
-      const replies = await rpcBatch<OmniTx>("txc", carriers.map((t) => ({ method: "omni_gettransaction", params: [t.txid] })), 8_000).catch(() => null);
+      const { omniPath } = await import("@/lib/omni.server");
+      const replies = await rpcBatch<OmniTx>("txc", carriers.map((t) => ({ method: "omni_gettransaction", params: [t.txid] })), 8_000, await omniPath()).catch(() => null);
       if (!replies) return { rows, complete: false };
-      replies.forEach((r) => {
-        if (r instanceof Error) return;
-        const d = omniDeposit(r, address, { [TSD_PROPERTY]: "TSD" });
-        if (d) rows.push({ network: "txc-omni", address, d, source: "chain" });
-      });
+      const decoded = omniDepositBatch(replies, address, { [TSD_PROPERTY]: "TSD" });
+      omniComplete = omniComplete && decoded.complete;
+      for (const d of decoded.rows) rows.push({ network: "txc-omni", address, d, source: "chain" });
     }
     let hitKnown = false;
     for (const t of txs) {
@@ -89,10 +89,13 @@ async function readEsplora(chain: "txc" | "isk", address: string, known: Set<str
       if (d) rows.push({ network: chain, address, d, source: "chain" });
     }
     const confirmed = txs.filter((t) => t.status?.confirmed);
-    if (hitKnown || confirmed.length < 25) return { rows, complete: true };
-    after = confirmed[confirmed.length - 1]!.txid;
+    // A recovery backfill must pass known TXC rows to reach previously missed TSD receipts.
+    if ((hitKnown && !firstTime) || confirmed.length < 25) return { rows, complete: omniComplete };
+    const last = confirmed[confirmed.length - 1];
+    if (!last) return { rows, complete: false };
+    after = last.txid;
   }
-  return { rows, complete: !firstTime };
+  return { rows, complete: omniComplete && !firstTime };
 }
 
 /* ------------------------------ Alchemy (EVM) ------------------------------ */
@@ -209,8 +212,8 @@ export async function syncDeposits(userId: string): Promise<{ added: number; ski
     const known = async (network: string) => knownTxids(userId, network);
     if (a.TXC) jobs.push((async () => {
       const k = new Set([...(await known("txc")), ...(await known("txc-omni"))]);
-      return { key: "txc", ...(await readEsplora("txc", a.TXC!, k, !backfilled.txc)) };
-    })());
+      return { key: "txc", ...(await readEsplora("txc", a.TXC!, k, !backfilled.txc || !backfilled["txc_omni_wallet"])) };
+    })().catch(() => ({ key: "txc", rows: [] as Row[], complete: false })));
     if (a.ISK) jobs.push((async () => ({ key: "isk", ...(await readEsplora("isk", a.ISK!, await known("isk"), !backfilled.isk)) }))());
     if (a.EVM) for (const net of ["ethereum", "base", "bsc"] as const) {
       jobs.push((async () => ({ key: net, ...(await readAlchemy(net, a.EVM!, await known(net), !backfilled[net])) }))());
@@ -221,7 +224,8 @@ export async function syncDeposits(userId: string): Promise<{ added: number; ski
       seedsTxids(userId),
     ]);
     const all = [...results.flatMap((r) => r.rows), ...watched];
-    for (const r of results) if (r.key && r.complete) backfilled[r.key] = true;
+    // A later failed Omni read also schedules recovery, rather than losing it behind known TXC rows.
+    if (results.some((r) => r.key === "txc" && !r.complete)) backfilled["txc_omni_wallet"] = false;
     if (all.length) {
       const insert = all.map((r) => {
         const base = explorerFor(r.network);
@@ -233,8 +237,16 @@ export async function syncDeposits(userId: string): Promise<{ added: number; ski
         };
       });
       const { data, error } = await supabaseAdmin.from("pocket_deposits").upsert(insert, { onConflict: "user_id,network,txid,coin", ignoreDuplicates: true }).select("id");
-      if (error) console.error("[deposits] save failed", error.message);
+      if (error) {
+        backfilled["txc_omni_wallet"] = false;
+        console.error("[deposits] save failed", error.message);
+        throw new Error("Deposit history could not be saved. Try checking again later.");
+      }
       added = data?.length ?? 0;
+    }
+    for (const r of results) if (r.key && r.complete) {
+      backfilled[r.key] = true;
+      if (r.key === "txc") backfilled["txc_omni_wallet"] = true;
     }
     return { added };
   } finally {

@@ -60,6 +60,18 @@ export function omniDeposit(t: OmniTx, address: string, tokens: Record<number, s
   return { txid: t.txid, coin, amount, blockTime: t.blocktime ? new Date(t.blocktime * 1000).toISOString() : null, from: t.sendingaddress };
 }
 
+/** Failed lookups leave history incomplete; valid receipts in the same batch can still be saved. */
+export function omniDepositBatch(replies: readonly (OmniTx | Error | null)[], address: string, tokens: Record<number, string>): { rows: FoundDeposit[]; complete: boolean } {
+  const rows: FoundDeposit[] = [];
+  let complete = true;
+  for (const reply of replies) {
+    if (!reply || reply instanceof Error) { complete = false; continue; }
+    const deposit = omniDeposit(reply, address, tokens);
+    if (deposit) rows.push(deposit);
+  }
+  return { rows, complete };
+}
+
 /* ------------------------------ Alchemy (EVM) ------------------------------ */
 
 export type AlchemyTransfer = {

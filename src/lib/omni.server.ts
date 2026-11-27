@@ -356,11 +356,12 @@ export async function omniSimpleSend(params: OmniSendParams): Promise<OmniSendRe
 
 /** The node's Omni lookups are wallet-scoped RPCs; the wallet name is a finished value, safe to keep. */
 let omniWalletPath: string | null = null;
-async function omniPath(): Promise<string> {
+export async function omniPath(): Promise<string> {
   if (omniWalletPath) return omniWalletPath;
   const w = await rpc<string[]>("txc", "listwallets", []);
-  if (!w.length) throw new Error("The TEXITcoin node has no wallet loaded for Omni lookups");
-  omniWalletPath = `/wallet/${encodeURIComponent(w[0]!)}`;
+  const wallet = w[0];
+  if (!wallet) throw new Error("The TEXITcoin node has no wallet loaded for Omni lookups");
+  omniWalletPath = `/wallet/${encodeURIComponent(wallet)}`;
   return omniWalletPath;
 }
 

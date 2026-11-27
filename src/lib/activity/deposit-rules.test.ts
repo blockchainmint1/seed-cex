@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { alchemyDeposits, esploraDeposit, isOmniCarrier, omniDeposit, seedsLabel, watchedDeposit, type EsploraTx } from "./deposit-rules";
+import { alchemyDeposits, esploraDeposit, isOmniCarrier, omniDeposit, omniDepositBatch, seedsLabel, watchedDeposit, type EsploraTx } from "./deposit-rules";
 
 const ME = "TMeAddress1";
 
@@ -36,6 +36,20 @@ describe("deposit rules", () => {
     ];
     const got = alchemyDeposits(list, me, { native: "ETH", tokens: { [usdc]: { symbol: "USDC", decimals: 6 } } });
     expect(got.map((d) => [d.txid, d.coin, d.amount])).toEqual([["0x1", "USDC", 10], ["0x3", "ETH", 0.25]]);
+  });
+
+  test("QA-0011: the reported 1.2 TSD receipt remains a deposit, not carrier TXC", () => {
+    const txid = "cbc94327bff9b47cf19bdd3c5e70993ec98628b395db8b59b7be30c3736a6ff0";
+    const got = omniDepositBatch([{ txid, valid: true, type_int: 0, sendingaddress: "Tpnv8KdDjbu5ebBwo8iZisumLJtbddD3Mk", referenceaddress: "TjUj7FphezUuTZjgtHcVK7kcSxkq4CdFFg", propertyid: 39, amount: "1.20000000", confirmations: 981, blocktime: 1795573997 }], "TjUj7FphezUuTZjgtHcVK7kcSxkq4CdFFg", { 39: "TSD" });
+    expect(got.rows.map((r) => [r.txid, r.coin, r.amount])).toEqual([[txid, "TSD", 1.2]]);
+    expect(got.complete).toBe(true);
+  });
+
+  test("QA-0011: an Omni lookup error must not mark historical deposits complete", () => {
+    const got = omniDepositBatch([new Error("Wallet file not specified"), { txid: "confirmed", valid: true, type_int: 0, sendingaddress: "TOther", referenceaddress: ME, propertyid: 39, amount: "1.30000000", confirmations: 1 }], ME, { 39: "TSD" });
+    expect(got.complete).toBe(false);
+    expect(got.rows.map((r) => [r.coin, r.amount])).toEqual([["TSD", 1.3]]);
+    expect(omniDepositBatch([null], ME, { 39: "TSD" }).complete).toBe(false);
   });
 
   test("a balance rise counts only beyond what Seeds' own swaps delivered", () => {

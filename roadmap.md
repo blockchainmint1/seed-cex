@@ -577,3 +577,7 @@
 ## QA-0010 withdrawal guidance (Nov 27)
 - [x] Compare HME Wallet's actual pocket controls and correct Seeds withdrawal page, metadata and help: Move back sweeps supported native coins to the main wallet; it is not an amount/address Send and excludes tokens. No withdrawal logic or HME Wallet changes.
 - [ ] Tester confirmation after the reviewed update is published (blocked: independent review, release and tester).
+
+## QA-0011 TSD deposit history (Nov 27)
+- [x] Reproduced missing confirmed TSD receipts: Omni history batches lacked the required node-wallet path. Fixed scoped reads and recovery backfills; recovered the reported 1.2 TSD trade delivery and 1.3 TSD plain deposit through the normal history checker. 1,748 tests passed; signed-in desktop/mobile history checked. No balances or sends changed.
+- [ ] Independent review and tester confirmation after release (blocked: auditor, release and tester).
