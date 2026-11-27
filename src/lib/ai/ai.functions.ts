@@ -6,6 +6,7 @@ import { AI_CATALOG, aiPocketFor, catalogByGecko } from "./catalog";
 import { cleanSettings, lockBlocker } from "./lock-rules";
 import type { PlanSettings } from "./plan";
 import { buyNowTsd, canBuyNow, coinsWaiting, planWaitingInTsd } from "./start-now";
+import { canRequestDayRetry } from "./start-recovery";
 
 const db = async () => (await import("@/integrations/supabase/client.server")).supabaseAdmin;
 
@@ -39,6 +40,7 @@ export type MyAiPlan = {
 
 export type AiRealDay = {
   checkId: string; day: string; status: string; totalUsd: number | null; expiresAt: string | null; decidedVia: string | null;
+  canRetry: boolean;
   moves: { id: string; side: string; coin: string; usd: number; amount: number; status: string; amountIn: number | null; amountOut: number | null; error: string | null }[];
 };
 
@@ -51,7 +53,7 @@ export const getMyAiPlans = createServerFn({ method: "GET" })
       supabase.from("ai_plans").select("id, name, status, commit_tsd, locked_at, telegram_daily, settings, execute, override_days, next_check_at").order("locked_at", { ascending: false }),
       supabase.from("ai_plan_checks").select("id, plan_id, day, message, sent_at, exec_status, exec_total_usd, exec_expires_at, exec_decided_via, suggestion").order("day", { ascending: false }).limit(300),
       supabase.from("profiles").select("telegram_verified").eq("id", userId).maybeSingle(),
-      supabase.from("ai_plan_moves").select("id, check_id, plan_id, seq, side, coin_id, usd, amount, status, amount_in, amount_out, error").order("created_at", { ascending: false }).limit(500),
+      supabase.from("ai_plan_moves").select("id, check_id, plan_id, seq, side, coin_id, usd, amount, status, amount_in, amount_out, error, route_id").order("created_at", { ascending: false }).limit(500),
     ]);
     const { isTesterUser, planLedger, planPositions } = await import("./execute.server");
     const tester = await isTesterUser(userId);
@@ -61,6 +63,7 @@ export const getMyAiPlans = createServerFn({ method: "GET" })
       realDays.set(c.plan_id, {
         checkId: c.id, day: c.day, status: c.exec_status, totalUsd: c.exec_total_usd == null ? null : Number(c.exec_total_usd),
         expiresAt: c.exec_expires_at, decidedVia: c.exec_decided_via,
+        canRetry: canRequestDayRetry(c.exec_status, (moves ?? []).filter((m) => m.check_id === c.id).map((m) => ({ status: m.status, routeId: m.route_id }))),
         moves: (moves ?? []).filter((m) => m.check_id === c.id).sort((a, b) => a.seq - b.seq).map((m) => ({
           id: m.id, side: m.side, coin: m.coin_id, usd: Number(m.usd), amount: Number(m.amount), status: m.status,
           amountIn: m.amount_in == null ? null : Number(m.amount_in), amountOut: m.amount_out == null ? null : Number(m.amount_out), error: m.error,
@@ -290,6 +293,24 @@ export const setAiPlanRealBuying = createServerFn({ method: "POST" })
   });
 
 const decideInput = z.object({ checkId: z.string().uuid(), choice: z.enum(["yes", "no"]) });
+
+/** Reopen only a proven-unstarted stopped day. This requests a new OK; it never sends. */
+export const retryAiTrades = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ checkId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const ex = await import("./execute.server");
+    const admin = await db();
+    const { data: check } = await context.supabase.from("ai_plan_checks").select("plan_id").eq("id", data.checkId).eq("user_id", context.userId).maybeSingle();
+    if (!check) throw new Error("Plan day not found.");
+    const { data: plan } = await admin.from("ai_plans").select("id, user_id, name, status, commit_tsd, settings, execute").eq("id", check.plan_id).eq("user_id", context.userId).maybeSingle();
+    if (!plan) throw new Error("Plan not found.");
+    const blocker = await ex.planRealBlocker({ ...plan, commit_tsd: Number(plan.commit_tsd) });
+    if (blocker) throw new Error(blocker);
+    const { error } = await admin.rpc("retry_ai_unstarted_day", { _user: context.userId, _check: data.checkId });
+    if (error) throw new Error(error.message);
+    return { note: "Retry ready. Review the trades and confirm again; nothing has been sent." };
+  });
 
 /**
  * Signed-in: confirm or skip today's real AI trades. Starts the first one right away.

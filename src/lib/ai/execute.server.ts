@@ -21,6 +21,7 @@ import {
 import { decisionKind, decisionMessage, type DecisionButton, type DecisionKind, type DecisionRow } from "./decision-message";
 import { buyNowTsd, canBuyNow, coinsWaiting, planWaitingInTsd } from "./start-now";
 import type { PlanSettings } from "./plan";
+import { currentAiMessage, interruptedStartDecision, planSwapAmount, runAiStart } from "./start-recovery";
 
 const SITE = "https://seeds.honest.money";
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -299,7 +300,11 @@ export async function handleAiTap(cq: CallbackQuery): Promise<string | null> {
   const { telegramActionKey, telegramCall } = await import("@/lib/telegram.server");
   const answer = (text: string, alert = false) =>
     cq.id ? telegramCall("answerCallbackQuery", { callback_query_id: cq.id, text, show_alert: alert }).catch(() => {}) : Promise.resolve();
-  const { data: check } = await db.from("ai_plan_checks").select("id, user_id, exec_status, exec_total_usd, exec_expires_at").eq("id", parsed.checkId).maybeSingle();
+  const { data: check } = await db.from("ai_plan_checks").select("id, user_id, exec_status, exec_total_usd, exec_expires_at, exec_telegram_message_id").eq("id", parsed.checkId).maybeSingle();
+  if (!check || !currentAiMessage(check.exec_telegram_message_id, cq.message?.message_id)) {
+    await answer("This request was replaced. Review the current trades on Seeds.", true);
+    return "refused";
+  }
   const { data: owner } = check ? await db.from("profiles").select("telegram_chat_id, telegram_verified").eq("id", check.user_id).maybeSingle() : { data: null };
   const oneTapLimit = check ? (await oneTapLimitFor(check.user_id)).limit : 0;
   const decision = aiTapDecision({
@@ -357,9 +362,13 @@ async function finishCheckIfDone(checkId: string) {
   await db.from("ai_plan_checks").update({ exec_status: allDone ? "done" : someDone ? "partial" : "cancelled" }).eq("id", checkId).in("exec_status", ["approved", "running"]);
 }
 
-async function failMove(m: { id: string; check_id: string; user_id: string }, why: string) {
+async function failMove(m: { id: string; check_id: string; user_id: string }, why: string, unstartedOnly = false) {
   const now = new Date().toISOString();
-  await db.from("ai_plan_moves").update({ status: "failed", error: why.slice(0, 300), finished_at: now, updated_at: now }).eq("id", m.id);
+  let update = db.from("ai_plan_moves").update({ status: "failed", error: why.slice(0, 300), finished_at: now, updated_at: now })
+    .eq("id", m.id).in("status", ["starting", "running"]);
+  if (unstartedOnly) update = update.is("route_id", null);
+  const { data: changed, error } = await update.select("id");
+  if (error || !changed?.length) return; // reservation won the race, or another worker finished it
   // One step didn't finish: stop the rest of that day rather than trade on a half-done plan.
   await db.from("ai_plan_moves").update({ status: "cancelled", error: "Stopped because an earlier trade that day didn't finish.", finished_at: now, updated_at: now })
     .eq("check_id", m.check_id).eq("status", "queued");
@@ -383,14 +392,16 @@ export async function advanceAiMoves(opts: { userId?: string } = {}): Promise<{ 
   const { data: active } = await rq.limit(50);
   for (const m of active ?? []) {
     if (!m.route_id) {
-      // Started but the swap id wasn't recorded (job cut off): find it, never start a second one.
+      // New starts link atomically. Legacy starts may have an untracked swap; a
+      // similar-looking manual swap is not proof it belongs to this basket.
       const since = new Date(Date.parse(m.started_at ?? now) - 10_000).toISOString();
-      const { data: r } = await db.from("tsd_routes").select("id").eq("user_id", m.user_id).eq("coin", m.swap_coin).eq("direction", m.side).gte("created_at", since).order("created_at").limit(1).maybeSingle();
-      if (r) await db.from("ai_plan_moves").update({ route_id: r.id, status: "running", updated_at: now }).eq("id", m.id);
-      else if (Date.now() - Date.parse(m.started_at ?? now) > 3 * 60_000) await failMove(m, "The swap didn't start.");
+      const { data: candidates, error } = await db.from("tsd_routes").select("id").eq("user_id", m.user_id).eq("coin", m.swap_coin).eq("direction", m.side).gte("created_at", since).limit(1);
+      const decision = interruptedStartDecision({ lookupOk: !error, matchingRoutes: candidates?.length ?? 0, ageMs: Date.now() - Date.parse(m.started_at ?? now) });
+      if (decision === "stop") await failMove(m, "The start was interrupted before a swap was recorded. Nothing was sent for this trade. Request a retry on Account → AI strategies, then confirm again.", true);
+      if (decision === "review") await db.from("ai_plan_moves").update({ error: "A matching swap exists but its basket link is uncertain. Review required; Seeds will not start another swap.", updated_at: now }).eq("id", m.id).is("route_id", null).eq("status", "starting");
       continue;
     }
-    const { data: r } = await db.from("tsd_routes").select("stage, amount_in, amount_out, shown_out, error").eq("id", m.route_id).maybeSingle();
+    const { data: r } = await db.from("tsd_routes").select("stage, amount_in, amount_out, shown_out, error").eq("id", m.route_id).eq("user_id", m.user_id).maybeSingle();
     if (!r || !TERMINAL.includes(r.stage)) continue;
     if (r.stage === "done") {
       await db.from("ai_plan_moves").update({ status: "done", amount_in: r.amount_in, amount_out: r.amount_out ?? r.shown_out, finished_at: now, updated_at: now }).eq("id", m.id).in("status", ["running", "starting"]);
@@ -450,31 +461,16 @@ async function startMove(m: { id: string; check_id: string; plan_id: string; use
   const { data: claimed, error: claimErr } = await db.from("ai_plan_moves").update({ status: "starting", started_at: now, updated_at: now }).eq("id", m.id).eq("status", "queued").select("id");
   if (claimErr || !claimed?.length) return false;
   await db.from("ai_plan_checks").update({ exec_status: "running" }).eq("id", m.check_id).eq("exec_status", "approved");
-  try {
+  return runAiStart({ start: async () => {
     const coin = swapCoin(m.swap_coin);
     if (!coin) throw new Error("Unknown coin.");
-    const { quoteTsdRoute, startTsdRoute } = await import("@/lib/xchain/tsd-route.server");
+    const { startTsdRoute } = await import("@/lib/xchain/tsd-route.server");
     const direction = m.side as "buy" | "sell";
-    const amt = direction === "buy" ? amount.toFixed(2) : units(amount);
-    if (direction === "buy") {
-      // Going to cash doesn't set the TSD aside: the member may have spent it since. Say so plainly.
-      const { loadLink } = await import("@/lib/xchain/send.server");
-      const { freeTsdFor } = await import("@/lib/xchain/tsd-route.server");
-      const link = await loadLink(m.user_id);
-      const free = link?.addresses.TXC ? await freeTsdFor(m.user_id, link.addresses.TXC) : null;
-      if (free != null && free < amount) {
-        throw new Error(`Your plan wants to buy ${units(amount)} TSD of ${coin.symbol}, but your trading pocket only has ${units(free)} TSD free. Deposit more TSD into your trading pocket and the next daily check will buy back in.`);
-      }
-    }
-    const q = await quoteTsdRoute(direction, coin, amt);
-    if (!q.ok) throw new Error(q.error ?? "No route right now.");
+    const amt = planSwapAmount(direction, amount);
     // The plan owner's own limits apply (audit #3 A3): testers get none, members get theirs.
-    const row = await startTsdRoute(m.user_id, await isTesterUser(m.user_id), { direction, coin: coin.id, amount: amt, shownOut: q.out }, { waitForFirstSend: false });
-    if (!row) return true; // the swap exists; the next run finds and links it (route lookup in step 2)
-    await db.from("ai_plan_moves").update({ route_id: row.id, status: "running", updated_at: new Date().toISOString() }).eq("id", m.id);
-    return true;
-  } catch (e) {
-    await failMove(m, e instanceof Error ? e.message : String(e));
-    return false;
-  }
+    await startTsdRoute(m.user_id, await isTesterUser(m.user_id), { direction, coin: coin.id, amount: amt, shownOut: 0 }, { waitForFirstSend: false, aiMoveId: m.id });
+  }, readLink: async () => {
+    const { data, error } = await db.from("ai_plan_moves").select("route_id").eq("id", m.id).eq("user_id", m.user_id).maybeSingle();
+    return { ok: !error && Boolean(data), routeId: data?.route_id ?? null };
+  }, fail: (reason) => failMove(m, reason, true) });
 }

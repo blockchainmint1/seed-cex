@@ -154,12 +154,12 @@ export async function quoteTsdRoute(direction: RouteDirection, coin: SwapCoin, a
 export type StartRouteInput = { direction: RouteDirection; coin: string; amount: string; shownOut: number };
 
 /** Audit C2: the free-coins check and the hold it leads to run one at a time per member. */
-export async function startTsdRoute(userId: string, isAdmin: boolean, input: StartRouteInput, opts: { waitForFirstSend?: boolean; parentId?: string } = {}) {
+export async function startTsdRoute(userId: string, isAdmin: boolean, input: StartRouteInput, opts: { waitForFirstSend?: boolean; parentId?: string; aiMoveId?: string } = {}) {
   const { withPocketSpendLock } = await import("@/lib/set-asides.server");
   return withPocketSpendLock(userId, () => startTsdRouteUnlocked(userId, isAdmin, input, opts));
 }
 
-async function startTsdRouteUnlocked(userId: string, isAdmin: boolean, input: StartRouteInput, opts: { waitForFirstSend?: boolean; parentId?: string } = {}) {
+async function startTsdRouteUnlocked(userId: string, isAdmin: boolean, input: StartRouteInput, opts: { waitForFirstSend?: boolean; parentId?: string; aiMoveId?: string } = {}) {
   const coin = swapCoin(input.coin);
   if (!coin) throw new Error("Pick a coin.");
   const { loadLink } = await import("./send.server");
@@ -175,7 +175,9 @@ async function startTsdRouteUnlocked(userId: string, isAdmin: boolean, input: St
     tsdAmount: input.direction === "buy" ? q.amountIn : q.out,
   });
   if (blocker) throw new Error(blocker);
-  if (!requoteOk(input.shownOut, q.out)) {
+  // AI approves a fixed input budget, not an earlier UI quote. Its single fresh quote
+  // is saved atomically against the approved move below; ordinary swaps keep drift protection.
+  if (!opts.aiMoveId && !requoteOk(input.shownOut, q.out)) {
     throw new Error(`The price moved more than 1% since you looked (now ${q.out}). Check the new quote and try again.`);
   }
 
@@ -202,6 +204,7 @@ async function startTsdRouteUnlocked(userId: string, isAdmin: boolean, input: St
     const [bal, locked] = await freeTsd(userId, txc);
     if (bal == null) throw new Error("Couldn't read your TSD balance. Try again in a minute.");
     if (bal - locked < q.amountIn) {
+      if (opts.aiMoveId) throw new Error(`Your plan wants to buy ${fmt(q.amountIn)} TSD of ${coin.symbol}, but your trading pocket only has ${fmt(Math.max(0, bal - locked))} TSD free. Deposit more TSD, then request a retry or wait for the next daily check.`);
       throw new Error(locked > 0
         ? `You have ${fmt(bal, 2)} TSD, but ${fmt(locked, 2)} is set aside for your open orders and trades. Free to swap: ${fmt(Math.max(0, bal - locked), 2)} TSD. Cancel an order on the Activity page to free more.`
         : `Your trading pocket has ${fmt(bal, 2)} TSD.`);
@@ -219,12 +222,15 @@ async function startTsdRouteUnlocked(userId: string, isAdmin: boolean, input: St
   }
 
   if (!opts.parentId) { const { assertSwapLaneFree, coinLane } = await import("@/lib/swap/lanes.server"); const lanes = await import("@/lib/swap/lanes"); void coinLane; await assertSwapLaneFree(userId, { kind: "tsd", lanes: [lanes.assetLane(coin.asset)].filter((x): x is string => !!x), passes: lanes.TSD_PASSES }); }
-  const { data: id, error } = await supabaseAdmin.rpc("reserve_tsd_route", {
+  const args = {
     _user_id: userId, _link_id: link!.id, _direction: input.direction, _coin: coin.id, _coin_asset: coin.asset,
     _amount_in: q.amountIn, _amount_usd: Math.round((q.amountUsd ?? 0) * 100) / 100, _shown_usdc: q.usdc, _shown_out: q.out,
     _bridge_fee_bps: q.bridgeFeeBps, _txc_address: txc, _evm_address: evm, _coin_address: coinAddress,
     _per_swap_max_usd: swapLimitsFor(isAdmin).perSwapUsd, _daily_max_usd: swapLimitsFor(isAdmin).dailyUsd, _protocol: q.protocol ?? "thorchain", _parent_id: opts.parentId,
-  });
+  };
+  const { data: id, error } = opts.aiMoveId
+    ? await supabaseAdmin.rpc("reserve_ai_tsd_route", { _move_id: opts.aiMoveId, _args: args as never })
+    : await supabaseAdmin.rpc("reserve_tsd_route", args);
   if (error || !id) throw new Error(clean(error?.message ?? "Could not start this swap."));
   // Answer the member as soon as their first coins have left (or the swap stopped); the
   // every-minute job carries it the rest of the way, so the button never waits on TSD Bridge or THORChain.

@@ -2,8 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, Check, Pause, Pencil, Play, SlidersHorizontal, Sparkles, Trash2, X, Zap } from "lucide-react";
-import { decideAiTrades, editMyAiPlan, getMyAiPlans, getRealStartPreview, setAiPlanRealBuying, updateMyAiPlan, type AiRealDay, type MyAiPlan, type RealStartPreview } from "@/lib/ai/ai.functions";
+import { AlertTriangle, Check, Pause, Pencil, Play, RotateCcw, SlidersHorizontal, Sparkles, Trash2, X, Zap } from "lucide-react";
+import { decideAiTrades, editMyAiPlan, getMyAiPlans, getRealStartPreview, retryAiTrades, setAiPlanRealBuying, updateMyAiPlan, type AiRealDay, type MyAiPlan, type RealStartPreview } from "@/lib/ai/ai.functions";
 import { aiCoinsQuery } from "@/lib/ai/market";
 import { basketTargets } from "@/lib/ai/plan";
 import { LOCK_LIMITS } from "@/lib/ai/lock-rules";
@@ -43,7 +43,8 @@ function AiTab() {
   const fetchPlans = useServerFn(getMyAiPlans);
   const update = useServerFn(updateMyAiPlan);
   const edit = useServerFn(editMyAiPlan);
-  const q = useQuery({ queryKey: ["ai-my-plans"], queryFn: () => fetchPlans() });
+  const q = useQuery({ queryKey: ["ai-my-plans"], queryFn: () => fetchPlans(),
+    refetchInterval: (query) => query.state.data?.plans.some((p) => p.realDay && ["approved", "running"].includes(p.realDay.status)) ? 10_000 : false });
   const coins = useQuery(aiCoinsQuery);
   const symbol = (id: string) => (id === "tsd" ? "TSD" : coins.data?.find((c) => c.id === id)?.symbol.toUpperCase() ?? id);
   const refresh = () => qc.invalidateQueries({ queryKey: ["ai-my-plans"] });
@@ -55,6 +56,9 @@ function AiTab() {
   const [realNote, setRealNote] = useState<string | null>(null);
   const setReal = useServerFn(setAiPlanRealBuying);
   const decide = useServerFn(decideAiTrades);
+  const requestRetry = useServerFn(retryAiTrades);
+  const retry = useMutation({ mutationFn: (checkId: string) => requestRetry({ data: { checkId } }),
+    onSuccess: (r) => { setRealNote(r.note); refresh(); } });
   const real = useMutation({
     mutationFn: (v: { id: string; on: boolean; startNow?: boolean }) => setReal({ data: v }),
     onSuccess: (r) => { setRealNote(r.note); refresh(); },
@@ -103,6 +107,7 @@ function AiTab() {
       ) : null}
       {real.error ? <Note tone="error">{(real.error as Error).message}</Note> : null}
       {answer.error ? <Note tone="error">{(answer.error as Error).message}</Note> : null}
+      {retry.error ? <Note tone="error">{(retry.error as Error).message}</Note> : null}
       {realNote ? <Note tone="ok">{realNote}</Note> : null}
       {q.data && !q.data.telegramLinked ? (
         <Note tone="warn">Telegram isn't connected, so daily checks only show here. <Link to="/account/alerts" className="font-semibold text-primary underline">Connect Telegram</Link>.</Note>
@@ -119,12 +124,13 @@ function AiTab() {
           <Button asChild className="mt-3"><Link to="/ai"><Sparkles /> Open Seeds AI</Link></Button>
         </Card>
       ) : (
-        current.map((p) => <PlanCard key={p.id} p={p} paper={!(q.data?.executionEnabled || (canReal && p.execute))} symbol={symbol} busy={status.isPending || real.isPending || answer.isPending}
+        current.map((p) => <PlanCard key={p.id} p={p} paper={!(q.data?.executionEnabled || (canReal && p.execute))} symbol={symbol} busy={status.isPending || real.isPending || answer.isPending || retry.isPending}
           canReal={canReal}
           onReal={() => { setRealNote(null); if (p.execute) real.mutate({ id: p.id, on: false }); else setRealFor({ plan: p, mode: "turn-on" }); }}
           onBuyNow={(mode) => { setRealNote(null); setRealFor({ plan: p, mode }); }}
           oneTapLimitUsd={q.data?.limits.oneTapLimitUsd ?? 0}
           onAnswer={(checkId, choice, code) => answer.mutate({ checkId, choice, code })}
+          onRetry={(checkId) => retry.mutate(checkId)}
           onStatus={(s) => status.mutate({ id: p.id, status: s })}
           onTelegram={() => status.mutate({ id: p.id, telegramDaily: !p.telegramDaily })}
           onEdit={() => setEditing(p)} onEnd={() => setEnding(p)} />)
@@ -190,9 +196,10 @@ function rulesOf(p: MyAiPlan, symbol: (id: string) => string): [string, string][
 
 type AnswerFn = (checkId: string, choice: "yes" | "no", code?: string) => void;
 
-function PlanCard({ p, paper, symbol, busy, canReal, oneTapLimitUsd, onReal, onBuyNow, onAnswer, onStatus, onTelegram, onEdit, onEnd }: {
+function PlanCard({ p, paper, symbol, busy, canReal, oneTapLimitUsd, onReal, onBuyNow, onAnswer, onRetry, onStatus, onTelegram, onEdit, onEnd }: {
   p: MyAiPlan; paper: boolean; symbol: (id: string) => string; busy: boolean; oneTapLimitUsd?: number;
   canReal?: boolean; onReal?: () => void; onBuyNow?: (mode: StartMode) => void; onAnswer?: AnswerFn;
+  onRetry?: (checkId: string) => void;
   onStatus?: (s: "locked" | "paused") => void; onTelegram?: () => void; onEdit?: () => void; onEnd?: () => void;
 }) {
   const [history, setHistory] = useState(false);
@@ -208,7 +215,7 @@ function PlanCard({ p, paper, symbol, busy, canReal, oneTapLimitUsd, onReal, onB
           <div key={k} className="flex gap-2"><dt className="w-32 shrink-0 text-muted-foreground">{k}</dt><dd className="min-w-0">{v}</dd></div>
         ))}
       </dl>
-      {p.execute || p.ledger || p.realDay ? <RealSection p={p} symbol={symbol} busy={busy} oneTapLimitUsd={oneTapLimitUsd ?? 0} onAnswer={onAnswer} onBuyNow={canReal && p.status === "locked" ? onBuyNow : undefined} /> : null}
+      {p.execute || p.ledger || p.realDay ? <RealSection p={p} symbol={symbol} busy={busy} oneTapLimitUsd={oneTapLimitUsd ?? 0} onAnswer={onAnswer} onRetry={canReal && p.status === "locked" ? onRetry : undefined} onBuyNow={canReal && p.status === "locked" ? onBuyNow : undefined} /> : null}
       <div className="mt-4">
         <p className={fieldLabel}>Latest check{p.lastCheck ? ` · ${p.lastCheck.day}` : ""}</p>
         {p.lastCheck ? (
@@ -313,7 +320,7 @@ function moveText(m: AiRealDay["moves"][number], symbol: (id: string) => string)
 }
 
 /** Real buying: what the plan owns from finished trades, and the newest day's trades (confirm / skip while waiting). */
-function RealSection({ p, symbol, busy, oneTapLimitUsd, onAnswer, onBuyNow }: { p: MyAiPlan; symbol: (id: string) => string; busy: boolean; oneTapLimitUsd: number; onAnswer?: AnswerFn; onBuyNow?: (mode: StartMode) => void }) {
+function RealSection({ p, symbol, busy, oneTapLimitUsd, onAnswer, onBuyNow, onRetry }: { p: MyAiPlan; symbol: (id: string) => string; busy: boolean; oneTapLimitUsd: number; onAnswer?: AnswerFn; onBuyNow?: (mode: StartMode) => void; onRetry?: (checkId: string) => void }) {
   const d = p.realDay;
   const [code, setCode] = useState("");
   // Same line as Telegram: bigger days need the member's authenticator code here.
@@ -347,6 +354,9 @@ function RealSection({ p, symbol, busy, oneTapLimitUsd, onAnswer, onBuyNow }: { 
             </li>
           ))}
         </ul>
+      ) : null}
+      {p.execute && d?.canRetry && onRetry ? (
+        <Button className="mt-3" size="sm" variant="outline" disabled={busy} onClick={() => onRetry(d.checkId)}><RotateCcw /> Request retry</Button>
       ) : null}
       {p.execute && p.waitingInTsd && !dayOpen ? (
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-sm border border-warn/50 bg-warn/10 p-2.5 text-sm">

@@ -855,6 +855,20 @@
       "when": 1795644881886,
       "tag": "0121_tron_usdt_unique_sends",
       "breakpoints": true
+    },
+    {
+      "idx": 122,
+      "version": "7",
+      "when": 1795753202125,
+      "tag": "0122_ai_swap_start_recovery",
+      "breakpoints": true
+    },
+    {
+      "idx": 123,
+      "version": "7",
+      "when": 1795753642543,
+      "tag": "0123_ai_recovery_explicit_plan_checks",
+      "breakpoints": true
     }
   ]
 }

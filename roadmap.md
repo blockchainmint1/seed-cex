@@ -1,5 +1,10 @@
 # Roadmap
 
+## QA-0018 AI basket start failure (Bobby, Nov 27)
+- [x] Trace the approved five-buy basket to the interrupted-start fallback with no recorded swap; the exact request interruption was not retained in logs
+- [x] Save swap + move link atomically, remove duplicated quote/balance work, retain explicit refusals, and add fresh-confirmation retry only for fully unstarted days; 1,744 tests, rollback-only database assertions and signed-in desktop/mobile retry read-back pass; temporary test basket removed; auditor handoff prepared
+- [ ] Funded retry and publish (blocked: owner approval and independent review)
+
 ## Influencer and community page (Bobby, Nov 26)
 - [x] Build /influencers with honest benefits/trade-offs, existing affiliate link access and individually agreed rewards
 - [x] Clearly distinguish live AI/referral tools from planned competitions and cryptoU.ai teaching; propose welcome sessions, transparent strategy reviews, office hours and creator kits without invented payouts

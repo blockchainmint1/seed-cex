@@ -5872,6 +5872,10 @@ export type Database = {
         Args: { _token: string; _user: string }
         Returns: undefined
       }
+      reserve_ai_tsd_route: {
+        Args: { _args: Json; _move_id: string }
+        Returns: string
+      }
       reserve_delegation_spend: {
         Args: {
           _amount: number
@@ -5998,6 +6002,10 @@ export type Database = {
           _user_id: string
         }
         Returns: string
+      }
+      retry_ai_unstarted_day: {
+        Args: { _check: string; _user: string }
+        Returns: undefined
       }
       rewrap_pocket_key: {
         Args: { p_link: string; p_new: string; p_old: string }
